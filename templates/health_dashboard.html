@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🩺 MotherHealth Dashboard</title>
+    <style>
+        /* ==================== تنظیمات کلی ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #c8d6e5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* ==================== اسکرول‌بار سفارشی ==================== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        
+        /* ==================== هدر ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00e676, #448aff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .header-controls .time {
+            font-size: 13px;
+            color: #8395a7;
+            direction: ltr;
+            font-family: monospace;
+        }
+        
+        .header-controls .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.static {
+            background: rgba(255, 213, 79, 0.2);
+            color: #ffd54f;
+        }
+        
+        .badge.live {
+            background: rgba(0, 230, 118, 0.2);
+            color: #00e676;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* ==================== کارت‌های متریک ==================== */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .metric-card .label {
+            font-size: 12px;
+            color: #8395a7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .metric-card .value {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        
+        .metric-card .sub {
+            font-size: 12px;
+            color: #8395a7;
+            margin-top: 4px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+        
+        .fill.green { background: #00e676; }
+        .fill.yellow { background: #ffd54f; }
+        .fill.red { background: #ff5252; }
+        .fill.blue { background: #448aff; }
+        
+        /* ==================== وضعیت کلی (Banner) ==================== */
+        .status-banner {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .status-banner .status-icon {
+            font-size: 28px;
+        }
+        
+        .status-banner.healthy {
+            background: rgba(0, 230, 118, 0.1);
+            color: #00e676;
+            border-color: rgba(0, 230, 118, 0.2);
+        }
+        
+        .status-banner.degraded {
+            background: rgba(255, 213, 79, 0.1);
+            color: #ffd54f;
+            border-color: rgba(255, 213, 79, 0.2);
+        }
+        
+        .status-banner.critical {
+            background: rgba(255, 82, 82, 0.1);
+            color: #ff5252;
+            border-color: rgba(255, 82, 82, 0.2);
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* ==================== سوئیچ‌های کنترل ==================== */
+        .controls-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .controls-section h3 {
+            font-size: 14px;
+            color: #8395a7;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+        
+        .switches-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .switch-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 6px 14px 6px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        
+        .switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .switch.active {
+            background: rgba(0, 230, 118, 0.4);
+        }
+        
+        .switch .slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: #c8d6e5;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .switch.active .slider {
+            left: 20px;
+            background: #00e676;
+        }
+        
+        /* ==================== کنسول لاگ ==================== */
+        .console-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .console-section .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .console-section .console-header h3 {
+            font-size: 14px;
+            color: #8395a7;
+        }
+        
+        .console-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .console-actions button {
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.08);
+            color: #c8d6e5;
+        }
+        
+        .console-actions button:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .console-actions button.danger:hover {
+            background: rgba(255, 82, 82, 0.3);
+            color: #ff5252;
+        }
+        
+        .console-logs {
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            padding: 5px 0;
+        }
+        
+        .console-logs .log-entry {
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: flex;
+            gap: 10px;
+            align-items: baseline;
+        }
+        
+        .console-logs .log-entry:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .console-logs .log-time {
+            color: #8395a7;
+            font-size: 11px;
+            min-width: 85px;
+            direction: ltr;
+        }
+        
+        .console-logs .log-level {
+            font-weight: 600;
+            min-width: 50px;
+            font-size: 11px;
+        }
+        
+        .console-logs .log-level.INFO { color: #448aff; }
+        .console-logs .log-level.WARNING { color: #ffd54f; }
+        .console-logs .log-level.ERROR { color: #ff5252; }
+        .console-logs .log-level.CRITICAL { color: #ff1744; }
+        .console-logs .log-level.ACTION { color: #00e676; }
+        .console-logs .log-level.SUCCESS { color: #00e676; }
+        
+        .console-logs .log-message {
+            color: #c8d6e5;
+            word-break: break-word;
+        }
+        
+        /* ==================== تنظیمات داینامیک ==================== */
+        .config-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .config-section h3 {
+            font-size: 14px;
+            color: #8395a7;
+            margin-bottom: 12px;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .config-item label {
+            font-size: 12px;
+            color: #8395a7;
+        }
+        
+        .config-item input, .config-item select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #c8d6e5;
+            font-size: 13px;
+            font-family: monospace;
+            width: 100%;
+        }
+        
+        .config-item input:focus, .config-item select:focus {
+            outline: none;
+            border-color: rgba(68, 138, 255, 0.5);
+        }
+        
+        .config-item input[type="password"] {
+            letter-spacing: 4px;
+        }
+        
+        .config-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .config-actions button {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #448aff, #2979ff);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(68, 138, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #c8d6e5;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        /* ==================== فوتر ==================== */
+        .footer {
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #8395a7;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .footer .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .footer .stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .footer .last-update {
+            font-family: monospace;
+            direction: ltr;
+        }
+        
+        /* ==================== responsive ==================== */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .config-grid { grid-template-columns: 1fr; }
+            .switches-grid { gap: 8px; }
+            .switch-item { font-size: 12px; padding: 4px 10px 4px 8px; }
+            .console-logs { font-size: 12px; }
+            .console-logs .log-time { min-width: 65px; }
+        }
+        
+        @media (max-width: 400px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* ==================== حالت تمام‌صفحه ==================== */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: #0a0e17;
+            padding: 20px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    
+    <!-- ==================== هدر ==================== -->
+    <header class="header">
+        <h1>🩺 MotherHealth v2.0</h1>
+        <div class="header-controls">
+            <span class="time" id="currentTime">⏱️ --:--:--</span>
+            <span class="badge" id="modeBadge">📡 استاتیک</span>
+            <button class="btn-secondary" id="fullscreenBtn" style="padding:4px 10px;font-size:12px;">⛶ تمام‌صفحه</button>
+        </div>
+    </header>
+    
+    <!-- ==================== وضعیت کلی ==================== -->
+    <div class="status-banner healthy" id="statusBanner">
+        <span>
+            <span class="status-icon" id="statusIcon">🟢</span>
+            <span id="statusText">وضعیت: سالم</span>
+        </span>
+        <span style="font-size:14px;font-weight:400;" id="statusDetails">همه‌چیز عالی است</span>
+    </div>
+    
+    <!-- ==================== کارت‌های متریک ==================== -->
+    <div class="metrics-grid" id="metricsGrid">
+        <!-- RAM -->
+        <div class="metric-card">
+            <div class="label">💾 RAM</div>
+            <div class="value" id="ramValue">-- MB</div>
+            <div class="sub" id="ramSub">/ -- MB</div>
+            <div class="progress-bar"><div class="fill green" id="ramBar" style="width:0%;"></div></div>
+        </div>
+        
+        <!-- CPU -->
+        <div class="metric-card">
+            <div class="label">⚡ CPU</div>
+            <div class="value" id="cpuValue">--%</div>
+            <div class="sub" id="cpuSub">-- هسته</div>
+            <div class="progress-bar"><div class="fill blue" id="cpuBar" style="width:0%;"></div></div>
+        </div>
+        
+        <!-- API -->
+        <div class="metric-card">
+            <div class="label">🌐 API</div>
+            <div class="value" id="apiValue">⏳ در حال بررسی...</div>
+            <div class="sub" id="apiSub">-- ms</div>
+        </div>
+        
+        <!-- Credits -->
+        <div class="metric-card">
+            <div class="label">💳 اعتبار</div>
+            <div class="value" id="creditValue">--</div>
+            <div class="sub" id="creditSub">از --</div>
+            <div class="progress-bar"><div class="fill green" id="creditBar" style="width:0%;"></div></div>
+        </div>
+        
+        <!-- Uptime -->
+        <div class="metric-card">
+            <div class="label">⏱️ آپ‌تایم</div>
+            <div class="value" id="uptimeValue">--</div>
+            <div class="sub">از آخرین راه‌اندازی</div>
+        </div>
+        
+        <!-- Latency -->
+        <div class="metric-card">
+            <div class="label">📡 تأخیر</div>
+            <div class="value" id="latencyValue">-- ms</div>
+            <div class="sub">زمان پاسخ API</div>
+        </div>
+    </div>
+    
+    <!-- ==================== کنترل‌ها ==================== -->
+    <div class="controls-section">
+        <h3>🎛️ کنترل‌ها (روشن/خاموش)</h3>
+        <div class="switches-grid" id="switchesGrid">
+            <!-- سوئیچ‌ها توسط جاوااسکریپت ساخته می‌شوند -->
+        </div>
+    </div>
+    
+    <!-- ==================== کنسول ==================== -->
+    <div class="console-section">
+        <div class="console-header">
+            <h3>📡 کنسول زنده</h3>
+            <div class="console-actions">
+                <button id="refreshLogsBtn">🔄 Refresh</button>
+                <button id="clearLogsBtn" class="danger">🗑️ Clear</button>
+                <button id="exportLogsBtn">📥 Export</button>
+            </div>
+        </div>
+        <div class="console-logs" id="consoleLogs">
+            <div style="color:#8395a7;text-align:center;padding:20px 0;">
+                ⏳ در حال بارگذاری لاگ‌ها...
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== تنظیمات داینامیک ==================== -->
+    <div class="config-section">
+        <h3>⚙️ تنظیمات داینامیک (تغییر بدون ری‌استارت)</h3>
+        <div class="config-grid">
+            <div class="config-item">
+                <label>🔑 API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="API Key را وارد کنید">
+            </div>
+            <div class="config-item">
+                <label>📊 تعداد ارزها</label>
+                <input type="number" id="maxAssetsInput" min="1" max="50" value="10">
+            </div>
+            <div class="config-item">
+                <label>⏱️ فاصله‌ی بررسی (ثانیه)</label>
+                <input type="number" id="checkIntervalInput" min="5" max="300" value="30">
+            </div>
+            <div class="config-item">
+                <label>📡 حالت داشبورد</label>
+                <select id="dashboardModeSelect">
+                    <option value="static">استاتیک (با Refresh دستی)</option>
+                    <option value="live">زنده (به‌روزرسانی خودکار)</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label>⚠️ هشدار RAM (%)</label>
+                <input type="number" id="ramWarningInput" min="30" max="90" value="70">
+            </div>
+            <div class="config-item">
+                <label>🚨 بحران RAM (%)</label>
+                <input type="number" id="ramCriticalInput" min="50" max="95" value="85">
+            </div>
+        </div>
+        <div class="config-actions">
+            <button class="btn-primary" id="saveConfigBtn">💾 ذخیره تنظیمات</button>
+            <button class="btn-secondary" id="resetConfigBtn">↩️ بازنشانی</button>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#8395a7;" id="configStatus"></div>
+    </div>
+    
+    <!-- ==================== فوتر ==================== -->
+    <footer class="footer">
+        <div class="stats">
+            <span id="analysisCount">📊 تحلیل امروز: --</span>
+            <span id="analysisWeek">📈 این هفته: --</span>
+        </div>
+        <span class="last-update" id="lastUpdate">🕐 آخرین به‌روزرسانی: --</span>
+    </footer>
+    
+</div>
+
+<script>
+    // ========================================================
+    //  جاوااسکریپت کامل MotherHealth Dashboard
+    // ========================================================
+    
+    (function() {
+        'use strict';
+        
+        // ==================== وضعیت ====================
+        let currentMode = 'static';  // static | live
+        let refreshInterval = null;
+        let config = {};
+        let logs = [];
+        let metrics = {};
+        let isLive = false;
+        
+        // ==================== DOM Reference ====================
+        const $ = (id) => document.getElementById(id);
+        const els = {
+            time: $('currentTime'),
+            modeBadge: $('modeBadge'),
+            statusBanner: $('statusBanner'),
+            statusIcon: $('statusIcon'),
+            statusText: $('statusText'),
+            statusDetails: $('statusDetails'),
+            ramValue: $('ramValue'),
+            ramSub: $('ramSub'),
+            ramBar: $('ramBar'),
+            cpuValue: $('cpuValue'),
+            cpuSub: $('cpuSub'),
+            cpuBar: $('cpuBar'),
+            apiValue: $('apiValue'),
+            apiSub: $('apiSub'),
+            creditValue: $('creditValue'),
+            creditSub: $('creditSub'),
+            creditBar: $('creditBar'),
+            uptimeValue: $('uptimeValue'),
+            latencyValue: $('latencyValue'),
+            consoleLogs: $('consoleLogs'),
+            switchesGrid: $('switchesGrid'),
+            apiKeyInput: $('apiKeyInput'),
+            maxAssetsInput: $('maxAssetsInput'),
+            checkIntervalInput: $('checkIntervalInput'),
+            dashboardModeSelect: $('dashboardModeSelect'),
+            ramWarningInput: $('ramWarningInput'),
+            ramCriticalInput: $('ramCriticalInput'),
+            configStatus: $('configStatus'),
+            analysisCount: $('analysisCount'),
+            analysisWeek: $('analysisWeek'),
+            lastUpdate: $('lastUpdate'),
+            refreshLogsBtn: $('refreshLogsBtn'),
+            clearLogsBtn: $('clearLogsBtn'),
+            exportLogsBtn: $('exportLogsBtn'),
+            saveConfigBtn: $('saveConfigBtn'),
+            resetConfigBtn: $('resetConfigBtn'),
+            fullscreenBtn: $('fullscreenBtn')
+        };
+        
+        // ==================== توابع کمکی ====================
+        function formatTime(iso) {
+            if (!iso) return '--:--:--';
+            const d = new Date(iso);
+            return d.toLocaleTimeString('fa-IR', { hour12: false });
+        }
+        
+        function formatUptime(seconds) {
+            if (!seconds) return '--';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}s ${m}d`;
+            if (m > 0) return `${m}d ${s}s`;
+            return `${s}s`;
+        }
+        
+        function formatNumber(n) {
+            if (n === undefined || n === null) return '--';
+            return n.toLocaleString('fa-IR');
+        }
+        
+        // ==================== دریافت داده از سرور ====================
+        async function fetchMetrics() {
+            try {
+                const res = await fetch('/api/metrics');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                metrics = data.metrics || {};
+                logs = data.logs || [];
+                config = data.config || {};
+                return data;
+            } catch (e) {
+                console.warn('خطا در دریافت متریک:', e);
+                return null;
+            }
+        }
+        
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                config = data;
+                return data;
+            } catch (e) {
+                console.warn('خطا در دریافت تنظیمات:', e);
+                return null;
+            }
+        }
+        
+        async function updateConfig(payload) {
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                showConfigStatus('✅ تنظیمات ذخیره شد', 'green');
+                return data;
+            } catch (e) {
+                showConfigStatus('❌ خطا در ذخیره: ' + e.message, 'red');
+                return null;
+            }
+        }
+        
+        async function clearLogs() {
+            try {
+                const res = await fetch('/api/logs', { method: 'DELETE' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                logs = [];
+                renderLogs();
+                showConfigStatus('🗑️ لاگ‌ها پاک شدند', 'yellow');
+            } catch (e) {
+                console.warn('خطا در پاک کردن لاگ:', e);
+            }
+        }
+        
+        // ==================== رندر کردن ====================
+        function renderMetrics() {
+            const m = metrics;
+            
+            // RAM
+            const ram = m.ram || { used_mb: 0, total_mb: 0, percent: 0 };
+            els.ramValue.textContent = ram.used_mb + ' MB';
+            els.ramSub.textContent = '/ ' + ram.total_mb + ' MB';
+            const ramPct = Math.min(ram.percent || 0, 100);
+            els.ramBar.style.width = ramPct + '%';
+            els.ramBar.className = 'fill ' + (ramPct > 80 ? 'red' : ramPct > 60 ? 'yellow' : 'green');
+            
+            // CPU
+            const cpu = m.cpu || 0;
+            els.cpuValue.textContent = cpu + '%';
+            els.cpuSub.textContent = '-- هسته';
+            els.cpuBar.style.width = Math.min(cpu, 100) + '%';
+            
+            // API
+            const api = m.api || { status: 'unknown', latency: 0 };
+            if (api.status === 'ok') {
+                els.apiValue.textContent = '✅ آنلاین';
+                els.apiValue.style.color = '#00e676';
+            } else if (api.status === 'error') {
+                els.apiValue.textContent = '⚠️ خطا';
+                els.apiValue.style.color = '#ffd54f';
+            } else {
+                els.apiValue.textContent = '❌ قطع';
+                els.apiValue.style.color = '#ff5252';
+            }
+            els.apiSub.textContent = api.latency ? api.latency + ' ms' : '-- ms';
+            
+            // Credits
+            const credits = m.credits || { remaining: 0, total: 0, percent: 0 };
+            els.creditValue.textContent = formatNumber(credits.remaining);
+            els.creditSub.textContent = 'از ' + formatNumber(credits.total);
+            const creditPct = Math.min(credits.percent || 0, 100);
+            els.creditBar.style.width = creditPct + '%';
+            els.creditBar.className = 'fill ' + (creditPct < 10 ? 'red' : creditPct < 25 ? 'yellow' : 'green');
+            
+            // Uptime
+            els.uptimeValue.textContent = formatUptime(m.uptime);
+            
+            // Latency (از API)
+            els.latencyValue.textContent = (api.latency || 0) + ' ms';
+            
+            // وضعیت کلی
+            const status = m.health_status || 'healthy';
+            const banner = els.statusBanner;
+            banner.className = 'status-banner ' + status;
+            const icons = { healthy: '🟢', degraded: '🟡', critical: '🔴' };
+            const texts = { healthy: 'وضعیت: سالم', degraded: 'وضعیت: هشدار', critical: 'وضعیت: بحرانی' };
+            const details = {
+                healthy: 'همه‌چیز عالی است',
+                degraded: 'نیاز به بررسی دارد',
+                critical: '⚠️ نیاز به اقدام فوری!'
+            };
+            els.statusIcon.textContent = icons[status] || '🟢';
+            els.statusText.textContent = texts[status] || 'وضعیت: نامشخص';
+            els.statusDetails.textContent = details[status] || '';
+            
+            // آمار
+            els.analysisCount.textContent = '📊 تحلیل امروز: --';
+            els.analysisWeek.textContent = '📈 این هفته: --';
+            
+            // آخرین به‌روزرسانی
+            els.lastUpdate.textContent = '🕐 آخرین به‌روزرسانی: ' + (m.last_update ? formatTime(m.last_update) : '--');
+        }
+        
+        function renderLogs() {
+            const container = els.consoleLogs;
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div style="color:#8395a7;text-align:center;padding:20px 0;">📭 هیچ لاگی وجود ندارد</div>';
+                return;
+            }
+            
+            let html = '';
+            const recent = logs.slice(-50); // آخرین ۵۰ خط
+            for (const log of recent) {
+                const level = log.level || 'INFO';
+                const time = formatTime(log.timestamp);
+                const message = log.message || '';
+                html += `
+                    <div class="log-entry">
+                        <span class="log-time">${time}</span>
+                        <span class="log-level ${level}">${level}</span>
+                        <span class="log-message">${escapeHtml(message)}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+            // اسکرول به پایین
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function renderSwitches() {
+            const container = els.switchesGrid;
+            const switchDefs = [
+                { key: 'self_healing', label: '🔄 خودتعمیری', default: true },
+                { key: 'self_optimization', label: '⚡ خودبهینه‌سازی', default: true },
+                { key: 'alerting', label: '🔔 هشدارها', default: true },
+                { key: 'reporting', label: '📊 گزارش‌دهی', default: false },
+                { key: 'metric_collection', label: '📊 جمع‌آوری متریک', default: true },
+                { key: 'logging', label: '📝 لاگ‌گیری', default: true },
+                { key: 'circuit_breaker', label: '⛔ قطع‌کننده', default: true },
+                { key: 'retry_backoff', label: '🔄 Retry', default: true }
+            ];
+            
+            let html = '';
+            for (const sw of switchDefs) {
+                const val = config[sw.key] !== undefined ? config[sw.key] : sw.default;
+                const active = val ? 'active' : '';
+                html += `
+                    <div class="switch-item">
+                        <div class="switch ${active}" data-key="${sw.key}" onclick="window.toggleSwitch('${sw.key}')">
+                            <div class="slider"></div>
+                        </div>
+                        <span>${sw.label}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+        
+        function renderConfigForm() {
+            els.apiKeyInput.value = config.api_key || '';
+            els.maxAssetsInput.value = config.max_assets || 10;
+            els.checkIntervalInput.value = config.check_interval || 30;
+            els.dashboardModeSelect.value = config.dashboard_mode || 'static';
+            els.ramWarningInput.value = config.thresholds?.ram_warning || 70;
+            els.ramCriticalInput.value = config.thresholds?.ram_critical || 85;
+        }
+        
+        function updateModeBadge() {
+            const mode = config.dashboard_mode || 'static';
+            const badge = els.modeBadge;
+            if (mode === 'live') {
+                badge.textContent = '📡 زنده';
+                badge.className = 'badge live';
+            } else {
+                badge.textContent = '📡 استاتیک';
+                badge.className = 'badge static';
+            }
+            currentMode = mode;
+            setupAutoRefresh();
+        }
+        
+        function setupAutoRefresh() {
+            // پاک کردن تایمر قبلی
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            
+            // اگر حالت زنده باشد، تایمر تنظیم کن
+            if (currentMode === 'live') {
+                const interval = (config.refresh_interval || 3) * 1000;
+                refreshInterval = setInterval(() => {
+                    refreshAll();
+                }, interval);
+                console.log('🔄 حالت زنده فعال شد (هر ' + (interval/1000) + ' ثانیه)');
+            } else {
+                console.log('📡 حالت استاتیک (به‌روزرسانی دستی)');
+            }
+        }
+        
+        // ==================== تابع اصلی به‌روزرسانی ====================
+        async function refreshAll() {
+            const data = await fetchMetrics();
+            if (data) {
+                metrics = data.metrics || {};
+                logs = data.logs || [];
+                config = data.config || {};
+                renderMetrics();
+                renderLogs();
+                renderSwitches();
+                renderConfigForm();
+                updateModeBadge();
+            }
+        }
+        
+        // ==================== توابع global برای سوئیچ‌ها ====================
+        window.toggleSwitch = async function(key) {
+            const current = config[key] !== undefined ? config[key] : true;
+            const newVal = !current;
+            const payload = {};
+            payload[key] = newVal;
+            await updateConfig(payload);
+            // به‌روزرسانی محلی
+            config[key] = newVal;
+            renderSwitches();
+            showConfigStatus('🔄 ' + key + ' = ' + (newVal ? 'روشن' : 'خاموش'), 'yellow');
+        };
+        
+        function showConfigStatus(msg, color = 'green') {
+            const el = els.configStatus;
+            el.textContent = msg;
+            el.style.color = color === 'green' ? '#00e676' : color === 'red' ? '#ff5252' : '#ffd54f';
+            setTimeout(() => {
+                el.textContent = '';
+            }, 5000);
+        }
+        
+        // ==================== رویدادها ====================
+        // Refresh
+        els.refreshLogsBtn.addEventListener('click', refreshAll);
+        
+        // Clear Logs
+        els.clearLogsBtn.addEventListener('click', async () => {
+            await clearLogs();
+            refreshAll();
+        });
+        
+        // Export Logs
+        els.exportLogsBtn.addEventListener('click', () => {
+            if (!logs || logs.length === 0) {
+                showConfigStatus('📭 لاگی برای خروجی گرفتن وجود ندارد', 'yellow');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'motherhealth_logs_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showConfigStatus('📥 لاگ‌ها دانلود شدند', 'green');
+        });
+        
+        // Save Config
+        els.saveConfigBtn.addEventListener('click', async () => {
+            const payload = {
+                'api_key': els.apiKeyInput.value,
+                'max_assets': parseInt(els.maxAssetsInput.value) || 10,
+                'check_interval': parseInt(els.checkIntervalInput.value) || 30,
+                'dashboard_mode': els.dashboardModeSelect.value,
+                'thresholds.ram_warning': parseInt(els.ramWarningInput.value) || 70,
+                'thresholds.ram_critical': parseInt(els.ramCriticalInput.value) || 85
+            };
+            await updateConfig(payload);
+            await refreshAll();
+        });
+        
+        // Reset Config
+        els.resetConfigBtn.addEventListener('click', async () => {
+            if (!confirm('تنظیمات به حالت پیش‌فرض بازنشانی شود؟')) return;
+            const payload = {
+                'dashboard_mode': 'static',
+                'max_assets': 10,
+                'check_interval': 30,
+                'thresholds.ram_warning': 70,
+                'thresholds.ram_critical': 85
+            };
+            await updateConfig(payload);
+            await refreshAll();
+            showConfigStatus('↩️ تنظیمات بازنشانی شد', 'yellow');
+        });
+        
+        // Fullscreen
+        els.fullscreenBtn.addEventListener('click', () => {
+            const container = document.querySelector('.container');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen?.() || 
+                document.documentElement.webkitRequestFullscreen?.();
+                els.fullscreenBtn.textContent = '⛶ خروج';
+            } else {
+                document.exitFullscreen?.() || 
+                document.webkitExitFullscreen?.();
+                els.fullscreenBtn.textContent = '⛶ تمام‌صفحه';
+            }
+        });
+        
+        document.addEventListener('fullscreenchange', () => {
+            els.fullscreenBtn.textContent = document.fullscreenElement ? '⛶ خروج' : '⛶ تمام‌صفحه';
+        });
+        
+        // ==================== ساعت ====================
+        function updateClock() {
+            const now = new Date();
+            els.time.textContent = '⏱️ ' + now.toLocaleTimeString('fa-IR', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+        
+        // ==================== بارگذاری اولیه ====================
+        async function init() {
+            await refreshAll();
+            // اگر حالت زنده باشد، تایمر راه‌اندازی می‌شود
+            setupAutoRefresh();
+            console.log('🩺 MotherHealth Dashboard بارگذاری شد');
+        }
+        
+        init();
+        
+    })();
+</script>
+
+</body>
+</html>
