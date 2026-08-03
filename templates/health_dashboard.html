@@ -362,6 +362,12 @@
             word-break: break-word;
         }
         
+        .console-logs .loading {
+            color: #8395a7;
+            text-align: center;
+            padding: 20px 0;
+        }
+        
         /* ==================== تنظیمات داینامیک ==================== */
         .config-section {
             background: rgba(255, 255, 255, 0.05);
@@ -496,19 +502,6 @@
         @media (max-width: 400px) {
             .metrics-grid { grid-template-columns: 1fr; }
         }
-        
-        /* ==================== حالت تمام‌صفحه ==================== */
-        .fullscreen-mode {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            background: #0a0e17;
-            padding: 20px;
-            overflow-y: auto;
-        }
     </style>
 </head>
 <body>
@@ -528,10 +521,10 @@
     <!-- ==================== وضعیت کلی ==================== -->
     <div class="status-banner healthy" id="statusBanner">
         <span>
-            <span class="status-icon" id="statusIcon">🟢</span>
-            <span id="statusText">وضعیت: سالم</span>
+            <span class="status-icon" id="statusIcon">🔄</span>
+            <span id="statusText">در حال بارگذاری...</span>
         </span>
-        <span style="font-size:14px;font-weight:400;" id="statusDetails">همه‌چیز عالی است</span>
+        <span style="font-size:14px;font-weight:400;" id="statusDetails">لطفاً منتظر بمانید...</span>
     </div>
     
     <!-- ==================== کارت‌های متریک ==================== -->
@@ -539,7 +532,7 @@
         <!-- RAM -->
         <div class="metric-card">
             <div class="label">💾 RAM</div>
-            <div class="value" id="ramValue">...</div>
+            <div class="value" id="ramValue">⏳</div>
             <div class="sub" id="ramSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill green" id="ramBar" style="width:0%;"></div></div>
         </div>
@@ -547,7 +540,7 @@
         <!-- CPU -->
         <div class="metric-card">
             <div class="label">⚡ CPU</div>
-            <div class="value" id="cpuValue">...</div>
+            <div class="value" id="cpuValue">⏳</div>
             <div class="sub" id="cpuSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill blue" id="cpuBar" style="width:0%;"></div></div>
         </div>
@@ -555,14 +548,14 @@
         <!-- API -->
         <div class="metric-card">
             <div class="label">🌐 API</div>
-            <div class="value" id="apiValue">⏳ در حال بارگذاری...</div>
+            <div class="value" id="apiValue">⏳</div>
             <div class="sub" id="apiSub">در حال اتصال...</div>
         </div>
         
         <!-- Credits -->
         <div class="metric-card">
             <div class="label">💳 اعتبار</div>
-            <div class="value" id="creditValue">...</div>
+            <div class="value" id="creditValue">⏳</div>
             <div class="sub" id="creditSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill green" id="creditBar" style="width:0%;"></div></div>
         </div>
@@ -570,14 +563,14 @@
         <!-- Uptime -->
         <div class="metric-card">
             <div class="label">⏱️ آپ‌تایم</div>
-            <div class="value" id="uptimeValue">...</div>
+            <div class="value" id="uptimeValue">⏳</div>
             <div class="sub">از آخرین راه‌اندازی</div>
         </div>
         
         <!-- Latency -->
         <div class="metric-card">
             <div class="label">📡 تأخیر</div>
-            <div class="value" id="latencyValue">...</div>
+            <div class="value" id="latencyValue">⏳</div>
             <div class="sub">زمان پاسخ API</div>
         </div>
     </div>
@@ -586,7 +579,7 @@
     <div class="controls-section">
         <h3>🎛️ کنترل‌ها (روشن/خاموش)</h3>
         <div class="switches-grid" id="switchesGrid">
-            <!-- سوئیچ‌ها توسط جاوااسکریپت ساخته می‌شوند -->
+            <div style="color:#8395a7;text-align:center;width:100%;padding:10px 0;">⏳ در حال بارگذاری سوئیچ‌ها...</div>
         </div>
     </div>
     
@@ -601,9 +594,7 @@
             </div>
         </div>
         <div class="console-logs" id="consoleLogs">
-            <div style="color:#8395a7;text-align:center;padding:20px 0;">
-                ⏳ در حال بارگذاری لاگ‌ها...
-            </div>
+            <div class="loading">⏳ در حال بارگذاری لاگ‌ها...</div>
         </div>
     </div>
     
@@ -660,6 +651,7 @@
 <script>
     // ========================================================
     //  جاوااسکریپت کامل MotherHealth Dashboard
+    //  بدون هیچ داده‌ی ساختگی - فقط داده‌های واقعی از سرور
     // ========================================================
     
     (function() {
@@ -671,6 +663,7 @@
         let config = {};
         let logs = [];
         let metrics = {};
+        let isFirstLoad = true;
         
         // ==================== DOM Reference ====================
         const $ = (id) => document.getElementById(id);
@@ -717,8 +710,12 @@
         // ==================== توابع کمکی ====================
         function formatTime(iso) {
             if (!iso) return '--:--:--';
-            const d = new Date(iso);
-            return d.toLocaleTimeString('fa-IR', { hour12: false });
+            try {
+                const d = new Date(iso);
+                return d.toLocaleTimeString('fa-IR', { hour12: false });
+            } catch {
+                return '--:--:--';
+            }
         }
         
         function formatUptime(seconds) {
@@ -747,7 +744,7 @@
                 config = data.config || {};
                 return data;
             } catch (e) {
-                console.warn('خطا در دریافت متریک:', e);
+                console.warn('⚠️ خطا در دریافت متریک:', e.message);
                 return null;
             }
         }
@@ -760,7 +757,7 @@
                 config = data;
                 return data;
             } catch (e) {
-                console.warn('خطا در دریافت تنظیمات:', e);
+                console.warn('⚠️ خطا در دریافت تنظیمات:', e.message);
                 return null;
             }
         }
@@ -777,7 +774,7 @@
                 showConfigStatus('✅ تنظیمات ذخیره شد', 'green');
                 return data;
             } catch (e) {
-                showConfigStatus('❌ خطا در ذخیره: ' + e.message, 'red');
+                showConfigStatus('❌ خطا: ' + e.message, 'red');
                 return null;
             }
         }
@@ -790,15 +787,20 @@
                 renderLogs();
                 showConfigStatus('🗑️ لاگ‌ها پاک شدند', 'yellow');
             } catch (e) {
-                console.warn('خطا در پاک کردن لاگ:', e);
+                console.warn('⚠️ خطا در پاک کردن لاگ:', e.message);
             }
         }
         
-        // ==================== رندر کردن ====================
+        // ==================== رندر کردن (فقط داده‌های واقعی) ====================
         function renderMetrics() {
             const m = metrics;
             
-            // RAM
+            // اگر داده‌ای وجود ندارد، خروجی نده
+            if (!m || Object.keys(m).length === 0) {
+                return;
+            }
+            
+            // ---- RAM ----
             const ram = m.ram || { used_mb: 0, total_mb: 0, percent: 0 };
             const usedGB = (ram.used_mb / 1024).toFixed(2);
             const totalGB = (ram.total_mb / 1024).toFixed(1);
@@ -808,13 +810,13 @@
             els.ramBar.style.width = ramPct + '%';
             els.ramBar.className = 'fill ' + (ramPct > 80 ? 'red' : ramPct > 60 ? 'yellow' : 'green');
             
-            // CPU
-            const cpu = m.cpu || 0;
+            // ---- CPU ----
+            const cpu = m.cpu !== undefined ? m.cpu : 0;
             els.cpuValue.textContent = cpu + '%';
             els.cpuSub.textContent = '-- هسته';
             els.cpuBar.style.width = Math.min(cpu, 100) + '%';
             
-            // API
+            // ---- API ----
             const api = m.api || { status: 'unknown', latency: 0 };
             if (api.status === 'ok') {
                 els.apiValue.textContent = '✅ آنلاین';
@@ -828,7 +830,7 @@
             }
             els.apiSub.textContent = api.latency ? api.latency + ' ms' : '-- ms';
             
-            // Credits
+            // ---- Credits ----
             const credits = m.credits || { remaining: 0, total: 0, percent: 0 };
             els.creditValue.textContent = formatNumber(credits.remaining);
             els.creditSub.textContent = 'از ' + formatNumber(credits.total);
@@ -836,13 +838,13 @@
             els.creditBar.style.width = creditPct + '%';
             els.creditBar.className = 'fill ' + (creditPct < 10 ? 'red' : creditPct < 25 ? 'yellow' : 'green');
             
-            // Uptime
+            // ---- Uptime ----
             els.uptimeValue.textContent = formatUptime(m.uptime);
             
-            // Latency
+            // ---- Latency ----
             els.latencyValue.textContent = (api.latency || 0) + ' ms';
             
-            // وضعیت کلی
+            // ---- وضعیت کلی ----
             const status = m.health_status || 'healthy';
             const banner = els.statusBanner;
             banner.className = 'status-banner ' + status;
@@ -857,18 +859,14 @@
             els.statusText.textContent = texts[status] || 'وضعیت: نامشخص';
             els.statusDetails.textContent = details[status] || '';
             
-            // آمار
-            els.analysisCount.textContent = '📊 تحلیل امروز: --';
-            els.analysisWeek.textContent = '📈 این هفته: --';
-            
-            // آخرین به‌روزرسانی
+            // ---- آخرین به‌روزرسانی ----
             els.lastUpdate.textContent = '🕐 آخرین به‌روزرسانی: ' + (m.last_update ? formatTime(m.last_update) : '--');
         }
         
         function renderLogs() {
             const container = els.consoleLogs;
             if (!logs || logs.length === 0) {
-                container.innerHTML = '<div style="color:#8395a7;text-align:center;padding:20px 0;">📭 هیچ لاگی وجود ندارد</div>';
+                container.innerHTML = '<div class="loading">📭 هیچ لاگی وجود ندارد</div>';
                 return;
             }
             
@@ -959,7 +957,6 @@
                 refreshInterval = setInterval(() => {
                     refreshAll();
                 }, interval);
-                console.log('🔄 حالت زنده فعال شد (هر ' + (interval/1000) + ' ثانیه)');
             }
         }
         
@@ -975,6 +972,23 @@
                 renderSwitches();
                 renderConfigForm();
                 updateModeBadge();
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                }
+            } else {
+                // اگر داده‌ای نیامد، پیام خطا نشان بده
+                if (isFirstLoad) {
+                    els.ramValue.textContent = '❌';
+                    els.ramSub.textContent = 'خطا در دریافت داده';
+                    els.cpuValue.textContent = '❌';
+                    els.apiValue.textContent = '❌';
+                    els.creditValue.textContent = '❌';
+                    els.uptimeValue.textContent = '❌';
+                    els.latencyValue.textContent = '❌';
+                    els.statusText.textContent = 'خطا در ارتباط با سرور';
+                    els.statusDetails.textContent = 'لطفاً صفحه را Refresh کنید';
+                    isFirstLoad = false;
+                }
             }
         }
         
@@ -1077,9 +1091,10 @@
         async function init() {
             await refreshAll();
             setupAutoRefresh();
-            console.log('🩺 MotherHealth Dashboard بارگذاری شد');
+            console.log('🩺 MotherHealth Dashboard بارگذاری شد (فقط داده‌های واقعی)');
         }
         
+        // اجرا
         init();
         
     })();
