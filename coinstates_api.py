@@ -8,7 +8,7 @@ import time
 import logging
 from typing import Optional, Dict, List, Any
 
-# تنظیم لاگر اختصاصی برای این ماژول
+# تنظیم لاگر
 logger = logging.getLogger("CoinStatsAPI")
 
 class CoinStatsAPI:
@@ -27,6 +27,7 @@ class CoinStatsAPI:
         })
         self.max_retries = 3
         self.retry_delays = [1, 2, 4]  # Backoff نمایی
+        self._last_latency = 0
     
     def _request(self, method: str, endpoint: str, params: Optional[Dict] = None) -> Dict:
         """
@@ -36,48 +37,54 @@ class CoinStatsAPI:
         
         for attempt in range(self.max_retries):
             try:
+                start_time = time.time()
                 response = self.session.request(
                     method=method,
                     url=url,
                     params=params,
                     timeout=10
                 )
+                latency = round((time.time() - start_time) * 1000, 1)  # میلی‌ثانیه
+                self._last_latency = latency
                 
-                # اگر درخواست موفق بود
                 if response.status_code == 200:
-                    return response.json()
+                    result = response.json()
+                    result["_latency"] = latency
+                    return result
                 
-                # اگر خطای اعتبار بود (401) یا محدودیت نرخ (429)
-                if response.status_code in (401, 429):
-                    logger.warning(f"خطای {response.status_code} در تلاش {attempt+1}: {response.text}")
+                # خطاهای قابل بازیابی
+                if response.status_code in (401, 429, 503):
+                    logger.warning(f"خطای {response.status_code} در تلاش {attempt+1}: {response.text[:100]}")
                     if attempt < self.max_retries - 1:
                         time.sleep(self.retry_delays[attempt])
                         continue
-                    else:
-                        return {"error": f"HTTP {response.status_code}", "detail": response.text}
                 
                 # سایر خطاها
-                return {"error": f"HTTP {response.status_code}", "detail": response.text}
+                return {
+                    "error": f"HTTP {response.status_code}",
+                    "detail": response.text[:200],
+                    "_latency": latency
+                }
             
             except requests.exceptions.Timeout:
                 logger.warning(f"Timeout در تلاش {attempt+1}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delays[attempt])
                     continue
-                return {"error": "Timeout", "detail": "درخواست به دلیل زمان‌بری ناموفق بود"}
+                return {"error": "Timeout", "detail": "درخواست زمان‌بر بود", "_latency": 0}
             
             except requests.exceptions.ConnectionError:
                 logger.warning(f"خطای اتصال در تلاش {attempt+1}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delays[attempt])
                     continue
-                return {"error": "ConnectionError", "detail": "اتصال به سرور برقرار نشد"}
+                return {"error": "ConnectionError", "detail": "اتصال به سرور برقرار نشد", "_latency": 0}
             
             except Exception as e:
                 logger.error(f"خطای ناشناخته: {str(e)}")
-                return {"error": "UnknownError", "detail": str(e)}
+                return {"error": "UnknownError", "detail": str(e), "_latency": 0}
         
-        return {"error": "MaxRetriesExceeded", "detail": "همه‌ی تلاش‌ها ناموفق بود"}
+        return {"error": "MaxRetriesExceeded", "detail": "همه‌ی تلاش‌ها ناموفق بود", "_latency": 0}
     
     # ==================== اندپوینت‌های ضروری ====================
     
@@ -89,37 +96,26 @@ class CoinStatsAPI:
         """دریافت میزان اعتبار باقی‌مانده"""
         return self._request("GET", "/usage/credits")
     
-    def get_coins_charts(self, coin_ids: List[str], period: str = "24h", currency: str = "USD") -> Dict:
-        """
-        دریافت داده‌های نمودار برای چندین ارز به‌صورت همزمان
-        هزینه: ۳ اعتبار به‌ازای هر درخواست (تقسیم بر تعداد ارزها)
-        """
+    def get_coins(self, limit: int = 10, currency: str = "USD") -> Dict:
+        """دریافت لیست ارزها با اطلاعات لحظه‌ای (۲ اعتبار)"""
         params = {
-            "coinIds": ",".join(coin_ids),
+            "limit": limit,
+            "currency": currency,
+            "sortBy": "marketCap",
+            "sortDir": "desc"
+        }
+        return self._request("GET", "/coins", params=params)
+    
+    def get_coins_charts(self, coin_ids: List[str], period: str = "24h", currency: str = "USD") -> Dict:
+        """دریافت داده‌های نمودار برای چندین ارز (۳ اعتبار × تعداد ارزها)"""
+        params = {
+            "coinIds": ",".join(coin_ids[:10]),  # حداکثر ۱۰ ارز
             "period": period,
             "currency": currency
         }
         return self._request("GET", "/coins/charts", params=params)
     
-    def get_coins(self, 
-                  limit: int = 10, 
-                  currency: str = "USD", 
-                  sort_by: str = "marketCap",
-                  sort_dir: str = "desc") -> Dict:
-        """
-        دریافت لیست ارزها با اطلاعات لحظه‌ای
-        هزینه: ۲ اعتبار
-        """
-        params = {
-            "limit": limit,
-            "currency": currency,
-            "sortBy": sort_by,
-            "sortDir": sort_dir,
-            "page": 1
-        }
-        return self._request("GET", "/coins", params=params)
-
-    # ==================== تسهیل‌گرها (Helper Methods) ====================
+    # ==================== توابع کمکی (Helper) ====================
     
     def is_api_healthy(self) -> bool:
         """بررسی ساده‌ی سلامت API"""
@@ -127,16 +123,25 @@ class CoinStatsAPI:
         return result.get("status") == "ok"
     
     def get_credits_remaining(self) -> int:
-        """دریافت عدد اعتبار باقی‌مانده (در صورت خطا، ۰ برمی‌گرداند)"""
+        """دریافت عدد اعتبار باقی‌مانده"""
         result = self.get_credits()
         return result.get("remainingCredits", 0)
     
+    def get_credits_info(self) -> Dict:
+        """دریافت اطلاعات کامل اعتبار"""
+        result = self.get_credits()
+        return {
+            "remaining": result.get("remainingCredits", 0),
+            "total": result.get("totalCredits", 10000),
+            "percent": round((result.get("remainingCredits", 0) / max(1, result.get("totalCredits", 10000))) * 100, 1)
+        }
+    
+    def get_api_latency(self) -> float:
+        """دریافت آخرین تأخیر API"""
+        return self._last_latency
+    
     def parse_chart_data(self, raw_data: Dict) -> Dict[str, List[float]]:
-        """
-        تبدیل داده‌ی خام نمودار به ساختار قابل‌استفاده
-        ورودی: خروجی get_coins_charts
-        خروجی: دیکشنری {coin_id: [price_list]}
-        """
+        """تبدیل داده‌ی خام نمودار به ساختار قابل‌استفاده"""
         result = {}
         if "error" in raw_data:
             return result
@@ -146,25 +151,22 @@ class CoinStatsAPI:
             for item in raw_data:
                 coin_id = item.get("coinId", "unknown")
                 chart = item.get("chart", [])
-                # استخراج قیمت‌ها (ستون دوم: USD)
                 prices = [row[1] for row in chart if len(row) > 1]
                 result[coin_id] = prices
         else:
             # یا به‌صورت دیکشنری
             for coin_id, chart in raw_data.items():
-                if isinstance(chart, list):
+                if isinstance(chart, list) and len(chart) > 0 and isinstance(chart[0], list):
                     prices = [row[1] for row in chart if len(row) > 1]
                     result[coin_id] = prices
         
         return result
 
 
-# ==================== استفاده‌ی آسان (برای تست سریع) ====================
-
+# ==================== تست سریع ====================
 if __name__ == "__main__":
-    # تست ماژول با کلید واقعی
     import os
-    API_KEY = "40QRC4gdyzWIGwsvGkqWtcDOf0bk+FV217KmLxQ/Wmw="
+    API_KEY = os.environ.get("API_KEY", "40QRC4gdyzWIGwsvGkqWtcDOf0bk+FV217KmLxQ/Wmw=")
     
     api = CoinStatsAPI(API_KEY)
     
@@ -174,17 +176,15 @@ if __name__ == "__main__":
     # ۱. تست وضعیت
     status = api.get_status()
     print(f"✅ وضعیت API: {status.get('status', 'نامشخص')}")
+    print(f"   تأخیر: {status.get('_latency', 0)} ms")
     
     # ۲. تست اعتبار
     credits = api.get_credits()
     print(f"💳 اعتبار باقی‌مانده: {credits.get('remainingCredits', 0)}")
     
-    # ۳. تست دریافت نمودار (فقط ۳ ارز برای کاهش مصرف اعتبار)
-    if api.is_api_healthy():
-        print("📊 دریافت داده‌های نمودار برای ۳ ارز...")
-        charts = api.get_coins_charts(["bitcoin", "ethereum", "solana"])
-        parsed = api.parse_chart_data(charts)
-        for coin, prices in parsed.items():
-            print(f"   {coin}: {len(prices)} نقطه‌ی داده")
-    else:
-        print("❌ API در دسترس نیست")
+    # ۳. تست لیست ارزها
+    coins = api.get_coins(limit=5)
+    if "error" not in coins:
+        print(f"📊 تعداد ارزها: {len(coins.get('result', []))}")
+        for coin in coins.get('result', [])[:3]:
+            print(f"   {coin.get('name')} (${coin.get('price', 0):,.2f})")
