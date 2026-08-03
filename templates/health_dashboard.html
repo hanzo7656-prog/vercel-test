@@ -539,45 +539,45 @@
         <!-- RAM -->
         <div class="metric-card">
             <div class="label">💾 RAM</div>
-            <div class="value" id="ramValue">-- MB</div>
-            <div class="sub" id="ramSub">/ -- MB</div>
+            <div class="value" id="ramValue">...</div>
+            <div class="sub" id="ramSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill green" id="ramBar" style="width:0%;"></div></div>
         </div>
         
         <!-- CPU -->
         <div class="metric-card">
             <div class="label">⚡ CPU</div>
-            <div class="value" id="cpuValue">--%</div>
-            <div class="sub" id="cpuSub">-- هسته</div>
+            <div class="value" id="cpuValue">...</div>
+            <div class="sub" id="cpuSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill blue" id="cpuBar" style="width:0%;"></div></div>
         </div>
         
         <!-- API -->
         <div class="metric-card">
             <div class="label">🌐 API</div>
-            <div class="value" id="apiValue">⏳ در حال بررسی...</div>
-            <div class="sub" id="apiSub">-- ms</div>
+            <div class="value" id="apiValue">⏳ در حال بارگذاری...</div>
+            <div class="sub" id="apiSub">در حال اتصال...</div>
         </div>
         
         <!-- Credits -->
         <div class="metric-card">
             <div class="label">💳 اعتبار</div>
-            <div class="value" id="creditValue">--</div>
-            <div class="sub" id="creditSub">از --</div>
+            <div class="value" id="creditValue">...</div>
+            <div class="sub" id="creditSub">در حال بارگذاری...</div>
             <div class="progress-bar"><div class="fill green" id="creditBar" style="width:0%;"></div></div>
         </div>
         
         <!-- Uptime -->
         <div class="metric-card">
             <div class="label">⏱️ آپ‌تایم</div>
-            <div class="value" id="uptimeValue">--</div>
+            <div class="value" id="uptimeValue">...</div>
             <div class="sub">از آخرین راه‌اندازی</div>
         </div>
         
         <!-- Latency -->
         <div class="metric-card">
             <div class="label">📡 تأخیر</div>
-            <div class="value" id="latencyValue">-- ms</div>
+            <div class="value" id="latencyValue">...</div>
             <div class="sub">زمان پاسخ API</div>
         </div>
     </div>
@@ -666,12 +666,11 @@
         'use strict';
         
         // ==================== وضعیت ====================
-        let currentMode = 'static';  // static | live
+        let currentMode = 'static';
         let refreshInterval = null;
         let config = {};
         let logs = [];
         let metrics = {};
-        let isLive = false;
         
         // ==================== DOM Reference ====================
         const $ = (id) => document.getElementById(id);
@@ -723,12 +722,12 @@
         }
         
         function formatUptime(seconds) {
-            if (!seconds) return '--';
+            if (!seconds || seconds < 0) return '--';
             const h = Math.floor(seconds / 3600);
             const m = Math.floor((seconds % 3600) / 60);
-            const s = seconds % 60;
-            if (h > 0) return `${h}s ${m}d`;
-            if (m > 0) return `${m}d ${s}s`;
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h}h ${m}m`;
+            if (m > 0) return `${m}m ${s}s`;
             return `${s}s`;
         }
         
@@ -801,8 +800,10 @@
             
             // RAM
             const ram = m.ram || { used_mb: 0, total_mb: 0, percent: 0 };
-            els.ramValue.textContent = ram.used_mb + ' MB';
-            els.ramSub.textContent = '/ ' + ram.total_mb + ' MB';
+            const usedGB = (ram.used_mb / 1024).toFixed(2);
+            const totalGB = (ram.total_mb / 1024).toFixed(1);
+            els.ramValue.textContent = usedGB + ' GB';
+            els.ramSub.textContent = '/ ' + totalGB + ' GB';
             const ramPct = Math.min(ram.percent || 0, 100);
             els.ramBar.style.width = ramPct + '%';
             els.ramBar.className = 'fill ' + (ramPct > 80 ? 'red' : ramPct > 60 ? 'yellow' : 'green');
@@ -838,7 +839,7 @@
             // Uptime
             els.uptimeValue.textContent = formatUptime(m.uptime);
             
-            // Latency (از API)
+            // Latency
             els.latencyValue.textContent = (api.latency || 0) + ' ms';
             
             // وضعیت کلی
@@ -872,7 +873,7 @@
             }
             
             let html = '';
-            const recent = logs.slice(-50); // آخرین ۵۰ خط
+            const recent = logs.slice(-50);
             for (const log of recent) {
                 const level = log.level || 'INFO';
                 const time = formatTime(log.timestamp);
@@ -886,7 +887,6 @@
                 `;
             }
             container.innerHTML = html;
-            // اسکرول به پایین
             container.scrollTop = container.scrollHeight;
         }
         
@@ -949,21 +949,17 @@
         }
         
         function setupAutoRefresh() {
-            // پاک کردن تایمر قبلی
             if (refreshInterval) {
                 clearInterval(refreshInterval);
                 refreshInterval = null;
             }
             
-            // اگر حالت زنده باشد، تایمر تنظیم کن
             if (currentMode === 'live') {
                 const interval = (config.refresh_interval || 3) * 1000;
                 refreshInterval = setInterval(() => {
                     refreshAll();
                 }, interval);
                 console.log('🔄 حالت زنده فعال شد (هر ' + (interval/1000) + ' ثانیه)');
-            } else {
-                console.log('📡 حالت استاتیک (به‌روزرسانی دستی)');
             }
         }
         
@@ -989,7 +985,6 @@
             const payload = {};
             payload[key] = newVal;
             await updateConfig(payload);
-            // به‌روزرسانی محلی
             config[key] = newVal;
             renderSwitches();
             showConfigStatus('🔄 ' + key + ' = ' + (newVal ? 'روشن' : 'خاموش'), 'yellow');
@@ -1005,16 +1000,13 @@
         }
         
         // ==================== رویدادها ====================
-        // Refresh
         els.refreshLogsBtn.addEventListener('click', refreshAll);
         
-        // Clear Logs
         els.clearLogsBtn.addEventListener('click', async () => {
             await clearLogs();
             refreshAll();
         });
         
-        // Export Logs
         els.exportLogsBtn.addEventListener('click', () => {
             if (!logs || logs.length === 0) {
                 showConfigStatus('📭 لاگی برای خروجی گرفتن وجود ندارد', 'yellow');
@@ -1030,7 +1022,6 @@
             showConfigStatus('📥 لاگ‌ها دانلود شدند', 'green');
         });
         
-        // Save Config
         els.saveConfigBtn.addEventListener('click', async () => {
             const payload = {
                 'api_key': els.apiKeyInput.value,
@@ -1044,7 +1035,6 @@
             await refreshAll();
         });
         
-        // Reset Config
         els.resetConfigBtn.addEventListener('click', async () => {
             if (!confirm('تنظیمات به حالت پیش‌فرض بازنشانی شود؟')) return;
             const payload = {
@@ -1059,9 +1049,7 @@
             showConfigStatus('↩️ تنظیمات بازنشانی شد', 'yellow');
         });
         
-        // Fullscreen
         els.fullscreenBtn.addEventListener('click', () => {
-            const container = document.querySelector('.container');
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen?.() || 
                 document.documentElement.webkitRequestFullscreen?.();
@@ -1088,7 +1076,6 @@
         // ==================== بارگذاری اولیه ====================
         async function init() {
             await refreshAll();
-            // اگر حالت زنده باشد، تایمر راه‌اندازی می‌شود
             setupAutoRefresh();
             console.log('🩺 MotherHealth Dashboard بارگذاری شد');
         }
