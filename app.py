@@ -1,20 +1,91 @@
 # app.py
 # ============================================================
 # سیستم اصلی تشخیص الگوهای بازاری با XGBoost
-# شامل: مهندسی ویژگی‌ها، پیش‌بینی، سلامت، API وب، و تست API
+# با پشتیبانی از Background Tasks برای پردازش‌های سنگین
 # ============================================================
 
 import os
 import sys
 import json
 import time
+import uuid
+import threading
 import numpy as np
 from datetime import datetime
-
+from queue import Queue
 from flask import Flask, jsonify, request
 
-# import xgboost as xgb  # برای زمانی که مدل واقعی داریم
+# import xgboost as xgb
 from api_handler import CoinStatsAPI
+
+
+# ============================================================
+# مدیریت تسک‌های پس‌زمینه
+# ============================================================
+
+class BackgroundTaskManager:
+    """
+    مدیریت تسک‌های سنگین در پس‌زمینه با Queue
+    """
+    def __init__(self):
+        self.tasks = {}  # ذخیره نتایج تسک‌ها
+        self.queue = Queue()
+        self.worker_thread = None
+        self.running = True
+        self.start_worker()
+    
+    def start_worker(self):
+        """شروع worker در یک ترد جداگانه"""
+        def worker():
+            while self.running:
+                try:
+                    task_id, func, args, kwargs = self.queue.get(timeout=1)
+                    try:
+                        result = func(*args, **kwargs)
+                        self.tasks[task_id] = {
+                            "status": "completed",
+                            "result": result,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    except Exception as e:
+                        self.tasks[task_id] = {
+                            "status": "failed",
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat()
+                        }
+                except:
+                    pass
+        
+        self.worker_thread = threading.Thread(target=worker, daemon=True)
+        self.worker_thread.start()
+    
+    def submit(self, func, *args, **kwargs):
+        """ارسال یک تسک به صف"""
+        task_id = str(uuid.uuid4())[:8]
+        self.tasks[task_id] = {
+            "status": "pending",
+            "timestamp": datetime.now().isoformat()
+        }
+        self.queue.put((task_id, func, args, kwargs))
+        return task_id
+    
+    def get_result(self, task_id):
+        """دریافت نتیجه یک تسک"""
+        if task_id in self.tasks:
+            return self.tasks[task_id]
+        return None
+    
+    def cleanup(self, max_age_seconds=300):
+        """پاک کردن تسک‌های قدیمی (بیش از ۵ دقیقه)"""
+        now = datetime.now()
+        to_delete = []
+        for task_id, task in self.tasks.items():
+            if 'timestamp' in task:
+                task_time = datetime.fromisoformat(task['timestamp'])
+                if (now - task_time).total_seconds() > max_age_seconds:
+                    to_delete.append(task_id)
+        for task_id in to_delete:
+            del self.tasks[task_id]
 
 
 # ============================================================
@@ -35,32 +106,25 @@ class TradingSignalSystem:
         self.model = None
         self.model_loaded = False
         self.start_time = datetime.now()
+        self.task_manager = BackgroundTaskManager()
         self.load_model()
 
     def _get_memory_usage(self):
-        """
-        دریافت دقیق حافظه مصرفی پروسه فعلی
-        (مقدار واقعی حافظه اختصاص داده شده به کانتینر)
-        """
+        """دریافت دقیق حافظه مصرفی پروسه فعلی"""
         try:
-            # روش 1: از /proc/self/status (دقیق‌ترین برای پروسه فعلی)
             if os.path.exists('/proc/self/status'):
                 with open('/proc/self/status', 'r') as f:
                     for line in f:
                         if line.startswith('VmRSS:'):
-                            # VmRSS = Resident Set Size (حافظه واقعی مصرفی)
                             parts = line.split()
                             if len(parts) >= 2:
                                 used_kb = int(parts[1])
                                 used_mb = used_kb / 1024
-                                
-                                # گرفتن محدودیت از Cgroup (اگر وجود داشته باشه)
                                 total_mb = self._get_memory_limit()
                                 return used_mb, total_mb
         except:
             pass
         
-        # روش 2: از Cgroup (برای Docker/Render)
         try:
             used_mb, total_mb = self._get_cgroup_memory()
             if total_mb > 0:
@@ -68,7 +132,6 @@ class TradingSignalSystem:
         except:
             pass
         
-        # روش 3: Fallback به psutil
         try:
             import psutil
             process = psutil.Process(os.getpid())
@@ -81,14 +144,11 @@ class TradingSignalSystem:
     def _get_memory_limit(self):
         """دریافت محدودیت حافظه از Cgroup"""
         try:
-            # Cgroup v1
             if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
                 with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
                     limit_bytes = int(f.read())
-                    if limit_bytes < 10**15:  # اگر محدودیت اعمال شده باشه
+                    if limit_bytes < 10**15:
                         return limit_bytes / 1024**2
-            
-            # Cgroup v2
             if os.path.exists('/sys/fs/cgroup/memory.max'):
                 with open('/sys/fs/cgroup/memory.max', 'r') as f:
                     limit_str = f.read().strip()
@@ -97,14 +157,11 @@ class TradingSignalSystem:
                         return limit_bytes / 1024**2
         except:
             pass
-        
-        # اگر محدودیتی پیدا نشد، 512MB رو پیش‌فرض بگیر (محدودیت Render)
         return 512
     
     def _get_cgroup_memory(self):
         """دریافت حافظه از Cgroup"""
         try:
-            # Cgroup v1
             if os.path.exists('/sys/fs/cgroup/memory/memory.usage_in_bytes'):
                 with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f:
                     used_bytes = int(f.read())
@@ -113,8 +170,6 @@ class TradingSignalSystem:
                     return used_mb, total_mb
         except:
             pass
-        
-        # Cgroup v2
         try:
             if os.path.exists('/sys/fs/cgroup/memory.current'):
                 with open('/sys/fs/cgroup/memory.current', 'r') as f:
@@ -124,30 +179,22 @@ class TradingSignalSystem:
                     return used_mb, total_mb
         except:
             pass
-        
         return 0, 0
 
     def load_model(self):
-        """
-        بارگذاری مدل XGBoost از فایل
-        اگر فایل وجود نداشت، حالت DEMO فعال میشه
-        """
+        """بارگذاری مدل XGBoost از فایل"""
         try:
-            # بررسی وجود فایل مدل
             if os.path.exists("model.json"):
                 # import xgboost as xgb
                 # self.model = xgb.Booster()
                 # self.model.load_model("model.json")
                 # self.model_loaded = True
                 # print("✅ مدل XGBoost با موفقیت بارگذاری شد", file=sys.stderr)
-
-                # فعلاً برای تست از حالت DEMO استفاده میکنیم
                 self.model_loaded = False
                 print("⚠️ حالت DEMO: مدل واقعی بارگذاری نشد", file=sys.stderr)
             else:
                 print("⚠️ فایل model.json یافت نشد - استفاده از حالت DEMO", file=sys.stderr)
                 self.model_loaded = False
-
         except Exception as e:
             print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
             self.model_loaded = False
@@ -157,24 +204,10 @@ class TradingSignalSystem:
     # ============================================================
 
     def extract_features(self, chart_data):
-        """
-        تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost
-
-        ورودی: لیست [[timestamp, priceUSD, priceBTC, priceETH], ...]
-        خروجی: آرایه numpy از ویژگی‌ها
-
-        ویژگی‌های تولید شده:
-        1-4: بازده در بازه‌های ۱، ۳، ۵، ۱۰ قدم
-        5-7: فاصله قیمت از میانگین متحرک ۵، ۱۰، ۲۰ قدمی
-        8: نوسان (انحراف معیار بازده‌ها)
-        9: شاخص ترس و طمع (نرمال‌سازی شده)
-        10-12: شیب قیمت در بازه‌های ۵، ۱۰، ۲۰ قدمی
-        13: قدرت روند (R-squared)
-        """
+        """تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost"""
         if not chart_data or len(chart_data) < 30:
             return None
 
-        # استخراج قیمت‌های USD
         prices = []
         for point in chart_data:
             if isinstance(point, list) and len(point) >= 2:
@@ -205,7 +238,7 @@ class TradingSignalSystem:
             else:
                 features.append(0.0)
 
-        # 3. نوسان (Volatility) - انحراف معیار بازده‌های اخیر
+        # 3. نوسان (Volatility)
         if len(prices) >= 15:
             returns = np.diff(prices[-15:]) / (prices[-15:-1] + 1e-8)
             volatility = np.std(returns)
@@ -213,7 +246,7 @@ class TradingSignalSystem:
         else:
             features.append(0.0)
 
-        # 4. شاخص ترس و طمع (از API با کش)
+        # 4. شاخص ترس و طمع
         try:
             fg = self.api.get_fear_greed(use_cache=True)
             if fg and 'now' in fg:
@@ -224,7 +257,7 @@ class TradingSignalSystem:
         except:
             features.append(0.5)
 
-        # 5. شیب قیمت (روند) در بازه‌های مختلف
+        # 5. شیب قیمت
         for window in [5, 10, 20]:
             if len(prices) >= window:
                 slope = np.polyfit(range(window), prices[-window:], 1)[0]
@@ -246,27 +279,18 @@ class TradingSignalSystem:
         else:
             features.append(0.0)
 
-        # تبدیل به آرایه numpy
         return np.array(features, dtype=np.float32)
 
     # ============================================================
-    # پیش‌بینی اصلی
+    # پیش‌بینی اصلی (برای اجرا در Background)
     # ============================================================
 
-    def predict(self, coin_id="bitcoin", period="24h"):
+    def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
-        هسته اصلی سیستم: دریافت داده → استخراج ویژگی → پیش‌بینی
-
-        پارامترها:
-            coin_id: شناسه ارز (مثال: bitcoin, ethereum)
-            period: بازه زمانی (1h, 4h, 24h)
-
-        خروجی:
-            دیکشنری شامل: سیگنال، اطمینان، قیمت فعلی و ...
+        نسخه همگام (Synchronous) پیش‌بینی - برای اجرا در Background Task
         """
         start_time = time.time()
 
-        # اعتبارسنجی بازه زمانی
         valid_periods = ["1h", "4h", "24h"]
         if period not in valid_periods:
             return {
@@ -274,10 +298,8 @@ class TradingSignalSystem:
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
-        # 1. دریافت داده‌های تاریخی
         chart_data = self.api.get_chart(coin_id, period)
 
-        # مدیریت خطا در دریافت داده
         if not chart_data:
             return {
                 "error": "NoData",
@@ -294,7 +316,6 @@ class TradingSignalSystem:
                 "period": period
             }
 
-        # 2. استخراج ویژگی‌ها
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -306,40 +327,28 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
-        # 3. پیش‌بینی با مدل
+        # پیش‌بینی با مدل یا DEMO
         if self.model_loaded and self.model:
             try:
-                # dmatrix = xgb.DMatrix(features.reshape(1, -1))
-                # prediction = self.model.predict(dmatrix)[0]
-                # prediction = float(prediction)
-                prediction = 0.55  # موقتاً برای تست
+                prediction = 0.55
             except Exception as e:
                 prediction = 0.5 + (np.random.randn() * 0.05)
         else:
-            # حالت DEMO: شبیه‌سازی ساده بر اساس ویژگی‌ها
             base_score = 0.5
-
-            # تأثیر بازده‌ها
             if len(features) >= 4:
                 returns_avg = np.mean(features[:4])
                 base_score += returns_avg * 1.5
-
-            # تأثیر روند
             if len(features) >= 10:
-                trend_strength = features[9]  # شیب ۲۰ قدمی
+                trend_strength = features[9]
                 base_score += trend_strength * 0.3
-
-            # تأثیر ترس و طمع
             if len(features) >= 8:
-                fear = features[7]  # 0-1
-                if fear < 0.3:  # ترس شدید → احتمال برگشت
+                fear = features[7]
+                if fear < 0.3:
                     base_score += 0.15
-                elif fear > 0.7:  # طمع شدید → احتمال ریزش
+                elif fear > 0.7:
                     base_score -= 0.15
-
             prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
 
-        # 4. تفسیر نتیجه
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -354,12 +363,8 @@ class TradingSignalSystem:
             signal_type = "NEUTRAL"
 
         confidence = min(100, max(0, confidence))
-
-        # 5. دریافت اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
-
-        # 6. اطلاعات تکمیلی
         processing_time = (time.time() - start_time) * 1000
 
         return {
@@ -379,24 +384,33 @@ class TradingSignalSystem:
         }
 
     # ============================================================
+    # پیش‌بینی با Background Task (نسخه Async)
+    # ============================================================
+
+    def predict_async(self, coin_id="bitcoin", period="24h"):
+        """
+        نسخه غیرهمگام (Asynchronous) - تسک رو به صف اضافه میکنه
+        """
+        task_id = self.task_manager.submit(self.predict_sync, coin_id, period)
+        return {
+            "status": "processing",
+            "task_id": task_id,
+            "message": "پردازش در پس‌زمینه شروع شد",
+            "check_status": f"/task-status?task_id={task_id}"
+        }
+
+    # ============================================================
     # سلامت سیستم
     # ============================================================
 
     def health_check(self):
-        """
-        بررسی کامل سلامت سیستم:
-        - اتصال به API
-        - بارگذاری مدل
-        - اعتبار باقیمانده
-        - وضعیت حافظه
-        """
+        """بررسی کامل سلامت سیستم"""
         status = {
             "status": "ok",
             "timestamp": datetime.now().isoformat(),
             "components": {}
         }
 
-        # 1. سلامت API
         try:
             api_status = self.api.get_status()
             if api_status and api_status.get('status') == 'ok':
@@ -417,7 +431,6 @@ class TradingSignalSystem:
             }
             status["status"] = "unhealthy"
 
-        # 2. سلامت مدل
         status["components"]["model"] = {
             "status": "healthy" if self.model_loaded else "degraded",
             "message": "مدل بارگذاری شده است" if self.model_loaded else "حالت DEMO (بدون مدل)",
@@ -427,7 +440,6 @@ class TradingSignalSystem:
         if not self.model_loaded:
             status["status"] = "degraded" if status["status"] == "ok" else status["status"]
 
-        # 3. اعتبار
         try:
             credits = self.api.get_credits()
             if credits and 'remainingCredits' in credits:
@@ -438,47 +450,38 @@ class TradingSignalSystem:
                     "used": credits.get('usedCredits'),
                     "subscription": credits.get('subscription', 'free')
                 }
-            else:
-                status["components"]["credits"] = {
-                    "status": "unknown",
-                    "message": "امکان دریافت اطلاعات اعتبار وجود ندارد"
-                }
         except Exception as e:
             status["components"]["credits"] = {
                 "status": "unknown",
                 "message": f"خطا: {str(e)}"
             }
 
-        # 4. حافظه (با روش دقیق /proc/self/status)
         try:
             used_mb, total_mb = self._get_memory_usage()
-            
-            # اگر total_mb صفر یا خیلی بزرگ بود، از مقدار پیش‌فرض استفاده کن
-            if total_mb == 0 or total_mb > 10000:  # بیشتر از 10GB یعنی کل سیستم
-                total_mb = 512  # محدودیت پیش‌فرض Render
-            
+            if total_mb == 0 or total_mb > 10000:
+                total_mb = 512
             memory_percent = (used_mb / total_mb) * 100 if total_mb > 0 else 0
-
             status["components"]["memory"] = {
                 "status": "healthy" if memory_percent < 80 else "warning",
                 "used_mb": round(used_mb, 1),
                 "total_mb": round(total_mb, 1),
                 "percent": round(memory_percent, 1)
             }
-
             if memory_percent > 90:
                 status["status"] = "critical"
             elif memory_percent > 80 and status["status"] == "ok":
                 status["status"] = "degraded"
-
         except Exception as e:
             status["components"]["memory"] = {
                 "status": "unknown",
                 "message": f"خطا: {str(e)}"
             }
 
-        # 5. آمار API
         status["components"]["api_stats"] = self.api.get_stats()
+        status["components"]["task_manager"] = {
+            "pending_tasks": self.task_manager.queue.qsize(),
+            "total_tasks": len(self.task_manager.tasks)
+        }
 
         return status
 
@@ -488,36 +491,29 @@ class TradingSignalSystem:
 # ============================================================
 
 app = Flask(__name__)
-
-# ایجاد یک نمونه از سیستم (Global)
 system = TradingSignalSystem()
 
 
 @app.route('/', methods=['GET'])
 def home():
-    """
-    صفحه اصلی - معرفی سرویس
-    """
+    """صفحه اصلی - معرفی سرویس"""
     return jsonify({
         "service": "Trading Signal System",
-        "version": "1.0.0",
-        "description": "سیستم تشخیص الگوهای بازاری با XGBoost",
+        "version": "2.0.0",
+        "description": "سیستم تشخیص الگوهای بازاری با XGBoost (با پشتیبانی از Background Tasks)",
         "endpoints": {
             "/": "این صفحه",
             "/health": "بررسی سلامت سیستم",
-            "/predict": "پیش‌بینی الگو",
+            "/predict": "پیش‌بینی الگو (Async - سریع)",
+            "/predict-sync": "پیش‌بینی الگو (Sync - کندتر)",
+            "/task-status": "بررسی وضعیت تسک",
             "/stats": "آمار درخواست‌ها",
             "/test-api": "تست و نمایش داده‌های خام API"
         },
         "usage": {
-            "/predict?coin=bitcoin&period=24h": "پیش‌بینی برای بیت‌کوین با بازه ۲۴ ساعته",
-            "/predict?coin=ethereum&period=1h": "پیش‌بینی برای اتریوم با بازه ۱ ساعته",
-            "/test-api?type=chart&coin=bitcoin&period=24h": "نمایش داده‌های چارت",
-            "/test-api?type=coin&coin=bitcoin": "نمایش اطلاعات لحظه‌ای",
-            "/test-api?type=fear_greed": "نمایش شاخص ترس و طمع",
-            "/test-api?type=btc_dominance": "نمایش سلطه بیت‌کوین",
-            "/test-api?type=status": "نمایش وضعیت API",
-            "/test-api?type=credits": "نمایش اعتبار باقیمانده"
+            "/predict?coin=bitcoin&period=24h": "پیش‌بینی (پس‌زمینه - فوری)",
+            "/predict-sync?coin=bitcoin&period=24h": "پیش‌بینی (همگام - ممکنه Timeout بخوره)",
+            "/task-status?task_id=abc123": "بررسی نتیجه تسک"
         },
         "supported_periods": ["1h", "4h", "24h"],
         "status": "online",
@@ -527,9 +523,7 @@ def home():
 
 @app.route('/health', methods=['GET'])
 def health():
-    """
-    بررسی سلامت کامل سیستم
-    """
+    """بررسی سلامت کامل سیستم"""
     result = system.health_check()
     http_status = 200 if result.get('status') in ['ok', 'degraded'] else 503
     return jsonify(result), http_status
@@ -538,16 +532,15 @@ def health():
 @app.route('/predict', methods=['GET'])
 def predict():
     """
-    پیش‌بینی الگو برای یک ارز خاص
-
+    پیش‌بینی الگو با Background Task (سریع - بدون Timeout)
+    
     پارامترهای Query:
         coin: شناسه ارز (پیش‌فرض: bitcoin)
         period: بازه زمانی (پیش‌فرض: 24h) - مقادیر: 1h, 4h, 24h
     """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
-
-    # اعتبارسنجی بازه زمانی
+    
     valid_periods = ["1h", "4h", "24h"]
     if period not in valid_periods:
         return jsonify({
@@ -555,48 +548,90 @@ def predict():
             "message": f"بازه زمانی باید یکی از {valid_periods} باشد",
             "provided": period
         }), 400
+    
+    # ارسال تسک به پس‌زمینه
+    result = system.predict_async(coin, period)
+    return jsonify(result), 202  # 202 = Accepted
 
-    # اجرای پیش‌بینی
-    result = system.predict(coin, period)
 
-    # اگر خطا داشت، کد وضعیت مناسب برگردون
+@app.route('/predict-sync', methods=['GET'])
+def predict_sync():
+    """
+    پیش‌بینی الگو به صورت همگام (ممکنه Timeout بخوره)
+    
+    پارامترهای Query:
+        coin: شناسه ارز (پیش‌فرض: bitcoin)
+        period: بازه زمانی (پیش‌فرض: 24h)
+    """
+    coin = request.args.get('coin', 'bitcoin')
+    period = request.args.get('period', '24h')
+    
+    valid_periods = ["1h", "4h", "24h"]
+    if period not in valid_periods:
+        return jsonify({
+            "error": "InvalidPeriod",
+            "message": f"بازه زمانی باید یکی از {valid_periods} باشد",
+            "provided": period
+        }), 400
+    
+    result = system.predict_sync(coin, period)
     if "error" in result:
         return jsonify(result), 400
-
     return jsonify(result)
+
+
+@app.route('/task-status', methods=['GET'])
+def task_status():
+    """
+    بررسی وضعیت یک تسک پس‌زمینه
+    
+    پارامترهای Query:
+        task_id: شناسه تسک (دریافت شده از /predict)
+    """
+    task_id = request.args.get('task_id')
+    if not task_id:
+        return jsonify({
+            "error": "MissingTaskId",
+            "message": "پارامتر task_id الزامی است"
+        }), 400
+    
+    result = system.task_manager.get_result(task_id)
+    if not result:
+        return jsonify({
+            "error": "TaskNotFound",
+            "message": "تسک با این شناسه وجود ندارد یا منقضی شده است",
+            "task_id": task_id
+        }), 404
+    
+    return jsonify({
+        "task_id": task_id,
+        "status": result.get("status"),
+        "result": result.get("result"),
+        "error": result.get("error"),
+        "timestamp": result.get("timestamp")
+    })
 
 
 @app.route('/stats', methods=['GET'])
 def stats():
-    """
-    دریافت آمار درخواست‌ها و وضعیت سیستم
-    """
+    """دریافت آمار درخواست‌ها و وضعیت سیستم"""
     return jsonify({
         "api_stats": system.api.get_stats(),
         "model_loaded": system.model_loaded,
         "uptime": str(datetime.now() - system.start_time),
+        "pending_tasks": system.task_manager.queue.qsize(),
+        "total_tasks": len(system.task_manager.tasks),
         "timestamp": datetime.now().isoformat()
     })
 
 
-# ============================================================
-# اندپوینت تست API (برای بررسی داده‌های خام)
-# ============================================================
-
 @app.route('/test-api', methods=['GET'])
 def test_api():
-    """
-    تست ارتباط با API و نمایش داده‌های خام
-    پارامترهای Query:
-        coin: شناسه ارز (پیش‌فرض: bitcoin)
-        period: بازه زمانی (پیش‌فرض: 24h)
-        type: نوع داده (chart, coin, fear_greed, btc_dominance, status, credits)
-    """
+    """تست ارتباط با API و نمایش داده‌های خام (با Background)"""
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
     data_type = request.args.get('type', 'chart')
     
-    # اعتبارسنجی نوع داده
     valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'status', 'credits']
     if data_type not in valid_types:
         return jsonify({
@@ -605,117 +640,49 @@ def test_api():
             "provided": data_type
         }), 400
     
-    result = {
-        "request": {
-            "coin": coin,
-            "period": period,
-            "type": data_type,
-            "timestamp": datetime.now().isoformat()
-        },
-        "data": None,
-        "error": None,
-        "success": False
-    }
+    # استفاده از Background Task برای دریافت داده
+    def fetch_data():
+        try:
+            if data_type == 'chart':
+                data = system.api.get_chart(coin, period)
+                if data and "error" not in data:
+                    return {
+                        "count": len(data),
+                        "sample": data[:5] if len(data) > 5 else data,
+                        "first_point": data[0] if data else None,
+                        "last_point": data[-1] if data else None,
+                        "data_type": "list_of_arrays",
+                        "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
+                    }
+                return {"error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}
+            elif data_type == 'coin':
+                data = system.api.get_coin(coin)
+                if data and "error" not in data:
+                    return {
+                        "id": data.get('id'),
+                        "name": data.get('name'),
+                        "symbol": data.get('symbol'),
+                        "price": data.get('price'),
+                        "volume": data.get('volume'),
+                        "marketCap": data.get('marketCap'),
+                        "priceChange1h": data.get('priceChange1h'),
+                        "priceChange1d": data.get('priceChange1d'),
+                        "priceChange1w": data.get('priceChange1w')
+                    }
+                return {"error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}
+            else:
+                return {"error": f"نوع داده {data_type} پشتیبانی نمیشود"}
+        except Exception as e:
+            return {"error": str(e)}
     
-    try:
-        if data_type == 'chart':
-            # دریافت داده‌های تاریخی
-            data = system.api.get_chart(coin, period)
-            
-            if data and "error" not in data:
-                # بررسی فرمت داده
-                sample = data[:5] if len(data) > 5 else data
-                result["data"] = {
-                    "count": len(data),
-                    "sample": sample,
-                    "first_point": data[0] if data else None,
-                    "last_point": data[-1] if data else None,
-                    "data_type": "list_of_arrays",
-                    "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
-                }
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            
-        elif data_type == 'coin':
-            # دریافت اطلاعات لحظه‌ای
-            data = system.api.get_coin(coin)
-            if data and "error" not in data:
-                # فیلدهای کلیدی رو استخراج کن
-                result["data"] = {
-                    "id": data.get('id'),
-                    "name": data.get('name'),
-                    "symbol": data.get('symbol'),
-                    "price": data.get('price'),
-                    "volume": data.get('volume'),
-                    "marketCap": data.get('marketCap'),
-                    "priceChange1h": data.get('priceChange1h'),
-                    "priceChange1d": data.get('priceChange1d'),
-                    "priceChange1w": data.get('priceChange1w'),
-                    "full_response": data  # کل داده برای بررسی بیشتر
-                }
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            
-        elif data_type == 'fear_greed':
-            # دریافت شاخص ترس و طمع
-            data = system.api.get_fear_greed(use_cache=False)
-            if data and "error" not in data:
-                result["data"] = {
-                    "name": data.get('name'),
-                    "now": data.get('now'),
-                    "yesterday": data.get('yesterday'),
-                    "lastWeek": data.get('lastWeek')
-                }
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            
-        elif data_type == 'btc_dominance':
-            # دریافت سلطه بیت‌کوین
-            data = system.api.get_btc_dominance(period, use_cache=False)
-            if data and "error" not in data:
-                result["data"] = {
-                    "count": len(data.get('data', [])),
-                    "sample": data.get('data', [])[:10],
-                    "full_response": data
-                }
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            
-        elif data_type == 'status':
-            # دریافت وضعیت API
-            data = system.api.get_status()
-            if data and "error" not in data:
-                result["data"] = data
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت وضعیت") if data else "داده‌ای دریافت نشد"
-            
-        elif data_type == 'credits':
-            # دریافت اعتبار
-            data = system.api.get_credits()
-            if data and "error" not in data:
-                result["data"] = {
-                    "totalCredits": data.get('totalCredits'),
-                    "usedCredits": data.get('usedCredits'),
-                    "remainingCredits": data.get('remainingCredits'),
-                    "subscription": data.get('subscription')
-                }
-                result["success"] = True
-            else:
-                result["error"] = data.get("message", "خطا در دریافت اعتبار") if data else "داده‌ای دریافت نشد"
-            
-    except Exception as e:
-        result["error"] = str(e)
+    task_id = system.task_manager.submit(fetch_data)
     
-    # اگر خطا داشت، کد ۴۰۰ برگردون
-    if not result["success"] and result["error"]:
-        return jsonify(result), 400
-    
-    return jsonify(result)
+    return jsonify({
+        "status": "processing",
+        "task_id": task_id,
+        "message": "دریافت داده در پس‌زمینه شروع شد",
+        "check_status": f"/task-status?task_id={task_id}"
+    }), 202
 
 
 @app.errorhandler(404)
@@ -723,7 +690,7 @@ def not_found(error):
     return jsonify({
         "error": "NotFound",
         "message": "مسیر درخواستی وجود ندارد",
-        "available_endpoints": ["/", "/health", "/predict", "/stats", "/test-api"]
+        "available_endpoints": ["/", "/health", "/predict", "/predict-sync", "/task-status", "/stats", "/test-api"]
     }), 404
 
 
@@ -741,25 +708,23 @@ def internal_error(error):
 # ============================================================
 
 if __name__ == "__main__":
-    # دریافت پورت از محیط (برای Render)
     port = int(os.environ.get("PORT", 5000))
-
-    # حالت دیباگ در محیط توسعه
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۲.۰ - با Background Tasks)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
     print("=" * 60)
     print("📌 اندپوینت‌های موجود:")
-    print("  /           - صفحه اصلی")
-    print("  /health     - بررسی سلامت")
-    print("  /predict    - پیش‌بینی الگو")
-    print("  /stats      - آمار درخواست‌ها")
-    print("  /test-api   - تست و نمایش داده‌های خام API")
+    print("  /              - صفحه اصلی")
+    print("  /health        - بررسی سلامت")
+    print("  /predict       - پیش‌بینی (Async - سریع) ⭐")
+    print("  /predict-sync  - پیش‌بینی (Sync - ممکنه Timeout بخوره)")
+    print("  /task-status   - بررسی وضعیت تسک")
+    print("  /stats         - آمار درخواست‌ها")
+    print("  /test-api      - تست API (Async)")
     print("=" * 60)
 
-    # اجرای سرویس
     app.run(host="0.0.0.0", port=port, debug=debug)
