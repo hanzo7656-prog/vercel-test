@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد - سیستم تشخیص الگو{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-title">📈 داشبورد اصلی</div>
+        <div class="card-subtitle">وضعیت کلی سیستم و آخرین تحلیل‌ها</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="card">
+        <div class="card-title">💻 وضعیت سیستم</div>
+        <table class="table">
+            <tr><td>وضعیت</td><td><span class="badge {{ 'badge-success' if status == 'ok' else 'badge-warning' if status == 'degraded' else 'badge-danger' }}">{{ status }}</span></td></tr>
+            <tr><td>مدل</td><td><span class="badge {{ 'badge-success' if model_loaded else 'badge-warning' }}">{{ 'فعال' if model_loaded else 'DEMO' }}</span></td></tr>
+            <tr><td>حافظه</td><td>{{ memory_used }}MB / {{ memory_total }}MB ({{ memory_percent }}%)</td></tr>
+            <tr><td>آپتایم</td><td>{{ uptime }}</td></tr>
+            <tr><td>درخواست‌ها</td><td>{{ total_requests }}</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-title">💰 اعتبار API</div>
+        <table class="table">
+            <tr><td>کل اعتبار</td><td>{{ credits_total }}</td></tr>
+            <tr><td>استفاده شده</td><td>{{ credits_used }}</td></tr>
+            <tr><td>باقیمانده</td><td><span class="badge {{ 'badge-success' if credits_remaining > 1000 else 'badge-warning' if credits_remaining > 100 else 'badge-danger' }}">{{ credits_remaining }}</span></td></tr>
+            <tr><td>پلن</td><td>{{ subscription }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="card">
+        <div class="card-title">🎯 آخرین پیش‌بینی‌ها</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: #0d1624; border-radius: 8px; border: 1px solid #1a2a3a;">
+                <span>بیت‌کوین (۲۴h)</span>
+                <span class="badge badge-success">🟢 صعودی</span>
+                <span>۷۲%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: #0d1624; border-radius: 8px; border: 1px solid #1a2a3a;">
+                <span>اتریوم (۲۴h)</span>
+                <span class="badge badge-warning">🟡 خنثی</span>
+                <span>۵۰%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: #0d1624; border-radius: 8px; border: 1px solid #1a2a3a;">
+                <span>سولانا (۴h)</span>
+                <span class="badge badge-danger">🔴 نزولی</span>
+                <span>۶۵%</span>
+            </div>
+        </div>
+        <div style="margin-top: 15px;">
+            <a href="/predict-page" class="btn btn-sm btn-primary">🎯 پیش‌بینی جدید</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">⚡ اقدامات سریع</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="/predict-page?coin=bitcoin&period=24h" class="btn btn-sm btn-primary">🎯 بیت‌کوین (۲۴h)</a>
+            <a href="/predict-page?coin=bitcoin&period=1h" class="btn btn-sm btn-primary">🎯 بیت‌کوین (۱h)</a>
+            <a href="/predict-page?coin=ethereum&period=24h" class="btn btn-sm btn-primary">🎯 اتریوم (۲۴h)</a>
+            <a href="/test-api-page" class="btn btn-sm btn-outline">🔌 تست API</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
