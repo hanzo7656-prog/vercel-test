@@ -1,7 +1,7 @@
 # app.py
 # ============================================================
-# سیستم تشخیص الگوهای بازاری با XGBoost
-# هسته اصلی سیستم + API
+# هسته اصلی سیستم تشخیص الگوهای بازاری
+# شامل: سیستم، مدیریت تسک‌ها، روت‌های بازار
 # ============================================================
 
 import os
@@ -134,7 +134,6 @@ class TradingSignalSystem:
         if not chart_data or len(chart_data) < 30:
             return None
 
-        # استخراج قیمت‌های USD
         prices = []
         for point in chart_data:
             if isinstance(point, list) and len(point) >= 2:
@@ -146,7 +145,7 @@ class TradingSignalSystem:
         prices = np.array(prices, dtype=np.float32)
         features = []
 
-        # 1. بازده‌ها (Returns) در بازه‌های مختلف
+        # 1. بازده‌ها (Returns)
         for lag in [1, 3, 5, 10]:
             if len(prices) > lag:
                 ret = (prices[-1] - prices[-lag-1]) / (prices[-lag-1] + 1e-8)
@@ -208,18 +207,17 @@ class TradingSignalSystem:
 
     def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
-        نسخه همگام (Synchronous) پیش‌بینی - برای اجرا در Background Task
+        نسخه همگام (Synchronous) پیش‌بینی
         """
         start_time = time.time()
 
-        valid_periods = ["1h", "4h", "24h"]
+        valid_periods = ["24h", "1w", "1m", "3m", "6m"]
         if period not in valid_periods:
             return {
                 "error": "InvalidPeriod",
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
-        # 1. دریافت داده‌های تاریخی
         chart_data = self.api.get_chart(coin_id, period)
 
         if not chart_data:
@@ -238,7 +236,6 @@ class TradingSignalSystem:
                 "period": period
             }
 
-        # 2. استخراج ویژگی‌ها
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -250,36 +247,22 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
-        # 3. پیش‌بینی با مدل یا حالت DEMO
-        if self.model_loaded and self.model:
-            try:
-                # dmatrix = xgb.DMatrix(features.reshape(1, -1))
-                # prediction = self.model.predict(dmatrix)[0]
-                prediction = 0.55
-            except Exception as e:
-                prediction = 0.5 + (np.random.randn() * 0.05)
-        else:
-            # حالت DEMO: شبیه‌سازی ساده بر اساس ویژگی‌ها
-            base_score = 0.5
+        # حالت DEMO
+        base_score = 0.5
+        if len(features) >= 4:
+            returns_avg = np.mean(features[:4])
+            base_score += returns_avg * 1.5
+        if len(features) >= 10:
+            trend_strength = features[9]
+            base_score += trend_strength * 0.3
+        if len(features) >= 8:
+            fear = features[7]
+            if fear < 0.3:
+                base_score += 0.15
+            elif fear > 0.7:
+                base_score -= 0.15
+        prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
 
-            if len(features) >= 4:
-                returns_avg = np.mean(features[:4])
-                base_score += returns_avg * 1.5
-
-            if len(features) >= 10:
-                trend_strength = features[9]
-                base_score += trend_strength * 0.3
-
-            if len(features) >= 8:
-                fear = features[7]
-                if fear < 0.3:
-                    base_score += 0.15
-                elif fear > 0.7:
-                    base_score -= 0.15
-
-            prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
-
-        # 4. تفسیر نتیجه
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -294,11 +277,8 @@ class TradingSignalSystem:
             signal_type = "NEUTRAL"
 
         confidence = min(100, max(0, confidence))
-
-        # 5. دریافت اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
-
         processing_time = (time.time() - start_time) * 1000
 
         return {
@@ -318,9 +298,7 @@ class TradingSignalSystem:
         }
 
     def predict_async(self, coin_id="bitcoin", period="24h"):
-        """
-        نسخه غیرهمگام (Asynchronous) - تسک رو به صف اضافه میکنه
-        """
+        """نسخه غیرهمگام (Asynchronous)"""
         task_id = self.task_manager.submit(self.predict_sync, coin_id, period)
         return {
             "status": "processing",
@@ -429,16 +407,8 @@ system = TradingSignalSystem()
 
 
 # ============================================================
-# روت‌های API (JSON)
+# روت‌های بازار (هسته اصلی)
 # ============================================================
-
-@app.route('/health', methods=['GET'])
-def health():
-    """بررسی سلامت کامل سیستم"""
-    result = system.health_check()
-    http_status = 200 if result.get('status') in ['ok', 'degraded'] else 503
-    return jsonify(result), http_status
-
 
 @app.route('/predict', methods=['GET'])
 def predict():
@@ -447,12 +417,12 @@ def predict():
     
     پارامترهای Query:
         coin: شناسه ارز (پیش‌فرض: bitcoin)
-        period: بازه زمانی (پیش‌فرض: 24h) - مقادیر: 1h, 4h, 24h
+        period: بازه زمانی (پیش‌فرض: 24h) - مقادیر: 24h, 1w, 1m, 3m, 6m
     """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
     
-    valid_periods = ["1h", "4h", "24h"]
+    valid_periods = ["24h", "1w", "1m", "3m", "6m"]
     if period not in valid_periods:
         return jsonify({
             "error": "InvalidPeriod",
@@ -468,15 +438,11 @@ def predict():
 def predict_sync():
     """
     پیش‌بینی الگو به صورت همگام (ممکنه Timeout بخوره)
-    
-    پارامترهای Query:
-        coin: شناسه ارز (پیش‌فرض: bitcoin)
-        period: بازه زمانی (پیش‌فرض: 24h)
     """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
     
-    valid_periods = ["1h", "4h", "24h"]
+    valid_periods = ["24h", "1w", "1m", "3m", "6m"]
     if period not in valid_periods:
         return jsonify({
             "error": "InvalidPeriod",
@@ -522,19 +488,6 @@ def task_status():
     })
 
 
-@app.route('/stats', methods=['GET'])
-def stats():
-    """دریافت آمار درخواست‌ها و وضعیت سیستم"""
-    return jsonify({
-        "api_stats": system.api.get_stats(),
-        "model_loaded": system.model_loaded,
-        "uptime": str(datetime.now() - system.start_time).split('.')[0],
-        "pending_tasks": system.task_manager.queue.qsize(),
-        "total_tasks": len(system.task_manager.tasks),
-        "timestamp": datetime.now().isoformat()
-    })
-
-
 @app.route('/test-api', methods=['GET'])
 def test_api():
     """
@@ -543,13 +496,13 @@ def test_api():
     پارامترهای Query:
         coin: شناسه ارز (پیش‌فرض: bitcoin)
         period: بازه زمانی (پیش‌فرض: 24h)
-        type: نوع داده (chart, coin, fear_greed, btc_dominance, status, credits)
+        type: نوع داده (chart, coin, fear_greed, btc_dominance, market, coins, news)
     """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
     data_type = request.args.get('type', 'chart')
     
-    valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'status', 'credits']
+    valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'market', 'coins', 'news']
     if data_type not in valid_types:
         return jsonify({
             "error": "InvalidType",
@@ -570,94 +523,57 @@ def test_api():
                     "data_type": "list_of_arrays",
                     "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
                 })
-            return jsonify({
-                "success": False,
-                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            }), 400
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
             
         elif data_type == 'coin':
             data = system.api.get_coin(coin)
             if data and "error" not in data:
-                return jsonify({
-                    "success": True,
-                    "data": {
-                        "id": data.get('id'),
-                        "name": data.get('name'),
-                        "symbol": data.get('symbol'),
-                        "price": data.get('price'),
-                        "volume": data.get('volume'),
-                        "marketCap": data.get('marketCap'),
-                        "priceChange1h": data.get('priceChange1h'),
-                        "priceChange1d": data.get('priceChange1d'),
-                        "priceChange1w": data.get('priceChange1w')
-                    }
-                })
-            return jsonify({
-                "success": False,
-                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            }), 400
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
             
         elif data_type == 'fear_greed':
             data = system.api.get_fear_greed(use_cache=False)
             if data and "error" not in data:
-                return jsonify({
-                    "success": True,
-                    "data": {
-                        "name": data.get('name'),
-                        "now": data.get('now'),
-                        "yesterday": data.get('yesterday'),
-                        "lastWeek": data.get('lastWeek')
-                    }
-                })
-            return jsonify({
-                "success": False,
-                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            }), 400
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
             
         elif data_type == 'btc_dominance':
             data = system.api.get_btc_dominance(period, use_cache=False)
             if data and "error" not in data:
-                return jsonify({
-                    "success": True,
-                    "count": len(data.get('data', [])),
-                    "sample": data.get('data', [])[:10],
-                    "full_response": data
-                })
-            return jsonify({
-                "success": False,
-                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
-            }), 400
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
             
-        elif data_type == 'status':
-            data = system.api.get_status()
-            return jsonify({"success": True, "data": data})
-            
-        elif data_type == 'credits':
-            data = system.api.get_credits()
+        elif data_type == 'market':
+            data = system.api.get_global_market()
             if data and "error" not in data:
-                return jsonify({
-                    "success": True,
-                    "data": {
-                        "totalCredits": data.get('totalCredits'),
-                        "usedCredits": data.get('usedCredits'),
-                        "remainingCredits": data.get('remainingCredits'),
-                        "subscription": data.get('subscription')
-                    }
-                })
-            return jsonify({
-                "success": False,
-                "error": data.get("message", "خطا در دریافت اعتبار") if data else "داده‌ای دریافت نشد"
-            }), 400
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
+            
+        elif data_type == 'coins':
+            limit = int(request.args.get('limit', 20))
+            data = system.api.get_coins_list(limit=limit)
+            if data and "error" not in data:
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
+            
+        elif data_type == 'news':
+            limit = int(request.args.get('limit', 6))
+            data = system.api.get_news(limit=limit)
+            if data and "error" not in data:
+                return jsonify({"success": True, "data": data})
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
             
     except Exception as e:
+        logger.error(f"Error in test-api: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ============================================================
-# Import Routes (صفحات HTML)
+# Import روت‌های دیگر
 # ============================================================
 
 from routes import *
+from health_mother_system import *
 
 
 # ============================================================
@@ -669,7 +585,7 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۳.۰ - ماژولار)")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۴.۰ - ماژولار)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
@@ -684,10 +600,13 @@ if __name__ == "__main__":
     print("=" * 60)
     print("📌 اندپوینت‌های API:")
     print("  /health        - بررسی سلامت (JSON)")
+    print("  /health/simple - بررسی ساده سلامت")
+    print("  /credits       - اطلاعات اعتبار")
+    print("  /stats         - آمار (JSON)")
+    print("  /status        - وضعیت کلی")
     print("  /predict       - پیش‌بینی (Async)")
     print("  /predict-sync  - پیش‌بینی (Sync)")
     print("  /task-status   - وضعیت تسک")
-    print("  /stats         - آمار (JSON)")
     print("  /test-api      - تست API (JSON)")
     print("=" * 60)
 
