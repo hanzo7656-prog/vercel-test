@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سلامت سیستم</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
+        <div class="navbar-menu">
+            <a href="/">🏠 خانه</a>
+            <a href="/dashboard">📈 داشبورد</a>
+            <a href="/predict-page">🎯 پیش‌بینی</a>
+            <a href="/test-api-page">🔌 تست API</a>
+            <a href="/health-page" class="active">💚 سلامت</a>
+            <a href="/stats-page">📊 آمار</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">💚 سلامت سیستم</div>
+            <div class="card-subtitle">وضعیت تمام اجزای سیستم</div>
+            <div style="margin-top:10px;">
+                <button class="btn btn-primary btn-sm" onclick="loadHealth()">🔄 بروزرسانی</button>
+            </div>
+        </div>
+        <div id="healthContent">
+            <div class="loading"><div class="spinner"></div><p>در حال دریافت اطلاعات...</p></div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script>
+        function loadHealth() {
+            const container = document.getElementById('healthContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت...</p></div>';
+            
+            fetch('/health')
+                .then(res => res.json())
+                .then(data => {
+                    let html = '<div class="row">';
+                    
+                    const statusClass = data.status === 'ok' ? 'badge-success' : 
+                                       data.status === 'degraded' ? 'badge-warning' : 'badge-danger';
+                    html += `
+                        <div class="card" style="grid-column:1/-1;">
+                            <div class="card-title">📊 وضعیت کلی</div>
+                            <div style="text-align:center;padding:15px;">
+                                <span class="badge ${statusClass}" style="font-size:1.5rem;padding:10px 30px;">
+                                    ${data.status || 'نامشخص'}
+                                </span>
+                            </div>
+                            <div style="text-align:center;color:#4a5a6a;font-size:0.85rem;">${data.timestamp ? new Date(data.timestamp).toLocaleString('fa-IR') : ''}</div>
+                        </div>
+                    `;
+                    
+                    if (data.components) {
+                        for (const [key, value] of Object.entries(data.components)) {
+                            const statusColor = value.status === 'healthy' ? 'badge-success' : 
+                                               value.status === 'degraded' ? 'badge-warning' : 
+                                               value.status === 'unhealthy' ? 'badge-danger' : 'badge-info';
+                            html += `
+                                <div class="card">
+                                    <div class="card-title">${key}</div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                                        <span class="badge ${statusColor}">${value.status || 'نامشخص'}</span>
+                                        <span style="color:#4a5a6a;font-size:0.85rem;">${value.message || ''}</span>
+                                    </div>
+                                    <pre style="background:#0d1624;padding:10px;border-radius:8px;overflow-x:auto;font-size:0.8rem;margin-top:10px;color:#c0d0e0;">${JSON.stringify(value, null, 2)}</pre>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    container.innerHTML = `<div class="card"><div class="card-title">❌ خطا</div><p style="color:#ff4444;">${err.message}</p></div>`;
+                });
+        }
+        loadHealth();
+        setInterval(loadHealth, 30000);
+    </script>
+</body>
+</html>
