@@ -13,7 +13,7 @@ import threading
 import numpy as np
 from datetime import datetime
 from queue import Queue
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 
 # import xgboost as xgb
 from api_handler import CoinStatsAPI
@@ -494,31 +494,21 @@ app = Flask(__name__)
 system = TradingSignalSystem()
 
 
-@app.route('/', methods=['GET'])
-def home():
-    """صفحه اصلی - معرفی سرویس"""
-    return jsonify({
-        "service": "Trading Signal System",
-        "version": "2.0.0",
-        "description": "سیستم تشخیص الگوهای بازاری با XGBoost (با پشتیبانی از Background Tasks)",
-        "endpoints": {
-            "/": "این صفحه",
-            "/health": "بررسی سلامت سیستم",
-            "/predict": "پیش‌بینی الگو (Async - سریع)",
-            "/predict-sync": "پیش‌بینی الگو (Sync - کندتر)",
-            "/task-status": "بررسی وضعیت تسک",
-            "/stats": "آمار درخواست‌ها",
-            "/test-api": "تست و نمایش داده‌های خام API"
-        },
-        "usage": {
-            "/predict?coin=bitcoin&period=24h": "پیش‌بینی (پس‌زمینه - فوری)",
-            "/predict-sync?coin=bitcoin&period=24h": "پیش‌بینی (همگام - ممکنه Timeout بخوره)",
-            "/task-status?task_id=abc123": "بررسی نتیجه تسک"
-        },
-        "supported_periods": ["1h", "4h", "24h"],
-        "status": "online",
-        "timestamp": datetime.now().isoformat()
-    })
+@app.route('/')
+def home_page():
+    """صفحه اصلی"""
+    health = system.health_check()
+    return render_template('index.html',
+        active_page='home',
+        status=health.get('status', 'unknown'),
+        model_loaded=system.model_loaded,
+        memory_used=health.get('components', {}).get('memory', {}).get('used_mb', 0),
+        memory_total=health.get('components', {}).get('memory', {}).get('total_mb', 512),
+        credits_remaining=health.get('components', {}).get('credits', {}).get('remaining', 0),
+        uptime=str(datetime.now() - system.start_time).split('.')[0],
+        status_class='online' if health.get('status') == 'ok' else 'degraded' if health.get('status') == 'degraded' else 'offline',
+        status_text='آنلاین' if health.get('status') == 'ok' else 'محدود' if health.get('status') == 'degraded' else 'آفلاین'
+    )
 
 
 @app.route('/health', methods=['GET'])
