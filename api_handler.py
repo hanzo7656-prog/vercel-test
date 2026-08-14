@@ -1,7 +1,7 @@
 # api_handler.py
 # ============================================================
 # کلاینت ارتباط با API کوین‌استیتس
-# شامل: مدیریت درخواست‌ها، کش، و تمام اندپوینت‌های مورد نیاز
+# شامل: همه اندپوینت‌های مورد نیاز
 # ============================================================
 
 import os
@@ -21,7 +21,6 @@ class CoinStatsAPI:
     def __init__(self, api_key=None):
         """
         راه‌اندازی کلاینت با کلید API
-        اگر کلید داده نشه، از متغیر محیطی COINSTATS_API_KEY میخونه
         """
         self.api_key = api_key or os.getenv(
             "COINSTATS_API_KEY",
@@ -44,9 +43,7 @@ class CoinStatsAPI:
         self.error_count = 0
 
     def _request(self, method, endpoint, params=None, retries=2):
-        """
-        ارسال درخواست به API با مدیریت خطا و Retry
-        """
+        """ارسال درخواست به API با مدیریت خطا و Retry"""
         url = f"{self.base_url}{endpoint}"
         self.request_count += 1
 
@@ -55,10 +52,9 @@ class CoinStatsAPI:
                 method,
                 url,
                 params=params,
-                timeout=10
+                timeout=15
             )
 
-            # مدیریت Rate Limit (429)
             if response.status_code == 429:
                 self.error_count += 1
                 if retries > 0:
@@ -92,67 +88,108 @@ class CoinStatsAPI:
             }
 
     def _cache_get(self, key, ttl_seconds=3600):
-        """
-        دریافت از کش با اعتبارسنجی زمان
-        """
+        """دریافت از کش با اعتبارسنجی زمان"""
         if key in self.cache:
             if time.time() - self.cache_ttl.get(key, 0) < ttl_seconds:
                 return self.cache[key]
         return None
 
     def _cache_set(self, key, value):
-        """
-        ذخیره در کش
-        """
+        """ذخیره در کش"""
         self.cache[key] = value
         self.cache_ttl[key] = time.time()
 
-    def _clear_cache(self):
-        """
-        پاک کردن کل کش (برای مواقع ضروری)
-        """
-        self.cache.clear()
-        self.cache_ttl.clear()
-
     # ============================================================
-    # اندپوینت‌های اصلی
+    # اندپوینت‌های اصلی (Market Data)
     # ============================================================
 
     def get_chart(self, coin_id, period="24h", currency="USD"):
         """
         دریافت داده‌های تاریخی قیمت
-        period: 1h, 4h, 24h, 1w, 1m, 3m, 6m, 1y, all
+        period: 24h, 1w, 1m, 3m, 6m, 1y, all
         هزینه: ۳ اعتبار
         """
+        cache_key = f"chart_{coin_id}_{period}"
+        cached = self._cache_get(cache_key, 60)
+        if cached:
+            return cached
+
         endpoint = f"/v1/coins/{coin_id}/charts"
         params = {
             "period": period,
             "currency": currency
         }
-        return self._request("GET", endpoint, params)
+        result = self._request("GET", endpoint, params)
+
+        if result and isinstance(result, list) and len(result) > 0:
+            self._cache_set(cache_key, result)
+
+        return result
 
     def get_coin(self, coin_id, currency="USD"):
         """
         دریافت اطلاعات لحظه‌ای یک ارز
         هزینه: ۱ اعتبار
         """
+        cache_key = f"coin_{coin_id}_{currency}"
+        cached = self._cache_get(cache_key, 30)
+        if cached:
+            return cached
+
         endpoint = f"/v1/coins/{coin_id}"
         params = {"currency": currency}
-        return self._request("GET", endpoint, params)
+        result = self._request("GET", endpoint, params)
 
-    def get_coins(self, limit=50, currency="USD"):
+        if result and "error" not in result:
+            self._cache_set(cache_key, result)
+
+        return result
+
+    def get_coins_list(self, limit=20, currency="USD"):
         """
-        دریافت لیست ارزها با فیلتر
+        دریافت لیست ارزها (برای داشبورد)
         هزینه: ۲ اعتبار
         """
+        cache_key = f"coins_list_{limit}_{currency}"
+        cached = self._cache_get(cache_key, 60)
+        if cached:
+            return cached
+
         endpoint = "/v1/coins"
         params = {
             "limit": limit,
             "currency": currency,
-            "sortBy": "marketCap",
+            "sortBy": "rank",
             "sortDir": "desc"
         }
-        return self._request("GET", endpoint, params)
+        result = self._request("GET", endpoint, params)
+
+        if result and "error" not in result:
+            self._cache_set(cache_key, result)
+
+        return result
+
+    def get_global_market(self):
+        """
+        دریافت وضعیت کلی بازار (مارکت‌کپ، حجم، سلطه)
+        هزینه: ۱ اعتبار
+        """
+        cache_key = "global_market"
+        cached = self._cache_get(cache_key, 60)
+        if cached:
+            return cached
+
+        endpoint = "/v1/markets"
+        result = self._request("GET", endpoint)
+
+        if result and "error" not in result:
+            self._cache_set(cache_key, result)
+
+        return result
+
+    # ============================================================
+    # اندپوینت‌های Insights (شاخص‌ها)
+    # ============================================================
 
     def get_fear_greed(self, use_cache=True):
         """
@@ -196,28 +233,32 @@ class CoinStatsAPI:
 
         return result
 
-    def get_avg_price(self, coin_id, timestamp):
-        """
-        دریافت قیمت متوسط تاریخی در یک تایم‌استمپ خاص
-        هزینه: ۴ اعتبار
-        """
-        endpoint = "/v1/coins/price/avg"
-        params = {
-            "coinId": coin_id,
-            "timestamp": timestamp
-        }
-        return self._request("GET", endpoint, params)
+    # ============================================================
+    # اندپوینت‌های News
+    # ============================================================
 
-    def get_tickers(self, coin_id=None, limit=20):
+    def get_news(self, limit=10):
         """
-        دریافت اطلاعات تیکرها از صرافی‌ها
-        هزینه: ۳ اعتبار
+        دریافت اخبار
+        هزینه: نامشخص
         """
-        endpoint = "/v1/tickers/markets"
+        cache_key = f"news_{limit}"
+        cached = self._cache_get(cache_key, 300)
+        if cached:
+            return cached
+
+        endpoint = "/v1/news"
         params = {"limit": limit}
-        if coin_id:
-            params["coinId"] = coin_id
-        return self._request("GET", endpoint, params)
+        result = self._request("GET", endpoint, params)
+
+        if result and "error" not in result:
+            self._cache_set(cache_key, result)
+
+        return result
+
+    # ============================================================
+    # اندپوینت‌های مدیریتی
+    # ============================================================
 
     def get_credits(self):
         """
@@ -245,22 +286,3 @@ class CoinStatsAPI:
             "cache_size": len(self.cache),
             "cache_keys": list(self.cache.keys())
         }
-
-
-# ============================================================
-# نمونه استفاده (برای تست)
-# ============================================================
-if __name__ == "__main__":
-    api = CoinStatsAPI()
-
-    print("🔍 تست اتصال به API...")
-    status = api.get_status()
-    print(f"وضعیت API: {status}")
-
-    print("\n📊 دریافت اطلاعات بیت‌کوین...")
-    btc = api.get_coin("bitcoin")
-    if btc and "error" not in btc:
-        print(f"قیمت: ${btc.get('price', 0):,.2f}")
-        print(f"حجم ۲۴h: ${btc.get('volume', 0):,.0f}")
-
-    print(f"\n📈 آمار: {api.get_stats()}")
