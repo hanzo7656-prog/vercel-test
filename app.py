@@ -639,6 +639,77 @@ def test_api():
             "message": f"نوع داده باید یکی از {valid_types} باشد",
             "provided": data_type
         }), 400
+
+
+# ============================================================
+# روت‌های صفحات HTML
+# ============================================================
+
+@app.route('/dashboard')
+def dashboard_page():
+    """داشبورد اصلی"""
+    health = system.health_check()
+    return render_template_string(open('templates/dashboard.html').read(), 
+        active_page='dashboard',
+        status=health.get('status', 'unknown'),
+        model_loaded=system.model_loaded,
+        memory_used=health.get('components', {}).get('memory', {}).get('used_mb', 0),
+        memory_total=health.get('components', {}).get('memory', {}).get('total_mb', 512),
+        memory_percent=health.get('components', {}).get('memory', {}).get('percent', 0),
+        credits_total=health.get('components', {}).get('credits', {}).get('total', 0),
+        credits_used=health.get('components', {}).get('credits', {}).get('used', 0),
+        credits_remaining=health.get('components', {}).get('credits', {}).get('remaining', 0),
+        subscription=health.get('components', {}).get('credits', {}).get('subscription', 'free'),
+        total_requests=health.get('components', {}).get('api_stats', {}).get('total_requests', 0),
+        uptime=str(datetime.now() - system.start_time).split('.')[0],
+        status_class='online' if health.get('status') == 'ok' else 'degraded' if health.get('status') == 'degraded' else 'offline',
+        status_text='آنلاین' if health.get('status') == 'ok' else 'محدود' if health.get('status') == 'degraded' else 'آفلاین'
+    )
+
+@app.route('/predict-page')
+def predict_page():
+    """صفحه پیش‌بینی"""
+    coin = request.args.get('coin', 'bitcoin')
+    period = request.args.get('period', '24h')
+    return render_template_string(open('templates/predict.html').read(),
+        active_page='predict',
+        coin=coin,
+        period=period,
+        status_class='online',
+        status_text='آنلاین',
+        uptime=str(datetime.now() - system.start_time).split('.')[0]
+    )
+
+@app.route('/test-api-page')
+def test_api_page():
+    """صفحه تست API"""
+    return render_template_string(open('templates/test_api.html').read(),
+        active_page='test-api',
+        status_class='online',
+        status_text='آنلاین',
+        uptime=str(datetime.now() - system.start_time).split('.')[0]
+    )
+
+@app.route('/health-page')
+def health_page():
+    """صفحه سلامت سیستم"""
+    return render_template_string(open('templates/health.html').read(),
+        active_page='health',
+        status_class='online',
+        status_text='آنلاین',
+        uptime=str(datetime.now() - system.start_time).split('.')[0]
+    )
+
+@app.route('/stats-page')
+def stats_page():
+    """صفحه آمار"""
+    return render_template_string(open('templates/stats.html').read(),
+        active_page='stats',
+        status_class='online',
+        status_text='آنلاین',
+        uptime=str(datetime.now() - system.start_time).split('.')[0]
+    )
+
     
     # استفاده از Background Task برای دریافت داده
     def fetch_data():
