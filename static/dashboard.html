@@ -5,6 +5,142 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .news-card {
+            background: #0d1624;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #1a2a3a;
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .news-card:hover {
+            border-color: #00d4ff;
+            transform: translateX(-5px);
+        }
+        .news-card img {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: #1a2a3a;
+        }
+        .news-card .content {
+            flex: 1;
+        }
+        .news-card .title {
+            color: #e0e6ed;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .news-card .source {
+            color: #7a8fa3;
+            font-size: 0.8rem;
+        }
+        .news-card .time {
+            color: #4a5a6a;
+            font-size: 0.75rem;
+        }
+        .news-loading {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .news-loading .spinner-small {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #1a2a3a;
+            border-top: 3px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Fear & Greed */
+        .fear-greed-box {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background: #0d1624;
+            border: 1px solid #1a2a3a;
+        }
+        .fear-greed-box .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .fear-greed-box .label {
+            color: #7a8fa3;
+            font-size: 0.9rem;
+        }
+        .fear-greed-box .bar {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #00ff88);
+            position: relative;
+        }
+        .fear-greed-box .bar .indicator {
+            position: absolute;
+            top: -6px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #00d4ff;
+            transition: left 0.5s ease;
+        }
+        .fear-greed-box .classification {
+            font-size: 1.1rem;
+            font-weight: 500;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        /* توکن‌های برتر */
+        .coin-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #0d1624;
+            transition: background 0.2s;
+        }
+        .coin-row:hover {
+            background: rgba(0, 212, 255, 0.05);
+        }
+        .coin-row .positive {
+            color: #00ff88;
+        }
+        .coin-row .negative {
+            color: #ff4444;
+        }
+        
+        .card-scroll {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .card-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .card-scroll::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 2px;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: slideUp 0.5s ease forwards;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -18,23 +154,258 @@
             <a href="/stats-page">📊 آمار</a>
         </div>
         <div class="navbar-status">
-            <span><span class="status-dot online"></span> آنلاین</span>
+            <span><span class="status-dot online" id="statusDot"></span> <span id="statusText">آنلاین</span></span>
+            <span style="color: #7a8fa3; font-size: 0.8rem;">
+                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
+            </span>
         </div>
     </nav>
 
     <div class="container">
-        <div class="card">
-            <div class="card-title">📈 داشبورد اصلی</div>
-            <div class="card-subtitle">وضعیت کلی سیستم و آخرین تحلیل‌ها</div>
-            <div style="margin-top:10px;">
-                <button class="btn btn-primary btn-sm" onclick="loadDashboardData()">🔄 بروزرسانی</button>
+        <!-- ردیف اول: وضعیت کلی + Fear & Greed -->
+        <div class="row">
+            <div class="card">
+                <div class="card-title">📊 وضعیت کلی بازار</div>
+                <div id="marketStats">
+                    <div class="loading" style="padding:20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">😨 شاخص ترس و طمع</div>
+                <div id="fearGreedContainer">
+                    <div class="loading" style="padding:20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div id="dashboardContent">
-            <div class="loading"><div class="spinner"></div><p>در حال دریافت داده...</p></div>
+
+        <!-- ردیف دوم: ۲۰ ارز برتر + اخبار -->
+        <div class="row">
+            <div class="card">
+                <div class="card-title">🏆 ۲۰ ارز برتر</div>
+                <div class="card-scroll" id="topCoinsContainer">
+                    <div class="loading" style="padding:20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">📰 آخرین اخبار</div>
+                <div class="card-scroll" id="newsContainer">
+                    <div class="loading" style="padding:20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script src="/static/js/script.js"></script>
+    <script>
+        // ============================================================
+        // بارگذاری داشبورد
+        // ============================================================
+
+        function loadDashboard() {
+            loadMarketStats();
+            loadFearGreed();
+            loadTopCoins();
+            loadNews();
+        }
+
+        // ============================================================
+        // وضعیت کلی بازار
+        // ============================================================
+
+        function loadMarketStats() {
+            const container = document.getElementById('marketStats');
+            
+            fetch('/test-api?type=market')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const m = data.data;
+                        container.innerHTML = `
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;text-align:center;">
+                                <div>
+                                    <div style="color:#7a8fa3;font-size:0.8rem;">مارکت‌کپ</div>
+                                    <div style="color:#00d4ff;font-size:1.2rem;font-weight:bold;">$${(m.marketCap / 1e12).toFixed(2)}T</div>
+                                </div>
+                                <div>
+                                    <div style="color:#7a8fa3;font-size:0.8rem;">حجم ۲۴h</div>
+                                    <div style="color:#e0e6ed;font-size:1.2rem;font-weight:bold;">$${(m.volume / 1e9).toFixed(1)}B</div>
+                                </div>
+                                <div>
+                                    <div style="color:#7a8fa3;font-size:0.8rem;">سلطه بیت‌کوین</div>
+                                    <div style="color:#ffaa00;font-size:1.2rem;font-weight:bold;">${m.btcDominance || 0}%</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:0.8rem;color:#4a5a6a;">
+                                <span>تغییر مارکت‌کپ: <span class="${m.marketCapChange > 0 ? 'positive' : 'negative'}">${m.marketCapChange?.toFixed(2) || 0}%</span></span>
+                                <span>تغییر حجم: <span class="${m.volumeChange > 0 ? 'positive' : 'negative'}">${m.volumeChange?.toFixed(2) || 0}%</span></span>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                });
+        }
+
+        // ============================================================
+        // شاخص ترس و طمع
+        // ============================================================
+
+        function loadFearGreed() {
+            const container = document.getElementById('fearGreedContainer');
+            
+            fetch('/test-api?type=fear_greed')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const fg = data.data.now || data.data;
+                        const value = fg.value || 50;
+                        const classification = fg.value_classification || 'Neutral';
+                        const colors = {
+                            'Extreme Fear': '#ff4444',
+                            'Fear': '#ff8844',
+                            'Neutral': '#ffaa00',
+                            'Greed': '#44cc88',
+                            'Extreme Greed': '#00ff88'
+                        };
+                        const color = colors[classification] || '#ffaa00';
+                        const leftPos = Math.max(5, Math.min(95, value));
+                        
+                        container.innerHTML = `
+                            <div class="fear-greed-box">
+                                <div class="value" style="color:${color};">${value}</div>
+                                <div style="flex:1;">
+                                    <div class="bar">
+                                        <div class="indicator" style="left:${leftPos}%;background:${color};"></div>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#4a5a6a;margin-top:4px;">
+                                        <span>Extreme Fear</span>
+                                        <span>Neutral</span>
+                                        <span>Extreme Greed</span>
+                                    </div>
+                                </div>
+                                <div class="classification" style="color:${color};">${classification}</div>
+                            </div>
+                            <div style="margin-top:8px;font-size:0.8rem;color:#7a8fa3;text-align:center;">
+                                ${fg.analysis?.sentiment || ''} - ${fg.recommendation || ''}
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                });
+        }
+
+        // ============================================================
+        // ۲۰ ارز برتر
+        // ============================================================
+
+        function loadTopCoins() {
+            const container = document.getElementById('topCoinsContainer');
+            
+            fetch('/test-api?type=coins')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const coins = data.data.result || [];
+                        let html = '';
+                        coins.slice(0, 20).forEach((coin, i) => {
+                            const change = coin.priceChange1d || 0;
+                            const changeClass = change >= 0 ? 'positive' : 'negative';
+                            const changeSymbol = change >= 0 ? '▲' : '▼';
+                            html += `
+                                <div class="coin-row animate-in" style="animation-delay:${i * 0.03}s;">
+                                    <span style="color:#4a5a6a;font-size:0.8rem;width:25px;">${i+1}</span>
+                                    <span style="flex:1;">${coin.symbol || coin.id}</span>
+                                    <span style="color:#e0e6ed;font-family:monospace;">$${Number(coin.price || 0).toLocaleString()}</span>
+                                    <span class="${changeClass}" style="font-size:0.85rem;min-width:60px;text-align:right;">
+                                        ${changeSymbol} ${Math.abs(change).toFixed(2)}%
+                                    </span>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                });
+        }
+
+        // ============================================================
+        // اخبار
+        // ============================================================
+
+        function loadNews() {
+            const container = document.getElementById('newsContainer');
+            
+            fetch('/test-api?type=news&limit=6')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const news = data.data.data || data.data || [];
+                        if (news.length === 0) {
+                            container.innerHTML = '<p style="color:#7a8fa3;text-align:center;">📭 خبری یافت نشد</p>';
+                            return;
+                        }
+                        let html = '';
+                        news.slice(0, 6).forEach((item) => {
+                            const image = item.image_url || item.imageUrl || '';
+                            const title = item.title || 'بدون عنوان';
+                            const source = item.source || 'نامشخص';
+                            const time = item.published_at ? new Date(item.published_at).toLocaleDateString('fa-IR') : '';
+                            html += `
+                                <div class="news-card animate-in" onclick="window.open('${item.url || '#'}', '_blank')">
+                                    ${image ? `<img src="${image}" alt="news" onerror="this.style.display='none'">` : ''}
+                                    <div class="content">
+                                        <div class="title">${title}</div>
+                                        <div class="source">📰 ${source}</div>
+                                        <div class="time">${time}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت اخبار</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت اخبار</p>';
+                });
+        }
+
+        // ============================================================
+        // اجرا
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // آپتایم
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
+            
+            // بارگذاری داشبورد
+            loadDashboard();
+            
+            // بروزرسانی خودکار هر ۶۰ ثانیه
+            setInterval(loadDashboard, 60000);
+        });
+    </script>
 </body>
 </html>
