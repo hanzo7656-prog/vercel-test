@@ -1,7 +1,7 @@
 # app.py
 # ============================================================
-# سیستم اصلی تشخیص الگوهای بازاری با XGBoost
-# با پشتیبانی از Background Tasks برای پردازش‌های سنگین
+# سیستم تشخیص الگوهای بازاری با XGBoost
+# هسته اصلی سیستم + API
 # ============================================================
 
 import os
@@ -13,9 +13,8 @@ import threading
 import numpy as np
 from datetime import datetime
 from queue import Queue
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request
 
-# import xgboost as xgb
 from api_handler import CoinStatsAPI
 
 
@@ -28,9 +27,8 @@ class BackgroundTaskManager:
     مدیریت تسک‌های سنگین در پس‌زمینه با Queue
     """
     def __init__(self):
-        self.tasks = {}  # ذخیره نتایج تسک‌ها
+        self.tasks = {}
         self.queue = Queue()
-        self.worker_thread = None
         self.running = True
         self.start_worker()
     
@@ -71,21 +69,7 @@ class BackgroundTaskManager:
     
     def get_result(self, task_id):
         """دریافت نتیجه یک تسک"""
-        if task_id in self.tasks:
-            return self.tasks[task_id]
-        return None
-    
-    def cleanup(self, max_age_seconds=300):
-        """پاک کردن تسک‌های قدیمی (بیش از ۵ دقیقه)"""
-        now = datetime.now()
-        to_delete = []
-        for task_id, task in self.tasks.items():
-            if 'timestamp' in task:
-                task_time = datetime.fromisoformat(task['timestamp'])
-                if (now - task_time).total_seconds() > max_age_seconds:
-                    to_delete.append(task_id)
-        for task_id in to_delete:
-            del self.tasks[task_id]
+        return self.tasks.get(task_id)
 
 
 # ============================================================
@@ -97,11 +81,9 @@ class TradingSignalSystem:
     سیستم تشخیص الگوی بازاری
     شامل: دریافت داده → مهندسی ویژگی‌ها → پیش‌بینی با XGBoost
     """
-
+    
     def __init__(self, api_key=None):
-        """
-        راه‌اندازی سیستم با کلید API
-        """
+        """راه‌اندازی سیستم با کلید API"""
         self.api = CoinStatsAPI(api_key)
         self.model = None
         self.model_loaded = False
@@ -120,66 +102,10 @@ class TradingSignalSystem:
                             if len(parts) >= 2:
                                 used_kb = int(parts[1])
                                 used_mb = used_kb / 1024
-                                total_mb = self._get_memory_limit()
-                                return used_mb, total_mb
+                                return used_mb, 512
         except:
             pass
-        
-        try:
-            used_mb, total_mb = self._get_cgroup_memory()
-            if total_mb > 0:
-                return used_mb, total_mb
-        except:
-            pass
-        
-        try:
-            import psutil
-            process = psutil.Process(os.getpid())
-            used_mb = process.memory_info().rss / 1024**2
-            total_mb = psutil.virtual_memory().total / 1024**2
-            return used_mb, total_mb
-        except:
-            return 0, 0
-    
-    def _get_memory_limit(self):
-        """دریافت محدودیت حافظه از Cgroup"""
-        try:
-            if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
-                with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
-                    limit_bytes = int(f.read())
-                    if limit_bytes < 10**15:
-                        return limit_bytes / 1024**2
-            if os.path.exists('/sys/fs/cgroup/memory.max'):
-                with open('/sys/fs/cgroup/memory.max', 'r') as f:
-                    limit_str = f.read().strip()
-                    if limit_str != 'max':
-                        limit_bytes = int(limit_str)
-                        return limit_bytes / 1024**2
-        except:
-            pass
-        return 512
-    
-    def _get_cgroup_memory(self):
-        """دریافت حافظه از Cgroup"""
-        try:
-            if os.path.exists('/sys/fs/cgroup/memory/memory.usage_in_bytes'):
-                with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f:
-                    used_bytes = int(f.read())
-                    used_mb = used_bytes / 1024**2
-                    total_mb = self._get_memory_limit()
-                    return used_mb, total_mb
-        except:
-            pass
-        try:
-            if os.path.exists('/sys/fs/cgroup/memory.current'):
-                with open('/sys/fs/cgroup/memory.current', 'r') as f:
-                    used_bytes = int(f.read().strip())
-                    used_mb = used_bytes / 1024**2
-                    total_mb = self._get_memory_limit()
-                    return used_mb, total_mb
-        except:
-            pass
-        return 0, 0
+        return 0, 512
 
     def load_model(self):
         """بارگذاری مدل XGBoost از فایل"""
@@ -189,7 +115,6 @@ class TradingSignalSystem:
                 # self.model = xgb.Booster()
                 # self.model.load_model("model.json")
                 # self.model_loaded = True
-                # print("✅ مدل XGBoost با موفقیت بارگذاری شد", file=sys.stderr)
                 self.model_loaded = False
                 print("⚠️ حالت DEMO: مدل واقعی بارگذاری نشد", file=sys.stderr)
             else:
@@ -199,21 +124,21 @@ class TradingSignalSystem:
             print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
             self.model_loaded = False
 
-    # ============================================================
-    # مهندسی ویژگی‌ها
-    # ============================================================
-
     def extract_features(self, chart_data):
-        """تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost"""
+        """
+        تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost
+        
+        ورودی: لیست [[timestamp, priceUSD, priceBTC, priceETH], ...]
+        خروجی: آرایه numpy از ویژگی‌ها
+        """
         if not chart_data or len(chart_data) < 30:
             return None
 
+        # استخراج قیمت‌های USD
         prices = []
         for point in chart_data:
             if isinstance(point, list) and len(point) >= 2:
                 prices.append(float(point[1]))
-            elif isinstance(point, dict) and 'price' in point:
-                prices.append(float(point['price']))
 
         if len(prices) < 30:
             return None
@@ -257,7 +182,7 @@ class TradingSignalSystem:
         except:
             features.append(0.5)
 
-        # 5. شیب قیمت
+        # 5. شیب قیمت (روند)
         for window in [5, 10, 20]:
             if len(prices) >= window:
                 slope = np.polyfit(range(window), prices[-window:], 1)[0]
@@ -281,10 +206,6 @@ class TradingSignalSystem:
 
         return np.array(features, dtype=np.float32)
 
-    # ============================================================
-    # پیش‌بینی اصلی (برای اجرا در Background)
-    # ============================================================
-
     def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
         نسخه همگام (Synchronous) پیش‌بینی - برای اجرا در Background Task
@@ -298,6 +219,7 @@ class TradingSignalSystem:
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
+        # 1. دریافت داده‌های تاریخی
         chart_data = self.api.get_chart(coin_id, period)
 
         if not chart_data:
@@ -316,6 +238,7 @@ class TradingSignalSystem:
                 "period": period
             }
 
+        # 2. استخراج ویژگی‌ها
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -327,28 +250,36 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
-        # پیش‌بینی با مدل یا DEMO
+        # 3. پیش‌بینی با مدل یا حالت DEMO
         if self.model_loaded and self.model:
             try:
+                # dmatrix = xgb.DMatrix(features.reshape(1, -1))
+                # prediction = self.model.predict(dmatrix)[0]
                 prediction = 0.55
             except Exception as e:
                 prediction = 0.5 + (np.random.randn() * 0.05)
         else:
+            # حالت DEMO: شبیه‌سازی ساده بر اساس ویژگی‌ها
             base_score = 0.5
+
             if len(features) >= 4:
                 returns_avg = np.mean(features[:4])
                 base_score += returns_avg * 1.5
+
             if len(features) >= 10:
                 trend_strength = features[9]
                 base_score += trend_strength * 0.3
+
             if len(features) >= 8:
                 fear = features[7]
                 if fear < 0.3:
                     base_score += 0.15
                 elif fear > 0.7:
                     base_score -= 0.15
+
             prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
 
+        # 4. تفسیر نتیجه
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -363,8 +294,11 @@ class TradingSignalSystem:
             signal_type = "NEUTRAL"
 
         confidence = min(100, max(0, confidence))
+
+        # 5. دریافت اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
+
         processing_time = (time.time() - start_time) * 1000
 
         return {
@@ -383,10 +317,6 @@ class TradingSignalSystem:
             "model_mode": "DEMO" if not self.model_loaded else "PRODUCTION"
         }
 
-    # ============================================================
-    # پیش‌بینی با Background Task (نسخه Async)
-    # ============================================================
-
     def predict_async(self, coin_id="bitcoin", period="24h"):
         """
         نسخه غیرهمگام (Asynchronous) - تسک رو به صف اضافه میکنه
@@ -399,10 +329,6 @@ class TradingSignalSystem:
             "check_status": f"/task-status?task_id={task_id}"
         }
 
-    # ============================================================
-    # سلامت سیستم
-    # ============================================================
-
     def health_check(self):
         """بررسی کامل سلامت سیستم"""
         status = {
@@ -411,6 +337,7 @@ class TradingSignalSystem:
             "components": {}
         }
 
+        # 1. سلامت API
         try:
             api_status = self.api.get_status()
             if api_status and api_status.get('status') == 'ok':
@@ -431,15 +358,17 @@ class TradingSignalSystem:
             }
             status["status"] = "unhealthy"
 
+        # 2. سلامت مدل
         status["components"]["model"] = {
             "status": "healthy" if self.model_loaded else "degraded",
             "message": "مدل بارگذاری شده است" if self.model_loaded else "حالت DEMO (بدون مدل)",
             "mode": "PRODUCTION" if self.model_loaded else "DEMO"
         }
 
-        if not self.model_loaded:
-            status["status"] = "degraded" if status["status"] == "ok" else status["status"]
+        if not self.model_loaded and status["status"] == "ok":
+            status["status"] = "degraded"
 
+        # 3. اعتبار
         try:
             credits = self.api.get_credits()
             if credits and 'remainingCredits' in credits:
@@ -456,27 +385,32 @@ class TradingSignalSystem:
                 "message": f"خطا: {str(e)}"
             }
 
+        # 4. حافظه
         try:
             used_mb, total_mb = self._get_memory_usage()
             if total_mb == 0 or total_mb > 10000:
                 total_mb = 512
             memory_percent = (used_mb / total_mb) * 100 if total_mb > 0 else 0
+
             status["components"]["memory"] = {
                 "status": "healthy" if memory_percent < 80 else "warning",
                 "used_mb": round(used_mb, 1),
                 "total_mb": round(total_mb, 1),
                 "percent": round(memory_percent, 1)
             }
+
             if memory_percent > 90:
                 status["status"] = "critical"
             elif memory_percent > 80 and status["status"] == "ok":
                 status["status"] = "degraded"
+
         except Exception as e:
             status["components"]["memory"] = {
                 "status": "unknown",
                 "message": f"خطا: {str(e)}"
             }
 
+        # 5. آمار API
         status["components"]["api_stats"] = self.api.get_stats()
         status["components"]["task_manager"] = {
             "pending_tasks": self.task_manager.queue.qsize(),
@@ -494,22 +428,9 @@ app = Flask(__name__)
 system = TradingSignalSystem()
 
 
-@app.route('/')
-def home_page():
-    """صفحه اصلی"""
-    health = system.health_check()
-    return render_template('index.html',
-        active_page='home',
-        status=health.get('status', 'unknown'),
-        model_loaded=system.model_loaded,
-        memory_used=health.get('components', {}).get('memory', {}).get('used_mb', 0),
-        memory_total=health.get('components', {}).get('memory', {}).get('total_mb', 512),
-        credits_remaining=health.get('components', {}).get('credits', {}).get('remaining', 0),
-        uptime=str(datetime.now() - system.start_time).split('.')[0],
-        status_class='online' if health.get('status') == 'ok' else 'degraded' if health.get('status') == 'degraded' else 'offline',
-        status_text='آنلاین' if health.get('status') == 'ok' else 'محدود' if health.get('status') == 'degraded' else 'آفلاین'
-    )
-
+# ============================================================
+# روت‌های API (JSON)
+# ============================================================
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -539,9 +460,8 @@ def predict():
             "provided": period
         }), 400
     
-    # ارسال تسک به پس‌زمینه
     result = system.predict_async(coin, period)
-    return jsonify(result), 202  # 202 = Accepted
+    return jsonify(result), 202
 
 
 @app.route('/predict-sync', methods=['GET'])
@@ -608,7 +528,7 @@ def stats():
     return jsonify({
         "api_stats": system.api.get_stats(),
         "model_loaded": system.model_loaded,
-        "uptime": str(datetime.now() - system.start_time),
+        "uptime": str(datetime.now() - system.start_time).split('.')[0],
         "pending_tasks": system.task_manager.queue.qsize(),
         "total_tasks": len(system.task_manager.tasks),
         "timestamp": datetime.now().isoformat()
@@ -617,7 +537,14 @@ def stats():
 
 @app.route('/test-api', methods=['GET'])
 def test_api():
-    """تست ارتباط با API و نمایش داده‌های خام (با Background)"""
+    """
+    تست ارتباط با API و نمایش داده‌های خام
+    
+    پارامترهای Query:
+        coin: شناسه ارز (پیش‌فرض: bitcoin)
+        period: بازه زمانی (پیش‌فرض: 24h)
+        type: نوع داده (chart, coin, fear_greed, btc_dominance, status, credits)
+    """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
     data_type = request.args.get('type', 'chart')
@@ -629,97 +556,31 @@ def test_api():
             "message": f"نوع داده باید یکی از {valid_types} باشد",
             "provided": data_type
         }), 400
-
-
-# ============================================================
-# روت‌های صفحات HTML
-# ============================================================
-
-@app.route('/dashboard')
-def dashboard_page():
-    """داشبورد اصلی"""
-    health = system.health_check()
-    return render_template_string(open('templates/dashboard.html').read(), 
-        active_page='dashboard',
-        status=health.get('status', 'unknown'),
-        model_loaded=system.model_loaded,
-        memory_used=health.get('components', {}).get('memory', {}).get('used_mb', 0),
-        memory_total=health.get('components', {}).get('memory', {}).get('total_mb', 512),
-        memory_percent=health.get('components', {}).get('memory', {}).get('percent', 0),
-        credits_total=health.get('components', {}).get('credits', {}).get('total', 0),
-        credits_used=health.get('components', {}).get('credits', {}).get('used', 0),
-        credits_remaining=health.get('components', {}).get('credits', {}).get('remaining', 0),
-        subscription=health.get('components', {}).get('credits', {}).get('subscription', 'free'),
-        total_requests=health.get('components', {}).get('api_stats', {}).get('total_requests', 0),
-        uptime=str(datetime.now() - system.start_time).split('.')[0],
-        status_class='online' if health.get('status') == 'ok' else 'degraded' if health.get('status') == 'degraded' else 'offline',
-        status_text='آنلاین' if health.get('status') == 'ok' else 'محدود' if health.get('status') == 'degraded' else 'آفلاین'
-    )
-
-@app.route('/predict-page')
-def predict_page():
-    """صفحه پیش‌بینی"""
-    coin = request.args.get('coin', 'bitcoin')
-    period = request.args.get('period', '24h')
-    return render_template_string(open('templates/predict.html').read(),
-        active_page='predict',
-        coin=coin,
-        period=period,
-        status_class='online',
-        status_text='آنلاین',
-        uptime=str(datetime.now() - system.start_time).split('.')[0]
-    )
-
-@app.route('/test-api-page')
-def test_api_page():
-    """صفحه تست API"""
-    return render_template_string(open('templates/test_api.html').read(),
-        active_page='test-api',
-        status_class='online',
-        status_text='آنلاین',
-        uptime=str(datetime.now() - system.start_time).split('.')[0]
-    )
-
-@app.route('/health-page')
-def health_page():
-    """صفحه سلامت سیستم"""
-    return render_template_string(open('templates/health.html').read(),
-        active_page='health',
-        status_class='online',
-        status_text='آنلاین',
-        uptime=str(datetime.now() - system.start_time).split('.')[0]
-    )
-
-@app.route('/stats-page')
-def stats_page():
-    """صفحه آمار"""
-    return render_template_string(open('templates/stats.html').read(),
-        active_page='stats',
-        status_class='online',
-        status_text='آنلاین',
-        uptime=str(datetime.now() - system.start_time).split('.')[0]
-    )
-
     
-    # استفاده از Background Task برای دریافت داده
-    def fetch_data():
-        try:
-            if data_type == 'chart':
-                data = system.api.get_chart(coin, period)
-                if data and "error" not in data:
-                    return {
-                        "count": len(data),
-                        "sample": data[:5] if len(data) > 5 else data,
-                        "first_point": data[0] if data else None,
-                        "last_point": data[-1] if data else None,
-                        "data_type": "list_of_arrays",
-                        "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
-                    }
-                return {"error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}
-            elif data_type == 'coin':
-                data = system.api.get_coin(coin)
-                if data and "error" not in data:
-                    return {
+    try:
+        if data_type == 'chart':
+            data = system.api.get_chart(coin, period)
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "count": len(data),
+                    "sample": data[:5] if len(data) > 5 else data,
+                    "first_point": data[0] if data else None,
+                    "last_point": data[-1] if data else None,
+                    "data_type": "list_of_arrays",
+                    "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
+                })
+            return jsonify({
+                "success": False,
+                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            }), 400
+            
+        elif data_type == 'coin':
+            data = system.api.get_coin(coin)
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "data": {
                         "id": data.get('id'),
                         "name": data.get('name'),
                         "symbol": data.get('symbol'),
@@ -730,38 +591,73 @@ def stats_page():
                         "priceChange1d": data.get('priceChange1d'),
                         "priceChange1w": data.get('priceChange1w')
                     }
-                return {"error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}
-            else:
-                return {"error": f"نوع داده {data_type} پشتیبانی نمیشود"}
-        except Exception as e:
-            return {"error": str(e)}
-    
-    task_id = system.task_manager.submit(fetch_data)
-    
-    return jsonify({
-        "status": "processing",
-        "task_id": task_id,
-        "message": "دریافت داده در پس‌زمینه شروع شد",
-        "check_status": f"/task-status?task_id={task_id}"
-    }), 202
+                })
+            return jsonify({
+                "success": False,
+                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            }), 400
+            
+        elif data_type == 'fear_greed':
+            data = system.api.get_fear_greed(use_cache=False)
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "name": data.get('name'),
+                        "now": data.get('now'),
+                        "yesterday": data.get('yesterday'),
+                        "lastWeek": data.get('lastWeek')
+                    }
+                })
+            return jsonify({
+                "success": False,
+                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            }), 400
+            
+        elif data_type == 'btc_dominance':
+            data = system.api.get_btc_dominance(period, use_cache=False)
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "count": len(data.get('data', [])),
+                    "sample": data.get('data', [])[:10],
+                    "full_response": data
+                })
+            return jsonify({
+                "success": False,
+                "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            }), 400
+            
+        elif data_type == 'status':
+            data = system.api.get_status()
+            return jsonify({"success": True, "data": data})
+            
+        elif data_type == 'credits':
+            data = system.api.get_credits()
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "totalCredits": data.get('totalCredits'),
+                        "usedCredits": data.get('usedCredits'),
+                        "remainingCredits": data.get('remainingCredits'),
+                        "subscription": data.get('subscription')
+                    }
+                })
+            return jsonify({
+                "success": False,
+                "error": data.get("message", "خطا در دریافت اعتبار") if data else "داده‌ای دریافت نشد"
+            }), 400
+            
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({
-        "error": "NotFound",
-        "message": "مسیر درخواستی وجود ندارد",
-        "available_endpoints": ["/", "/health", "/predict", "/predict-sync", "/task-status", "/stats", "/test-api"]
-    }), 404
+# ============================================================
+# Import Routes (صفحات HTML)
+# ============================================================
 
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({
-        "error": "InternalServerError",
-        "message": "خطای داخلی سرور",
-        "timestamp": datetime.now().isoformat()
-    }), 500
+from routes import *
 
 
 # ============================================================
@@ -773,19 +669,26 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۲.۰ - با Background Tasks)")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۳.۰ - ماژولار)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
     print("=" * 60)
-    print("📌 اندپوینت‌های موجود:")
+    print("📌 صفحات HTML:")
     print("  /              - صفحه اصلی")
-    print("  /health        - بررسی سلامت")
-    print("  /predict       - پیش‌بینی (Async - سریع) ⭐")
-    print("  /predict-sync  - پیش‌بینی (Sync - ممکنه Timeout بخوره)")
-    print("  /task-status   - بررسی وضعیت تسک")
-    print("  /stats         - آمار درخواست‌ها")
-    print("  /test-api      - تست API (Async)")
+    print("  /dashboard     - داشبورد")
+    print("  /predict-page  - پیش‌بینی")
+    print("  /test-api-page - تست API")
+    print("  /health-page   - سلامت سیستم")
+    print("  /stats-page    - آمار")
+    print("=" * 60)
+    print("📌 اندپوینت‌های API:")
+    print("  /health        - بررسی سلامت (JSON)")
+    print("  /predict       - پیش‌بینی (Async)")
+    print("  /predict-sync  - پیش‌بینی (Sync)")
+    print("  /task-status   - وضعیت تسک")
+    print("  /stats         - آمار (JSON)")
+    print("  /test-api      - تست API (JSON)")
     print("=" * 60)
 
     app.run(host="0.0.0.0", port=port, debug=debug)
