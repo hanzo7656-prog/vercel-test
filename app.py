@@ -38,42 +38,95 @@ class TradingSignalSystem:
         self.load_model()
 
     def _get_memory_usage(self):
-        """دریافت دقیق حافظه مصرفی با روش‌های مختلف"""
-    
-        # روش 1: استفاده از free -m (دقیق‌ترین)
+        """
+        دریافت دقیق حافظه مصرفی پروسه فعلی
+        (مقدار واقعی حافظه اختصاص داده شده به کانتینر)
+        """
         try:
-            import subprocess
-            result = subprocess.run(['free', '-m'], capture_output=True, text=True, timeout=2)
-            lines = result.stdout.split('\n')
-            for line in lines:
-                if 'Mem:' in line:
-                    parts = line.split()
-                    total_mb = float(parts[1])
-                    used_mb = float(parts[2])
-                    return used_mb, total_mb
+            # روش 1: از /proc/self/status (دقیق‌ترین برای پروسه فعلی)
+            if os.path.exists('/proc/self/status'):
+                with open('/proc/self/status', 'r') as f:
+                    for line in f:
+                        if line.startswith('VmRSS:'):
+                            # VmRSS = Resident Set Size (حافظه واقعی مصرفی)
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                used_kb = int(parts[1])
+                                used_mb = used_kb / 1024
+                                
+                                # گرفتن محدودیت از Cgroup (اگر وجود داشته باشه)
+                                total_mb = self._get_memory_limit()
+                                return used_mb, total_mb
         except:
             pass
-     
-        # روش 2: Cgroup (برای Docker/Render)
+        
+        # روش 2: از Cgroup (برای Docker/Render)
         try:
-            if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
-                with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
-                    limit_bytes = int(f.read())
-                    if limit_bytes < 10**15:
-                        with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f2:
-                            used_bytes = int(f2.read())
-                        return used_bytes / 1024**2, limit_bytes / 1024**2
+            used_mb, total_mb = self._get_cgroup_memory()
+            if total_mb > 0:
+                return used_mb, total_mb
         except:
             pass
-    
+        
         # روش 3: Fallback به psutil
         try:
             import psutil
-            mem = psutil.virtual_memory()
-            return mem.used / 1024**2, mem.total / 1024**2
+            process = psutil.Process(os.getpid())
+            used_mb = process.memory_info().rss / 1024**2
+            total_mb = psutil.virtual_memory().total / 1024**2
+            return used_mb, total_mb
         except:
             return 0, 0
- 
+    
+    def _get_memory_limit(self):
+        """دریافت محدودیت حافظه از Cgroup"""
+        try:
+            # Cgroup v1
+            if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
+                with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
+                    limit_bytes = int(f.read())
+                    if limit_bytes < 10**15:  # اگر محدودیت اعمال شده باشه
+                        return limit_bytes / 1024**2
+            
+            # Cgroup v2
+            if os.path.exists('/sys/fs/cgroup/memory.max'):
+                with open('/sys/fs/cgroup/memory.max', 'r') as f:
+                    limit_str = f.read().strip()
+                    if limit_str != 'max':
+                        limit_bytes = int(limit_str)
+                        return limit_bytes / 1024**2
+        except:
+            pass
+        
+        # اگر محدودیتی پیدا نشد، 512MB رو پیش‌فرض بگیر (محدودیت Render)
+        return 512
+    
+    def _get_cgroup_memory(self):
+        """دریافت حافظه از Cgroup"""
+        try:
+            # Cgroup v1
+            if os.path.exists('/sys/fs/cgroup/memory/memory.usage_in_bytes'):
+                with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f:
+                    used_bytes = int(f.read())
+                    used_mb = used_bytes / 1024**2
+                    total_mb = self._get_memory_limit()
+                    return used_mb, total_mb
+        except:
+            pass
+        
+        # Cgroup v2
+        try:
+            if os.path.exists('/sys/fs/cgroup/memory.current'):
+                with open('/sys/fs/cgroup/memory.current', 'r') as f:
+                    used_bytes = int(f.read().strip())
+                    used_mb = used_bytes / 1024**2
+                    total_mb = self._get_memory_limit()
+                    return used_mb, total_mb
+        except:
+            pass
+        
+        return 0, 0
+
     def load_model(self):
         """
         بارگذاری مدل XGBoost از فایل
@@ -396,9 +449,14 @@ class TradingSignalSystem:
                 "message": f"خطا: {str(e)}"
             }
 
-        # 4. حافظه (اصلاح‌شده با روش Cgroup)
+        # 4. حافظه (با روش دقیق /proc/self/status)
         try:
             used_mb, total_mb = self._get_memory_usage()
+            
+            # اگر total_mb صفر یا خیلی بزرگ بود، از مقدار پیش‌فرض استفاده کن
+            if total_mb == 0 or total_mb > 10000:  # بیشتر از 10GB یعنی کل سیستم
+                total_mb = 512  # محدودیت پیش‌فرض Render
+            
             memory_percent = (used_mb / total_mb) * 100 if total_mb > 0 else 0
 
             status["components"]["memory"] = {
