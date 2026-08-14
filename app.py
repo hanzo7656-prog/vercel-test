@@ -38,31 +38,42 @@ class TradingSignalSystem:
         self.load_model()
 
     def _get_memory_usage(self):
-        """
-        دریافت دقیق حافظه مصرفی در کانتینر
-        (برای Render و Docker)
-        """
+        """دریافت دقیق حافظه مصرفی با روش‌های مختلف"""
+    
+        # روش 1: استفاده از free -m (دقیق‌ترین)
         try:
-            # روش Cgroup (برای Render، Docker، Kubernetes)
+            import subprocess
+            result = subprocess.run(['free', '-m'], capture_output=True, text=True, timeout=2)
+            lines = result.stdout.split('\n')
+            for line in lines:
+                if 'Mem:' in line:
+                    parts = line.split()
+                    total_mb = float(parts[1])
+                    used_mb = float(parts[2])
+                    return used_mb, total_mb
+        except:
+            pass
+     
+        # روش 2: Cgroup (برای Docker/Render)
+        try:
             if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
                 with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
                     limit_bytes = int(f.read())
-                    # اگر محدودیت اعمال شده (نه unlimited)
                     if limit_bytes < 10**15:
                         with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f2:
                             used_bytes = int(f2.read())
                         return used_bytes / 1024**2, limit_bytes / 1024**2
         except:
             pass
-
-        # روش جایگزین: psutil
+    
+        # روش 3: Fallback به psutil
         try:
             import psutil
             mem = psutil.virtual_memory()
             return mem.used / 1024**2, mem.total / 1024**2
         except:
             return 0, 0
-
+ 
     def load_model(self):
         """
         بارگذاری مدل XGBoost از فایل
