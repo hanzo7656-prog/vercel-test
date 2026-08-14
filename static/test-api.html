@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست API</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        pre {
+            background: #0d1624;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            max-height: 500px;
+            overflow-y: auto;
+            color: #c0d0e0;
+            border: 1px solid #1a2a3a;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+        }
+        .json-key { color: #00d4ff; }
+        .json-string { color: #00ff88; }
+        .json-number { color: #ffaa00; }
+        .json-boolean { color: #ff6b6b; }
+        .json-null { color: #ff4444; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
+        <div class="navbar-menu">
+            <a href="/">🏠 خانه</a>
+            <a href="/dashboard">📈 داشبورد</a>
+            <a href="/predict-page">🎯 پیش‌بینی</a>
+            <a href="/test-api-page" class="active">🔌 تست API</a>
+            <a href="/health-page">💚 سلامت</a>
+            <a href="/stats-page">📊 آمار</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">🔌 تست API کوین‌استیتس</div>
+            <div class="card-subtitle">دریافت و نمایش داده‌های خام از API</div>
+            <form id="testForm" onsubmit="return false;">
+                <div class="row">
+                    <div class="form-group">
+                        <label>📋 نوع داده</label>
+                        <select class="form-control" id="testType" onchange="toggleFields()">
+                            <option value="chart" selected>نمودار قیمت (Chart)</option>
+                            <option value="coin">اطلاعات لحظه‌ای (Coin)</option>
+                            <option value="fear_greed">شاخص ترس و طمع</option>
+                            <option value="btc_dominance">سلطه بیت‌کوین</option>
+                            <option value="status">وضعیت API</option>
+                            <option value="credits">اعتبار باقیمانده</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="coinGroup">
+                        <label>🪙 ارز</label>
+                        <select class="form-control" id="testCoin">
+                            <option value="bitcoin">بیت‌کوین (BTC)</option>
+                            <option value="ethereum">اتریوم (ETH)</option>
+                            <option value="solana">سولانا (SOL)</option>
+                            <option value="cardano">کاردانو (ADA)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="periodGroup">
+                        <label>⏱️ بازه</label>
+                        <select class="form-control" id="testPeriod">
+                            <option value="1h">۱ ساعت</option>
+                            <option value="4h">۴ ساعت</option>
+                            <option value="24h" selected>۲۴ ساعت</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="submitTest()">🔍 دریافت</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="testLoading" class="hidden">
+            <div class="card"><div class="loading"><div class="spinner"></div><p>⏳ در حال دریافت داده...</p></div></div>
+        </div>
+
+        <div id="testResult" class="hidden">
+            <div class="card">
+                <div class="card-title">📊 نتیجه</div>
+                <div id="testContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script>
+        function toggleFields() {
+            const type = document.getElementById('testType').value;
+            document.getElementById('coinGroup').style.display = 
+                ['chart', 'coin', 'btc_dominance'].includes(type) ? 'block' : 'none';
+            document.getElementById('periodGroup').style.display = 
+                ['chart', 'btc_dominance'].includes(type) ? 'block' : 'none';
+        }
+        toggleFields();
+
+        function submitTest() {
+            const type = document.getElementById('testType').value;
+            const coin = document.getElementById('testCoin').value;
+            const period = document.getElementById('testPeriod').value;
+
+            let url = `/test-api?type=${type}`;
+            if (['chart', 'coin', 'btc_dominance'].includes(type)) url += `&coin=${coin}`;
+            if (['chart', 'btc_dominance'].includes(type)) url += `&period=${period}`;
+
+            document.getElementById('testLoading').classList.remove('hidden');
+            document.getElementById('testResult').classList.add('hidden');
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('testLoading').classList.add('hidden');
+                    document.getElementById('testResult').classList.remove('hidden');
+                    document.getElementById('testContent').innerHTML = 
+                        `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                })
+                .catch(err => {
+                    document.getElementById('testLoading').classList.add('hidden');
+                    showToast('❌ خطا: ' + err.message, 'error');
+                });
+        }
+
+        // اجرای خودکار اگر پارامترها در URL باشن
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('type')) {
+            document.getElementById('testType').value = params.get('type');
+            if (params.get('coin')) document.getElementById('testCoin').value = params.get('coin');
+            if (params.get('period')) document.getElementById('testPeriod').value = params.get('period');
+            toggleFields();
+            submitTest();
+        }
+    </script>
+</body>
+</html>
