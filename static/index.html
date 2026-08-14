@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم تشخیص الگوی بازاری</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
+        <div class="navbar-menu">
+            <a href="/" class="active">🏠 خانه</a>
+            <a href="/dashboard">📈 داشبورد</a>
+            <a href="/predict-page">🎯 پیش‌بینی</a>
+            <a href="/test-api-page">🔌 تست API</a>
+            <a href="/health-page">💚 سلامت</a>
+            <a href="/stats-page">📊 آمار</a>
+        </div>
+        <div class="navbar-status">
+            <span><span class="status-dot online"></span> آنلاین</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-title">🚀 سیستم تشخیص الگوهای بازاری</div>
+                <div class="card-subtitle">
+                    مبتنی بر XGBoost - دریافت داده از API کوین‌استیتس
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
+                    <a href="/dashboard" class="btn btn-primary">📈 ورود به داشبورد</a>
+                    <a href="/predict-page" class="btn btn-success">🎯 پیش‌بینی الگو</a>
+                    <a href="/health-page" class="btn btn-outline">💚 سلامت سیستم</a>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="card">
+                <div class="card-title">📊 وضعیت سریع</div>
+                <div id="quickStatus">
+                    <div class="loading" style="padding: 20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">🔗 اندپوینت‌های سریع</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <a href="/predict-page?coin=bitcoin&period=24h" class="btn btn-sm btn-primary">🎯 بیت‌کوین (۲۴h)</a>
+                    <a href="/predict-page?coin=ethereum&period=24h" class="btn btn-sm btn-primary">🎯 اتریوم (۲۴h)</a>
+                    <a href="/test-api-page?type=chart&coin=bitcoin&period=24h" class="btn btn-sm btn-outline">🔌 تست API بیت‌کوین</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script>
+        // بارگذاری وضعیت سریع
+        fetch('/health')
+            .then(res => res.json())
+            .then(data => {
+                const el = document.getElementById('quickStatus');
+                const status = data.status || 'unknown';
+                const statusClass = status === 'ok' ? 'badge-success' : status === 'degraded' ? 'badge-warning' : 'badge-danger';
+                el.innerHTML = `
+                    <table class="table">
+                        <tr><td>وضعیت</td><td><span class="badge ${statusClass}">${status}</span></td></tr>
+                        <tr><td>مدل</td><td><span class="badge ${data.components?.model?.status === 'healthy' ? 'badge-success' : 'badge-warning'}">${data.components?.model?.mode || 'DEMO'}</span></td></tr>
+                        <tr><td>اعتبار</td><td>${data.components?.credits?.remaining || 0}</td></tr>
+                    </table>
+                `;
+            })
+            .catch(() => {
+                document.getElementById('quickStatus').innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت وضعیت</p>';
+            });
+    </script>
+</body>
+</html>
