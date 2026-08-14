@@ -34,7 +34,34 @@ class TradingSignalSystem:
         self.api = CoinStatsAPI(api_key)
         self.model = None
         self.model_loaded = False
+        self.start_time = datetime.now()
         self.load_model()
+
+    def _get_memory_usage(self):
+        """
+        دریافت دقیق حافظه مصرفی در کانتینر
+        (برای Render و Docker)
+        """
+        try:
+            # روش Cgroup (برای Render، Docker، Kubernetes)
+            if os.path.exists('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
+                with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
+                    limit_bytes = int(f.read())
+                    # اگر محدودیت اعمال شده (نه unlimited)
+                    if limit_bytes < 10**15:
+                        with open('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'r') as f2:
+                            used_bytes = int(f2.read())
+                        return used_bytes / 1024**2, limit_bytes / 1024**2
+        except:
+            pass
+
+        # روش جایگزین: psutil
+        try:
+            import psutil
+            mem = psutil.virtual_memory()
+            return mem.used / 1024**2, mem.total / 1024**2
+        except:
+            return 0, 0
 
     def load_model(self):
         """
@@ -78,6 +105,7 @@ class TradingSignalSystem:
         8: نوسان (انحراف معیار بازده‌ها)
         9: شاخص ترس و طمع (نرمال‌سازی شده)
         10-12: شیب قیمت در بازه‌های ۵، ۱۰، ۲۰ قدمی
+        13: قدرت روند (R-squared)
         """
         if not chart_data or len(chart_data) < 30:
             return None
@@ -100,7 +128,6 @@ class TradingSignalSystem:
         for lag in [1, 3, 5, 10]:
             if len(prices) > lag:
                 ret = (prices[-1] - prices[-lag-1]) / (prices[-lag-1] + 1e-8)
-                # محدود کردن برای جلوگیری از نویز شدید
                 features.append(np.clip(ret, -0.5, 0.5))
             else:
                 features.append(0.0)
@@ -127,7 +154,7 @@ class TradingSignalSystem:
             fg = self.api.get_fear_greed(use_cache=True)
             if fg and 'now' in fg:
                 fear_value = fg['now'].get('value', 50)
-                features.append(fear_value / 100.0)  # نرمال‌سازی 0-1
+                features.append(fear_value / 100.0)
             else:
                 features.append(0.5)
         except:
@@ -226,7 +253,6 @@ class TradingSignalSystem:
                 prediction = 0.5 + (np.random.randn() * 0.05)
         else:
             # حالت DEMO: شبیه‌سازی ساده بر اساس ویژگی‌ها
-            # هرچه ویژگی‌ها قوی‌تر باشن، احتمال صعود بیشتره
             base_score = 0.5
 
             # تأثیر بازده‌ها
@@ -346,7 +372,7 @@ class TradingSignalSystem:
                     "remaining": credits.get('remainingCredits'),
                     "total": credits.get('totalCredits'),
                     "used": credits.get('usedCredits'),
-                    "subscription": credits.get('subscription')
+                    "subscription": credits.get('subscription', 'free')
                 }
             else:
                 status["components"]["credits"] = {
@@ -359,18 +385,15 @@ class TradingSignalSystem:
                 "message": f"خطا: {str(e)}"
             }
 
-        # 4. حافظه
+        # 4. حافظه (اصلاح‌شده با روش Cgroup)
         try:
-            import psutil
-            mem = psutil.virtual_memory()
-            memory_usage_mb = mem.used / (1024 * 1024)
-            memory_total_mb = mem.total / (1024 * 1024)
-            memory_percent = mem.percent
+            used_mb, total_mb = self._get_memory_usage()
+            memory_percent = (used_mb / total_mb) * 100 if total_mb > 0 else 0
 
             status["components"]["memory"] = {
                 "status": "healthy" if memory_percent < 80 else "warning",
-                "used_mb": round(memory_usage_mb, 1),
-                "total_mb": round(memory_total_mb, 1),
+                "used_mb": round(used_mb, 1),
+                "total_mb": round(total_mb, 1),
                 "percent": round(memory_percent, 1)
             }
 
@@ -475,7 +498,7 @@ def stats():
     return jsonify({
         "api_stats": system.api.get_stats(),
         "model_loaded": system.model_loaded,
-        "uptime": "N/A",  # میشه با زمان شروع محاسبه کرد
+        "uptime": str(datetime.now() - system.start_time),
         "timestamp": datetime.now().isoformat()
     })
 
