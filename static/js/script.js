@@ -1,8 +1,72 @@
 // ============================================================
-// توابع عمومی
+// سیستم تشخیص الگوهای بازاری - توابع عمومی
 // ============================================================
 
-// نمایش نوتیفیکیشن
+// ============================================================
+// ۱. آپتایم زنده (بدون رفرش)
+// ============================================================
+
+let systemStartTime = null;
+
+function fetchAndStartUptime() {
+    const displayEl = document.getElementById('uptimeDisplay');
+    if (!displayEl) return;
+    
+    fetch('/stats')
+        .then(res => res.json())
+        .then(data => {
+            if (data.uptime) {
+                const parts = data.uptime.split(':').map(Number);
+                let totalSeconds = 0;
+                if (parts.length === 3) {
+                    totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                } else if (parts.length === 2) {
+                    totalSeconds = parts[0] * 60 + parts[1];
+                } else {
+                    totalSeconds = parts[0] || 0;
+                }
+                
+                systemStartTime = Date.now() - (totalSeconds * 1000);
+                updateUptimeDisplay();
+                setInterval(updateUptimeDisplay, 1000);
+            }
+        })
+        .catch(() => {
+            displayEl.textContent = '⚠️ نامشخص';
+        });
+}
+
+function updateUptimeDisplay() {
+    const displayEl = document.getElementById('uptimeDisplay');
+    if (!displayEl || !systemStartTime) return;
+    
+    const elapsed = Math.floor((Date.now() - systemStartTime) / 1000);
+    displayEl.textContent = formatDuration(elapsed);
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) return `${seconds} ثانیه`;
+    
+    const days = Math.floor(seconds / 86400);
+    seconds -= days * 86400;
+    const hours = Math.floor(seconds / 3600);
+    seconds -= hours * 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds -= minutes * 60;
+    
+    let parts = [];
+    if (days > 0) parts.push(`${days} روز`);
+    if (hours > 0 || days > 0) parts.push(`${hours} ساعت`);
+    if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes} دقیقه`);
+    parts.push(`${seconds} ثانیه`);
+    
+    return parts.join(' ');
+}
+
+// ============================================================
+// ۲. نمایش نوتیفیکیشن (Toast)
+// ============================================================
+
 function showToast(message, type = 'info') {
     const colors = {
         info: '#00d4ff',
@@ -36,13 +100,17 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// ============================================================
+// ۳. ابزارهای کمکی
+// ============================================================
+
 // فرمت کردن عدد با کاما
 function numberWithCommas(x) {
-    if (!x) return '0';
+    if (!x && x !== 0) return '0';
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-// فرمت کردن تاریخ
+// فرمت کردن تاریخ به فارسی
 function formatDate(dateString) {
     if (!dateString) return '-';
     try {
@@ -60,7 +128,36 @@ function formatDate(dateString) {
     }
 }
 
-// کپی در کلیپ‌بورد
+// فرمت قیمت با نماد دلار
+function formatPrice(price) {
+    if (!price && price !== 0) return '-';
+    if (price >= 1000) {
+        return '$' + numberWithCommas(Math.round(price));
+    }
+    return '$' + price.toFixed(2);
+}
+
+// دریافت وضعیت سیستم
+function getSystemStatus() {
+    return fetch('/health')
+        .then(res => res.json())
+        .catch(() => ({ status: 'unknown', components: {} }));
+}
+
+// دریافت پارامترهای URL
+function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const result = {};
+    for (const [key, value] of params) {
+        result[key] = value;
+    }
+    return result;
+}
+
+// ============================================================
+// ۴. کپی در کلیپ‌بورد
+// ============================================================
+
 function copyToClipboard(text) {
     if (navigator.clipboard) {
         navigator.clipboard.writeText(text).then(() => {
@@ -85,15 +182,44 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
-// دریافت وضعیت سیستم (برای استفاده در صفحات)
-function getSystemStatus() {
-    return fetch('/health')
-        .then(res => res.json())
-        .catch(() => ({ status: 'unknown', components: {} }));
+// ============================================================
+// ۵. مدیریت خطاها
+// ============================================================
+
+function handleApiError(error, fallbackMessage = 'خطا در ارتباط با سرور') {
+    console.error('API Error:', error);
+    showToast(`❌ ${fallbackMessage}`, 'error');
 }
 
 // ============================================================
-// توابع مخصوص داشبورد
+// ۶. اعتبارسنجی فرم‌ها
+// ============================================================
+
+function validateForm(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return true;
+    
+    const inputs = form.querySelectorAll('input[required], select[required]');
+    let isValid = true;
+    
+    inputs.forEach(input => {
+        if (!input.value || input.value.trim() === '') {
+            input.style.borderColor = '#ff4444';
+            isValid = false;
+        } else {
+            input.style.borderColor = '#1a2a3a';
+        }
+    });
+    
+    if (!isValid) {
+        showToast('❌ لطفاً تمام فیلدهای ضروری را پر کنید', 'error');
+    }
+    
+    return isValid;
+}
+
+// ============================================================
+// ۷. توابع مخصوص داشبورد
 // ============================================================
 
 function loadDashboardData() {
@@ -116,7 +242,7 @@ function loadDashboardData() {
                         <table class="table">
                             <tr><td>وضعیت کلی</td><td><span class="badge ${data.status === 'ok' ? 'badge-success' : data.status === 'degraded' ? 'badge-warning' : 'badge-danger'}">${data.status || 'نامشخص'}</span></td></tr>
                             <tr><td>حافظه مصرفی</td><td>${memory.used_mb || 0}MB / ${memory.total_mb || 512}MB (${memory.percent || 0}%)</td></tr>
-                            <tr><td>آپتایم</td><td id="uptimeDisplay">-</td></tr>
+                            <tr><td>آپتایم</td><td id="uptimeDisplay">۰ ثانیه</td></tr>
                         </table>
                     </div>
                     <div class="card">
@@ -131,14 +257,10 @@ function loadDashboardData() {
                 </div>
             `;
             
-            // بروزرسانی آپتایم
-            fetch('/stats')
-                .then(res => res.json())
-                .then(stats => {
-                    const uptimeEl = document.getElementById('uptimeDisplay');
-                    if (uptimeEl && stats.uptime) uptimeEl.textContent = stats.uptime;
-                })
-                .catch(() => {});
+            // شروع آپتایم
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
         })
         .catch(err => {
             container.innerHTML = `<div class="card"><div class="card-title">❌ خطا</div><p style="color:#ff4444;">${err.message}</p></div>`;
@@ -146,11 +268,11 @@ function loadDashboardData() {
 }
 
 // ============================================================
-// اجرا هنگام بارگذاری صفحه
+// ۸. بارگذاری خودکار برای همه صفحات
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // هایلایت کردن منوی فعال
+    // ۱. هایلایت کردن منوی فعال
     const currentPath = window.location.pathname;
     document.querySelectorAll('.navbar-menu a').forEach(link => {
         const href = link.getAttribute('href');
@@ -161,12 +283,162 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // اگر صفحه داشبورد هست، داده‌ها رو بارگذاری کن
+    // ۲. شروع آپتایم (اگر المنت وجود داشته باشه)
+    if (document.getElementById('uptimeDisplay')) {
+        fetchAndStartUptime();
+    }
+    
+    // ۳. اگر صفحه داشبورد هست، داده‌ها رو بارگذاری کن
     if (document.getElementById('dashboardContent')) {
         loadDashboardData();
         // بروزرسانی هر ۳۰ ثانیه
         setInterval(loadDashboardData, 30000);
     }
     
+    // ۴. انیمیشن کارت‌ها (Fade-in)
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'all 0.5s ease';
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100 + index * 50);
+    });
+    
+    // ۵. دکمه‌های بروزرسانی
+    document.querySelectorAll('.btn-refresh, [onclick*="refresh"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const loader = document.createElement('span');
+            loader.className = 'spinner-small';
+            loader.style.cssText = 'display:inline-block;width:16px;height:16px;border:2px solid #1a2a3a;border-top:2px solid #00d4ff;border-radius:50%;animation:spin 1s linear infinite;margin-right:8px;';
+            this.prepend(loader);
+            setTimeout(() => loader.remove(), 1000);
+        });
+    });
+    
     console.log('🚀 سیستم تشخیص الگوی بازاری بارگذاری شد');
+    console.log(`📅 زمان: ${new Date().toLocaleString('fa-IR')}`);
 });
+
+// ============================================================
+// ۹. اسپینر کوچک برای لودینگ‌های داخلی
+// ============================================================
+
+// اضافه کردن استایل اسپینر کوچک
+const style = document.createElement('style');
+style.textContent = `
+    .spinner-small {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #1a2a3a;
+        border-top: 2px solid #00d4ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+`;
+document.head.appendChild(style);
+
+// ============================================================
+// ۱۰. توابع مخصوص صفحه پیش‌بینی (برای نمودار)
+// ============================================================
+
+function createAreaChart(canvasId, data, label = 'قیمت (USD)') {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    
+    // بررسی وجود Chart.js
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js loaded!');
+        return null;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    
+    // ایجاد گرادیان محو شونده
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 300);
+    gradient.addColorStop(0, 'rgba(0, 212, 255, 0.7)');
+    gradient.addColorStop(0.4, 'rgba(0, 212, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 212, 255, 0.0)');
+    
+    // استخراج داده‌ها
+    const labels = data.map(d => {
+        const ts = d[0] || d.timestamp;
+        if (typeof ts === 'number') {
+            return new Date(ts * 1000).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        }
+        return '-';
+    });
+    
+    const prices = data.map(d => d[1] || d.price || 0);
+    
+    return new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: prices,
+                borderColor: '#00d4ff',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#00d4ff',
+                pointBorderColor: '#00d4ff',
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#a0b4c8',
+                        font: { family: 'Vazir' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#0d1624',
+                    titleColor: '#e0e6ed',
+                    bodyColor: '#00d4ff',
+                    borderColor: '#1a2a3a',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, maxTicksLimit: 10 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { 
+                        color: '#7a8fa3', 
+                        font: { family: 'Vazir' }, 
+                        callback: value => '$' + value.toFixed(0) 
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+}
