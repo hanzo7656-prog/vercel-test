@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}پیش‌بینی الگو - سیستم تشخیص الگو{% endblock %}
+
+{% block extra_head %}
+<style>
+    .result-box {
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 20px;
+        text-align: center;
+    }
+    .result-box.buy {
+        background: rgba(0, 255, 136, 0.1);
+        border: 2px solid #00ff88;
+    }
+    .result-box.sell {
+        background: rgba(255, 68, 68, 0.1);
+        border: 2px solid #ff4444;
+    }
+    .result-box.neutral {
+        background: rgba(255, 170, 0, 0.1);
+        border: 2px solid #ffaa00;
+    }
+    .result-box .signal {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .result-box .details {
+        margin-top: 15px;
+        font-size: 0.95rem;
+        color: #a0b4c8;
+    }
+    .result-box .confidence {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+    .confidence-bar {
+        width: 100%;
+        height: 8px;
+        background: #1a2a3a;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    .confidence-bar .fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 1s ease;
+    }
+    .confidence-bar .fill.buy {
+        background: linear-gradient(90deg, #00ff88, #00cc66);
+    }
+    .confidence-bar .fill.sell {
+        background: linear-gradient(90deg, #ff4444, #cc0000);
+    }
+    .confidence-bar .fill.neutral {
+        background: linear-gradient(90deg, #ffaa00, #cc8800);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">🎯 پیش‌بینی الگوی بازاری</div>
+    <div class="card-subtitle">
+        انتخاب ارز و بازه زمانی برای تشخیص الگوی قیمت
+    </div>
+
+    <form id="predictForm" onsubmit="return false;">
+        <div class="row" style="grid-template-columns: 1fr 1fr auto;">
+            <div class="form-group">
+                <label for="coin">🪙 ارز دیجیتال</label>
+                <select class="form-control" id="coin" name="coin">
+                    <option value="bitcoin" {% if coin == 'bitcoin' %}selected{% endif %}>بیت‌کوین (BTC)</option>
+                    <option value="ethereum" {% if coin == 'ethereum' %}selected{% endif %}>اتریوم (ETH)</option>
+                    <option value="solana" {% if coin == 'solana' %}selected{% endif %}>سولانا (SOL)</option>
+                    <option value="cardano" {% if coin == 'cardano' %}selected{% endif %}>کاردانو (ADA)</option>
+                    <option value="ripple" {% if coin == 'ripple' %}selected{% endif %}>ریپل (XRP)</option>
+                    <option value="dogecoin" {% if coin == 'dogecoin' %}selected{% endif %}>داوج‌کوین (DOGE)</option>
+                    <option value="polkadot" {% if coin == 'polkadot' %}selected{% endif %}>پولکادات (DOT)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="period">⏱️ بازه زمانی</label>
+                <select class="form-control" id="period" name="period">
+                    <option value="1h" {% if period == '1h' %}selected{% endif %}>۱ ساعت</option>
+                    <option value="4h" {% if period == '4h' %}selected{% endif %}>۴ ساعت</option>
+                    <option value="24h" {% if period == '24h' %}selected{% endif %}>۲۴ ساعت</option>
+                </select>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button type="button" class="btn btn-success" onclick="submitPredict()">
+                    🚀 پیش‌بینی
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- نتیجه پیش‌بینی -->
+<div id="resultContainer" class="hidden">
+    <div class="card" id="resultCard">
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<!-- وضعیت پردازش -->
+<div id="loadingContainer" class="hidden">
+    <div class="card">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="color: #a0b4c8;">⏳ در حال پردازش داده‌ها...</p>
+            <p style="color: #4a5a6a; font-size: 0.85rem;" id="taskIdDisplay"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTaskId = null;
+    let checkInterval = null;
+
+    function submitPredict() {
+        const coin = document.getElementById('coin').value;
+        const period = document.getElementById('period').value;
+
+        // نمایش لودینگ
+        document.getElementById('loadingContainer').classList.remove('hidden');
+        document.getElementById('resultContainer').classList.add('hidden');
+
+        fetch(`/predict?coin=${coin}&period=${period}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.task_id) {
+                    currentTaskId = data.task_id;
+                    document.getElementById('taskIdDisplay').textContent = 
+                        `شناسه تسک: ${currentTaskId}`;
+                    startPolling();
+                } else {
+                    showResult(data);
+                }
+            })
+            .catch(err => {
+                document.getElementById('loadingContainer').classList.add('hidden');
+                alert('خطا در ارسال درخواست: ' + err.message);
+            });
+    }
+
+    function startPolling() {
+        if (checkInterval) clearInterval(checkInterval);
+        checkInterval = setInterval(() => {
+            fetch(`/task-status?task_id=${currentTaskId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(checkInterval);
+                        document.getElementById('loadingContainer').classList.add('hidden');
+                        showResult(data.result);
+                    } else if (data.status === 'failed') {
+                        clearInterval(checkInterval);
+                        document.getElementById('loadingContainer').classList.add('hidden');
+                        alert('خطا در پردازش: ' + (data.error || 'خطای ناشناخته'));
+                    }
+                })
+                .catch(err => console.error('Polling error:', err));
+        }, 2000); // هر ۲ ثانیه چک کن
+    }
+
+    function showResult(result) {
+        const container = document.getElementById('resultContainer');
+        const content = document.getElementById('resultContent');
+        container.classList.remove('hidden');
+
+        const signalType = result.signal_type || 'NEUTRAL';
+        const signalClass = signalType.toLowerCase();
+        const confidence = result.confidence_score || 50;
+
+        let signalEmoji = '🟡';
+        if (signalType === 'BUY') signalEmoji = '🟢';
+        else if (signalType === 'SELL') signalEmoji = '🔴';
+
+        content.innerHTML = `
+            <div class="result-box ${signalClass}">
+                <div class="signal">${signalEmoji} ${result.signal || 'بدون سیگنال'}</div>
+                <div class="confidence">${result.confidence || '۵۰%'}</div>
+                <div class="confidence-bar">
+                    <div class="fill ${signalClass}" style="width: ${confidence}%;"></div>
+                </div>
+                <div class="details">
+                    <div class="flex flex-between flex-wrap" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #1a2a3a;">
+                        <span>🪙 ${result.coin_name || result.coin}</span>
+                        <span>💰 ${result.current_price ? '$' + Number(result.current_price).toLocaleString() : 'نامشخص'}</span>
+                        <span>⏱️ ${result.period}</span>
+                        <span>📊 ${result.data_points || 0} نقطه</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: #4a5a6a;">
+                        ⏱️ زمان پردازش: ${result.processing_time_ms || 0}ms &nbsp;|&nbsp; 
+                        📅 ${result.timestamp || ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // اگر پارامترهای URL وجود داشت، خودکار اجرا کن
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('coin') && urlParams.get('period')) {
+        document.getElementById('coin').value = urlParams.get('coin');
+        document.getElementById('period').value = urlParams.get('period');
+        submitPredict();
+    }
+</script>
+{% endblock %}
