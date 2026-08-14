@@ -1,7 +1,7 @@
 # app.py
 # ============================================================
 # سیستم اصلی تشخیص الگوهای بازاری با XGBoost
-# شامل: مهندسی ویژگی‌ها، پیش‌بینی، سلامت، و API وب
+# شامل: مهندسی ویژگی‌ها، پیش‌بینی، سلامت، API وب، و تست API
 # ============================================================
 
 import os
@@ -506,11 +506,18 @@ def home():
             "/": "این صفحه",
             "/health": "بررسی سلامت سیستم",
             "/predict": "پیش‌بینی الگو",
-            "/stats": "آمار درخواست‌ها"
+            "/stats": "آمار درخواست‌ها",
+            "/test-api": "تست و نمایش داده‌های خام API"
         },
         "usage": {
             "/predict?coin=bitcoin&period=24h": "پیش‌بینی برای بیت‌کوین با بازه ۲۴ ساعته",
-            "/predict?coin=ethereum&period=1h": "پیش‌بینی برای اتریوم با بازه ۱ ساعته"
+            "/predict?coin=ethereum&period=1h": "پیش‌بینی برای اتریوم با بازه ۱ ساعته",
+            "/test-api?type=chart&coin=bitcoin&period=24h": "نمایش داده‌های چارت",
+            "/test-api?type=coin&coin=bitcoin": "نمایش اطلاعات لحظه‌ای",
+            "/test-api?type=fear_greed": "نمایش شاخص ترس و طمع",
+            "/test-api?type=btc_dominance": "نمایش سلطه بیت‌کوین",
+            "/test-api?type=status": "نمایش وضعیت API",
+            "/test-api?type=credits": "نمایش اعتبار باقیمانده"
         },
         "supported_periods": ["1h", "4h", "24h"],
         "status": "online",
@@ -572,12 +579,151 @@ def stats():
     })
 
 
+# ============================================================
+# اندپوینت تست API (برای بررسی داده‌های خام)
+# ============================================================
+
+@app.route('/test-api', methods=['GET'])
+def test_api():
+    """
+    تست ارتباط با API و نمایش داده‌های خام
+    پارامترهای Query:
+        coin: شناسه ارز (پیش‌فرض: bitcoin)
+        period: بازه زمانی (پیش‌فرض: 24h)
+        type: نوع داده (chart, coin, fear_greed, btc_dominance, status, credits)
+    """
+    coin = request.args.get('coin', 'bitcoin')
+    period = request.args.get('period', '24h')
+    data_type = request.args.get('type', 'chart')
+    
+    # اعتبارسنجی نوع داده
+    valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'status', 'credits']
+    if data_type not in valid_types:
+        return jsonify({
+            "error": "InvalidType",
+            "message": f"نوع داده باید یکی از {valid_types} باشد",
+            "provided": data_type
+        }), 400
+    
+    result = {
+        "request": {
+            "coin": coin,
+            "period": period,
+            "type": data_type,
+            "timestamp": datetime.now().isoformat()
+        },
+        "data": None,
+        "error": None,
+        "success": False
+    }
+    
+    try:
+        if data_type == 'chart':
+            # دریافت داده‌های تاریخی
+            data = system.api.get_chart(coin, period)
+            
+            if data and "error" not in data:
+                # بررسی فرمت داده
+                sample = data[:5] if len(data) > 5 else data
+                result["data"] = {
+                    "count": len(data),
+                    "sample": sample,
+                    "first_point": data[0] if data else None,
+                    "last_point": data[-1] if data else None,
+                    "data_type": "list_of_arrays",
+                    "point_format": "[timestamp, priceUSD, priceBTC, priceETH]"
+                }
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            
+        elif data_type == 'coin':
+            # دریافت اطلاعات لحظه‌ای
+            data = system.api.get_coin(coin)
+            if data and "error" not in data:
+                # فیلدهای کلیدی رو استخراج کن
+                result["data"] = {
+                    "id": data.get('id'),
+                    "name": data.get('name'),
+                    "symbol": data.get('symbol'),
+                    "price": data.get('price'),
+                    "volume": data.get('volume'),
+                    "marketCap": data.get('marketCap'),
+                    "priceChange1h": data.get('priceChange1h'),
+                    "priceChange1d": data.get('priceChange1d'),
+                    "priceChange1w": data.get('priceChange1w'),
+                    "full_response": data  # کل داده برای بررسی بیشتر
+                }
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            
+        elif data_type == 'fear_greed':
+            # دریافت شاخص ترس و طمع
+            data = system.api.get_fear_greed(use_cache=False)
+            if data and "error" not in data:
+                result["data"] = {
+                    "name": data.get('name'),
+                    "now": data.get('now'),
+                    "yesterday": data.get('yesterday'),
+                    "lastWeek": data.get('lastWeek')
+                }
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            
+        elif data_type == 'btc_dominance':
+            # دریافت سلطه بیت‌کوین
+            data = system.api.get_btc_dominance(period, use_cache=False)
+            if data and "error" not in data:
+                result["data"] = {
+                    "count": len(data.get('data', [])),
+                    "sample": data.get('data', [])[:10],
+                    "full_response": data
+                }
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"
+            
+        elif data_type == 'status':
+            # دریافت وضعیت API
+            data = system.api.get_status()
+            if data and "error" not in data:
+                result["data"] = data
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت وضعیت") if data else "داده‌ای دریافت نشد"
+            
+        elif data_type == 'credits':
+            # دریافت اعتبار
+            data = system.api.get_credits()
+            if data and "error" not in data:
+                result["data"] = {
+                    "totalCredits": data.get('totalCredits'),
+                    "usedCredits": data.get('usedCredits'),
+                    "remainingCredits": data.get('remainingCredits'),
+                    "subscription": data.get('subscription')
+                }
+                result["success"] = True
+            else:
+                result["error"] = data.get("message", "خطا در دریافت اعتبار") if data else "داده‌ای دریافت نشد"
+            
+    except Exception as e:
+        result["error"] = str(e)
+    
+    # اگر خطا داشت، کد ۴۰۰ برگردون
+    if not result["success"] and result["error"]:
+        return jsonify(result), 400
+    
+    return jsonify(result)
+
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
         "error": "NotFound",
         "message": "مسیر درخواستی وجود ندارد",
-        "available_endpoints": ["/", "/health", "/predict", "/stats"]
+        "available_endpoints": ["/", "/health", "/predict", "/stats", "/test-api"]
     }), 404
 
 
@@ -605,6 +751,14 @@ if __name__ == "__main__":
     print("🚀 سیستم تشخیص الگوهای بازاری")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
+    print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
+    print("=" * 60)
+    print("📌 اندپوینت‌های موجود:")
+    print("  /           - صفحه اصلی")
+    print("  /health     - بررسی سلامت")
+    print("  /predict    - پیش‌بینی الگو")
+    print("  /stats      - آمار درخواست‌ها")
+    print("  /test-api   - تست و نمایش داده‌های خام API")
     print("=" * 60)
 
     # اجرای سرویس
