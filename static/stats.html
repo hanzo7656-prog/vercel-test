@@ -17,6 +17,12 @@
             <a href="/health-page">💚 سلامت</a>
             <a href="/stats-page" class="active">📊 آمار</a>
         </div>
+        <div class="navbar-status">
+            <span><span class="status-dot online"></span> آنلاین</span>
+            <span style="color: #7a8fa3; font-size: 0.8rem;">
+                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
+            </span>
+        </div>
     </nav>
 
     <div class="container">
@@ -34,6 +40,8 @@
 
     <script src="/static/js/script.js"></script>
     <script>
+        let statsStartTime = null;
+
         function loadStats() {
             const container = document.getElementById('statsContent');
             container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت...</p></div>';
@@ -41,6 +49,20 @@
             fetch('/stats')
                 .then(res => res.json())
                 .then(data => {
+                    // ذخیره زمان شروع برای آپتایم زنده
+                    if (data.uptime) {
+                        const parts = data.uptime.split(':').map(Number);
+                        let totalSeconds = 0;
+                        if (parts.length === 3) {
+                            totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                        } else if (parts.length === 2) {
+                            totalSeconds = parts[0] * 60 + parts[1];
+                        } else {
+                            totalSeconds = parts[0] || 0;
+                        }
+                        statsStartTime = Date.now() - (totalSeconds * 1000);
+                    }
+
                     let html = '<div class="row">';
                     
                     html += `
@@ -48,8 +70,8 @@
                             <div class="card-title">📈 آمار کلی</div>
                             <table class="table">
                                 <tr><td>مدل بارگذاری شده</td><td><span class="badge ${data.model_loaded ? 'badge-success' : 'badge-warning'}">${data.model_loaded ? '✅ بله' : '❌ خیر (DEMO)'}</span></td></tr>
-                                <tr><td>آپتایم</td><td>${data.uptime || 'نامشخص'}</td></tr>
-                                <tr><td>زمان</td><td>${data.timestamp ? new Date(data.timestamp).toLocaleString('fa-IR') : ''}</td></tr>
+                                <tr><td>آپتایم</td><td id="statsUptime">${data.uptime || '۰ ثانیه'}</td></tr>
+                                <tr><td>زمان</td><td id="statsTimestamp">${data.timestamp ? new Date(data.timestamp).toLocaleString('fa-IR') : ''}</td></tr>
                             </table>
                         </div>
                     `;
@@ -80,13 +102,32 @@
                     
                     html += '</div>';
                     container.innerHTML = html;
+
+                    // شروع آپتایم زنده
+                    if (statsStartTime) {
+                        updateStatsUptime();
+                        setInterval(updateStatsUptime, 1000);
+                    }
                 })
                 .catch(err => {
                     container.innerHTML = `<div class="card"><div class="card-title">❌ خطا</div><p style="color:#ff4444;">${err.message}</p></div>`;
                 });
         }
-        loadStats();
-        setInterval(loadStats, 30000);
+
+        function updateStatsUptime() {
+            const el = document.getElementById('statsUptime');
+            if (!el || !statsStartTime) return;
+            const elapsed = Math.floor((Date.now() - statsStartTime) / 1000);
+            el.textContent = formatDuration(elapsed);
+        }
+
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
+            loadStats();
+        });
     </script>
 </body>
 </html>
