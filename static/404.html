@@ -4,54 +4,364 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>۴۰۴ - صفحه یافت نشد</title>
-    <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        .error-page {
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #e0e6ed;
+            direction: rtl;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            min-height: 60vh;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           ANIMATED BACKGROUND
+           ============================================================ */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-animation .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            animation: floatOrb 20s ease-in-out infinite alternate;
+        }
+
+        .bg-animation .orb:nth-child(1) {
+            width: 400px;
+            height: 400px;
+            background: #00d4ff;
+            top: -100px;
+            left: -100px;
+            animation-duration: 25s;
+        }
+
+        .bg-animation .orb:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            background: #00ff88;
+            bottom: -80px;
+            right: -80px;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+
+        .bg-animation .orb:nth-child(3) {
+            width: 250px;
+            height: 250px;
+            background: #ffaa00;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-duration: 35s;
+            animation-delay: -10s;
+        }
+
+        @keyframes floatOrb {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(80px, -60px) scale(1.2);
+            }
+            66% {
+                transform: translate(-60px, 80px) scale(0.9);
+            }
+            100% {
+                transform: translate(40px, -40px) scale(1.1);
+            }
+        }
+
+        /* ============================================================
+           GRID OVERLAY
+           ============================================================ */
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .error-container {
+            position: relative;
+            z-index: 2;
             text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease;
         }
-        .error-page h1 {
-            font-size: 6rem;
-            color: #00d4ff;
-            margin: 0;
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
-        .error-page h2 {
-            font-size: 2rem;
+
+        .error-code {
+            font-size: 7rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            font-family: 'Courier New', monospace;
+            letter-spacing: -4px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 60px rgba(0, 212, 255, 0.2);
+        }
+
+        .error-icon {
+            font-size: 3.5rem;
+            display: block;
+            margin-bottom: 10px;
+            animation: pulseIcon 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseIcon {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .error-title {
+            font-size: 1.8rem;
+            font-weight: 600;
             color: #e0e6ed;
-            margin: 10px 0;
+            margin-bottom: 12px;
         }
-        .error-page p {
+
+        .error-message {
             color: #7a8fa3;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            line-height: 1.8;
+            margin-bottom: 25px;
+            padding: 0 10px;
+        }
+
+        .error-message span {
+            color: #00d4ff;
+        }
+
+        /* ============================================================
+           BACK BUTTON
+           ============================================================ */
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .btn-back:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-back:active {
+            transform: translateY(0);
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .error-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            color: #4a5a6a;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            letter-spacing: 0.5px;
+            background: rgba(10, 14, 23, 0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .error-footer span {
+            color: #00d4ff;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 5rem;
+            }
+            .error-title {
+                font-size: 1.4rem;
+            }
+            .error-container {
+                padding: 30px 20px;
+            }
+            .btn-back {
+                padding: 10px 24px;
+                font-size: 0.9rem;
+            }
+            .bg-animation .orb {
+                filter: blur(60px);
+            }
+            .bg-animation .orb:nth-child(1) {
+                width: 250px;
+                height: 250px;
+            }
+            .bg-animation .orb:nth-child(2) {
+                width: 200px;
+                height: 200px;
+            }
+            .bg-animation .orb:nth-child(3) {
+                width: 180px;
+                height: 180px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .error-code {
+                font-size: 3.5rem;
+                letter-spacing: -2px;
+            }
+            .error-icon {
+                font-size: 2.5rem;
+            }
+            .error-title {
+                font-size: 1.1rem;
+            }
+            .error-message {
+                font-size: 0.85rem;
+            }
+            .error-footer {
+                font-size: 0.65rem;
+                padding: 6px 14px;
+            }
         }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
-        <div class="navbar-menu">
-            <a href="/">🏠 خانه</a>
-            <a href="/dashboard">📈 داشبورد</a>
-            <a href="/predict-page">🎯 پیش‌بینی</a>
-            <a href="/test-api-page">🔌 تست API</a>
-            <a href="/health-page">💚 سلامت</a>
-            <a href="/stats-page">📊 آمار</a>
-        </div>
-    </nav>
 
-    <div class="container">
-        <div class="error-page">
-            <h1>۴۰۴</h1>
-            <h2>صفحه یافت نشد</h2>
-            <p>متأسفیم، صفحه‌ای که به دنبال آن هستید وجود ندارد.</p>
-            <div style="margin-top:20px;">
-                <a href="/" class="btn btn-primary">🏠 بازگشت به خانه</a>
-            </div>
-        </div>
+    <!-- ============================================================
+    ANIMATED BACKGROUND
+    ============================================================ -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
     </div>
+    <div class="grid-overlay"></div>
+
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <div class="error-container">
+        <span class="error-icon">🔍</span>
+        <div class="error-code">404</div>
+        <h1 class="error-title">صفحه مورد نظر یافت نشد</h1>
+        <p class="error-message">
+            متأسفیم، صفحه‌ای که به دنبال آن هستید وجود ندارد یا تغییر کرده است.
+            <br>
+            <span>شاید مسیر را اشتباه وارد کرده‌اید.</span>
+        </p>
+        <a href="/" class="btn-back">
+            <span>←</span>
+            بازگشت به صفحه اصلی
+        </a>
+    </div>
+
+    <!-- ============================================================
+    FOOTER
+    ============================================================ -->
+    <div class="error-footer">
+        🚀 <span id="footerTime"></span> &nbsp;·&nbsp; سیستم تشخیص الگوهای بازاری
+    </div>
+
+    <!-- ============================================================
+    SCRIPT
+    ============================================================ -->
+    <script>
+        function updateFooterTime() {
+            const el = document.getElementById('footerTime');
+            if (el) {
+                const now = new Date();
+                const faDate = now.toLocaleDateString('fa-IR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const faTime = now.toLocaleTimeString('fa-IR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                el.textContent = `${faDate} · ${faTime}`;
+            }
+        }
+
+        updateFooterTime();
+        setInterval(updateFooterTime, 1000);
+    </script>
+
 </body>
 </html>
