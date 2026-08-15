@@ -19,6 +19,8 @@
         .confidence-bar .fill.neutral { background: linear-gradient(90deg, #ffaa00, #cc8800); }
         .hidden { display: none; }
         .result-details { margin-top: 15px; padding-top: 15px; border-top: 1px solid #1a2a3a; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; color: #7a8fa3; font-size: 0.9rem; }
+        .chart-container { background: #0d1624; border-radius: 12px; padding: 20px; margin-top: 15px; border: 1px solid #1a2a3a; height: 350px; position: relative; }
+        .chart-container canvas { width: 100% !important; height: 100% !important; }
     </style>
 </head>
 <body>
@@ -31,6 +33,12 @@
             <a href="/test-api-page">🔌 تست API</a>
             <a href="/health-page">💚 سلامت</a>
             <a href="/stats-page">📊 آمار</a>
+        </div>
+        <div class="navbar-status">
+            <span><span class="status-dot online"></span> آنلاین</span>
+            <span style="color: #7a8fa3; font-size: 0.8rem;">
+                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
+            </span>
         </div>
     </nav>
 
@@ -45,19 +53,32 @@
                         <select class="form-control" id="coin">
                             <option value="bitcoin">بیت‌کوین (BTC)</option>
                             <option value="ethereum">اتریوم (ETH)</option>
+                            <option value="tether">تتر (USDT)</option>
+                            <option value="binancecoin">بایننس کوین (BNB)</option>
                             <option value="solana">سولانا (SOL)</option>
-                            <option value="cardano">کاردانو (ADA)</option>
                             <option value="ripple">ریپل (XRP)</option>
+                            <option value="cardano">کاردانو (ADA)</option>
                             <option value="dogecoin">داوج‌کوین (DOGE)</option>
                             <option value="polkadot">پولکادات (DOT)</option>
+                            <option value="chainlink">چین‌لینک (LINK)</option>
+                            <option value="avalanche">آوالانچ (AVAX)</option>
+                            <option value="shiba-inu">شیبا اینو (SHIB)</option>
+                            <option value="matic-network">پالیگان (MATIC)</option>
+                            <option value="tron">ترون (TRX)</option>
+                            <option value="uniSwap">یونی‌سواپ (UNI)</option>
+                            <option value="litecoin">لایت‌کوین (LTC)</option>
+                            <option value="bitcoin-cash">بیت‌کوین کش (BCH)</option>
+                            <option value="cosmos">کازموس (ATOM)</option>
+                            <option value="ethereum-classic">اتریوم کلاسیک (ETC)</option>
+                            <option value="filecoin">فایل‌کوین (FIL)</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>⏱️ بازه زمانی</label>
                         <select class="form-control" id="period">
-                            <option value="1h">۱ ساعت</option>
-                            <option value="4h">۴ ساعت</option>
-                            <option value="24h" selected>۲۴ ساعت</option>
+                            <option value="24h">۲۴ ساعت</option>
+                            <option value="1w">۱ هفته</option>
+                            <option value="1m">۱ ماه</option>
                         </select>
                     </div>
                     <div class="form-group" style="display: flex; align-items: flex-end;">
@@ -76,10 +97,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/script.js"></script>
     <script>
         let currentTaskId = null;
         let checkInterval = null;
+        let chartInstance = null;
 
         function submitPredict() {
             const coin = document.getElementById('coin').value;
@@ -140,7 +163,7 @@
             const confidence = result.confidence_score || 50;
             const signalEmoji = signalType === 'buy' ? '🟢' : signalType === 'sell' ? '🔴' : '🟡';
 
-            content.innerHTML = `
+            let html = `
                 <div class="result-box ${signalType}">
                     <div class="signal">${signalEmoji} ${result.signal || 'بدون سیگنال'}</div>
                     <div style="font-size: 2.5rem; font-weight: bold; margin-top: 5px;">${result.confidence || '۵۰%'}</div>
@@ -155,15 +178,112 @@
                     <div style="margin-top:10px;font-size:0.8rem;color:#4a5a6a;">📅 ${result.timestamp ? new Date(result.timestamp).toLocaleString('fa-IR') : ''}</div>
                 </div>
             `;
+
+            // اضافه کردن نمودار
+            html += `<div class="chart-container"><canvas id="priceChart"></canvas></div>`;
+            content.innerHTML = html;
+
+            // دریافت داده‌های چارت برای نمودار
+            fetch(`/test-api?type=chart&coin=${result.coin}&period=${result.period}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.count > 0) {
+                        createChart(data.sample || data.data || []);
+                    }
+                })
+                .catch(err => console.error('Chart error:', err));
         }
 
-        // اجرای خودکار اگر پارامترها در URL باشن
+        function createChart(data) {
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+
+            const canvas = document.getElementById('priceChart');
+            if (!canvas) return;
+
+            const timestamps = data.map(p => new Date(p[0] * 1000).toLocaleString('fa-IR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+            }));
+            const prices = data.map(p => p[1]);
+
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 212, 255, 0.0)');
+
+            chartInstance = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                        label: 'قیمت (USD)',
+                        data: prices,
+                        borderColor: '#00d4ff',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#00d4ff',
+                        pointBorderColor: '#00d4ff',
+                        tension: 0.3,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#a0b4c8', font: { family: 'Vazir' } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0d1624',
+                            titleColor: '#e0e6ed',
+                            bodyColor: '#00d4ff',
+                            borderColor: '#1a2a3a',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return `$${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, callback: value => '$' + value.toFixed(0) }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' },
+                    animation: { duration: 2000, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
         const params = new URLSearchParams(window.location.search);
         if (params.get('coin') && params.get('period')) {
             document.getElementById('coin').value = params.get('coin');
             document.getElementById('period').value = params.get('period');
             submitPredict();
         }
+
+        // آپتایم
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
+        });
     </script>
 </body>
 </html>
