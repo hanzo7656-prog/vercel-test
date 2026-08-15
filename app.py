@@ -502,7 +502,7 @@ def test_api():
     period = request.args.get('period', '24h')
     data_type = request.args.get('type', 'chart')
     
-    valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'market', 'coins', 'news']
+    valid_types = ['chart', 'coin', 'fear_greed', 'btc_dominance', 'market', 'coins', 'news', 'status', 'credits']
     if data_type not in valid_types:
         return jsonify({
             "error": "InvalidType",
