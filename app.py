@@ -13,7 +13,7 @@ import threading
 import numpy as np
 from datetime import datetime
 from queue import Queue
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect
 
 from api_handler import CoinStatsAPI
 
