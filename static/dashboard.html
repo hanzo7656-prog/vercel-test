@@ -70,7 +70,7 @@
         }
 
         /* ============================================================
-           HAMBURGER MENU BUTTON (CIRCLE)
+           MENU TOGGLE (CIRCLE)
            ============================================================ */
         .menu-toggle {
             width: 44px;
@@ -328,46 +328,6 @@
         }
 
         /* ============================================================
-           CHART
-           ============================================================ */
-        .chart-container {
-            background: #0a0e17;
-            border-radius: 12px;
-            padding: 16px;
-            border: 1px solid #1a2a3a;
-            height: 300px;
-            position: relative;
-        }
-        .chart-container canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-        .chart-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .chart-controls select {
-            background: #0a0e17;
-            border: 1px solid #1a2a3a;
-            color: #e0e6ed;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-family: inherit;
-        }
-        .chart-controls select:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
-        .chart-controls .btn-sm {
-            padding: 6px 16px;
-            font-size: 0.8rem;
-        }
-
-        /* ============================================================
            LOADING
            ============================================================ */
         .loading {
@@ -423,9 +383,6 @@
             .news-card img {
                 width: 48px;
                 height: 48px;
-            }
-            .chart-container {
-                height: 220px;
             }
         }
         @media (max-width: 480px) {
@@ -504,27 +461,12 @@
             </div>
         </div>
 
-        <!-- ردیف ۲: نمودار -->
-        <div class="card" style="margin-bottom:20px;">
-            <div class="card-title">📈 نمودار قیمت</div>
-            <div class="chart-controls">
-                <select id="chartCoin">
-                    <option value="bitcoin">بیت‌کوین (BTC)</option>
-                    <option value="ethereum">اتریوم (ETH)</option>
-                    <option value="solana">سولانا (SOL)</option>
-                    <option value="ripple">ریپل (XRP)</option>
-                    <option value="cardano">کاردانو (ADA)</option>
-                </select>
-                <select id="chartPeriod">
-                    <option value="24h">۲۴ ساعت</option>
-                    <option value="1w">۱ هفته</option>
-                    <option value="1m">۱ ماه</option>
-                </select>
-                <button class="btn btn-primary btn-sm" onclick="loadChart()">🔄 بروزرسانی</button>
-            </div>
-            <div class="chart-container">
-                <canvas id="dashboardChart"></canvas>
-            </div>
+        <!-- ============================================================
+        ماژول نمودار (از فایل جداگانه)
+        ============================================================ -->
+        <div id="chartModuleContainer">
+            <!-- محتوای chart-module.html با fetch بارگذاری میشه -->
+            <div class="loading"><div class="spinner"></div><p>بارگذاری نمودار...</p></div>
         </div>
 
         <!-- ردیف ۳: ۲۰ ارز برتر + اخبار -->
@@ -545,7 +487,10 @@
     SCRIPTS
     ============================================================ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="/static/js/script.js"></script>
+    <script src="/static/js/chart-module.js"></script>
     <script>
         // ============================================================
         // MENU TOGGLE
@@ -564,16 +509,40 @@
         menuToggle.addEventListener('click', toggleMenu);
         flyoutOverlay.addEventListener('click', toggleMenu);
 
-        // بستن منو با Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && flyoutMenu.classList.contains('open')) toggleMenu();
         });
 
         // ============================================================
+        // LOAD CHART MODULE
+        // ============================================================
+        function loadChartModule() {
+            const container = document.getElementById('chartModuleContainer');
+
+            fetch('/static/chart-module.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    // مقداردهی اولیه ماژول نمودار
+                    if (typeof ChartModule !== 'undefined') {
+                        ChartModule.init('chartModule', {
+                            coin: 'bitcoin',
+                            period: '24h'
+                        });
+                    }
+                })
+                .catch(err => {
+                    container.innerHTML = `
+                        <div class="card" style="padding:30px;text-align:center;color:#ff4444;">
+                            ❌ خطا در بارگذاری نمودار: ${err.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // ============================================================
         // DASHBOARD FUNCTIONS
         // ============================================================
-        let dashboardChartInstance = null;
-
         function loadMarketStats() {
             const container = document.getElementById('marketStats');
             fetch('/test-api?type=market')
@@ -700,106 +669,25 @@
                 .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
         }
 
-        function loadChart() {
-            const coin = document.getElementById('chartCoin').value;
-            const period = document.getElementById('chartPeriod').value;
-
-            fetch(`/test-api?type=chart&coin=${coin}&period=${period}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success && data.count > 0) {
-                        createDashboardChart(data.sample || data.data || []);
-                    }
-                })
-                .catch(err => console.error('Chart error:', err));
-        }
-
-        function createDashboardChart(data) {
-            if (dashboardChartInstance) {
-                dashboardChartInstance.destroy();
-                dashboardChartInstance = null;
-            }
-            const canvas = document.getElementById('dashboardChart');
-            if (!canvas) return;
-
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.7)');
-            gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.25)');
-            gradient.addColorStop(1, 'rgba(0, 212, 255, 0.0)');
-
-            const labels = data.map(p => new Date(p[0] * 1000).toLocaleString('fa-IR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                day: '2-digit',
-                month: '2-digit'
-            }));
-            const prices = data.map(p => p[1]);
-
-            dashboardChartInstance = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'قیمت (USD)',
-                        data: prices,
-                        borderColor: '#00d4ff',
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: '#00d4ff',
-                        tension: 0.3,
-                        fill: true,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#a0b4c8', font: { family: 'Vazir' } }
-                        },
-                        tooltip: {
-                            backgroundColor: '#0d1624',
-                            titleColor: '#e0e6ed',
-                            bodyColor: '#00d4ff',
-                            borderColor: '#1a2a3a',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: 'rgba(255,255,255,0.04)' },
-                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, maxTicksLimit: 10 }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.04)' },
-                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, callback: v => '$' + v.toFixed(0) }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' },
-                    animation: { duration: 1800, easing: 'easeOutQuart' }
-                }
-            });
-        }
-
         // ============================================================
         // INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
+            // آپتایم
             if (typeof fetchAndStartUptime === 'function') {
                 fetchAndStartUptime();
             }
+
+            // بارگذاری بخش‌های داشبورد
             loadMarketStats();
             loadFearGreed();
             loadTopCoins();
             loadNews();
-            loadChart();
 
+            // بارگذاری ماژول نمودار
+            loadChartModule();
+
+            // بروزرسانی خودکار
             setInterval(() => {
                 loadMarketStats();
                 loadFearGreed();
