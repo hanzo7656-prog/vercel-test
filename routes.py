@@ -3,7 +3,7 @@
 # مدیریت صفحات HTML (فرانت‌اند)
 # ============================================================
 
-from flask import send_from_directory, render_template_string
+from flask import send_from_directory, render_template_string, redirect
 from app import app
 
 
@@ -13,8 +13,8 @@ from app import app
 
 @app.route('/')
 def home_page():
-    """صفحه اصلی"""
-    return send_from_directory('static', 'index.html')
+    """ریدایرکت به داشبورد"""
+    return redirect('/dashboard')
 
 
 @app.route('/dashboard')
