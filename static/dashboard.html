@@ -5,47 +5,204 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .news-card {
-            background: #0d1624;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            border: 1px solid #1a2a3a;
+        /* ============================================================
+           RESET OVERRIDE
+           ============================================================ */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .dashboard-header {
             display: flex;
-            gap: 15px;
-            align-items: flex-start;
-            transition: all 0.3s ease;
-            cursor: pointer;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid #1a2a3a;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .news-card:hover {
-            border-color: #00d4ff;
-            transform: translateX(-5px);
+        .dashboard-header .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00d4ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .news-card img {
-            width: 80px;
-            height: 80px;
-            border-radius: 8px;
-            object-fit: cover;
-            flex-shrink: 0;
-            background: #1a2a3a;
-        }
-        .news-card .content {
-            flex: 1;
-        }
-        .news-card .title {
-            color: #e0e6ed;
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        .news-card .source {
+        .dashboard-header .status {
             color: #7a8fa3;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .news-card .time {
+        .dashboard-header .status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+        .dashboard-header .uptime {
             color: #4a5a6a;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ============================================================
+           HAMBURGER MENU BUTTON (CIRCLE)
+           ============================================================ */
+        .menu-toggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #0d1624;
+            border: 1px solid #1a2a3a;
+            color: #e0e6ed;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 200;
+        }
+        .menu-toggle:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+        .menu-toggle.open {
+            border-color: #00d4ff;
+            background: #00d4ff;
+            color: #0a0e17;
+        }
+
+        /* ============================================================
+           FLYOUT MENU
+           ============================================================ */
+        .flyout-menu {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(13, 22, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid #1a2a3a;
+            border-radius: 16px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transform: scale(0.8);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 150;
+            transform-origin: top right;
+        }
+        .flyout-menu.open {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+        .flyout-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: #a0b4c8;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            border-right: 2px solid transparent;
+        }
+        .flyout-menu a:hover {
+            background: rgba(0, 212, 255, 0.05);
+            color: #e0e6ed;
+            border-right-color: #00d4ff;
+        }
+        .flyout-menu a.active {
+            color: #00d4ff;
+            border-right-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.05);
+        }
+        .flyout-menu .menu-divider {
+            height: 1px;
+            background: #1a2a3a;
+            margin: 6px 16px;
+        }
+        .flyout-menu .menu-label {
+            padding: 8px 20px 4px;
+            font-size: 0.7rem;
+            color: #4a5a6a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .flyout-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 140;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .flyout-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* ============================================================
+           DASHBOARD CONTENT
+           ============================================================ */
+        .dashboard-content {
+            padding: 20px 24px 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: linear-gradient(145deg, #111d2b, #0d1624);
+            border: 1px solid #1a2a3a;
+            border-radius: 16px;
+            padding: 20px;
+            transition: border-color 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+        .card-title {
+            color: #00d4ff;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .card-scroll {
             max-height: 350px;
@@ -58,62 +215,127 @@
             background: #00d4ff;
             border-radius: 2px;
         }
+
+        /* ============================================================
+           FEAR & GREED
+           ============================================================ */
         .fear-greed-box {
             display: flex;
             align-items: center;
-            gap: 20px;
-            padding: 15px;
+            gap: 16px;
+            padding: 12px 16px;
+            background: #0a0e17;
             border-radius: 12px;
-            background: #0d1624;
             border: 1px solid #1a2a3a;
         }
         .fear-greed-box .value {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: bold;
-            min-width: 60px;
+            min-width: 50px;
         }
         .fear-greed-box .bar {
             flex: 1;
-            height: 8px;
+            height: 6px;
             border-radius: 4px;
             background: linear-gradient(90deg, #ff4444, #ffaa00, #00ff88);
             position: relative;
         }
         .fear-greed-box .bar .indicator {
             position: absolute;
-            top: -6px;
-            width: 20px;
-            height: 20px;
+            top: -5px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             border: 2px solid #00d4ff;
             transition: left 0.5s ease;
         }
         .fear-greed-box .classification {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             font-weight: 500;
-            min-width: 80px;
+            min-width: 70px;
             text-align: center;
         }
+
+        /* ============================================================
+           COIN ROW
+           ============================================================ */
         .coin-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 8px 12px;
             border-bottom: 1px solid #0d1624;
-            transition: background 0.2s;
+            font-size: 0.9rem;
         }
         .coin-row:hover {
-            background: rgba(0, 212, 255, 0.05);
+            background: rgba(0, 212, 255, 0.03);
         }
-        .coin-row .positive { color: #00ff88; }
-        .coin-row .negative { color: #ff4444; }
-        .chart-container {
-            background: #0d1624;
+        .coin-row .positive {
+            color: #00ff88;
+        }
+        .coin-row .negative {
+            color: #ff4444;
+        }
+
+        /* ============================================================
+           NEWS CARD
+           ============================================================ */
+        .news-card {
+            display: flex;
+            gap: 14px;
+            padding: 12px 14px;
+            background: #0a0e17;
             border-radius: 12px;
-            padding: 20px;
-            margin-top: 15px;
             border: 1px solid #1a2a3a;
-            height: 320px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-items: flex-start;
+        }
+        .news-card:hover {
+            border-color: #00d4ff;
+            transform: translateX(-4px);
+        }
+        .news-card img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: #1a2a3a;
+        }
+        .news-card .content {
+            flex: 1;
+            min-width: 0;
+        }
+        .news-card .title {
+            color: #e0e6ed;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .news-card .source {
+            color: #7a8fa3;
+            font-size: 0.75rem;
+        }
+        .news-card .time {
+            color: #4a5a6a;
+            font-size: 0.7rem;
+        }
+
+        /* ============================================================
+           CHART
+           ============================================================ */
+        .chart-container {
+            background: #0a0e17;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #1a2a3a;
+            height: 300px;
             position: relative;
         }
         .chart-container canvas {
@@ -123,70 +345,167 @@
         .chart-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             flex-wrap: wrap;
             align-items: center;
         }
         .chart-controls select {
-            background: #0d1624;
+            background: #0a0e17;
             border: 1px solid #1a2a3a;
             color: #e0e6ed;
             padding: 6px 12px;
             border-radius: 8px;
             font-size: 0.85rem;
+            font-family: inherit;
         }
         .chart-controls select:focus {
             outline: none;
             border-color: #00d4ff;
         }
         .chart-controls .btn-sm {
-            padding: 6px 14px;
+            padding: 6px 16px;
             font-size: 0.8rem;
+        }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            gap: 12px;
+        }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #1a2a3a;
+            border-top: 3px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .dashboard-header .status {
+                font-size: 0.75rem;
+                gap: 8px;
+            }
+            .dashboard-content {
+                padding: 12px 14px 30px;
+            }
+            .row {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+            .flyout-menu {
+                right: 12px;
+                top: 72px;
+                min-width: 170px;
+            }
+            .fear-greed-box .value {
+                font-size: 1.6rem;
+            }
+            .news-card img {
+                width: 48px;
+                height: 48px;
+            }
+            .chart-container {
+                height: 220px;
+            }
+        }
+        @media (max-width: 480px) {
+            .dashboard-header .uptime {
+                display: none;
+            }
+            .menu-toggle {
+                width: 38px;
+                height: 38px;
+                font-size: 1rem;
+            }
+            .flyout-menu {
+                right: 8px;
+                top: 64px;
+                min-width: 150px;
+            }
+            .flyout-menu a {
+                font-size: 0.85rem;
+                padding: 10px 16px;
+            }
         }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
-        <div class="navbar-menu">
-            <a href="/">🏠 خانه</a>
-            <a href="/dashboard" class="active">📈 داشبورد</a>
-            <a href="/predict-page">🎯 پیش‌بینی</a>
-            <a href="/test-api-page">🔌 تست API</a>
-            <a href="/health-page">💚 سلامت</a>
-            <a href="/stats-page">📊 آمار</a>
+
+    <!-- ============================================================
+    HEADER
+    ============================================================ -->
+    <header class="dashboard-header">
+        <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+
+        <div style="display:flex;align-items:center;gap:16px;">
+            <div class="status">
+                <span class="dot"></span>
+                <span id="statusText">آنلاین</span>
+            </div>
+            <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+            <button class="menu-toggle" id="menuToggle" aria-label="منو">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
-        <div class="navbar-status">
-            <span><span class="status-dot online" id="statusDot"></span> <span id="statusText">آنلاین</span></span>
-            <span style="color: #7a8fa3; font-size: 0.8rem;">
-                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
-            </span>
-        </div>
+    </header>
+
+    <!-- ============================================================
+    FLYOUT OVERLAY
+    ============================================================ -->
+    <div class="flyout-overlay" id="flyoutOverlay"></div>
+
+    <!-- ============================================================
+    FLYOUT MENU
+    ============================================================ -->
+    <nav class="flyout-menu" id="flyoutMenu">
+        <div class="menu-label">🔹 منوی اصلی</div>
+        <a href="/dashboard" class="active"><i class="fas fa-chart-pie"></i> داشبورد</a>
+        <a href="/predict-page"><i class="fas fa-bullseye"></i> پیش‌بینی</a>
+        <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
+        <div class="menu-divider"></div>
+        <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
+        <a href="/stats-page"><i class="fas fa-chart-bar"></i> آمار</a>
     </nav>
 
-    <div class="container">
-        <!-- ردیف اول: وضعیت کلی بازار + Fear & Greed -->
+    <!-- ============================================================
+    DASHBOARD CONTENT
+    ============================================================ -->
+    <main class="dashboard-content">
+
+        <!-- ردیف ۱: بازار + Fear & Greed -->
         <div class="row">
             <div class="card">
                 <div class="card-title">📊 وضعیت کلی بازار</div>
-                <div id="marketStats">
-                    <div class="loading" style="padding:20px;">
-                        <div class="spinner" style="width:30px;height:30px;"></div>
-                    </div>
-                </div>
+                <div id="marketStats"><div class="loading"><div class="spinner"></div></div></div>
             </div>
             <div class="card">
                 <div class="card-title">😨 شاخص ترس و طمع</div>
-                <div id="fearGreedContainer">
-                    <div class="loading" style="padding:20px;">
-                        <div class="spinner" style="width:30px;height:30px;"></div>
-                    </div>
-                </div>
+                <div id="fearGreedContainer"><div class="loading"><div class="spinner"></div></div></div>
             </div>
         </div>
 
-        <!-- ردیف دوم: نمودار -->
-        <div class="card" style="grid-column:1/-1;">
+        <!-- ردیف ۲: نمودار -->
+        <div class="card" style="margin-bottom:20px;">
             <div class="card-title">📈 نمودار قیمت</div>
             <div class="chart-controls">
                 <select id="chartCoin">
@@ -194,6 +513,7 @@
                     <option value="ethereum">اتریوم (ETH)</option>
                     <option value="solana">سولانا (SOL)</option>
                     <option value="ripple">ریپل (XRP)</option>
+                    <option value="cardano">کاردانو (ADA)</option>
                 </select>
                 <select id="chartPeriod">
                     <option value="24h">۲۴ ساعت</option>
@@ -207,87 +527,82 @@
             </div>
         </div>
 
-        <!-- ردیف سوم: ۲۰ ارز برتر + اخبار -->
+        <!-- ردیف ۳: ۲۰ ارز برتر + اخبار -->
         <div class="row">
             <div class="card">
                 <div class="card-title">🏆 ۲۰ ارز برتر</div>
-                <div class="card-scroll" id="topCoinsContainer">
-                    <div class="loading" style="padding:20px;">
-                        <div class="spinner" style="width:30px;height:30px;"></div>
-                    </div>
-                </div>
+                <div class="card-scroll" id="topCoinsContainer"><div class="loading"><div class="spinner"></div></div></div>
             </div>
             <div class="card">
                 <div class="card-title">📰 آخرین اخبار</div>
-                <div class="card-scroll" id="newsContainer">
-                    <div class="loading" style="padding:20px;">
-                        <div class="spinner" style="width:30px;height:30px;"></div>
-                    </div>
-                </div>
+                <div class="card-scroll" id="newsContainer"><div class="loading"><div class="spinner"></div></div></div>
             </div>
         </div>
-    </div>
 
+    </main>
+
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/script.js"></script>
     <script>
-        let dashboardChartInstance = null;
+        // ============================================================
+        // MENU TOGGLE
+        // ============================================================
+        const menuToggle = document.getElementById('menuToggle');
+        const flyoutMenu = document.getElementById('flyoutMenu');
+        const flyoutOverlay = document.getElementById('flyoutOverlay');
 
-        // ============================================================
-        // بارگذاری اولیه
-        // ============================================================
-        function loadDashboard() {
-            loadMarketStats();
-            loadFearGreed();
-            loadTopCoins();
-            loadNews();
-            loadChart();
+        function toggleMenu() {
+            const isOpen = flyoutMenu.classList.toggle('open');
+            flyoutOverlay.classList.toggle('open');
+            menuToggle.classList.toggle('open');
+            menuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
         }
 
+        menuToggle.addEventListener('click', toggleMenu);
+        flyoutOverlay.addEventListener('click', toggleMenu);
+
+        // بستن منو با Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && flyoutMenu.classList.contains('open')) toggleMenu();
+        });
+
         // ============================================================
-        // وضعیت کلی بازار
+        // DASHBOARD FUNCTIONS
         // ============================================================
+        let dashboardChartInstance = null;
+
         function loadMarketStats() {
             const container = document.getElementById('marketStats');
             fetch('/test-api?type=market')
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(data => {
                     if (data.success && data.data) {
                         const m = data.data;
                         container.innerHTML = `
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;text-align:center;">
-                                <div>
-                                    <div style="color:#7a8fa3;font-size:0.8rem;">مارکت‌کپ</div>
-                                    <div style="color:#00d4ff;font-size:1.2rem;font-weight:bold;">$${(m.marketCap / 1e12).toFixed(2)}T</div>
-                                </div>
-                                <div>
-                                    <div style="color:#7a8fa3;font-size:0.8rem;">حجم ۲۴h</div>
-                                    <div style="color:#e0e6ed;font-size:1.2rem;font-weight:bold;">$${(m.volume / 1e9).toFixed(1)}B</div>
-                                </div>
-                                <div>
-                                    <div style="color:#7a8fa3;font-size:0.8rem;">سلطه بیت‌کوین</div>
-                                    <div style="color:#ffaa00;font-size:1.2rem;font-weight:bold;">${m.btcDominance || 0}%</div>
-                                </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;">
+                                <div><div style="color:#7a8fa3;font-size:0.75rem;">مارکت‌کپ</div><div style="color:#00d4ff;font-size:1.1rem;font-weight:bold;">$${(m.marketCap/1e12).toFixed(2)}T</div></div>
+                                <div><div style="color:#7a8fa3;font-size:0.75rem;">حجم ۲۴h</div><div style="color:#e0e6ed;font-size:1.1rem;font-weight:bold;">$${(m.volume/1e9).toFixed(1)}B</div></div>
+                                <div><div style="color:#7a8fa3;font-size:0.75rem;">سلطه بیت‌کوین</div><div style="color:#ffaa00;font-size:1.1rem;font-weight:bold;">${m.btcDominance || 0}%</div></div>
                             </div>
-                            <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:0.8rem;color:#4a5a6a;">
+                            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.75rem;color:#4a5a6a;">
                                 <span>تغییر مارکت‌کپ: <span class="${m.marketCapChange > 0 ? 'positive' : 'negative'}">${m.marketCapChange?.toFixed(2) || 0}%</span></span>
                                 <span>تغییر حجم: <span class="${m.volumeChange > 0 ? 'positive' : 'negative'}">${m.volumeChange?.toFixed(2) || 0}%</span></span>
                             </div>
                         `;
                     } else {
-                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
                     }
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>');
+                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
         }
 
-        // ============================================================
-        // شاخص ترس و طمع
-        // ============================================================
         function loadFearGreed() {
             const container = document.getElementById('fearGreedContainer');
             fetch('/test-api?type=fear_greed')
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(data => {
                     if (data.success && data.data) {
                         const fg = data.data.now || data.data;
@@ -306,110 +621,91 @@
                             <div class="fear-greed-box">
                                 <div class="value" style="color:${color};">${value}</div>
                                 <div style="flex:1;">
-                                    <div class="bar">
-                                        <div class="indicator" style="left:${leftPos}%;background:${color};"></div>
-                                    </div>
-                                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#4a5a6a;margin-top:4px;">
+                                    <div class="bar"><div class="indicator" style="left:${leftPos}%;background:${color};"></div></div>
+                                    <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:#4a5a6a;margin-top:3px;">
                                         <span>Extreme Fear</span><span>Neutral</span><span>Extreme Greed</span>
                                     </div>
                                 </div>
                                 <div class="classification" style="color:${color};">${classification}</div>
                             </div>
-                            <div style="margin-top:8px;font-size:0.8rem;color:#7a8fa3;text-align:center;">
-                                ${fg.analysis?.sentiment || ''} - ${fg.recommendation || ''}
-                            </div>
+                            <div style="margin-top:6px;font-size:0.75rem;color:#7a8fa3;text-align:center;">${fg.analysis?.sentiment || ''} - ${fg.recommendation || ''}</div>
                         `;
                     } else {
-                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
                     }
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>');
+                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
         }
 
-        // ============================================================
-        // ۲۰ ارز برتر (با اصلاح درصد تغییرات)
-        // ============================================================
         function loadTopCoins() {
             const container = document.getElementById('topCoinsContainer');
             fetch('/test-api?type=coins')
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(data => {
                     if (data.success && data.data) {
                         const coins = data.data.result || data.data.data || [];
                         let html = '';
                         coins.slice(0, 20).forEach((coin, i) => {
                             const change = coin.priceChange1d !== undefined ? coin.priceChange1d : (coin.price_change_24h || 0);
-                            const changeClass = change >= 0 ? 'positive' : 'negative';
-                            const changeSymbol = change >= 0 ? '▲' : '▼';
+                            const cls = change >= 0 ? 'positive' : 'negative';
+                            const sym = change >= 0 ? '▲' : '▼';
                             html += `
                                 <div class="coin-row">
-                                    <span style="color:#4a5a6a;font-size:0.8rem;width:25px;">${i+1}</span>
+                                    <span style="color:#4a5a6a;font-size:0.75rem;width:24px;">${i+1}</span>
                                     <span style="flex:1;">${coin.symbol || coin.id}</span>
                                     <span style="color:#e0e6ed;font-family:monospace;">$${Number(coin.price || 0).toLocaleString()}</span>
-                                    <span class="${changeClass}" style="font-size:0.85rem;min-width:60px;text-align:right;">
-                                        ${changeSymbol} ${Math.abs(change).toFixed(2)}%
-                                    </span>
+                                    <span class="${cls}" style="font-size:0.8rem;min-width:55px;text-align:right;">${sym} ${Math.abs(change).toFixed(2)}%</span>
                                 </div>
                             `;
                         });
                         container.innerHTML = html;
                     } else {
-                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>';
+                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
                     }
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت داده</p>');
+                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
         }
 
-        // ============================================================
-        // اخبار با عکس پیش‌فرض
-        // ============================================================
         function loadNews() {
             const container = document.getElementById('newsContainer');
             fetch('/test-api?type=news&limit=6')
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(data => {
                     if (data.success && data.data) {
                         const news = data.data.data || data.data || [];
                         if (news.length === 0) {
-                            container.innerHTML = '<p style="color:#7a8fa3;text-align:center;">📭 خبری یافت نشد</p>';
+                            container.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.9rem;">📭 خبری یافت نشد</p>';
                             return;
                         }
                         let html = '';
-                        news.slice(0, 6).forEach((item) => {
+                        news.slice(0, 6).forEach(item => {
                             const image = item.image_url || item.imageUrl || '';
-                            const title = item.title || 'بدون عنوان';
-                            const source = item.source || 'نامشخص';
-                            const time = item.published_at ? new Date(item.published_at).toLocaleDateString('fa-IR') : '';
-                            // عکس پیش‌فرض
-                            const imgSrc = image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"%3E%3Crect width="80" height="80" fill="%231a2a3a"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="central" text-anchor="middle" font-size="32" fill="%2300d4ff"%3E📰%3C/text%3E%3C/svg%3E';
+                            const imgSrc = image || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%231a2a3a%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22%2300d4ff%22%3E📰%3C/text%3E%3C/svg%3E';
                             html += `
                                 <div class="news-card" onclick="window.open('${item.url || '#'}', '_blank')">
-                                    <img src="${imgSrc}" alt="news" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%231a2a3a%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2232%22 fill=%22%2300d4ff%22%3E📰%3C/text%3E%3C/svg%3E'">
+                                    <img src="${imgSrc}" alt="news" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%231a2a3a%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22%2300d4ff%22%3E📰%3C/text%3E%3C/svg%3E'">
                                     <div class="content">
-                                        <div class="title">${title}</div>
-                                        <div class="source">📰 ${source}</div>
-                                        <div class="time">${time}</div>
+                                        <div class="title">${item.title || 'بدون عنوان'}</div>
+                                        <div class="source">📰 ${item.source || 'نامشخص'}</div>
+                                        <div class="time">${item.published_at ? new Date(item.published_at).toLocaleDateString('fa-IR') : ''}</div>
                                     </div>
                                 </div>
                             `;
                         });
                         container.innerHTML = html;
                     } else {
-                        container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت اخبار</p>';
+                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
                     }
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت اخبار</p>');
+                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
         }
 
-        // ============================================================
-        // نمودار داشبورد
-        // ============================================================
         function loadChart() {
             const coin = document.getElementById('chartCoin').value;
             const period = document.getElementById('chartPeriod').value;
 
             fetch(`/test-api?type=chart&coin=${coin}&period=${period}`)
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(data => {
                     if (data.success && data.count > 0) {
                         createDashboardChart(data.sample || data.data || []);
@@ -423,17 +719,16 @@
                 dashboardChartInstance.destroy();
                 dashboardChartInstance = null;
             }
-
             const canvas = document.getElementById('dashboardChart');
             if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.8)');
-            gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.3)');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.7)');
+            gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.25)');
             gradient.addColorStop(1, 'rgba(0, 212, 255, 0.0)');
 
-            const timestamps = data.map(p => new Date(p[0] * 1000).toLocaleString('fa-IR', {
+            const labels = data.map(p => new Date(p[0] * 1000).toLocaleString('fa-IR', {
                 hour: '2-digit',
                 minute: '2-digit',
                 day: '2-digit',
@@ -444,7 +739,7 @@
             dashboardChartInstance = new Chart(canvas, {
                 type: 'line',
                 data: {
-                    labels: timestamps,
+                    labels: labels,
                     datasets: [{
                         label: 'قیمت (USD)',
                         data: prices,
@@ -472,38 +767,47 @@
                             borderColor: '#1a2a3a',
                             borderWidth: 1,
                             callbacks: {
-                                label: function(context) {
-                                    return `$${context.parsed.y.toFixed(2)}`;
-                                }
+                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
                             }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            grid: { color: 'rgba(255,255,255,0.04)' },
                             ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, maxTicksLimit: 10 }
                         },
                         y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, callback: value => '$' + value.toFixed(0) }
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, callback: v => '$' + v.toFixed(0) }
                         }
                     },
                     interaction: { intersect: false, mode: 'index' },
-                    animation: { duration: 2000, easing: 'easeOutQuart' }
+                    animation: { duration: 1800, easing: 'easeOutQuart' }
                 }
             });
         }
 
         // ============================================================
-        // اجرا
+        // INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof fetchAndStartUptime === 'function') {
                 fetchAndStartUptime();
             }
-            loadDashboard();
-            setInterval(loadDashboard, 60000);
+            loadMarketStats();
+            loadFearGreed();
+            loadTopCoins();
+            loadNews();
+            loadChart();
+
+            setInterval(() => {
+                loadMarketStats();
+                loadFearGreed();
+                loadTopCoins();
+                loadNews();
+            }, 60000);
         });
     </script>
+
 </body>
 </html>
