@@ -45,6 +45,12 @@ def health_page():
 def stats_page():
     """صفحه آمار"""
     return send_from_directory('static', 'stats.html')
+    
+
+@app.route('/chart-page')
+def chart_page():
+    return send_from_directory('static', 'chart.html')
+
 
 
 # ============================================================
@@ -71,3 +77,5 @@ def not_found(error):
 def internal_error(error):
     """صفحه خطای ۵۰۰"""
     return send_from_directory('static', '500.html'), 500
+
+
