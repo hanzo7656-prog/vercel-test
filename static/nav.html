@@ -1,0 +1,69 @@
+<!-- ============================================================
+     HEADER + MENU (ماژول جداگانه)
+     ============================================================ -->
+<header class="dashboard-header">
+    <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+
+    <div style="display:flex;align-items:center;gap:16px;">
+        <div class="status">
+            <span class="dot"></span>
+            <span id="statusText">آنلاین</span>
+        </div>
+        <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+        <button class="menu-toggle" id="menuToggle" aria-label="منو">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+</header>
+
+<!-- FLYOUT OVERLAY -->
+<div class="flyout-overlay" id="flyoutOverlay"></div>
+
+<!-- FLYOUT MENU -->
+<nav class="flyout-menu" id="flyoutMenu">
+    <div class="menu-label">🔹 منوی اصلی</div>
+    <a href="/dashboard"><i class="fas fa-chart-pie"></i> داشبورد</a>
+    <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار حرفه‌ای</a>
+    <a href="/predict-page"><i class="fas fa-bullseye"></i> پیش‌بینی</a>
+    <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
+    <div class="menu-divider"></div>
+    <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
+    <a href="/stats-page"><i class="fas fa-chart-bar"></i> آمار</a>
+</nav>
+
+<script>
+    (function() {
+        if (window._menuInitialized) return;
+        window._menuInitialized = true;
+
+        const menuToggle = document.getElementById('menuToggle');
+        const flyoutMenu = document.getElementById('flyoutMenu');
+        const flyoutOverlay = document.getElementById('flyoutOverlay');
+
+        if (!menuToggle || !flyoutMenu || !flyoutOverlay) return;
+
+        function toggleMenu() {
+            const isOpen = flyoutMenu.classList.toggle('open');
+            flyoutOverlay.classList.toggle('open');
+            menuToggle.classList.toggle('open');
+            menuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+        }
+
+        menuToggle.addEventListener('click', toggleMenu);
+        flyoutOverlay.addEventListener('click', toggleMenu);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && flyoutMenu.classList.contains('open')) toggleMenu();
+        });
+
+        // تنظیم کلاس active بر اساس مسیر فعلی
+        const currentPath = window.location.pathname;
+        const links = flyoutMenu.querySelectorAll('a');
+        links.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active');
+            }
+        });
+    })();
+</script>
