@@ -437,6 +437,7 @@
     <nav class="flyout-menu" id="flyoutMenu">
         <div class="menu-label">🔹 منوی اصلی</div>
         <a href="/dashboard" class="active"><i class="fas fa-chart-pie"></i> داشبورد</a>
+        <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار حرفه‌ای</a>
         <a href="/predict-page"><i class="fas fa-bullseye"></i> پیش‌بینی</a>
         <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
         <div class="menu-divider"></div>
@@ -461,15 +462,7 @@
             </div>
         </div>
 
-        <!-- ============================================================
-        ماژول نمودار (از فایل جداگانه)
-        ============================================================ -->
-        <div id="chartModuleContainer">
-            <!-- محتوای chart-module.html با fetch بارگذاری میشه -->
-            <div class="loading"><div class="spinner"></div><p>بارگذاری نمودار...</p></div>
-        </div>
-
-        <!-- ردیف ۳: ۲۰ ارز برتر + اخبار -->
+        <!-- ردیف ۲: ۲۰ ارز برتر + اخبار -->
         <div class="row">
             <div class="card">
                 <div class="card-title">🏆 ۲۰ ارز برتر</div>
@@ -486,11 +479,7 @@
     <!-- ============================================================
     SCRIPTS
     ============================================================ -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="/static/js/script.js"></script>
-    <script src="/static/js/chart-module.js"></script>
     <script>
         // ============================================================
         // MENU TOGGLE
@@ -514,35 +503,9 @@
         });
 
         // ============================================================
-        // LOAD CHART MODULE
-        // ============================================================
-        function loadChartModule() {
-            const container = document.getElementById('chartModuleContainer');
-
-            fetch('/static/chart-module.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    // مقداردهی اولیه ماژول نمودار
-                    if (typeof ChartModule !== 'undefined') {
-                        ChartModule.init('chartModule', {
-                            coin: 'bitcoin',
-                            period: '24h'
-                        });
-                    }
-                })
-                .catch(err => {
-                    container.innerHTML = `
-                        <div class="card" style="padding:30px;text-align:center;color:#ff4444;">
-                            ❌ خطا در بارگذاری نمودار: ${err.message}
-                        </div>
-                    `;
-                });
-        }
-
-        // ============================================================
         // DASHBOARD FUNCTIONS
         // ============================================================
+
         function loadMarketStats() {
             const container = document.getElementById('marketStats');
             fetch('/test-api?type=market')
@@ -683,9 +646,6 @@
             loadFearGreed();
             loadTopCoins();
             loadNews();
-
-            // بارگذاری ماژول نمودار
-            loadChartModule();
 
             // بروزرسانی خودکار
             setInterval(() => {
