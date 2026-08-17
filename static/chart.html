@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نمودار حرفه‌ای</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0e17;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid #1a2a3a;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .chart-header .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00d4ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-header .back-btn {
+            color: #a0b4c8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+        .chart-header .back-btn:hover {
+            color: #00d4ff;
+        }
+        .chart-header .status {
+            color: #7a8fa3;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chart-header .status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Container Chart */
+        .chart-container {
+            flex: 1;
+            padding: 12px 16px 16px;
+            min-height: 0;
+        }
+        .chart-wrapper {
+            height: 100%;
+            width: 100%;
+            background: #0a0e17;
+            border-radius: 16px;
+            border: 1px solid #1a2a3a;
+            overflow: hidden;
+        }
+        .chart-wrapper .tradingview-widget-container {
+            height: 100% !important;
+            width: 100% !important;
+        }
+        .chart-wrapper .tradingview-widget-container__widget {
+            height: calc(100% - 32px) !important;
+            width: 100% !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chart-header {
+                padding: 10px 16px;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .chart-header .logo {
+                font-size: 1rem;
+            }
+            .chart-container {
+                padding: 8px 10px 10px;
+            }
+        }
+        @media (max-width: 480px) {
+            .chart-header .status {
+                font-size: 0.7rem;
+                gap: 6px;
+            }
+            .chart-header .back-btn {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="chart-header">
+        <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+        <a href="/dashboard" class="back-btn">← بازگشت به داشبورد</a>
+        <div class="status">
+            <span class="dot"></span>
+            <span>آنلاین</span>
+            <span style="color:#4a5a6a;font-family:'Courier New',monospace;">
+                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Chart -->
+    <main class="chart-container">
+        <div class="chart-wrapper">
+            <!-- TradingView Widget -->
+            <div class="tradingview-widget-container" style="height:100%;width:100%">
+                <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+                <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE" rel="noopener nofollow" target="_blank">
+                        <span class="blue-text">BTCUSDT price</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                </div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "allow_symbol_change": true,
+                    "calendar": false,
+                    "details": false,
+                    "hide_side_toolbar": true,
+                    "hide_top_toolbar": false,
+                    "hide_legend": false,
+                    "hide_volume": false,
+                    "hotlist": false,
+                    "interval": "60",
+                    "locale": "en",
+                    "save_image": true,
+                    "style": "1",
+                    "symbol": "BINANCE:BTCUSDT",
+                    "theme": "dark",
+                    "timezone": "Asia/Tehran",
+                    "backgroundColor": "#0F0F0F",
+                    "gridColor": "rgba(242, 242, 242, 0.2)",
+                    "watchlist": [],
+                    "withdateranges": false,
+                    "compareSymbols": [],
+                    "support_host": "https://www.tradingview.com",
+                    "studies": [
+                        "STD;RSI",
+                        "STD;SMA",
+                        "STD;MACD"
+                    ],
+                    "autosize": true
+                }
+                </script>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
+        });
+    </script>
+
+</body>
+</html>
