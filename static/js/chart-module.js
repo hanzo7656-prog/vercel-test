@@ -1,5 +1,5 @@
 // ============================================================
-// ماژول نمودار - ابزارک‌های حرفه‌ای
+// ماژول نمودار - نسخه کامل با ابزارک‌های واقعی
 // ============================================================
 
 const ChartModule = (function() {
@@ -14,6 +14,8 @@ const ChartModule = (function() {
     let currentPeriod = '24h';
     let isLogScale = false;
     let showMA = false;
+    let autoUpdateInterval = null;
+    let isFullscreen = false;
 
     // ============================================================
     // DOM REFS
@@ -27,7 +29,11 @@ const ChartModule = (function() {
         lowDisplay: null,
         maToggle: null,
         logToggle: null,
+        fullscreenBtn: null,
+        zoomInBtn: null,
+        zoomOutBtn: null,
         resetBtn: null,
+        downloadBtn: null,
         loading: null,
         error: null,
         coinSelect: null,
@@ -55,14 +61,10 @@ const ChartModule = (function() {
         return names[id] || id;
     }
 
-    function getPeriodLabel(period) {
-        const labels = {
-            '24h': '۲۴ ساعت گذشته',
-            '1w': '۱ هفته گذشته',
-            '1m': '۱ ماه گذشته',
-            '3m': '۳ ماه گذشته',
-        };
-        return labels[period] || period;
+    function formatPrice(value) {
+        if (value >= 1000) return '$' + Math.round(value).toLocaleString();
+        if (value >= 1) return '$' + value.toFixed(2);
+        return '$' + value.toFixed(4);
     }
 
     function calculateMA(data, window) {
@@ -79,10 +81,45 @@ const ChartModule = (function() {
         return ma;
     }
 
-    function formatPrice(value) {
-        if (value >= 1000) return '$' + Math.round(value).toLocaleString();
-        if (value >= 1) return '$' + value.toFixed(2);
-        return '$' + value.toFixed(4);
+    // ============================================================
+    // AUTO UPDATE (هر ۱۰ ثانیه)
+    // ============================================================
+    function startAutoUpdate() {
+        if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+        autoUpdateInterval = setInterval(() => {
+            updatePriceOnly();
+        }, 10000);
+    }
+
+    function stopAutoUpdate() {
+        if (autoUpdateInterval) {
+            clearInterval(autoUpdateInterval);
+            autoUpdateInterval = null;
+        }
+    }
+
+    function updatePriceOnly() {
+        // فقط قیمت لحظه‌ای رو میگیریم بدون رندر مجدد نمودار
+        fetch(`/test-api?type=coin&coin=${currentCoin}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const coin = data.data;
+                    const price = coin.price || 0;
+                    const change = coin.priceChange1d || 0;
+
+                    // به‌روزرسانی قیمت
+                    if (DOM.priceDisplay) {
+                        DOM.priceDisplay.textContent = formatPrice(price);
+                    }
+                    if (DOM.changeDisplay) {
+                        const sign = change >= 0 ? '▲' : '▼';
+                        DOM.changeDisplay.textContent = `${sign} ${Math.abs(change).toFixed(2)}%`;
+                        DOM.changeDisplay.style.color = change >= 0 ? '#00ff88' : '#ff4444';
+                    }
+                }
+            })
+            .catch(() => {});
     }
 
     // ============================================================
@@ -96,6 +133,9 @@ const ChartModule = (function() {
             chartInstance.destroy();
             chartInstance = null;
         }
+
+        // پاک کردن خطا
+        if (DOM.error) DOM.error.style.display = 'none';
 
         if (!data || data.length === 0) {
             showError('داده‌ای برای نمایش وجود ندارد');
@@ -223,6 +263,25 @@ const ChartModule = (function() {
                             }
                         }
                     },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'x',
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                                speed: 0.05,
+                            },
+                            pinch: {
+                                enabled: true,
+                            },
+                            mode: 'x',
+                        },
+                        limits: {
+                            x: { minRange: 5 },
+                        },
+                    },
                 },
                 scales: {
                     x: {
@@ -256,7 +315,7 @@ const ChartModule = (function() {
                     },
                 },
                 animation: {
-                    duration: 1200,
+                    duration: 800,
                     easing: 'easeOutQuart',
                 },
             },
@@ -264,6 +323,9 @@ const ChartModule = (function() {
 
         chartInstance = new Chart(DOM.canvas, config);
         hideLoading();
+
+        // شروع آپدیت خودکار
+        startAutoUpdate();
     }
 
     function getTimeUnit(period) {
@@ -281,7 +343,7 @@ const ChartModule = (function() {
     // ============================================================
     function loadData(coin, period) {
         showLoading();
-        DOM.error.style.display = 'none';
+        if (DOM.error) DOM.error.style.display = 'none';
 
         fetch(`/test-api?type=chart&coin=${coin}&period=${period}`)
             .then(res => res.json())
@@ -348,6 +410,47 @@ const ChartModule = (function() {
         }
     }
 
+    // ============================================================
+    // FULLSCREEN
+    // ============================================================
+    function toggleFullscreen() {
+        const container = DOM.container;
+        if (!container) return;
+
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => {
+                // Fallback برای مرورگرهای مختلف
+                if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                }
+            });
+            if (DOM.fullscreenBtn) DOM.fullscreenBtn.textContent = '⛶ خروج';
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            if (DOM.fullscreenBtn) DOM.fullscreenBtn.textContent = '⛶';
+        }
+    }
+
+    // ============================================================
+    // ZOOM
+    // ============================================================
+    function zoomIn() {
+        if (chartInstance) {
+            const currentZoom = chartInstance.options.plugins.zoom.zoom?.x || 1;
+            chartInstance.zoom(1.2);
+        }
+    }
+
+    function zoomOut() {
+        if (chartInstance) {
+            chartInstance.zoom(0.8);
+        }
+    }
+
     function resetZoom() {
         if (chartInstance) {
             chartInstance.resetZoom();
@@ -355,18 +458,27 @@ const ChartModule = (function() {
     }
 
     // ============================================================
+    // DOWNLOAD PNG
+    // ============================================================
+    function downloadPNG() {
+        if (!DOM.canvas) return;
+        const link = document.createElement('a');
+        link.download = `chart_${currentCoin}_${currentPeriod}.png`;
+        link.href = DOM.canvas.toDataURL('image/png');
+        link.click();
+    }
+
+    // ============================================================
     // PUBLIC API
     // ============================================================
     return {
         init: function(containerId, options = {}) {
-            // Find container
             const container = document.getElementById(containerId);
             if (!container) {
                 console.error('Chart container not found:', containerId);
                 return;
             }
 
-            // DOM refs
             DOM.container = container;
             DOM.canvas = container.querySelector('#chartCanvas');
             DOM.priceDisplay = container.querySelector('#chartPrice');
@@ -375,7 +487,11 @@ const ChartModule = (function() {
             DOM.lowDisplay = container.querySelector('#chartLow');
             DOM.maToggle = container.querySelector('#maToggle');
             DOM.logToggle = container.querySelector('#logToggle');
+            DOM.fullscreenBtn = container.querySelector('#fullscreenBtn');
+            DOM.zoomInBtn = container.querySelector('#zoomInBtn');
+            DOM.zoomOutBtn = container.querySelector('#zoomOutBtn');
             DOM.resetBtn = container.querySelector('#resetZoom');
+            DOM.downloadBtn = container.querySelector('#downloadBtn');
             DOM.loading = container.querySelector('#chartLoading');
             DOM.error = container.querySelector('#chartError');
             DOM.coinSelect = container.querySelector('#chartCoin');
@@ -396,6 +512,8 @@ const ChartModule = (function() {
             if (DOM.coinSelect) {
                 DOM.coinSelect.addEventListener('change', function() {
                     currentCoin = this.value;
+                    // توقف آپدیت خودکار قبل از بارگذاری جدید
+                    stopAutoUpdate();
                     loadData(currentCoin, currentPeriod);
                 });
             }
@@ -403,12 +521,14 @@ const ChartModule = (function() {
             if (DOM.periodSelect) {
                 DOM.periodSelect.addEventListener('change', function() {
                     currentPeriod = this.value;
+                    stopAutoUpdate();
                     loadData(currentCoin, currentPeriod);
                 });
             }
 
             if (DOM.refreshBtn) {
                 DOM.refreshBtn.addEventListener('click', function() {
+                    stopAutoUpdate();
                     loadData(currentCoin, currentPeriod);
                 });
             }
@@ -421,31 +541,44 @@ const ChartModule = (function() {
                 DOM.logToggle.addEventListener('click', toggleLogScale);
             }
 
+            if (DOM.fullscreenBtn) {
+                DOM.fullscreenBtn.addEventListener('click', toggleFullscreen);
+            }
+
+            if (DOM.zoomInBtn) {
+                DOM.zoomInBtn.addEventListener('click', zoomIn);
+            }
+
+            if (DOM.zoomOutBtn) {
+                DOM.zoomOutBtn.addEventListener('click', zoomOut);
+            }
+
             if (DOM.resetBtn) {
                 DOM.resetBtn.addEventListener('click', resetZoom);
             }
+
+            if (DOM.downloadBtn) {
+                DOM.downloadBtn.addEventListener('click', downloadPNG);
+            }
+
+            // Fullscreen change event
+            document.addEventListener('fullscreenchange', function() {
+                if (DOM.fullscreenBtn) {
+                    DOM.fullscreenBtn.textContent = document.fullscreenElement ? '⛶ خروج' : '⛶';
+                }
+            });
 
             // Initial load
             loadData(currentCoin, currentPeriod);
         },
 
         refresh: function() {
-            loadData(currentCoin, currentPeriod);
-        },
-
-        setCoin: function(coin) {
-            currentCoin = coin;
-            if (DOM.coinSelect) DOM.coinSelect.value = coin;
-            loadData(currentCoin, currentPeriod);
-        },
-
-        setPeriod: function(period) {
-            currentPeriod = period;
-            if (DOM.periodSelect) DOM.periodSelect.value = period;
+            stopAutoUpdate();
             loadData(currentCoin, currentPeriod);
         },
 
         destroy: function() {
+            stopAutoUpdate();
             if (chartInstance) {
                 chartInstance.destroy();
                 chartInstance = null;
