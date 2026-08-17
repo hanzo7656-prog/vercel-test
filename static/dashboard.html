@@ -7,17 +7,8 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        /* ============================================================
-           RESET OVERRIDE
-           ============================================================ */
-        body {
-            margin: 0;
-            padding: 0;
-        }
+        body { margin: 0; padding: 0; }
 
-        /* ============================================================
-           HEADER
-           ============================================================ */
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -55,13 +46,8 @@
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.4;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
         .dashboard-header .uptime {
             color: #4a5a6a;
@@ -69,9 +55,6 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* ============================================================
-           MENU TOGGLE (CIRCLE)
-           ============================================================ */
         .menu-toggle {
             width: 44px;
             height: 44px;
@@ -98,9 +81,6 @@
             color: #0a0e17;
         }
 
-        /* ============================================================
-           FLYOUT MENU
-           ============================================================ */
         .flyout-menu {
             position: fixed;
             top: 80px;
@@ -171,9 +151,6 @@
             pointer-events: all;
         }
 
-        /* ============================================================
-           DASHBOARD CONTENT
-           ============================================================ */
         .dashboard-content {
             padding: 20px 24px 40px;
             max-width: 1400px;
@@ -216,9 +193,6 @@
             border-radius: 2px;
         }
 
-        /* ============================================================
-           FEAR & GREED
-           ============================================================ */
         .fear-greed-box {
             display: flex;
             align-items: center;
@@ -256,9 +230,6 @@
             text-align: center;
         }
 
-        /* ============================================================
-           COIN ROW
-           ============================================================ */
         .coin-row {
             display: flex;
             justify-content: space-between;
@@ -277,9 +248,6 @@
             color: #ff4444;
         }
 
-        /* ============================================================
-           NEWS CARD
-           ============================================================ */
         .news-card {
             display: flex;
             gap: 14px;
@@ -327,9 +295,6 @@
             font-size: 0.7rem;
         }
 
-        /* ============================================================
-           LOADING
-           ============================================================ */
         .loading {
             display: flex;
             flex-direction: column;
@@ -347,14 +312,9 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
         @media (max-width: 768px) {
             .dashboard-header {
                 padding: 12px 16px;
@@ -409,48 +369,15 @@
 <body>
 
     <!-- ============================================================
-    HEADER
+    منو (بارگذاری از nav.html)
     ============================================================ -->
-    <header class="dashboard-header">
-        <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
-
-        <div style="display:flex;align-items:center;gap:16px;">
-            <div class="status">
-                <span class="dot"></span>
-                <span id="statusText">آنلاین</span>
-            </div>
-            <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
-            <button class="menu-toggle" id="menuToggle" aria-label="منو">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </header>
-
-    <!-- ============================================================
-    FLYOUT OVERLAY
-    ============================================================ -->
-    <div class="flyout-overlay" id="flyoutOverlay"></div>
-
-    <!-- ============================================================
-    FLYOUT MENU
-    ============================================================ -->
-    <nav class="flyout-menu" id="flyoutMenu">
-        <div class="menu-label">🔹 منوی اصلی</div>
-        <a href="/dashboard" class="active"><i class="fas fa-chart-pie"></i> داشبورد</a>
-        <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار حرفه‌ای</a>
-        <a href="/predict-page"><i class="fas fa-bullseye"></i> پیش‌بینی</a>
-        <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
-        <div class="menu-divider"></div>
-        <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
-        <a href="/stats-page"><i class="fas fa-chart-bar"></i> آمار</a>
-    </nav>
+    <div id="navContainer"></div>
 
     <!-- ============================================================
     DASHBOARD CONTENT
     ============================================================ -->
     <main class="dashboard-content">
 
-        <!-- ردیف ۱: بازار + Fear & Greed -->
         <div class="row">
             <div class="card">
                 <div class="card-title">📊 وضعیت کلی بازار</div>
@@ -462,7 +389,6 @@
             </div>
         </div>
 
-        <!-- ردیف ۲: ۲۰ ارز برتر + اخبار -->
         <div class="row">
             <div class="card">
                 <div class="card-title">🏆 ۲۰ ارز برتر</div>
@@ -476,31 +402,25 @@
 
     </main>
 
-    <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script>
         // ============================================================
-        // MENU TOGGLE
+        // بارگذاری منو از nav.html
         // ============================================================
-        const menuToggle = document.getElementById('menuToggle');
-        const flyoutMenu = document.getElementById('flyoutMenu');
-        const flyoutOverlay = document.getElementById('flyoutOverlay');
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
 
-        function toggleMenu() {
-            const isOpen = flyoutMenu.classList.toggle('open');
-            flyoutOverlay.classList.toggle('open');
-            menuToggle.classList.toggle('open');
-            menuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof fetchAndStartUptime === 'function') {
+                        fetchAndStartUptime();
+                    }
+                })
+                .catch(err => console.error('خطا در بارگذاری منو:', err));
         }
-
-        menuToggle.addEventListener('click', toggleMenu);
-        flyoutOverlay.addEventListener('click', toggleMenu);
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && flyoutMenu.classList.contains('open')) toggleMenu();
-        });
 
         // ============================================================
         // DASHBOARD FUNCTIONS
@@ -636,18 +556,12 @@
         // INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            // آپتایم
-            if (typeof fetchAndStartUptime === 'function') {
-                fetchAndStartUptime();
-            }
-
-            // بارگذاری بخش‌های داشبورد
+            loadNav();
             loadMarketStats();
             loadFearGreed();
             loadTopCoins();
             loadNews();
 
-            // بروزرسانی خودکار
             setInterval(() => {
                 loadMarketStats();
                 loadFearGreed();
