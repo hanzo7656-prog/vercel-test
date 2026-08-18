@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        /* ===== تمام استایل‌های قبلی ===== */
         body { margin: 0; padding: 0; }
-
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -51,7 +51,6 @@
             font-size: 0.8rem;
             font-family: 'Courier New', monospace;
         }
-
         .menu-toggle {
             width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
             border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
@@ -61,7 +60,6 @@
         }
         .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
         .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
-
         .flyout-menu {
             position: fixed; top: 80px; right: 20px;
             background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
@@ -119,13 +117,8 @@
             max-height: 350px;
             overflow-y: auto;
         }
-        .card-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .card-scroll::-webkit-scrollbar-thumb {
-            background: #00d4ff;
-            border-radius: 2px;
-        }
+        .card-scroll::-webkit-scrollbar { width: 4px; }
+        .card-scroll::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
 
         .fear-greed-box {
             display: flex;
@@ -276,7 +269,7 @@
 
         <div class="row">
             <div class="card">
-                <div class="card-title">🏆 ۲۰ ارز برتر</div>
+                <div class="card-title">🏆 ارزهای برتر</div>
                 <div class="card-scroll" id="topCoinsContainer"><div class="loading"><div class="spinner"></div></div></div>
             </div>
             <div class="card">
@@ -305,6 +298,16 @@
                 })
                 .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
         }
+
+        // ============================================================
+        // لیست ارزهای معروف (فیلتر شده)
+        // ============================================================
+        const TOP_COINS = [
+            'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
+            'ripple', 'cardano', 'dogecoin', 'polkadot', 'chainlink',
+            'avalanche', 'polygon', 'tron', 'uniSwap', 'litecoin',
+            'bitcoin-cash', 'cosmos', 'ethereum-classic', 'filecoin', 'stellar'
+        ];
 
         // ============================================================
         // توابع داشبورد
@@ -375,65 +378,111 @@
 
         function loadTopCoins() {
             const container = document.getElementById('topCoinsContainer');
-            fetch('/test-api?type=coins')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success && data.data) {
-                        const coins = data.data.result || data.data.data || [];
-                        let html = '';
-                        coins.slice(0, 20).forEach((coin, i) => {
-                            const change = coin.priceChange1d !== undefined ? coin.priceChange1d : (coin.price_change_24h || 0);
-                            const cls = change >= 0 ? 'positive' : 'negative';
-                            const sym = change >= 0 ? '▲' : '▼';
-                            html += `
-                                <div class="coin-row">
-                                    <span style="color:#4a5a6a;font-size:0.75rem;width:24px;">${i+1}</span>
-                                    <span style="flex:1;">${coin.symbol || coin.id}</span>
-                                    <span style="color:#e0e6ed;font-family:monospace;">$${Number(coin.price || 0).toLocaleString()}</span>
-                                    <span class="${cls}" style="font-size:0.8rem;min-width:55px;text-align:right;">${sym} ${Math.abs(change).toFixed(2)}%</span>
-                                </div>
-                            `;
-                        });
-                        container.innerHTML = html;
-                    } else {
-                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت...</p></div>';
+
+            // برای هر ارز معروف، اطلاعات رو جداگانه بگیر
+            const promises = TOP_COINS.map(coinId =>
+                fetch(`/test-api?type=coin&coin=${coinId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.data) {
+                            return data.data;
+                        }
+                        return null;
+                    })
+                    .catch(() => null)
+            );
+
+            Promise.all(promises)
+                .then(results => {
+                    const validCoins = results.filter(c => c !== null && c.price);
+                    if (validCoins.length === 0) {
+                        container.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.9rem;">📭 داده‌ای یافت نشد</p>';
+                        return;
                     }
+
+                    // مرتب‌سازی بر اساس مارکت‌کپ
+                    validCoins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+
+                    let html = '';
+                    validCoins.slice(0, 20).forEach((coin, i) => {
+                        const change = coin.priceChange1d || coin.price_change_24h || 0;
+                        const cls = change >= 0 ? 'positive' : 'negative';
+                        const sym = change >= 0 ? '▲' : '▼';
+                        html += `
+                            <div class="coin-row">
+                                <span style="color:#4a5a6a;font-size:0.75rem;width:24px;">${i+1}</span>
+                                <span style="flex:1;">${coin.symbol || coin.id}</span>
+                                <span style="color:#e0e6ed;font-family:monospace;">$${Number(coin.price || 0).toLocaleString()}</span>
+                                <span class="${cls}" style="font-size:0.8rem;min-width:55px;text-align:right;">${sym} ${Math.abs(change).toFixed(2)}%</span>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
+                .catch(() => {
+                    container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا در دریافت داده</p>';
+                });
         }
 
         function loadNews() {
             const container = document.getElementById('newsContainer');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت...</p></div>';
+
             fetch('/test-api?type=news&limit=6')
-                .then(r => r.json())
+                .then(res => res.json())
                 .then(data => {
+                    console.log('News response:', data);
                     if (data.success && data.data) {
-                        const news = data.data.data || data.data || [];
+                        // بررسی ساختار پاسخ
+                        let news = [];
+                        if (data.data.data && Array.isArray(data.data.data)) {
+                            news = data.data.data;
+                        } else if (Array.isArray(data.data)) {
+                            news = data.data;
+                        } else if (data.data.news && Array.isArray(data.data.news)) {
+                            news = data.data.news;
+                        } else if (data.data.result && Array.isArray(data.data.result)) {
+                            news = data.data.result;
+                        }
+
                         if (news.length === 0) {
                             container.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.9rem;">📭 خبری یافت نشد</p>';
                             return;
                         }
+
                         let html = '';
                         news.slice(0, 6).forEach(item => {
-                            const image = item.image_url || item.imageUrl || '';
+                            const image = item.image_url || item.imageUrl || item.image || '';
+                            const title = item.title || 'بدون عنوان';
+                            const source = item.source || item.source_name || 'نامشخص';
+                            const time = item.published_at || item.publishedAt || item.date || '';
+                            const url = item.url || item.link || '#';
+
                             const imgSrc = image || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%231a2a3a%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22%2300d4ff%22%3E📰%3C/text%3E%3C/svg%3E';
+
+                            const timeDisplay = time ? new Date(time).toLocaleDateString('fa-IR') : '';
+
                             html += `
-                                <div class="news-card" onclick="window.open('${item.url || '#'}', '_blank')">
+                                <div class="news-card" onclick="window.open('${url}', '_blank')">
                                     <img src="${imgSrc}" alt="news" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%231a2a3a%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%2228%22 fill=%22%2300d4ff%22%3E📰%3C/text%3E%3C/svg%3E'">
                                     <div class="content">
-                                        <div class="title">${item.title || 'بدون عنوان'}</div>
-                                        <div class="source">📰 ${item.source || 'نامشخص'}</div>
-                                        <div class="time">${item.published_at ? new Date(item.published_at).toLocaleDateString('fa-IR') : ''}</div>
+                                        <div class="title">${title}</div>
+                                        <div class="source">📰 ${source}</div>
+                                        <div class="time">${timeDisplay}</div>
                                     </div>
                                 </div>
                             `;
                         });
                         container.innerHTML = html;
                     } else {
-                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>';
+                        container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا در دریافت اخبار</p>';
                     }
                 })
-                .catch(() => container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا</p>');
+                .catch(err => {
+                    console.error('News error:', err);
+                    container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا در دریافت اخبار</p>';
+                });
         }
 
         // ============================================================
