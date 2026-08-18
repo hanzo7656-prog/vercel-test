@@ -5,43 +5,156 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پیش‌بینی الگو</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid #1a2a3a;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .dashboard-header .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00d4ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dashboard-header .status {
+            color: #7a8fa3;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dashboard-header .status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .dashboard-header .uptime {
+            color: #4a5a6a;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .menu-toggle {
+            width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
+            border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
+            cursor: pointer; transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 200;
+        }
+        .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
+        .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
+
+        .flyout-menu {
+            position: fixed; top: 80px; right: 20px;
+            background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
+            border: 1px solid #1a2a3a; border-radius: 16px; padding: 10px 0;
+            min-width: 200px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            transform: scale(0.8); opacity: 0; pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 150; transform-origin: top right;
+        }
+        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
+        .flyout-menu a {
+            display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+            color: #a0b4c8; text-decoration: none; font-size: 0.95rem;
+            transition: all 0.2s ease; border-right: 2px solid transparent;
+        }
+        .flyout-menu a:hover { background: rgba(0,212,255,0.05); color: #e0e6ed; border-right-color: #00d4ff; }
+        .flyout-menu a.active { color: #00d4ff; border-right-color: #00d4ff; background: rgba(0,212,255,0.05); }
+        .flyout-menu .menu-divider { height: 1px; background: #1a2a3a; margin: 6px 16px; }
+        .flyout-menu .menu-label { padding: 8px 20px 4px; font-size: 0.7rem; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.5px; }
+        .flyout-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 140;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .flyout-overlay.open { opacity: 1; pointer-events: all; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .card {
+            background: linear-gradient(145deg, #111d2b, #0d1624);
+            border: 1px solid #1a2a3a; border-radius: 16px; padding: 25px;
+            margin-bottom: 20px;
+        }
+        .card-title { color: #00d4ff; font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .card-subtitle { color: #7a8fa3; font-size: 0.9rem; margin-bottom: 15px; }
+
+        .row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; color: #a0b4c8; margin-bottom: 5px; font-size: 0.9rem; }
+        .form-control {
+            width: 100%; padding: 10px 15px; background: #0d1624; border: 1px solid #1a2a3a;
+            border-radius: 10px; color: #e0e6ed; font-size: 1rem;
+        }
+        .form-control:focus { outline: none; border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d4ff' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 15px center; padding-left: 40px; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 25px;
+            border: none; border-radius: 10px; font-size: 1rem; cursor: pointer;
+            transition: all 0.3s ease; font-weight: 500; text-decoration: none;
+        }
+        .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
+
         .result-box { padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
         .result-box.buy { background: rgba(0,255,136,0.1); border: 2px solid #00ff88; }
         .result-box.sell { background: rgba(255,68,68,0.1); border: 2px solid #ff4444; }
         .result-box.neutral { background: rgba(255,170,0,0.1); border: 2px solid #ffaa00; }
         .result-box .signal { font-size: 2rem; font-weight: bold; }
-        .result-box .price { font-size: 1.2rem; margin-top: 5px; color: #a0b4c8; }
         .confidence-bar { width: 100%; height: 8px; background: #1a2a3a; border-radius: 4px; overflow: hidden; margin-top: 10px; }
         .confidence-bar .fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
         .confidence-bar .fill.buy { background: linear-gradient(90deg, #00ff88, #00cc66); }
         .confidence-bar .fill.sell { background: linear-gradient(90deg, #ff4444, #cc0000); }
         .confidence-bar .fill.neutral { background: linear-gradient(90deg, #ffaa00, #cc8800); }
         .hidden { display: none; }
-        .result-details { margin-top: 15px; padding-top: 15px; border-top: 1px solid #1a2a3a; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; color: #7a8fa3; font-size: 0.9rem; }
-        .chart-container { background: #0d1624; border-radius: 12px; padding: 20px; margin-top: 15px; border: 1px solid #1a2a3a; height: 350px; position: relative; }
-        .chart-container canvas { width: 100% !important; height: 100% !important; }
+
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; gap: 15px; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #1a2a3a; border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .row { grid-template-columns: 1fr; }
+            .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .dashboard-header .status { font-size: 0.75rem; gap: 8px; }
+            .container { padding: 12px; }
+            .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
+        }
+        @media (max-width: 480px) {
+            .dashboard-header .uptime { display: none; }
+            .menu-toggle { width: 38px; height: 38px; font-size: 1rem; }
+            .flyout-menu { right: 8px; top: 64px; min-width: 150px; }
+            .flyout-menu a { font-size: 0.85rem; padding: 10px 16px; }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand">📊 سیستم تشخیص الگو</a>
-        <div class="navbar-menu">
-            <a href="/">🏠 خانه</a>
-            <a href="/dashboard">📈 داشبورد</a>
-            <a href="/predict-page" class="active">🎯 پیش‌بینی</a>
-            <a href="/test-api-page">🔌 تست API</a>
-            <a href="/health-page">💚 سلامت</a>
-            <a href="/stats-page">📊 آمار</a>
-        </div>
-        <div class="navbar-status">
-            <span><span class="status-dot online"></span> آنلاین</span>
-            <span style="color: #7a8fa3; font-size: 0.8rem;">
-                ⏱️ <span id="uptimeDisplay">۰ ثانیه</span>
-            </span>
-        </div>
-    </nav>
 
+    <!-- ============================================================
+    منو (بارگذاری از nav.html)
+    ============================================================ -->
+    <div id="navContainer"></div>
+
+    <!-- ============================================================
+    CONTENT
+    ============================================================ -->
     <div class="container">
         <div class="card">
             <div class="card-title">🎯 پیش‌بینی الگوی بازاری</div>
@@ -53,8 +166,6 @@
                         <select class="form-control" id="coin">
                             <option value="bitcoin">بیت‌کوین (BTC)</option>
                             <option value="ethereum">اتریوم (ETH)</option>
-                            <option value="tether">تتر (USDT)</option>
-                            <option value="binancecoin">بایننس کوین (BNB)</option>
                             <option value="solana">سولانا (SOL)</option>
                             <option value="ripple">ریپل (XRP)</option>
                             <option value="cardano">کاردانو (ADA)</option>
@@ -62,15 +173,7 @@
                             <option value="polkadot">پولکادات (DOT)</option>
                             <option value="chainlink">چین‌لینک (LINK)</option>
                             <option value="avalanche">آوالانچ (AVAX)</option>
-                            <option value="shiba-inu">شیبا اینو (SHIB)</option>
-                            <option value="matic-network">پالیگان (MATIC)</option>
-                            <option value="tron">ترون (TRX)</option>
-                            <option value="uniSwap">یونی‌سواپ (UNI)</option>
-                            <option value="litecoin">لایت‌کوین (LTC)</option>
-                            <option value="bitcoin-cash">بیت‌کوین کش (BCH)</option>
-                            <option value="cosmos">کازموس (ATOM)</option>
-                            <option value="ethereum-classic">اتریوم کلاسیک (ETC)</option>
-                            <option value="filecoin">فایل‌کوین (FIL)</option>
+                            <option value="polygon">پالیگان (MATIC)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -81,7 +184,7 @@
                             <option value="1m">۱ ماه</option>
                         </select>
                     </div>
-                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <div class="form-group">
                         <button type="button" class="btn btn-success" onclick="submitPredict()">🚀 پیش‌بینی</button>
                     </div>
                 </div>
@@ -89,7 +192,7 @@
         </div>
 
         <div id="loadingContainer" class="hidden">
-            <div class="card"><div class="loading"><div class="spinner"></div><p>⏳ در حال پردازش داده‌ها...</p><p style="color:#4a5a6a;font-size:0.85rem;" id="taskIdDisplay"></p></div></div>
+            <div class="card"><div class="loading"><div class="spinner"></div><p>⏳ در حال پردازش داده‌ها...</p></div></div>
         </div>
 
         <div id="resultContainer" class="hidden">
@@ -97,12 +200,30 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/script.js"></script>
+    <script src="/static/js/menu.js"></script>
     <script>
+        // ============================================================
+        // بارگذاری منو
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                })
+                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+        }
+
+        // ============================================================
+        // پیش‌بینی
+        // ============================================================
         let currentTaskId = null;
         let checkInterval = null;
-        let chartInstance = null;
 
         function submitPredict() {
             const coin = document.getElementById('coin').value;
@@ -116,7 +237,6 @@
                 .then(data => {
                     if (data.task_id) {
                         currentTaskId = data.task_id;
-                        document.getElementById('taskIdDisplay').textContent = `شناسه تسک: ${currentTaskId}`;
                         startPolling();
                     } else {
                         document.getElementById('loadingContainer').classList.add('hidden');
@@ -125,7 +245,7 @@
                 })
                 .catch(err => {
                     document.getElementById('loadingContainer').classList.add('hidden');
-                    showToast('❌ خطا: ' + err.message, 'error');
+                    alert('❌ خطا: ' + err.message);
                 });
         }
 
@@ -142,7 +262,7 @@
                         } else if (data.status === 'failed') {
                             clearInterval(checkInterval);
                             document.getElementById('loadingContainer').classList.add('hidden');
-                            showToast('❌ خطا در پردازش: ' + (data.error || 'خطای ناشناخته'), 'error');
+                            alert('❌ خطا در پردازش: ' + (data.error || 'خطای ناشناخته'));
                         }
                     })
                     .catch(err => console.error('Polling error:', err));
@@ -163,127 +283,23 @@
             const confidence = result.confidence_score || 50;
             const signalEmoji = signalType === 'buy' ? '🟢' : signalType === 'sell' ? '🔴' : '🟡';
 
-            let html = `
+            content.innerHTML = `
                 <div class="result-box ${signalType}">
                     <div class="signal">${signalEmoji} ${result.signal || 'بدون سیگنال'}</div>
                     <div style="font-size: 2.5rem; font-weight: bold; margin-top: 5px;">${result.confidence || '۵۰%'}</div>
                     <div class="confidence-bar"><div class="fill ${signalType}" style="width: ${confidence}%;"></div></div>
-                    <div class="price">💰 $${Number(result.current_price || 0).toLocaleString()}</div>
-                    <div class="result-details">
-                        <span>🪙 ${result.coin_name || result.coin}</span>
-                        <span>⏱️ ${result.period}</span>
-                        <span>📊 ${result.data_points || 0} نقطه</span>
-                        <span>⏱️ ${result.processing_time_ms || 0}ms</span>
+                    <div style="margin-top:15px;color:#7a8fa3;">
+                        🪙 ${result.coin_name} | 💰 $${Number(result.current_price || 0).toLocaleString()} | ⏱️ ${result.period}
                     </div>
-                    <div style="margin-top:10px;font-size:0.8rem;color:#4a5a6a;">📅 ${result.timestamp ? new Date(result.timestamp).toLocaleString('fa-IR') : ''}</div>
                 </div>
             `;
-
-            // اضافه کردن نمودار
-            html += `<div class="chart-container"><canvas id="priceChart"></canvas></div>`;
-            content.innerHTML = html;
-
-            // دریافت داده‌های چارت برای نمودار
-            fetch(`/test-api?type=chart&coin=${result.coin}&period=${result.period}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.count > 0) {
-                        createChart(data.sample || data.data || []);
-                    }
-                })
-                .catch(err => console.error('Chart error:', err));
         }
 
-        function createChart(data) {
-            if (chartInstance) {
-                chartInstance.destroy();
-                chartInstance = null;
-            }
-
-            const canvas = document.getElementById('priceChart');
-            if (!canvas) return;
-
-            const timestamps = data.map(p => new Date(p[0] * 1000).toLocaleString('fa-IR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                day: '2-digit',
-                month: '2-digit'
-            }));
-            const prices = data.map(p => p[1]);
-
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, 'rgba(0, 212, 255, 0.8)');
-            gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.3)');
-            gradient.addColorStop(1, 'rgba(0, 212, 255, 0.0)');
-
-            chartInstance = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: timestamps,
-                    datasets: [{
-                        label: 'قیمت (USD)',
-                        data: prices,
-                        borderColor: '#00d4ff',
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#00d4ff',
-                        pointBorderColor: '#00d4ff',
-                        tension: 0.3,
-                        fill: true,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#a0b4c8', font: { family: 'Vazir' } }
-                        },
-                        tooltip: {
-                            backgroundColor: '#0d1624',
-                            titleColor: '#e0e6ed',
-                            bodyColor: '#00d4ff',
-                            borderColor: '#1a2a3a',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function(context) {
-                                    return `$${context.parsed.y.toFixed(2)}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, maxTicksLimit: 10 }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#7a8fa3', font: { family: 'Vazir' }, callback: value => '$' + value.toFixed(0) }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' },
-                    animation: { duration: 2000, easing: 'easeOutQuart' }
-                }
-            });
-        }
-
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('coin') && params.get('period')) {
-            document.getElementById('coin').value = params.get('coin');
-            document.getElementById('period').value = params.get('period');
-            submitPredict();
-        }
-
-        // آپتایم
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof fetchAndStartUptime === 'function') {
-                fetchAndStartUptime();
-            }
-        });
+        // ============================================================
+        // راه‌اندازی
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', loadNav);
     </script>
+
 </body>
 </html>
