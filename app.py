@@ -16,60 +16,7 @@ from queue import Queue
 from flask import Flask, jsonify, request
 
 from api_handler import CoinStatsAPI
-
-
-# ============================================================
-# مدیریت تسک‌های پس‌زمینه
-# ============================================================
-
-class BackgroundTaskManager:
-    """
-    مدیریت تسک‌های سنگین در پس‌زمینه با Queue
-    """
-    def __init__(self):
-        self.tasks = {}
-        self.queue = Queue()
-        self.running = True
-        self.start_worker()
-    
-    def start_worker(self):
-        """شروع worker در یک ترد جداگانه"""
-        def worker():
-            while self.running:
-                try:
-                    task_id, func, args, kwargs = self.queue.get(timeout=1)
-                    try:
-                        result = func(*args, **kwargs)
-                        self.tasks[task_id] = {
-                            "status": "completed",
-                            "result": result,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                    except Exception as e:
-                        self.tasks[task_id] = {
-                            "status": "failed",
-                            "error": str(e),
-                            "timestamp": datetime.now().isoformat()
-                        }
-                except:
-                    pass
-        
-        self.worker_thread = threading.Thread(target=worker, daemon=True)
-        self.worker_thread.start()
-    
-    def submit(self, func, *args, **kwargs):
-        """ارسال یک تسک به صف"""
-        task_id = str(uuid.uuid4())[:8]
-        self.tasks[task_id] = {
-            "status": "pending",
-            "timestamp": datetime.now().isoformat()
-        }
-        self.queue.put((task_id, func, args, kwargs))
-        return task_id
-    
-    def get_result(self, task_id):
-        """دریافت نتیجه یک تسک"""
-        return self.tasks.get(task_id)
+from task_manager import TaskManager, get_task_manager, TaskPriority
 
 
 # ============================================================
@@ -88,7 +35,13 @@ class TradingSignalSystem:
         self.model = None
         self.model_loaded = False
         self.start_time = datetime.now()
-        self.task_manager = BackgroundTaskManager()
+        
+        # استفاده از TaskManager جدید
+        self.task_manager = get_task_manager(
+            num_workers=1,      # برای سرور ۵۱۲MB
+            max_tasks=50,       # حداکثر ۵۰ تسک در حافظه
+            task_ttl=300        # تسک‌ها بعد از ۵ دقیقه پاک میشن
+        )
         self.load_model()
 
     def _get_memory_usage(self):
@@ -298,8 +251,14 @@ class TradingSignalSystem:
         }
 
     def predict_async(self, coin_id="bitcoin", period="24h"):
-        """نسخه غیرهمگام (Asynchronous)"""
-        task_id = self.task_manager.submit(self.predict_sync, coin_id, period)
+        """نسخه غیرهمگام (Asynchronous) با TaskManager جدید"""
+        task_id = self.task_manager.submit(
+            func=self.predict_sync,
+            name=f"پیش‌بینی {coin_id} {period}",
+            args=(coin_id, period),
+            priority=TaskPriority.HIGH,
+            timeout=120
+        )
         return {
             "status": "processing",
             "task_id": task_id,
@@ -390,10 +349,9 @@ class TradingSignalSystem:
 
         # 5. آمار API
         status["components"]["api_stats"] = self.api.get_stats()
-        status["components"]["task_manager"] = {
-            "pending_tasks": self.task_manager.queue.qsize(),
-            "total_tasks": len(self.task_manager.tasks)
-        }
+        
+        # 6. آمار TaskManager
+        status["components"]["task_manager"] = self.task_manager.get_stats()
 
         return status
 
@@ -479,13 +437,7 @@ def task_status():
             "task_id": task_id
         }), 404
     
-    return jsonify({
-        "task_id": task_id,
-        "status": result.get("status"),
-        "result": result.get("result"),
-        "error": result.get("error"),
-        "timestamp": result.get("timestamp")
-    })
+    return jsonify(result)
 
 
 @app.route('/test-api', methods=['GET'])
@@ -588,6 +540,28 @@ def test_api():
 
 
 # ============================================================
+# روت‌های TaskManager
+# ============================================================
+
+@app.route('/task-manager/stats', methods=['GET'])
+def task_manager_stats():
+    """دریافت آمار کامل TaskManager"""
+    stats = system.task_manager.get_stats()
+    return jsonify(stats)
+
+
+@app.route('/task-manager/clear', methods=['POST'])
+def task_manager_clear():
+    """پاک کردن تسک‌های تکمیل‌شده"""
+    system.task_manager.clear_completed()
+    return jsonify({
+        "success": True,
+        "message": "تسک‌های تکمیل‌شده پاک شدند",
+        "timestamp": datetime.now().isoformat()
+    })
+
+
+# ============================================================
 # Import روت‌های دیگر
 # ============================================================
 
@@ -604,7 +578,7 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۴.۰ - ماژولار)")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۵.۰ - با TaskManager)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
@@ -616,10 +590,10 @@ if __name__ == "__main__":
     print("  /test-api-page - تست API")
     print("  /health-page   - سلامت سیستم")
     print("  /stats-page    - آمار")
+    print("  /task-manager  - مدیریت تسک‌ها")  # ← اضافه شد
     print("=" * 60)
     print("📌 اندپوینت‌های API:")
     print("  /health        - بررسی سلامت (JSON)")
-    print("  /health/simple - بررسی ساده سلامت")
     print("  /credits       - اطلاعات اعتبار")
     print("  /stats         - آمار (JSON)")
     print("  /status        - وضعیت کلی")
@@ -627,6 +601,8 @@ if __name__ == "__main__":
     print("  /predict-sync  - پیش‌بینی (Sync)")
     print("  /task-status   - وضعیت تسک")
     print("  /test-api      - تست API (JSON)")
+    print("  /task-manager/stats - آمار تسک‌ها")
+    print("  /task-manager/clear - پاک کردن تسک‌ها")
     print("=" * 60)
 
     app.run(host="0.0.0.0", port=port, debug=debug)
