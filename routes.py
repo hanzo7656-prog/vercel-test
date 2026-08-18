@@ -52,6 +52,10 @@ def chart_page():
     return send_from_directory('static', 'chart.html')
 
 
+@app.route('/task-manager')
+def task_manager_page():
+    """صفحه مدیریت تسک‌ها"""
+    return send_from_directory('static', 'task-manager.html')
 
 # ============================================================
 # سرو فایل‌های استاتیک (CSS, JS, Images)
