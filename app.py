@@ -13,7 +13,7 @@ import threading
 import numpy as np
 from datetime import datetime
 from queue import Queue
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request
 
 from api_handler import CoinStatsAPI
 
@@ -496,7 +496,7 @@ def test_api():
     پارامترهای Query:
         coin: شناسه ارز (پیش‌فرض: bitcoin)
         period: بازه زمانی (پیش‌فرض: 24h)
-        type: نوع داده (chart, coin, fear_greed, btc_dominance, market, coins, news)
+        type: نوع داده (chart, coin, fear_greed, btc_dominance, market, coins, news, status, credits)
     """
     coin = request.args.get('coin', 'bitcoin')
     period = request.args.get('period', '24h')
@@ -562,9 +562,28 @@ def test_api():
             if data and "error" not in data:
                 return jsonify({"success": True, "data": data})
             return jsonify({"success": False, "error": data.get("message", "خطا در دریافت داده") if data else "داده‌ای دریافت نشد"}), 400
+
+        elif data_type == 'status':
+            data = system.api.get_status()
+            return jsonify({"success": True, "data": data})
+
+        elif data_type == 'credits':
+            data = system.api.get_credits()
+            if data and "error" not in data:
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "totalCredits": data.get('totalCredits'),
+                        "usedCredits": data.get('usedCredits'),
+                        "remainingCredits": data.get('remainingCredits'),
+                        "subscription": data.get('subscription', 'free')
+                    }
+                })
+            return jsonify({"success": False, "error": data.get("message", "خطا در دریافت اعتبار") if data else "داده‌ای دریافت نشد"}), 400
             
     except Exception as e:
-        logger.error(f"Error in test-api: {e}")
+        import logging
+        logging.error(f"Error in test-api: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
