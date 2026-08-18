@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت تسک‌ها</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .card { background: linear-gradient(145deg, #111d2b, #0d1624); border: 1px solid #1a2a3a; border-radius: 16px; padding: 25px; margin-bottom: 20px; }
+        .card-title { color: #00d4ff; font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 25px; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; font-weight: 500; text-decoration: none; }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
+        .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+        .badge-success { background: rgba(0,255,136,0.15); color: #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+        .badge-warning { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.3); }
+        .badge-danger { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid rgba(255,68,68,0.3); }
+        .badge-info { background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
+        .table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .table th { text-align: right; padding: 12px 15px; color: #00d4ff; border-bottom: 2px solid #1a2a3a; font-weight: 600; }
+        .table td { padding: 10px 15px; border-bottom: 1px solid #0d1624; color: #c0d0e0; }
+        .table tr:hover td { background: rgba(0,212,255,0.05); }
+        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; gap: 15px; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #1a2a3a; border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .refresh-btn { margin-top: 15px; }
+        @media (max-width: 768px) { .row { grid-template-columns: 1fr; } .container { padding: 12px; } }
+    </style>
+</head>
+<body>
+    <div id="navContainer"></div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">⏳ مدیریت تسک‌های پس‌زمینه</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="loadStats()">🔄 بروزرسانی</button>
+                <button class="btn btn-danger" onclick="clearTasks()">🗑️ پاک کردن تسک‌های تکمیل‌شده</button>
+            </div>
+        </div>
+
+        <div id="statsContent">
+            <div class="loading"><div class="spinner"></div><p>در حال دریافت آمار...</p></div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script src="/static/js/menu.js"></script>
+    <script>
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                })
+                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+        }
+
+        function loadStats() {
+            const container = document.getElementById('statsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت آمار...</p></div>';
+
+            fetch('/task-manager/stats')
+                .then(res => res.json())
+                .then(data => {
+                    let html = '<div class="row">';
+
+                    // اطلاعات کلی
+                    html += `
+                        <div class="card">
+                            <div class="card-title">📊 وضعیت کلی</div>
+                            <table class="table">
+                                <tr><td>وضعیت</td><td><span class="badge ${data.config.running ? 'badge-success' : 'badge-danger'}">${data.config.running ? 'فعال' : 'متوقف'}</span></td></tr>
+                                <tr><td>کارگرها</td><td>${data.workers.active} از ${data.workers.total} فعال</td></tr>
+                                <tr><td>تسک‌ها</td><td>${data.tasks.total}</td></tr>
+                                <tr><td>صف</td><td>${data.tasks.queue_size}</td></tr>
+                            </table>
+                        </div>
+                    `;
+
+                    // آمار تسک‌ها
+                    html += `
+                        <div class="card">
+                            <div class="card-title">📈 آمار تسک‌ها</div>
+                            <table class="table">
+                                <tr><td>کل ارسال‌شده</td><td>${data.stats.total_submitted}</td></tr>
+                                <tr><td>تکمیل‌شده</td><td><span class="badge badge-success">${data.stats.total_completed}</span></td></tr>
+                                <tr><td>شکست‌خورده</td><td><span class="badge badge-danger">${data.stats.total_failed}</span></td></tr>
+                                <tr><td>لغو‌شده</td><td><span class="badge badge-warning">${data.stats.total_cancelled}</span></td></tr>
+                                <tr><td>میانگین زمان</td><td>${data.stats.avg_processing_time?.toFixed(2) || 0}s</td></tr>
+                                <tr><td>بزرگترین صف</td><td>${data.stats.peak_queue_size}</td></tr>
+                            </table>
+                        </div>
+                    `;
+
+                    // وضعیت تسک‌ها
+                    html += `
+                        <div class="card" style="grid-column:1/-1;">
+                            <div class="card-title">📋 وضعیت تسک‌ها</div>
+                            <table class="table">
+                                <tr>
+                                    <th>شناسه</th>
+                                    <th>نام</th>
+                                    <th>وضعیت</th>
+                                    <th>پیشرفت</th>
+                                    <th>زمان ایجاد</th>
+                                </tr>
+                    `;
+
+                    // اینجا میتونیم تسک‌های فعال رو هم نمایش بدیم
+                    // (برای سادگی فعلاً فقط آمار رو نشون میدیم)
+
+                    html += `
+                                <tr>
+                                    <td colspan="5" style="text-align:center;color:#4a5a6a;">
+                                        ${data.tasks.total > 0 ? `${data.tasks.total} تسک در حافظه` : 'هیچ تسکی در حافظه نیست'}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    `;
+
+                    html += '</div>';
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    container.innerHTML = `<div class="card"><div class="card-title">❌ خطا</div><p style="color:#ff4444;">${err.message}</p></div>`;
+                });
+        }
+
+        function clearTasks() {
+            if (!confirm('آیا از پاک کردن تمام تسک‌های تکمیل‌شده اطمینان دارید؟')) return;
+
+            fetch('/task-manager/clear', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert('✅ ' + data.message);
+                    loadStats();
+                })
+                .catch(err => alert('❌ خطا: ' + err.message));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadStats();
+            setInterval(loadStats, 30000);
+        });
+    </script>
+</body>
+</html>
