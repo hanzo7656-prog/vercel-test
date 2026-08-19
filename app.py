@@ -480,6 +480,89 @@ class TradingSignalSystem:
         return status
 
 
+    def _register_auto_tasks(self):
+        """ثبت تسک‌های خودکار در TaskManager"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # 1. به‌روزرسانی ارزهای برتر
+        def update_top_coins():
+            try:
+                data = self.api.get_coins_list(limit=20)
+                if data and "error" not in data:
+                    self._cached_coins = data
+                    logger.info("✅ Top coins updated")
+                    return {"status": "success", "count": len(data.get('result', []))}
+                return {"status": "failed", "error": "No data"}
+            except Exception as e:
+                logger.error(f"Update top coins failed: {e}")
+                return {"status": "failed", "error": str(e)}
+        
+        # 2. به‌روزرسانی اخبار
+        def update_news():
+            try:
+                data = self.api.get_news(limit=6)
+                if data and "error" not in data:
+                    self._cached_news = data
+                    logger.info("✅ News updated")
+                    return {"status": "success", "count": len(data.get('data', []))}
+                return {"status": "failed", "error": "No data"}
+            except Exception as e:
+                logger.error(f"Update news failed: {e}")
+                return {"status": "failed", "error": str(e)}
+        
+        # 3. به‌روزرسانی شاخص ترس و طمع
+        def update_fear_greed():
+            try:
+                data = self.api.get_fear_greed(use_cache=False)
+                if data and "error" not in data:
+                    self._cached_fear_greed = data
+                    logger.info("✅ Fear & Greed updated")
+                    return {"status": "success", "data": data}
+                return {"status": "failed", "error": "No data"}
+            except Exception as e:
+                logger.error(f"Update fear greed failed: {e}")
+                return {"status": "failed", "error": str(e)}
+        
+        # 4. به‌روزرسانی وضعیت بازار
+        def update_market_stats():
+            try:
+                data = self.api.get_global_market()
+                if data and "error" not in data:
+                    self._cached_market = data
+                    logger.info("✅ Market stats updated")
+                    return {"status": "success", "data": data}
+                return {"status": "failed", "error": "No data"}
+            except Exception as e:
+                logger.error(f"Update market stats failed: {e}")
+                return {"status": "failed", "error": str(e)}
+        
+        # ثبت تسک‌ها در TaskManager
+        self.task_manager.register_auto_task(
+            "به‌روزرسانی ارزهای برتر", 
+            update_top_coins, 
+            60  # هر ۶۰ ثانیه
+        )
+        self.task_manager.register_auto_task(
+            "به‌روزرسانی اخبار", 
+            update_news, 
+            60  # هر ۶۰ ثانیه
+        )
+        self.task_manager.register_auto_task(
+            "شاخص ترس و طمع", 
+            update_fear_greed, 
+            300  # هر ۵ دقیقه
+        )
+        self.task_manager.register_auto_task(
+            "وضعیت کلی بازار", 
+            update_market_stats, 
+            120  # هر ۲ دقیقه
+        )
+        
+        # شروع خودکار همه تسک‌ها
+        self.task_manager.start_all_auto_tasks()
+        logger.info("✅ All auto tasks started")
+
 # ============================================================
 # راه‌اندازی وب سرویس Flask
 # ============================================================
