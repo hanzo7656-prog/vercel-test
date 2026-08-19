@@ -1,7 +1,6 @@
 # task_manager.py
 # ============================================================
-# مدیریت تسک‌های پس‌زمینه - نسخه پیشرفته با تسک‌های خودکار
-# شامل: صف، کارگرها، مدیریت حافظه، زمان‌بندی، تسک‌های خودکار، و آمار
+# مدیریت تسک‌های پس‌زمینه - نسخه پیشرفته با شروع پلکانی و لاگ‌گیری
 # ============================================================
 
 import os
@@ -20,12 +19,7 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
-# وضعیت‌های تسک
-# ============================================================
-
 class TaskStatus(Enum):
-    """وضعیت‌های مختلف یک تسک"""
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -35,20 +29,14 @@ class TaskStatus(Enum):
 
 
 class TaskPriority(Enum):
-    """اولویت‌های تسک"""
     LOW = 0
     NORMAL = 1
     HIGH = 2
     CRITICAL = 3
 
 
-# ============================================================
-# مدل تسک
-# ============================================================
-
 @dataclass
 class Task:
-    """نماینده یک تسک در سیستم"""
     task_id: str
     name: str
     func: Callable
@@ -63,19 +51,14 @@ class Task:
     result: Any = None
     progress: int = 0
     timeout: int = 60
-    is_auto: bool = False  # تسک خودکار
+    is_auto: bool = False
 
-
-# ============================================================
-# تسک‌های خودکار
-# ============================================================
 
 class AutoTask:
-    """نماینده یک تسک خودکار زمان‌بندی‌شده"""
     def __init__(self, name: str, func: Callable, interval: int, args: tuple = (), kwargs: dict = None):
         self.name = name
         self.func = func
-        self.interval = interval  # ثانیه
+        self.interval = interval
         self.args = args
         self.kwargs = kwargs or {}
         self.running = False
@@ -87,26 +70,12 @@ class AutoTask:
         self.failed_runs = 0
         self.thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+        self.logs: List[Dict[str, Any]] = []  # لاگ‌های تسک
+        self.current_progress = 0  # درصد پیشرفت
+        self.remaining_time = 0  # زمان باقیمانده تا اجرای بعدی
 
-
-# ============================================================
-# مدیریت تسک‌ها
-# ============================================================
 
 class TaskManager:
-    """
-    مدیریت پیشرفته تسک‌های پس‌زمینه
-    
-    ویژگی‌ها:
-    - پشتیبانی از چند کارگر (قابل تنظیم)
-    - اولویت‌بندی تسک‌ها
-    - زمان‌بندی و Timeout
-    - تسک‌های خودکار (Auto Tasks)
-    - ذخیره و بازیابی نتایج
-    - آمار و مانیتورینگ
-    - مدیریت حافظه (پاک کردن تسک‌های قدیمی)
-    """
-    
     def __init__(self, num_workers: int = 1, max_tasks: int = 100, task_ttl: int = 300):
         self.num_workers = max(1, min(num_workers, os.cpu_count() or 1))
         self.max_tasks = max_tasks
@@ -132,12 +101,9 @@ class TaskManager:
         self._lock = threading.Lock()
         self._start_workers()
         self._start_cleaner()
+        self._start_progress_updater()
         
         logger.info(f"✅ TaskManager initialized with {self.num_workers} workers")
-    
-    # ============================================================
-    # مدیریت کارگرها
-    # ============================================================
     
     def _start_workers(self):
         for i in range(self.num_workers):
@@ -196,10 +162,6 @@ class TaskManager:
         avg = self.stats["avg_processing_time"]
         self.stats["avg_processing_time"] = ((avg * (total - 1)) + new_time) / total if total > 0 else new_time
     
-    # ============================================================
-    # مدیریت حافظه
-    # ============================================================
-    
     def _start_cleaner(self):
         def cleaner():
             while self.running:
@@ -208,7 +170,6 @@ class TaskManager:
         
         cleaner_thread = threading.Thread(target=cleaner, daemon=True)
         cleaner_thread.start()
-        logger.debug("✅ Task cleaner started")
     
     def _cleanup_old_tasks(self):
         now = datetime.now()
@@ -224,13 +185,28 @@ class TaskManager:
             
             for task_id in to_delete:
                 del self.tasks[task_id]
-            
-            if to_delete:
-                logger.debug(f"🧹 Cleaned up {len(to_delete)} old tasks")
     
-    # ============================================================
-    # مدیریت تسک‌ها
-    # ============================================================
+    def _start_progress_updater(self):
+        """بروزرسانی خودکار پیشرفت و زمان باقیمانده تسک‌های خودکار"""
+        def updater():
+            while self.running:
+                time.sleep(1)
+                with self._lock:
+                    for auto_task in self.auto_tasks.values():
+                        if auto_task.running:
+                            # محاسبه زمان باقیمانده
+                            if auto_task.last_run:
+                                elapsed = (datetime.now() - auto_task.last_run).total_seconds()
+                                remaining = max(0, auto_task.interval - elapsed)
+                                auto_task.remaining_time = int(remaining)
+                                # درصد پیشرفت بر اساس زمان گذشته
+                                auto_task.current_progress = min(100, int((elapsed / auto_task.interval) * 100))
+                            else:
+                                auto_task.remaining_time = auto_task.interval
+                                auto_task.current_progress = 0
+        
+        updater_thread = threading.Thread(target=updater, daemon=True)
+        updater_thread.start()
     
     def submit(self, func: Callable, name: str = None, 
                args: tuple = (), kwargs: dict = None,
@@ -309,25 +285,28 @@ class TaskManager:
             ]
             for task_id in to_delete:
                 del self.tasks[task_id]
-            logger.info(f"🧹 Cleared {len(to_delete)} completed/failed tasks")
-    
-    # ============================================================
-    # تسک‌های خودکار
-    # ============================================================
     
     def register_auto_task(self, name: str, func: Callable, interval: int, 
-                           args: tuple = (), kwargs: dict = None) -> str:
-        """ثبت یک تسک خودکار"""
+                           args: tuple = (), kwargs: dict = None, delay: int = 0) -> str:
+        """ثبت تسک خودکار با تاخیر شروع (برای شروع پلکانی)"""
         if kwargs is None:
             kwargs = {}
         
         auto_task = AutoTask(name, func, interval, args, kwargs)
         self.auto_tasks[name] = auto_task
-        logger.info(f"✅ Auto task registered: {name} (interval: {interval}s)")
+        
+        # لاگ ثبت
+        auto_task.logs.append({
+            "time": datetime.now().isoformat(),
+            "event": "registered",
+            "message": f"تسک با فاصله {interval} ثانیه ثبت شد"
+        })
+        
+        logger.info(f"✅ Auto task registered: {name} (interval: {interval}s, delay: {delay}s)")
         return name
     
-    def start_auto_task(self, name: str):
-        """شروع یک تسک خودکار"""
+    def start_auto_task(self, name: str, delay: int = 0):
+        """شروع تسک خودکار با تاخیر دلخواه"""
         auto_task = self.auto_tasks.get(name)
         if not auto_task:
             return False
@@ -339,18 +318,42 @@ class TaskManager:
         auto_task._stop_event.clear()
         
         def run_auto():
+            # تاخیر اولیه برای شروع پلکانی
+            if delay > 0:
+                time.sleep(delay)
+            
             while auto_task.running and not auto_task._stop_event.is_set():
                 try:
                     start_time = time.time()
+                    auto_task.last_run = datetime.now()
                     result = auto_task.func(*auto_task.args, **auto_task.kwargs)
                     auto_task.last_result = result
                     auto_task.last_error = None
                     auto_task.successful_runs += 1
-                    auto_task.last_run = datetime.now()
+                    
+                    # لاگ موفقیت
+                    auto_task.logs.append({
+                        "time": datetime.now().isoformat(),
+                        "event": "success",
+                        "message": f"اجرا موفق در {time.time() - start_time:.2f} ثانیه"
+                    })
+                    if len(auto_task.logs) > 50:
+                        auto_task.logs = auto_task.logs[-50:]
+                    
                     logger.debug(f"✅ Auto task '{name}' completed in {time.time() - start_time:.2f}s")
                 except Exception as e:
                     auto_task.last_error = str(e)
                     auto_task.failed_runs += 1
+                    
+                    # لاگ خطا
+                    auto_task.logs.append({
+                        "time": datetime.now().isoformat(),
+                        "event": "error",
+                        "message": f"خطا: {str(e)}"
+                    })
+                    if len(auto_task.logs) > 50:
+                        auto_task.logs = auto_task.logs[-50:]
+                    
                     logger.error(f"❌ Auto task '{name}' failed: {e}")
                 
                 auto_task.total_runs += 1
@@ -363,11 +366,10 @@ class TaskManager:
         
         auto_task.thread = threading.Thread(target=run_auto, daemon=True)
         auto_task.thread.start()
-        logger.info(f"▶️ Auto task started: {name}")
+        logger.info(f"▶️ Auto task started: {name} (delay: {delay}s)")
         return True
     
     def stop_auto_task(self, name: str):
-        """متوقف کردن یک تسک خودکار"""
         auto_task = self.auto_tasks.get(name)
         if not auto_task or not auto_task.running:
             return False
@@ -378,11 +380,31 @@ class TaskManager:
         if auto_task.thread and auto_task.thread.is_alive():
             auto_task.thread.join(timeout=2)
         
+        # لاگ توقف
+        auto_task.logs.append({
+            "time": datetime.now().isoformat(),
+            "event": "stopped",
+            "message": "تسک متوقف شد"
+        })
+        if len(auto_task.logs) > 50:
+            auto_task.logs = auto_task.logs[-50:]
+        
         logger.info(f"⏹️ Auto task stopped: {name}")
         return True
     
+    def start_all_auto_tasks(self, stagger: int = 5):
+        """شروع همه تسک‌ها با تاخیر پلکانی (هر تسک ۵ ثانیه بعد از قبلی)"""
+        delay = 0
+        for name in self.auto_tasks.keys():
+            self.start_auto_task(name, delay)
+            delay += stagger
+        logger.info(f"✅ All auto tasks started with {stagger}s stagger")
+    
+    def stop_all_auto_tasks(self):
+        for name in self.auto_tasks.keys():
+            self.stop_auto_task(name)
+    
     def get_auto_tasks_status(self) -> List[Dict[str, Any]]:
-        """دریافت وضعیت همه تسک‌های خودکار"""
         result = []
         for name, auto_task in self.auto_tasks.items():
             result.append({
@@ -395,22 +417,11 @@ class TaskManager:
                 "total_runs": auto_task.total_runs,
                 "successful_runs": auto_task.successful_runs,
                 "failed_runs": auto_task.failed_runs,
+                "progress": auto_task.current_progress,
+                "remaining_time": auto_task.remaining_time,
+                "logs": auto_task.logs[-10:] if auto_task.logs else [],  # آخرین ۱۰ لاگ
             })
         return result
-    
-    def start_all_auto_tasks(self):
-        """شروع همه تسک‌های خودکار"""
-        for name in self.auto_tasks.keys():
-            self.start_auto_task(name)
-    
-    def stop_all_auto_tasks(self):
-        """متوقف کردن همه تسک‌های خودکار"""
-        for name in self.auto_tasks.keys():
-            self.stop_auto_task(name)
-    
-    # ============================================================
-    # آمار
-    # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
         with self._lock:
@@ -449,10 +460,6 @@ class TaskManager:
             worker.join(timeout=2)
         logger.info("🛑 TaskManager shutdown complete")
 
-
-# ============================================================
-# Singleton
-# ============================================================
 
 _task_manager_instance = None
 
