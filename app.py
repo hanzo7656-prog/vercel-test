@@ -429,12 +429,12 @@ class TradingSignalSystem:
         self.task_manager.register_auto_task(
             "به‌روزرسانی ارزهای برتر", 
             update_top_coins, 
-            60
+            120
         )
         self.task_manager.register_auto_task(
             "به‌روزرسانی اخبار", 
             update_news, 
-            60
+            120
         )
         self.task_manager.register_auto_task(
             "شاخص ترس و طمع", 
@@ -444,11 +444,11 @@ class TradingSignalSystem:
         self.task_manager.register_auto_task(
             "وضعیت کلی بازار", 
             update_market_stats, 
-            120
+            300
         )
         
         # شروع خودکار همه تسک‌ها
-        self.task_manager.start_all_auto_tasks()
+        self.task_manager.start_all_auto_tasks(stagger=5)
         logger.info("✅ All auto tasks started")
 
 
