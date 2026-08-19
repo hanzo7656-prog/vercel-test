@@ -191,20 +191,20 @@ class TaskManager:
         def updater():
             while self.running:
                 time.sleep(1)
-                with self._lock:
-                    for auto_task in self.auto_tasks.values():
-                        if auto_task.running:
-                            # محاسبه زمان باقیمانده
-                            if auto_task.last_run:
-                                elapsed = (datetime.now() - auto_task.last_run).total_seconds()
-                                remaining = max(0, auto_task.interval - elapsed)
-                                auto_task.remaining_time = int(remaining)
-                                # درصد پیشرفت بر اساس زمان گذشته
-                                auto_task.current_progress = min(100, int((elapsed / auto_task.interval) * 100))
-                            else:
-                                auto_task.remaining_time = auto_task.interval
-                                auto_task.current_progress = 0
-        
+                # بدون لاک (چون فقط میخونیم)
+                for auto_task in self.auto_tasks.values():
+                    if auto_task.running and auto_task.last_run:
+                        elapsed = (datetime.now() - auto_task.last_run).total_seconds()
+                        remaining = max(0, auto_task.interval - elapsed)
+                        auto_task.remaining_time = int(remaining)
+                        auto_task.current_progress = min(100, int((elapsed / auto_task.interval) * 100))
+                    elif auto_task.running:
+                        auto_task.remaining_time = auto_task.interval
+                        auto_task.current_progress = 0
+                    else:
+                        auto_task.remaining_time = 0
+                        auto_task.current_progress = 0
+                        
         updater_thread = threading.Thread(target=updater, daemon=True)
         updater_thread.start()
     
