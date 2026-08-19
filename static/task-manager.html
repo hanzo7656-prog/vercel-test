@@ -166,6 +166,19 @@
             display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;
         }
 
+        .log-entry {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 2px 0;
+            background: #0a0e17;
+            border-right: 2px solid #1a2a3a;
+        }
+        .log-entry.success { border-right-color: #00ff88; color: #00ff88; }
+        .log-entry.error { border-right-color: #ff4444; color: #ff4444; }
+        .log-entry.info { border-right-color: #00d4ff; color: #00d4ff; }
+        .log-entry.stopped { border-right-color: #ffaa00; color: #ffaa00; }
+
         @media (max-width: 768px) {
             .row { grid-template-columns: 1fr; }
             .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
@@ -189,7 +202,6 @@
     <!-- محتوا -->
     <div class="container">
 
-        <!-- Header -->
         <div class="card">
             <div class="card-title">⏳ مدیریت تسک‌های پس‌زمینه</div>
             <div class="card-subtitle">مدیریت تسک‌های دستی و خودکار سیستم</div>
@@ -201,7 +213,6 @@
             </div>
         </div>
 
-        <!-- محتوای آمار -->
         <div id="statsContent">
             <div class="loading"><div class="spinner"></div><p>در حال دریافت آمار...</p></div>
         </div>
@@ -211,9 +222,8 @@
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
     <script>
-        // ============================================================
-        // بارگذاری منو
-        // ============================================================
+        let statsInterval = null;
+
         function loadNav() {
             const container = document.getElementById('navContainer');
             if (!container) return;
@@ -227,14 +237,9 @@
                 .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
         }
 
-        // ============================================================
-        // توابع اصلی
-        // ============================================================
-
         function loadStats() {
             const container = document.getElementById('statsContent');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت آمار...</p></div>';
-
+            
             fetch('/task-manager/stats')
                 .then(res => res.json())
                 .then(data => {
@@ -267,7 +272,7 @@
                     `;
                     html += `</div>`;
 
-                    // ===== تسک‌های خودکار =====
+                    // ===== تسک‌های خودکار با درصد و ثانیه‌شمار =====
                     html += `<div class="card">`;
                     html += `<div class="card-title">🤖 تسک‌های خودکار</div>`;
 
@@ -276,17 +281,32 @@
                             const statusBadge = task.running ? 'badge-success' : 'badge-gray';
                             const statusText = task.running ? 'در حال اجرا' : 'متوقف';
                             const lastRun = task.last_run ? new Date(task.last_run).toLocaleString('fa-IR') : 'تاکنون اجرا نشده';
-                            const errorText = task.last_error ? `⚠️ ${task.last_error}` : '✅ بدون خطا';
+                            const progress = task.progress || 0;
+                            const remaining = task.remaining_time || 0;
+
+                            // نمایش دقیقه و ثانیه
+                            const mins = Math.floor(remaining / 60);
+                            const secs = remaining % 60;
+                            const timeDisplay = remaining > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : '--:--';
 
                             html += `
-                                <div class="auto-task-item">
-                                    <div class="info">
-                                        <span style="font-weight:500;color:#e0e6ed;">${task.name}</span>
+                                <div class="auto-task-item" data-task-name="${task.name}">
+                                    <div class="info" style="flex:1;">
+                                        <span style="font-weight:500;color:#e0e6ed;min-width:160px;">${task.name}</span>
                                         <span class="badge ${statusBadge}">${statusText}</span>
                                         <span style="color:#4a5a6a;font-size:0.75rem;">⏱️ هر ${task.interval} ثانیه</span>
                                         <span style="color:#4a5a6a;font-size:0.75rem;">📊 ${task.total_runs} بار</span>
-                                        <span style="color:#4a5a6a;font-size:0.75rem;">✅ ${task.successful_runs} | ❌ ${task.failed_runs}</span>
-                                        <span style="color:#4a5a6a;font-size:0.7rem;">${errorText}</span>
+                                        <span style="color:#00ff88;font-size:0.75rem;">✅ ${task.successful_runs}</span>
+                                        <span style="color:#ff4444;font-size:0.75rem;">❌ ${task.failed_runs}</span>
+                                    </div>
+                                    <div style="flex:1;min-width:150px;">
+                                        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#7a8fa3;">
+                                            <span>پیشرفت: ${progress}%</span>
+                                            <span>⏳ ${timeDisplay}</span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="fill" style="width:${progress}%;"></div>
+                                        </div>
                                     </div>
                                     <div class="actions">
                                         ${!task.running ? `<button class="btn btn-sm btn-success" onclick="startAuto('${task.name}')">▶️ شروع</button>` :
@@ -297,6 +317,36 @@
                         });
                     } else {
                         html += `<p style="color:#4a5a6a;text-align:center;">هیچ تسک خودکاری ثبت نشده است</p>`;
+                    }
+                    html += `</div>`;
+
+                    // ===== لاگ‌های تسک‌ها =====
+                    html += `<div class="card">`;
+                    html += `<div class="card-title">📋 لاگ تسک‌ها</div>`;
+                    
+                    let hasLogs = false;
+                    if (data.auto_tasks) {
+                        data.auto_tasks.forEach(task => {
+                            if (task.logs && task.logs.length > 0) {
+                                hasLogs = true;
+                                html += `<div style="margin-bottom:10px;color:#7a8fa3;font-size:0.85rem;">${task.name}</div>`;
+                                task.logs.slice().reverse().forEach(log => {
+                                    const time = new Date(log.time).toLocaleString('fa-IR');
+                                    const cls = log.event === 'success' ? 'success' : 
+                                               log.event === 'error' ? 'error' : 
+                                               log.event === 'stopped' ? 'stopped' : 'info';
+                                    html += `
+                                        <div class="log-entry ${cls}">
+                                            [${time}] ${log.message}
+                                        </div>
+                                    `;
+                                });
+                            }
+                        });
+                    }
+                    
+                    if (!hasLogs) {
+                        html += `<p style="color:#4a5a6a;text-align:center;">هیچ لاگی ثبت نشده است</p>`;
                     }
                     html += `</div>`;
 
@@ -315,7 +365,6 @@
                     `;
 
                     if (data.tasks.total > 0) {
-                        // برای سادگی فقط تعداد رو نشون میدیم
                         html += `
                             <tr>
                                 <td colspan="5" style="text-align:center;color:#4a5a6a;">
@@ -333,7 +382,6 @@
                     }
                     html += `</table></div>`;
 
-                    // نمایش در صفحه
                     container.innerHTML = html;
                 })
                 .catch(err => {
@@ -341,10 +389,13 @@
                 });
         }
 
-        // ============================================================
-        // کنترل تسک‌های خودکار
-        // ============================================================
+        // ===== آپدیت خودکار هر ثانیه =====
+        function startAutoRefresh() {
+            if (statsInterval) clearInterval(statsInterval);
+            statsInterval = setInterval(loadStats, 1000);
+        }
 
+        // ===== کنترل تسک‌ها =====
         function startAuto(name) {
             fetch(`/task-manager/auto/start?name=${encodeURIComponent(name)}`, { method: 'POST' })
                 .then(res => res.json())
@@ -396,13 +447,11 @@
                 .catch(err => alert('❌ خطا: ' + err.message));
         }
 
-        // ============================================================
-        // راه‌اندازی
-        // ============================================================
+        // ===== راه‌اندازی =====
         document.addEventListener('DOMContentLoaded', function() {
             loadNav();
             loadStats();
-            setInterval(loadStats, 15000);
+            startAutoRefresh();
         });
     </script>
 
