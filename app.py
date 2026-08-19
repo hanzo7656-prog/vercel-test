@@ -16,130 +16,12 @@ from queue import Queue
 from flask import Flask, jsonify, request
 
 from api_handler import CoinStatsAPI
-from task_manager import TaskManager, get_task_manager, TaskPriority
+from task_manager import get_task_manager, TaskPriority
 
 
 # ============================================================
 # هسته اصلی سیستم
 # ============================================================
-
-#=============================================================
-#task_manager
-#=============================================================
-
-def register_auto_tasks(system):
-    """ثبت تسک‌های خودکار در TaskManager"""
-    
-    # 1. به‌روزرسانی ارزهای برتر
-    def update_top_coins():
-        import logging
-        try:
-            data = system.api.get_coins_list(limit=20)
-            if data and "error" not in data:
-                system._cached_coins = data
-                logging.info("✅ Top coins updated")
-                return {"status": "success", "count": len(data.get('result', []))}
-            return {"status": "failed", "error": "No data"}
-        except Exception as e:
-            logging.error(f"Update top coins failed: {e}")
-            return {"status": "failed", "error": str(e)}
-    
-    # 2. به‌روزرسانی اخبار
-    def update_news():
-        import logging
-        try:
-            data = system.api.get_news(limit=6)
-            if data and "error" not in data:
-                system._cached_news = data
-                logging.info("✅ News updated")
-                return {"status": "success", "count": len(data.get('data', []))}
-            return {"status": "failed", "error": "No data"}
-        except Exception as e:
-            logging.error(f"Update news failed: {e}")
-            return {"status": "failed", "error": str(e)}
-    
-    # 3. به‌روزرسانی شاخص ترس و طمع
-    def update_fear_greed():
-        import logging
-        try:
-            data = system.api.get_fear_greed(use_cache=False)
-            if data and "error" not in data:
-                system._cached_fear_greed = data
-                logging.info("✅ Fear & Greed updated")
-                return {"status": "success", "data": data}
-            return {"status": "failed", "error": "No data"}
-        except Exception as e:
-            logging.error(f"Update fear greed failed: {e}")
-            return {"status": "failed", "error": str(e)}
-    
-    # 4. به‌روزرسانی وضعیت بازار
-    def update_market_stats():
-        import logging
-        try:
-            data = system.api.get_global_market()
-            if data and "error" not in data:
-                system._cached_market = data
-                logging.info("✅ Market stats updated")
-                return {"status": "success", "data": data}
-            return {"status": "failed", "error": "No data"}
-        except Exception as e:
-            logging.error(f"Update market stats failed: {e}")
-            return {"status": "failed", "error": str(e)}
-    
-    # ثبت تسک‌ها
-    system.task_manager.register_auto_task("به‌روزرسانی ارزهای برتر", update_top_coins, 60)
-    system.task_manager.register_auto_task("به‌روزرسانی اخبار", update_news, 60)
-    system.task_manager.register_auto_task("شاخص ترس و طمع", update_fear_greed, 300)  # ۵ دقیقه
-    system.task_manager.register_auto_task("وضعیت کلی بازار", update_market_stats, 120)  # ۲ دقیقه
-    
-    # شروع خودکار همه تسک‌ها
-    system.task_manager.start_all_auto_tasks()
-    logging.info("✅ All auto tasks started")
-
-
-# ============================================================
-# اضافه کردن روت‌های کنترل تسک‌های خودکار
-# ============================================================
-
-@app.route('/task-manager/auto/start', methods=['POST'])
-def auto_start():
-    """شروع یک تسک خودکار"""
-    name = request.args.get('name')
-    if not name:
-        return jsonify({"success": False, "error": "نام تسک الزامی است"}), 400
-    
-    result = system.task_manager.start_auto_task(name)
-    if result:
-        return jsonify({"success": True, "message": f"تسک {name} شروع شد"})
-    return jsonify({"success": False, "error": "تسک پیدا نشد یا در حال اجراست"}), 400
-
-
-@app.route('/task-manager/auto/stop', methods=['POST'])
-def auto_stop():
-    """متوقف کردن یک تسک خودکار"""
-    name = request.args.get('name')
-    if not name:
-        return jsonify({"success": False, "error": "نام تسک الزامی است"}), 400
-    
-    result = system.task_manager.stop_auto_task(name)
-    if result:
-        return jsonify({"success": True, "message": f"تسک {name} متوقف شد"})
-    return jsonify({"success": False, "error": "تسک پیدا نشد یا در حال اجرا نیست"}), 400
-
-
-@app.route('/task-manager/auto/start-all', methods=['POST'])
-def auto_start_all():
-    """شروع همه تسک‌های خودکار"""
-    system.task_manager.start_all_auto_tasks()
-    return jsonify({"success": True, "message": "همه تسک‌های خودکار شروع شدند"})
-
-
-@app.route('/task-manager/auto/stop-all', methods=['POST'])
-def auto_stop_all():
-    """متوقف کردن همه تسک‌های خودکار"""
-    system.task_manager.stop_all_auto_tasks()
-    return jsonify({"success": True, "message": "همه تسک‌های خودکار متوقف شدند"})
-
 
 class TradingSignalSystem:
     """
@@ -161,11 +43,14 @@ class TradingSignalSystem:
             task_ttl=300        # تسک‌ها بعد از ۵ دقیقه پاک میشن
         )
         self.load_model()
+        
+        # کش برای داده‌های خودکار
         self._cached_coins = None
         self._cached_news = None
         self._cached_fear_greed = None
         self._cached_market = None
-
+        
+        # ثبت تسک‌های خودکار
         self._register_auto_tasks()
 
     def _get_memory_usage(self):
@@ -479,7 +364,10 @@ class TradingSignalSystem:
 
         return status
 
-
+    # ============================================================
+    # تسک‌های خودکار
+    # ============================================================
+    
     def _register_auto_tasks(self):
         """ثبت تسک‌های خودکار در TaskManager"""
         import logging
@@ -537,31 +425,32 @@ class TradingSignalSystem:
                 logger.error(f"Update market stats failed: {e}")
                 return {"status": "failed", "error": str(e)}
         
-        # ثبت تسک‌ها در TaskManager
+        # ثبت تسک‌ها
         self.task_manager.register_auto_task(
             "به‌روزرسانی ارزهای برتر", 
             update_top_coins, 
-            60  # هر ۶۰ ثانیه
+            60
         )
         self.task_manager.register_auto_task(
             "به‌روزرسانی اخبار", 
             update_news, 
-            60  # هر ۶۰ ثانیه
+            60
         )
         self.task_manager.register_auto_task(
             "شاخص ترس و طمع", 
             update_fear_greed, 
-            300  # هر ۵ دقیقه
+            300
         )
         self.task_manager.register_auto_task(
             "وضعیت کلی بازار", 
             update_market_stats, 
-            120  # هر ۲ دقیقه
+            120
         )
         
         # شروع خودکار همه تسک‌ها
         self.task_manager.start_all_auto_tasks()
         logger.info("✅ All auto tasks started")
+
 
 # ============================================================
 # راه‌اندازی وب سرویس Flask
@@ -572,7 +461,7 @@ system = TradingSignalSystem()
 
 
 # ============================================================
-# روت‌های بازار (هسته اصلی)
+# روت‌های API (هسته اصلی)
 # ============================================================
 
 @app.route('/predict', methods=['GET'])
@@ -768,6 +657,46 @@ def task_manager_clear():
     })
 
 
+@app.route('/task-manager/auto/start', methods=['POST'])
+def auto_start():
+    """شروع یک تسک خودکار"""
+    name = request.args.get('name')
+    if not name:
+        return jsonify({"success": False, "error": "نام تسک الزامی است"}), 400
+    
+    result = system.task_manager.start_auto_task(name)
+    if result:
+        return jsonify({"success": True, "message": f"تسک {name} شروع شد"})
+    return jsonify({"success": False, "error": "تسک پیدا نشد یا در حال اجراست"}), 400
+
+
+@app.route('/task-manager/auto/stop', methods=['POST'])
+def auto_stop():
+    """متوقف کردن یک تسک خودکار"""
+    name = request.args.get('name')
+    if not name:
+        return jsonify({"success": False, "error": "نام تسک الزامی است"}), 400
+    
+    result = system.task_manager.stop_auto_task(name)
+    if result:
+        return jsonify({"success": True, "message": f"تسک {name} متوقف شد"})
+    return jsonify({"success": False, "error": "تسک پیدا نشد یا در حال اجرا نیست"}), 400
+
+
+@app.route('/task-manager/auto/start-all', methods=['POST'])
+def auto_start_all():
+    """شروع همه تسک‌های خودکار"""
+    system.task_manager.start_all_auto_tasks()
+    return jsonify({"success": True, "message": "همه تسک‌های خودکار شروع شدند"})
+
+
+@app.route('/task-manager/auto/stop-all', methods=['POST'])
+def auto_stop_all():
+    """متوقف کردن همه تسک‌های خودکار"""
+    system.task_manager.stop_all_auto_tasks()
+    return jsonify({"success": True, "message": "همه تسک‌های خودکار متوقف شدند"})
+
+
 # ============================================================
 # Import روت‌های دیگر
 # ============================================================
@@ -793,11 +722,12 @@ if __name__ == "__main__":
     print("📌 صفحات HTML:")
     print("  /              - صفحه اصلی")
     print("  /dashboard     - داشبورد")
+    print("  /chart-page    - نمودار")
     print("  /predict-page  - پیش‌بینی")
     print("  /test-api-page - تست API")
     print("  /health-page   - سلامت سیستم")
     print("  /stats-page    - آمار")
-    print("  /task-manager  - مدیریت تسک‌ها")  # ← اضافه شد
+    print("  /task-manager  - مدیریت تسک‌ها")
     print("=" * 60)
     print("📌 اندپوینت‌های API:")
     print("  /health        - بررسی سلامت (JSON)")
