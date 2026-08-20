@@ -52,7 +52,8 @@ class AutoTrainer:
             "trend_5", "trend_10", "trend_20",
             "r2"
         ]
-        
+
+        self.training_history: List[Dict[str, Any]] = []
         self._add_log("✅ AutoTrainer initialized")
     
     def _add_log(self, message: str):
@@ -296,6 +297,42 @@ class AutoTrainer:
             }
         finally:
             self.is_training = False
+        
+        # بعد از آموزش موفق، سابقه رو ذخیره کن
+        if result["success"]:
+            self.training_history.append({
+                "timestamp": datetime.now().isoformat(),
+                "period": period,
+                "accuracy": result["accuracy"],
+                "samples": result["samples"],
+                "training_time": result["training_time"],
+                "status": "success"
+            })
+            # نگه‌داشتن فقط ۱۰۰ رکورد آخر
+            if len(self.training_history) > 100:
+                self.training_history = self.training_history[-100:]
+        
+        return result
+    
+    def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
+        """دریافت سابقه آموزش با فیلتر دوره زمانی"""
+        if period:
+            return [h for h in self.training_history if h.get("period") == period]
+        return self.training_history
+    
+    def get_stats(self) -> Dict[str, Any]:
+        status = self.check_api_status()
+        return {
+            "is_running": self.is_running,
+            "is_training": self.is_training,
+            "stats": self.stats,
+            "api_status": status,
+            "coins": self.coins,
+            "model_exists": os.path.exists(self.model_path),
+            "logs": self.logs[-30:],
+            "training_history": self.training_history[-50:],
+            "timestamp": datetime.now().isoformat()
+        }
     
     # ============================================================
     # اجرای خودکار
