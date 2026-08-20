@@ -833,6 +833,18 @@ def model_history():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# app.py - اضافه کردن روت جدید
+
+@app.route('/model/clear-logs', methods=['POST'])
+def model_clear_logs():
+    """پاک کردن لاگ‌های آموزش"""
+    try:
+        system.trainer.clear_logs()
+        return jsonify({"success": True, "message": "لاگ‌ها پاک شدند"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 # ============================================================
 # Import روت‌های دیگر
 # ============================================================
