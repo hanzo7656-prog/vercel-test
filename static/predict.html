@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
+
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -50,6 +51,7 @@
             font-size: 0.8rem;
             font-family: 'Courier New', monospace;
         }
+
         .menu-toggle {
             width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
             border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
@@ -59,6 +61,7 @@
         }
         .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
         .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
+
         .flyout-menu {
             position: fixed; top: 80px; right: 20px;
             background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
@@ -85,6 +88,7 @@
         .flyout-overlay.open { opacity: 1; pointer-events: all; }
 
         .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
         .card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
             border: 1px solid #1a2a3a;
@@ -108,6 +112,7 @@
             font-size: 0.9rem;
             margin-bottom: 15px;
         }
+
         .badge {
             display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500;
         }
@@ -127,9 +132,14 @@
         .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
         .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
         .btn-sm { padding: 5px 14px; font-size: 0.8rem; }
+        .btn-xs { padding: 3px 10px; font-size: 0.7rem; }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
+        .btn-outline {
+            background: transparent; border: 1px solid #1a2a3a; color: #7a8fa3;
+        }
+        .btn-outline:hover { border-color: #00d4ff; color: #e0e6ed; }
 
         .model-status {
             display: flex;
@@ -157,7 +167,7 @@
 
         .model-config {
             display: grid;
-            grid-template-columns: 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr 1fr auto;
             gap: 12px;
             align-items: end;
             margin-bottom: 15px;
@@ -198,7 +208,7 @@
             color: #7a8fa3;
             direction: ltr;
             text-align: left;
-            line-height: 1.6;
+            line-height: 1.8;
         }
         .console::-webkit-scrollbar { width: 4px; }
         .console::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
@@ -206,6 +216,129 @@
         .console .log-success { color: #00ff88; }
         .console .log-error { color: #ff4444; }
         .console .log-warning { color: #ffaa00; }
+        .console .log-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .console .log-line .copy-btn {
+            background: none;
+            border: none;
+            color: #4a5a6a;
+            cursor: pointer;
+            font-size: 0.65rem;
+            padding: 0 4px;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .console .log-line .copy-btn:hover {
+            opacity: 1;
+            color: #00d4ff;
+        }
+
+        /* ===== مودال پیشرفت ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            background: linear-gradient(145deg, #111d2b, #0a0e17);
+            border: 1px solid #1a2a3a;
+            border-radius: 24px;
+            padding: 40px 50px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            animation: modalIn 0.4s ease;
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-box .progress-circle {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        .modal-box .progress-circle svg {
+            transform: rotate(-90deg);
+            width: 120px;
+            height: 120px;
+        }
+        .modal-box .progress-circle .bg {
+            fill: none;
+            stroke: #1a2a3a;
+            stroke-width: 6;
+        }
+        .modal-box .progress-circle .progress {
+            fill: none;
+            stroke: #00d4ff;
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        .modal-box .progress-circle .center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #e0e6ed;
+        }
+        .modal-box .step-text {
+            color: #a0b4c8;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+        .modal-box .step-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .modal-box .step-dots .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #1a2a3a;
+            transition: all 0.3s ease;
+        }
+        .modal-box .step-dots .dot.active {
+            background: #00d4ff;
+            box-shadow: 0 0 15px rgba(0,212,255,0.3);
+        }
+        .modal-box .step-dots .dot.done {
+            background: #00ff88;
+        }
+        .modal-box .close-modal-btn {
+            margin-top: 20px;
+            padding: 8px 30px;
+            background: #1a2a3a;
+            border: none;
+            border-radius: 10px;
+            color: #7a8fa3;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        .modal-box .close-modal-btn:hover {
+            background: #2a3a4a;
+            color: #e0e6ed;
+        }
 
         @media (max-width: 768px) {
             .model-config { grid-template-columns: 1fr; }
@@ -214,6 +347,9 @@
             .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
             .model-status { flex-direction: column; align-items: stretch; }
             .model-status .right { justify-content: flex-start; }
+            .modal-box { padding: 30px 20px; margin: 0 15px; }
+            .modal-box .progress-circle { width: 100px; height: 100px; }
+            .modal-box .progress-circle svg { width: 100px; height: 100px; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
@@ -276,18 +412,44 @@
                         <option value="24">هر ۲۴ ساعت</option>
                     </select>
                 </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button class="btn btn-sm btn-outline" onclick="clearLogs()" style="padding:8px 16px;">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- ===== کنسول لاگ ===== -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="color:#7a8fa3;font-size:0.8rem;">📋 کنسول آموزش</span>
-                <button class="btn btn-sm btn-outline" onclick="clearLogs()" style="background:transparent;border:1px solid #1a2a3a;color:#4a5a6a;padding:2px 10px;font-size:0.7rem;cursor:pointer;">پاک کردن</button>
             </div>
             <div class="console" id="logConsole">
                 <div class="log-info">⏳ در حال اتصال به سرور...</div>
             </div>
         </div>
 
+    </div>
+
+    <!-- ===== مودال پیشرفت ===== -->
+    <div class="modal-overlay" id="progressModal">
+        <div class="modal-box">
+            <div class="progress-circle">
+                <svg viewBox="0 0 120 120">
+                    <circle class="bg" cx="60" cy="60" r="50"/>
+                    <circle class="progress" id="progressCircle" cx="60" cy="60" r="50"
+                        stroke-dasharray="314.16"
+                        stroke-dashoffset="314.16"/>
+                </svg>
+                <div class="center-text" id="progressPercent">۰%</div>
+            </div>
+            <div class="step-text" id="progressStep">⏳ در حال آماده‌سازی...</div>
+            <div class="step-dots" id="stepDots">
+                <span class="dot" data-step="0"></span>
+                <span class="dot" data-step="1"></span>
+                <span class="dot" data-step="2"></span>
+            </div>
+            <button class="close-modal-btn" onclick="closeProgressModal()">بستن</button>
+        </div>
     </div>
 
     <script src="/static/js/script.js"></script>
@@ -308,6 +470,11 @@
 
         let statusInterval = null;
         let logInterval = null;
+        let progressInterval = null;
+        let currentProgress = 0;
+        let currentStep = 0;
+        const steps = ['دریافت داده', 'در حال آموزش', 'آموزش به پایان رسید'];
+        const totalSteps = steps.length;
 
         // ============================================================
         // وضعیت مدل
@@ -372,6 +539,11 @@
                             stopBtn.style.display = 'none';
                         }
                     }
+
+                    // بروزرسانی مودال اگر در حال آموزش باشه
+                    if (isTraining) {
+                        showProgressModal();
+                    }
                 })
                 .catch(() => {
                     const badge = document.getElementById('modelStatusBadge');
@@ -391,26 +563,14 @@
         // کنترل مدل
         // ============================================================
         function toggleModel(action) {
-            const url = action === 'start' ? '/model/start' : '/model/stop';
-            const params = new URLSearchParams();
-            
-            if (action === 'start') {
-                const period = document.getElementById('trainPeriod').value;
-                const interval = parseInt(document.getElementById('trainInterval').value);
-                params.append('interval', interval);
-                // period رو از طریق query string میفرستیم
-                // ولی برای سادگی، توی بک‌اند از مقدار پیش‌فرض استفاده میکنیم
-                // میتونیم از body استفاده کنیم
-            }
+            const url = action === 'start' ? `/model/start?interval=${document.getElementById('trainInterval').value}` : '/model/stop';
 
             const startBtn = document.querySelector('#modelControls .btn-success');
             const stopBtn = document.querySelector('#modelControls .btn-danger');
             if (startBtn) startBtn.disabled = true;
             if (stopBtn) stopBtn.disabled = true;
 
-            const fullUrl = action === 'start' ? `/model/start?interval=${document.getElementById('trainInterval').value}` : '/model/stop';
-
-            fetch(fullUrl, { method: 'POST' })
+            fetch(url, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     alert(data.message || '✅ انجام شد');
@@ -433,23 +593,97 @@
                 btn.disabled = true;
             }
 
+            // نمایش مودال
+            showProgressModal();
+            currentProgress = 0;
+            currentStep = 0;
+            updateProgressModal();
+
+            // شبیه‌سازی پیشرفت (چون سرور اطلاعی نمیده)
+            let progress = 0;
+            let step = 0;
+            if (progressInterval) clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress > 100) progress = 100;
+                
+                if (progress > 30 && step < 1) { step = 1; currentStep = 1; }
+                if (progress > 70 && step < 2) { step = 2; currentStep = 2; }
+                
+                currentProgress = Math.min(progress, 100);
+                updateProgressModal();
+                
+                if (currentProgress >= 100) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+            }, 300);
+
             fetch(`/model/train?period=${period}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert(`✅ مدل آموزش دید!\nدقت: ${data.accuracy || 'N/A'}\nتعداد نمونه: ${data.samples || 0}`);
+                        currentProgress = 100;
+                        currentStep = 2;
+                        updateProgressModal();
+                        setTimeout(() => {
+                            alert(`✅ مدل آموزش دید!\nدقت: ${data.accuracy || 'N/A'}\nتعداد نمونه: ${data.samples || 0}`);
+                            closeProgressModal();
+                        }, 500);
                     } else {
                         alert('❌ ' + data.message);
+                        closeProgressModal();
                     }
                     refreshStatus();
                 })
-                .catch(err => alert('❌ خطا: ' + err.message))
+                .catch(err => {
+                    alert('❌ خطا: ' + err.message);
+                    closeProgressModal();
+                })
                 .finally(() => {
                     if (btn) {
                         btn.textContent = '🧠 آموزش یکبار';
                         btn.disabled = false;
                     }
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                        progressInterval = null;
+                    }
                 });
+        }
+
+        // ============================================================
+        // مودال پیشرفت
+        // ============================================================
+        function showProgressModal() {
+            document.getElementById('progressModal').classList.add('show');
+        }
+
+        function closeProgressModal() {
+            document.getElementById('progressModal').classList.remove('show');
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+        }
+
+        function updateProgressModal() {
+            const percent = Math.round(currentProgress);
+            document.getElementById('progressPercent').textContent = percent + '%';
+            
+            const circumference = 314.16;
+            const offset = circumference - (percent / 100) * circumference;
+            document.getElementById('progressCircle').style.strokeDashoffset = offset;
+
+            const stepText = steps[currentStep] || steps[0];
+            document.getElementById('progressStep').textContent = '⏳ ' + stepText + '...';
+
+            const dots = document.querySelectorAll('#stepDots .dot');
+            dots.forEach((dot, i) => {
+                dot.className = 'dot';
+                if (i < currentStep) dot.classList.add('done');
+                if (i === currentStep) dot.classList.add('active');
+            });
         }
 
         // ============================================================
@@ -473,7 +707,16 @@
                         if (log.includes('✅')) cls = 'log-success';
                         else if (log.includes('❌')) cls = 'log-error';
                         else if (log.includes('⚠️')) cls = 'log-warning';
-                        html += `<div class="${cls}">${log}</div>`;
+                        
+                        const escapedLog = log.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        html += `
+                            <div class="log-line">
+                                <span class="${cls}">${escapedLog}</span>
+                                <button class="copy-btn" onclick="copyLog('${escapedLog.replace(/'/g, "\\'")}')" title="کپی">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        `;
                     });
                     consoleEl.innerHTML = html;
                     consoleEl.scrollTop = consoleEl.scrollHeight;
@@ -483,8 +726,69 @@
                 });
         }
 
+        function copyLog(text) {
+            // حذف تگ‌های HTML
+            const plainText = text.replace(/<[^>]*>/g, '').trim();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(plainText).then(() => {
+                    showToast('📋 کپی شد!', 'success');
+                }).catch(() => {
+                    fallbackCopy(plainText);
+                });
+            } else {
+                fallbackCopy(plainText);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('📋 کپی شد!', 'success');
+            } catch {
+                showToast('❌ کپی نشد!', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function showToast(message, type = 'info') {
+            const colors = {
+                info: '#00d4ff',
+                success: '#00ff88',
+                error: '#ff4444',
+                warning: '#ffaa00'
+            };
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            Object.assign(toast.style, {
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '10px 24px',
+                background: '#1a2a3a',
+                color: '#e0e6ed',
+                borderRadius: '10px',
+                border: `2px solid ${colors[type] || colors.info}`,
+                boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
+                zIndex: '9999',
+                fontSize: '0.9rem',
+                transition: 'all 0.3s ease',
+                maxWidth: '90%'
+            });
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+
         function clearLogs() {
             document.getElementById('logConsole').innerHTML = '<div class="log-info">📭 لاگ‌ها پاک شدند</div>';
+            // همچنین لاگ‌های سرور رو پاک کن (در صورت امکان)
         }
 
         // ============================================================
