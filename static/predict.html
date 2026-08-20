@@ -565,7 +565,20 @@
                     const lastScore = modelStats?.last_score || null;
                     const totalTrainings = modelStats?.total_trainings || 0;
 
+                    // در updateStatus
+                    const mode = modelStats?.mode || 'DEMO';
+                    const modeDisplay = mode === 'BETA' ? '🧪 بتا' : '📦 دمو';
+
+                    // نمایش در badge یا info
+                    const info = document.getElementById('modelInfo');
+                    if (info) {
+                        const scoreText = lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : '';
+                        const trainText = totalTrainings > 0 ? `آموزش: ${totalTrainings} بار` : '';
+                        const apiText = `API: ${apiStatus === 'ok' ? '✅' : '❌'} | اعتبار: ${creditsRemaining}`;
+                        info.textContent = `${modeDisplay} ${scoreText} ${trainText} ${apiText}`.trim();
+                    }
                     const badge = document.getElementById('modelStatusBadge');
+                    
                     if (badge) {
                         if (isTraining) {
                             badge.className = 'badge badge-warning';
@@ -767,7 +780,6 @@
                 if (i === currentStep) dot.classList.add('active');
             });
         }
-
         // ============================================================
         // لاگ‌ها
         // ============================================================
@@ -875,11 +887,21 @@
         }
 
         function clearLogs() {
-            // پاک کردن کش لاگ
-            logCache = [];
-            renderLogs([]);
-            // همچنین لاگ‌های سرور رو پاک کن (در صورت امکان)
-            showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+            // پاک کردن لاگ‌ها از سرور
+            fetch('/model/clear-logs', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        logCache = [];
+                        renderLogs([]);
+                        showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+                    } else {
+                        showToast('❌ ' + data.error, 'error');
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ خطا: ' + err.message, 'error');
+                });
         }
 
         // ============================================================
