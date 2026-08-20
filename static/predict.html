@@ -6,6 +6,7 @@
     <title>مدل</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
 
@@ -87,7 +88,7 @@
         }
         .flyout-overlay.open { opacity: 1; pointer-events: all; }
 
-        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
 
         .card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
@@ -121,6 +122,10 @@
         .badge-danger { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid rgba(255,68,68,0.3); }
         .badge-gray { background: rgba(255,255,255,0.05); color: #7a8fa3; border: 1px solid rgba(255,255,255,0.05); }
         .badge-info { background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
+        .badge-excellent { background: rgba(0,255,136,0.2); color: #00ff88; border: 1px solid #00ff88; }
+        .badge-good { background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid #00d4ff; }
+        .badge-average { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid #ffaa00; }
+        .badge-poor { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid #ff4444; }
 
         .btn {
             display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
@@ -201,7 +206,7 @@
             border: 1px solid #1a2a3a;
             border-radius: 10px;
             padding: 12px 16px;
-            max-height: 350px;
+            max-height: 250px;
             overflow-y: auto;
             font-family: 'Courier New', monospace;
             font-size: 0.75rem;
@@ -340,6 +345,51 @@
             color: #e0e6ed;
         }
 
+        /* ===== نمودار ===== */
+        .chart-container {
+            background: #0a0e17;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #1a2a3a;
+            height: 280px;
+            position: relative;
+            margin-top: 10px;
+        }
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .chart-controls select {
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            color: #e0e6ed;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .chart-controls select:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .accuracy-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
         @media (max-width: 768px) {
             .model-config { grid-template-columns: 1fr; }
             .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
@@ -350,12 +400,14 @@
             .modal-box { padding: 30px 20px; margin: 0 15px; }
             .modal-box .progress-circle { width: 100px; height: 100px; }
             .modal-box .progress-circle svg { width: 100px; height: 100px; }
+            .chart-container { height: 200px; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
             .menu-toggle { width: 38px; height: 38px; font-size: 1rem; }
             .flyout-menu { right: 8px; top: 64px; min-width: 150px; }
-            .console { max-height: 200px; font-size: 0.65rem; }
+            .console { max-height: 150px; font-size: 0.65rem; }
+            .chart-container { height: 160px; }
         }
     </style>
 </head>
@@ -428,6 +480,26 @@
             </div>
         </div>
 
+        <!-- ===== کارت نمودار ===== -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-chart-line" style="color:#00d4ff;"></i> سابقه آموزش</div>
+            <div class="card-subtitle">نمودار دقت آموزش بر اساس بازه زمانی</div>
+            
+            <div class="chart-controls">
+                <select id="historyFilter" onchange="loadHistoryChart()">
+                    <option value="all">همه بازه‌ها</option>
+                    <option value="1w">۱ هفته</option>
+                    <option value="1m" selected>۱ ماه</option>
+                    <option value="3m">۳ ماه</option>
+                    <option value="6m">۶ ماه</option>
+                </select>
+                <span style="color:#4a5a6a;font-size:0.8rem;" id="historyCount">۰ آموزش</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+
     </div>
 
     <!-- ===== مودال پیشرفت ===== -->
@@ -471,6 +543,7 @@
         let statusInterval = null;
         let logInterval = null;
         let progressInterval = null;
+        let historyChartInstance = null;
         let currentProgress = 0;
         let currentStep = 0;
         const steps = ['دریافت داده', 'در حال آموزش', 'آموزش به پایان رسید'];
@@ -522,7 +595,7 @@
 
                     const info = document.getElementById('modelInfo');
                     if (info) {
-                        const scoreText = lastScore !== null ? `دقت: ${lastScore}` : '';
+                        const scoreText = lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : '';
                         const trainText = totalTrainings > 0 ? `آموزش: ${totalTrainings} بار` : '';
                         const apiText = `API: ${apiStatus === 'ok' ? '✅' : '❌'} | اعتبار: ${creditsRemaining}`;
                         info.textContent = `${scoreText} ${trainText} ${apiText}`.trim();
@@ -540,10 +613,12 @@
                         }
                     }
 
-                    // بروزرسانی مودال اگر در حال آموزش باشه
                     if (isTraining) {
                         showProgressModal();
                     }
+
+                    // بروزرسانی سابقه آموزش
+                    loadHistoryChart();
                 })
                 .catch(() => {
                     const badge = document.getElementById('modelStatusBadge');
@@ -593,13 +668,11 @@
                 btn.disabled = true;
             }
 
-            // نمایش مودال
             showProgressModal();
             currentProgress = 0;
             currentStep = 0;
             updateProgressModal();
 
-            // شبیه‌سازی پیشرفت (چون سرور اطلاعی نمیده)
             let progress = 0;
             let step = 0;
             if (progressInterval) clearInterval(progressInterval);
@@ -626,8 +699,10 @@
                         currentProgress = 100;
                         currentStep = 2;
                         updateProgressModal();
+                        const accuracyPercent = (data.accuracy * 100).toFixed(1);
+                        const badge = getAccuracyBadge(data.accuracy);
                         setTimeout(() => {
-                            alert(`✅ مدل آموزش دید!\nدقت: ${data.accuracy || 'N/A'}\nتعداد نمونه: ${data.samples || 0}`);
+                            alert(`✅ مدل آموزش دید!\nدقت: ${accuracyPercent}% ${badge}\nتعداد نمونه: ${data.samples || 0}`);
                             closeProgressModal();
                         }, 500);
                     } else {
@@ -650,6 +725,13 @@
                         progressInterval = null;
                     }
                 });
+        }
+
+        function getAccuracyBadge(accuracy) {
+            if (accuracy >= 0.90) return '🌟 عالی!';
+            if (accuracy >= 0.80) return '✅ خوب';
+            if (accuracy >= 0.70) return '📊 متوسط';
+            return '⚠️ ضعیف';
         }
 
         // ============================================================
@@ -689,45 +771,51 @@
         // ============================================================
         // لاگ‌ها
         // ============================================================
+        let logCache = [];
+
         function updateLogs() {
             fetch('/model/status')
                 .then(res => res.json())
                 .then(data => {
                     const logs = data?.logs || [];
-                    const consoleEl = document.getElementById('logConsole');
-                    
-                    if (logs.length === 0) {
-                        consoleEl.innerHTML = `<div class="log-info">📭 هیچ لاگی ثبت نشده است</div>`;
-                        return;
-                    }
-
-                    let html = '';
-                    logs.forEach(log => {
-                        let cls = 'log-info';
-                        if (log.includes('✅')) cls = 'log-success';
-                        else if (log.includes('❌')) cls = 'log-error';
-                        else if (log.includes('⚠️')) cls = 'log-warning';
-                        
-                        const escapedLog = log.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        html += `
-                            <div class="log-line">
-                                <span class="${cls}">${escapedLog}</span>
-                                <button class="copy-btn" onclick="copyLog('${escapedLog.replace(/'/g, "\\'")}')" title="کپی">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        `;
-                    });
-                    consoleEl.innerHTML = html;
-                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                    logCache = logs;
+                    renderLogs(logs);
                 })
                 .catch(() => {
                     document.getElementById('logConsole').innerHTML = '<div class="log-error">❌ خطا در دریافت لاگ</div>';
                 });
         }
 
+        function renderLogs(logs) {
+            const consoleEl = document.getElementById('logConsole');
+            
+            if (logs.length === 0) {
+                consoleEl.innerHTML = `<div class="log-info">📭 هیچ لاگی ثبت نشده است</div>`;
+                return;
+            }
+
+            let html = '';
+            logs.forEach(log => {
+                let cls = 'log-info';
+                if (log.includes('✅')) cls = 'log-success';
+                else if (log.includes('❌')) cls = 'log-error';
+                else if (log.includes('⚠️')) cls = 'log-warning';
+                
+                const escapedLog = log.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                html += `
+                    <div class="log-line">
+                        <span class="${cls}">${escapedLog}</span>
+                        <button class="copy-btn" onclick="copyLog('${escapedLog.replace(/'/g, "\\'")}')" title="کپی">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            consoleEl.innerHTML = html;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
         function copyLog(text) {
-            // حذف تگ‌های HTML
             const plainText = text.replace(/<[^>]*>/g, '').trim();
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(plainText).then(() => {
@@ -787,8 +875,130 @@
         }
 
         function clearLogs() {
-            document.getElementById('logConsole').innerHTML = '<div class="log-info">📭 لاگ‌ها پاک شدند</div>';
+            // پاک کردن کش لاگ
+            logCache = [];
+            renderLogs([]);
             // همچنین لاگ‌های سرور رو پاک کن (در صورت امکان)
+            showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+        }
+
+        // ============================================================
+        // نمودار سابقه آموزش
+        // ============================================================
+        function loadHistoryChart() {
+            const filter = document.getElementById('historyFilter').value;
+            
+            fetch('/model/status')
+                .then(res => res.json())
+                .then(data => {
+                    const history = data?.training_history || [];
+                    const filtered = filter === 'all' ? history : history.filter(h => h.period === filter);
+                    
+                    document.getElementById('historyCount').textContent = `${filtered.length} آموزش`;
+                    
+                    if (filtered.length === 0) {
+                        if (historyChartInstance) {
+                            historyChartInstance.destroy();
+                            historyChartInstance = null;
+                        }
+                        const canvas = document.getElementById('historyChart');
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        // نمایش پیام
+                        const container = canvas.parentElement;
+                        const existingMsg = container.querySelector('.no-data-msg');
+                        if (!existingMsg) {
+                            const msg = document.createElement('div');
+                            msg.className = 'no-data-msg';
+                            msg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#4a5a6a;font-size:0.9rem;';
+                            msg.textContent = '📭 داده‌ای برای این بازه وجود ندارد';
+                            container.appendChild(msg);
+                        }
+                        return;
+                    }
+
+                    // حذف پیام no-data
+                    const container = document.getElementById('historyChart').parentElement;
+                    const msg = container.querySelector('.no-data-msg');
+                    if (msg) msg.remove();
+
+                    const labels = filtered.map(h => {
+                        const d = new Date(h.timestamp);
+                        return d.toLocaleDateString('fa-IR') + ' ' + d.toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'});
+                    });
+                    const accuracies = filtered.map(h => h.accuracy * 100);
+                    const colors = accuracies.map(a => {
+                        if (a >= 90) return 'rgba(0,255,136,0.8)';
+                        if (a >= 80) return 'rgba(0,212,255,0.8)';
+                        if (a >= 70) return 'rgba(255,170,0,0.8)';
+                        return 'rgba(255,68,68,0.8)';
+                    });
+
+                    if (historyChartInstance) {
+                        historyChartInstance.destroy();
+                    }
+
+                    const ctx = document.getElementById('historyChart').getContext('2d');
+                    historyChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'دقت (%)',
+                                data: accuracies,
+                                backgroundColor: colors,
+                                borderColor: colors.map(c => c.replace('0.8', '1')),
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: '#0d1624',
+                                    titleColor: '#e0e6ed',
+                                    bodyColor: '#00d4ff',
+                                    borderColor: '#1a2a3a',
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `دقت: ${context.parsed.y.toFixed(1)}%`;
+                                        },
+                                        afterLabel: function(context) {
+                                            const idx = context.dataIndex;
+                                            const h = filtered[idx];
+                                            return `بازه: ${h.period} | نمونه: ${h.samples || 0}`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { color: 'rgba(255,255,255,0.03)' },
+                                    ticks: { color: '#7a8fa3', font: { size: 8 }, maxTicksLimit: 15 }
+                                },
+                                y: {
+                                    min: 0,
+                                    max: 100,
+                                    grid: { color: 'rgba(255,255,255,0.05)' },
+                                    ticks: { color: '#7a8fa3', font: { size: 9 }, callback: v => v + '%' }
+                                }
+                            },
+                            animation: {
+                                duration: 800,
+                                easing: 'easeOutQuart'
+                            }
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('History chart error:', err);
+                });
         }
 
         // ============================================================
@@ -798,9 +1008,11 @@
             loadNav();
             updateStatus();
             updateLogs();
+            loadHistoryChart();
             
             statusInterval = setInterval(updateStatus, 5000);
             logInterval = setInterval(updateLogs, 3000);
+            setInterval(loadHistoryChart, 10000);
         });
     </script>
 
