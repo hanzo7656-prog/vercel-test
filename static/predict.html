@@ -95,7 +95,9 @@
             border-radius: 16px;
             padding: 25px;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
+        .card:hover { border-color: rgba(0, 212, 255, 0.2); }
         .card-title {
             color: #00d4ff;
             font-size: 1.2rem;
@@ -103,7 +105,7 @@
             margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
         .card-subtitle {
             color: #7a8fa3;
@@ -178,6 +180,22 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0,212,255,0.3);
         }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,68,68,0.3);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #ffaa00, #cc8800);
+            color: #0a0e17;
+        }
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,170,0,0.3);
+        }
         .btn-outline {
             background: transparent;
             border: 1px solid #1a2a3a;
@@ -188,6 +206,7 @@
             color: #e0e6ed;
         }
         .btn-sm { padding: 6px 14px; font-size: 0.85rem; }
+        .btn-xs { padding: 4px 10px; font-size: 0.75rem; }
 
         .result-box {
             padding: 25px;
@@ -255,15 +274,28 @@
         .model-status {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
             gap: 10px;
-            padding: 10px 16px;
+            padding: 12px 16px;
             background: #0a0e17;
             border-radius: 10px;
             border: 1px solid #1a2a3a;
             margin-bottom: 15px;
             font-size: 0.9rem;
         }
-        .model-status .badge {
+        .model-status .left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .model-status .right {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .badge {
             display: inline-block;
             padding: 3px 12px;
             border-radius: 20px;
@@ -279,6 +311,21 @@
             background: rgba(255,170,0,0.15);
             color: #ffaa00;
             border: 1px solid rgba(255,170,0,0.3);
+        }
+        .badge-danger {
+            background: rgba(255,68,68,0.15);
+            color: #ff4444;
+            border: 1px solid rgba(255,68,68,0.3);
+        }
+        .badge-gray {
+            background: rgba(255,255,255,0.05);
+            color: #7a8fa3;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .badge-info {
+            background: rgba(0,212,255,0.15);
+            color: #00d4ff;
+            border: 1px solid rgba(0,212,255,0.3);
         }
 
         .loading {
@@ -303,10 +350,10 @@
 
         .feature-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 6px;
             margin: 10px 0;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #7a8fa3;
         }
         .feature-list .item {
@@ -324,6 +371,8 @@
             .container { padding: 12px; }
             .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
             .result-box .details { gap: 10px; font-size: 0.75rem; }
+            .model-status { flex-direction: column; align-items: stretch; }
+            .model-status .right { justify-content: flex-start; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
@@ -342,18 +391,31 @@
     <div class="container">
 
         <div class="card">
-            <div class="card-title">🧠 مدل تشخیص الگو</div>
+            <div class="card-title">
+                <i class="fas fa-brain" style="color:#a855f7;"></i>
+                مدل تشخیص الگو
+            </div>
             <div class="card-subtitle">
                 پیش‌بینی الگوی قیمت با استفاده از XGBoost
             </div>
 
-            <!-- وضعیت مدل -->
-            <div class="model-status">
-                <span>📊 وضعیت مدل:</span>
-                <span id="modelStatusBadge" class="badge badge-warning">⏳ در حال بررسی...</span>
-                <span id="modelInfo" style="color:#4a5a6a;font-size:0.8rem;"></span>
+            <!-- ===== وضعیت مدل ===== -->
+            <div class="model-status" id="modelStatusBar">
+                <div class="left">
+                    <span>📊 وضعیت مدل:</span>
+                    <span id="modelStatusBadge" class="badge badge-warning">⏳ در حال بررسی...</span>
+                    <span id="modelRunningBadge" class="badge badge-gray">⏹️ متوقف</span>
+                    <span id="modelInfo" style="color:#4a5a6a;font-size:0.8rem;"></span>
+                </div>
+                <div class="right" id="modelControls">
+                    <button class="btn btn-sm btn-success" onclick="toggleModel('start')">▶️ روشن</button>
+                    <button class="btn btn-sm btn-danger" onclick="toggleModel('stop')" style="display:none;">⏹️ خاموش</button>
+                    <button class="btn btn-sm btn-primary" onclick="trainNow()">🧠 آموزش دستی</button>
+                    <button class="btn btn-sm btn-warning" onclick="refreshModelStatus()">🔄</button>
+                </div>
             </div>
 
+            <!-- ===== فرم پیش‌بینی ===== -->
             <form id="predictForm" onsubmit="return false;">
                 <div class="row">
                     <div class="form-group">
@@ -387,7 +449,7 @@
                 </div>
             </form>
 
-            <!-- ویژگی‌های مدل -->
+            <!-- ===== ویژگی‌های مدل ===== -->
             <div style="margin-top:15px;border-top:1px solid #0d1624;padding-top:15px;">
                 <div style="color:#4a5a6a;font-size:0.75rem;margin-bottom:6px;">ویژگی‌های مدل</div>
                 <div class="feature-list">
@@ -401,7 +463,7 @@
             </div>
         </div>
 
-        <!-- لودینگ -->
+        <!-- ===== لودینگ ===== -->
         <div id="loadingContainer" class="hidden">
             <div class="card">
                 <div class="loading">
@@ -412,7 +474,7 @@
             </div>
         </div>
 
-        <!-- نتیجه -->
+        <!-- ===== نتیجه ===== -->
         <div id="resultContainer" class="hidden">
             <div class="card" id="resultCard">
                 <div id="resultContent"></div>
@@ -444,29 +506,130 @@
         // وضعیت مدل
         // ============================================================
         function checkModelStatus() {
-            fetch('/health')
+            fetch('/model/status')
                 .then(res => res.json())
                 .then(data => {
-                    const badge = document.getElementById('modelStatusBadge');
-                    const info = document.getElementById('modelInfo');
-                    const model = data.components?.model || {};
+                    const modelStats = data?.stats || {};
+                    const modelRunning = data?.is_running || false;
+                    const isTraining = data?.is_training || false;
+                    const modelExists = data?.model_exists || false;
+                    const apiStatus = data?.api_status?.api_status || 'unknown';
+                    const creditsRemaining = data?.api_status?.credits_remaining || 0;
+                    const lastTraining = modelStats?.last_training || null;
+                    const lastScore = modelStats?.last_score || null;
 
-                    if (model.status === 'healthy') {
-                        badge.className = 'badge badge-success';
-                        badge.textContent = '✅ فعال';
-                        info.textContent = 'مدل XGBoost بارگذاری شده';
-                    } else if (model.mode === 'DEMO') {
-                        badge.className = 'badge badge-warning';
-                        badge.textContent = '⚠️ DEMO';
-                        info.textContent = 'مدل واقعی وجود ندارد (حالت شبیه‌سازی)';
-                    } else {
-                        badge.className = 'badge badge-warning';
-                        badge.textContent = '⏳ نامشخص';
-                        info.textContent = 'وضعیت مدل مشخص نیست';
+                    // وضعیت مدل
+                    const badge = document.getElementById('modelStatusBadge');
+                    if (badge) {
+                        if (isTraining) {
+                            badge.className = 'badge badge-warning';
+                            badge.textContent = '⏳ در حال آموزش...';
+                        } else if (modelExists) {
+                            badge.className = 'badge badge-success';
+                            badge.textContent = '✅ فعال';
+                        } else {
+                            badge.className = 'badge badge-warning';
+                            badge.textContent = '⚠️ غیرفعال';
+                        }
+                    }
+
+                    // وضعیت اجرا
+                    const runningBadge = document.getElementById('modelRunningBadge');
+                    if (runningBadge) {
+                        if (modelRunning) {
+                            runningBadge.className = 'badge badge-success';
+                            runningBadge.textContent = '▶️ در حال اجرا';
+                        } else {
+                            runningBadge.className = 'badge badge-gray';
+                            runningBadge.textContent = '⏹️ متوقف';
+                        }
+                    }
+
+                    // اطلاعات تکمیلی
+                    const info = document.getElementById('modelInfo');
+                    if (info) {
+                        const scoreText = lastScore !== null ? `دقت: ${lastScore}` : '';
+                        const trainingText = lastTraining ? `آخرین: ${new Date(lastTraining).toLocaleString('fa-IR')}` : '';
+                        const apiText = `API: ${apiStatus === 'ok' ? '✅' : '❌'} | اعتبار: ${creditsRemaining}`;
+                        info.textContent = `${scoreText} ${trainingText} ${apiText}`;
+                    }
+
+                    // دکمه‌های روشن/خاموش
+                    const startBtn = document.querySelector('#modelControls .btn-success');
+                    const stopBtn = document.querySelector('#modelControls .btn-danger');
+                    if (startBtn && stopBtn) {
+                        if (modelRunning || isTraining) {
+                            startBtn.style.display = 'none';
+                            stopBtn.style.display = 'inline-flex';
+                        } else {
+                            startBtn.style.display = 'inline-flex';
+                            stopBtn.style.display = 'none';
+                        }
                     }
                 })
                 .catch(() => {
-                    document.getElementById('modelStatusBadge').textContent = '❌ خطا';
+                    const badge = document.getElementById('modelStatusBadge');
+                    if (badge) {
+                        badge.className = 'badge badge-danger';
+                        badge.textContent = '❌ خطا';
+                    }
+                });
+        }
+
+        function refreshModelStatus() {
+            checkModelStatus();
+        }
+
+        // ============================================================
+        // کنترل مدل
+        // ============================================================
+        function toggleModel(action) {
+            const url = action === 'start' ? '/model/start' : '/model/stop';
+            
+            const startBtn = document.querySelector('#modelControls .btn-success');
+            const stopBtn = document.querySelector('#modelControls .btn-danger');
+            
+            if (startBtn) startBtn.disabled = true;
+            if (stopBtn) stopBtn.disabled = true;
+
+            fetch(url, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message || '✅ انجام شد');
+                    checkModelStatus();
+                })
+                .catch(err => alert('❌ خطا: ' + err.message))
+                .finally(() => {
+                    if (startBtn) startBtn.disabled = false;
+                    if (stopBtn) stopBtn.disabled = false;
+                });
+        }
+
+        function trainNow() {
+            if (!confirm('آموزش دستی مدل ممکنه چند دقیقه طول بکشه. ادامه میدین؟')) return;
+            
+            const btn = document.querySelector('#modelControls .btn-primary');
+            if (btn) {
+                btn.textContent = '⏳...';
+                btn.disabled = true;
+            }
+
+            fetch('/model/train', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ مدل آموزش دید!\nدقت: ${data.accuracy || 'N/A'}\nتعداد نمونه: ${data.samples || 0}`);
+                    } else {
+                        alert('❌ ' + data.message);
+                    }
+                    checkModelStatus();
+                })
+                .catch(err => alert('❌ خطا: ' + err.message))
+                .finally(() => {
+                    if (btn) {
+                        btn.textContent = '🧠 آموزش دستی';
+                        btn.disabled = false;
+                    }
                 });
         }
 
@@ -569,6 +732,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadNav();
             checkModelStatus();
+            // بروزرسانی وضعیت مدل هر ۱۰ ثانیه
+            setInterval(checkModelStatus, 10000);
         });
     </script>
 
