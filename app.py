@@ -73,12 +73,11 @@ class TradingSignalSystem:
         """بارگذاری مدل XGBoost از فایل"""
         try:
             if os.path.exists("model.json"):
-                # import xgboost as xgb
-                # self.model = xgb.Booster()
-                # self.model.load_model("model.json")
-                # self.model_loaded = True
-                self.model_loaded = False
-                print("⚠️ حالت DEMO: مدل واقعی بارگذاری نشد", file=sys.stderr)
+                import xgboost as xgb
+                self.model = xgb.Booster()
+                self.model.load_model("model.json")
+                self.model_loaded = True
+                print("✅ مدل XGBoost با موفقیت بارگذاری شد", file=sys.stderr)
             else:
                 print("⚠️ فایل model.json یافت نشد - استفاده از حالت DEMO", file=sys.stderr)
                 self.model_loaded = False
@@ -167,12 +166,25 @@ class TradingSignalSystem:
 
         return np.array(features, dtype=np.float32)
 
+
     def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
         نسخه همگام (Synchronous) پیش‌بینی
+      
+        این تابع داده‌ها رو از API دریافت میکنه، ویژگی‌ها رو استخراج میکنه
+        و با مدل XGBoost (یا حالت DEMO) پیش‌بینی رو انجام میده.
+    
+        پارامترها:
+            coin_id: شناسه ارز (مثال: bitcoin, ethereum)
+            period: بازه زمانی (24h, 1w, 1m, 3m, 6m)
+    
+        خروجی:
+            دیکشنری شامل: سیگنال، اطمینان، قیمت فعلی و اطلاعات تکمیلی
         """
+        import xgboost as xgb
         start_time = time.time()
 
+        # اعتبارسنجی بازه زمانی
         valid_periods = ["24h", "1w", "1m", "3m", "6m"]
         if period not in valid_periods:
             return {
@@ -180,8 +192,9 @@ class TradingSignalSystem:
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
+        # 1. دریافت داده‌های تاریخی
         chart_data = self.api.get_chart(coin_id, period)
-
+  
         if not chart_data:
             return {
                 "error": "NoData",
@@ -198,6 +211,7 @@ class TradingSignalSystem:
                 "period": period
             }
 
+        # 2. استخراج ویژگی‌ها
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -209,22 +223,22 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
-        # حالت DEMO
-        base_score = 0.5
-        if len(features) >= 4:
-            returns_avg = np.mean(features[:4])
-            base_score += returns_avg * 1.5
-        if len(features) >= 10:
-            trend_strength = features[9]
-            base_score += trend_strength * 0.3
-        if len(features) >= 8:
-            fear = features[7]
-            if fear < 0.3:
-                base_score += 0.15
-            elif fear > 0.7:
-                base_score -= 0.15
-        prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
+        # 3. پیش‌بینی با مدل یا حالت DEMO
+        if self.model_loaded and self.model:
+            try:
+                # تبدیل ویژگی‌ها به فرمت DMatrix برای XGBoost
+                dmatrix = xgb.DMatrix(features.reshape(1, -1))
+                prediction = self.model.predict(dmatrix)[0]
+                prediction = float(prediction)
+            except Exception as e:
+                print(f"⚠️ خطا در پیش‌بینی با مدل: {e}")
+                # Fallback به حالت DEMO
+                prediction = self._demo_predict(features)
+        else:
+            # حالت DEMO (وقتی مدل وجود نداشته باشه)
+            prediction = self._demo_predict(features)
 
+        # 4. تفسیر نتیجه
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -237,10 +251,14 @@ class TradingSignalSystem:
             signal = "🟡 خنثی (بدون الگوی مشخص)"
             confidence = 50
             signal_type = "NEUTRAL"
-
+ 
         confidence = min(100, max(0, confidence))
+
+        # 5. دریافت اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
+
+        # 6. اطلاعات تکمیلی
         processing_time = (time.time() - start_time) * 1000
 
         return {
@@ -256,9 +274,41 @@ class TradingSignalSystem:
             "timestamp": datetime.now().isoformat(),
             "processing_time_ms": round(processing_time, 2),
             "data_points": len(chart_data) if chart_data else 0,
-            "model_mode": "DEMO" if not self.model_loaded else "PRODUCTION"
+            "model_mode": "PRODUCTION" if self.model_loaded else "DEMO"
         }
 
+
+    def _demo_predict(self, features):
+        """
+        شبیه‌سازی پیش‌بینی در حالت DEMO (بدون مدل واقعی)
+        """
+        import numpy as np
+    
+        base_score = 0.5
+    
+        # تأثیر بازده‌ها
+        if len(features) >= 4:
+            returns_avg = np.mean(features[:4])
+            base_score += returns_avg * 1.5
+    
+        # تأثیر روند
+        if len(features) >= 10:
+            trend_strength = features[9]  # شیب ۲۰ قدمی
+            base_score += trend_strength * 0.3
+    
+        # تأثیر ترس و طمع
+        if len(features) >= 8:
+            fear = features[7]  # 0-1
+            if fear < 0.3:  # ترس شدید → احتمال برگشت
+                base_score += 0.15
+            elif fear > 0.7:  # طمع شدید → احتمال ریزش
+                base_score -= 0.15
+    
+        # اضافه کردن نویز تصادفی برای شبیه‌سازی
+        prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
+    
+        return float(prediction)
+                
     def predict_async(self, coin_id="bitcoin", period="24h"):
         """نسخه غیرهمگام (Asynchronous) با TaskManager جدید"""
         task_id = self.task_manager.submit(
@@ -273,7 +323,7 @@ class TradingSignalSystem:
             "task_id": task_id,
             "message": "پردازش در پس‌زمینه شروع شد",
             "check_status": f"/task-status?task_id={task_id}"
-        }
+         }
 
     def health_check(self):
         """بررسی کامل سلامت سیستم"""
