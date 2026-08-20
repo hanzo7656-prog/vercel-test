@@ -773,22 +773,25 @@ def model_status():
         return jsonify({"error": str(e)}), 500
 
 
+# اضافه کردن period به روت /model/train
 @app.route('/model/train', methods=['POST'])
 def model_train():
     """اجرای دستی آموزش"""
     try:
-        result = system.trainer.train_model()
+        period = request.args.get('period', '1m')
+        result = system.trainer.train_model(period=period)
         return jsonify(result)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
+# اصلاح /model/start برای پذیرش interval
 @app.route('/model/start', methods=['POST'])
 def model_start():
     """شروع آموزش خودکار"""
     try:
         interval = int(request.args.get('interval', 6))
-        result = system.trainer.start_auto_train(interval_hours=interval)
+        period = request.args.get('period', '1m')
+        result = system.trainer.start_auto_train(interval_hours=interval, period=period)
         return jsonify(result)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
