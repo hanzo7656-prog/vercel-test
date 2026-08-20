@@ -209,48 +209,11 @@
             font-size: 0.9rem;
         }
 
-        /* ===== MODEL CARD ===== */
         .model-status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .model-status-row .info {
             display: flex;
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
-        }
-        .model-status-row .actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .model-detail {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #0d1624;
-        }
-        .model-detail .item {
-            background: #0a0e17;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid #0d1624;
-            text-align: center;
-        }
-        .model-detail .item .val {
-            color: #e0e6ed;
-            font-weight: 500;
-        }
-        .model-detail .item .lbl {
-            color: #4a5a6a;
-            font-size: 0.7rem;
         }
 
         @media (max-width: 768px) {
@@ -263,7 +226,6 @@
             .metric-circle svg { width: 120px; height: 120px; }
             .metric-circle .center-text .value { font-size: 1.5rem; }
             .model-status-row { flex-direction: column; align-items: stretch; }
-            .model-status-row .actions { justify-content: flex-start; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
@@ -426,66 +388,37 @@
                 </div>
             `;
 
-            // ===== کارت مدل =====
+            // ===== کارت مدل (ساده) =====
             const modelStats = modelData?.stats || {};
             const modelRunning = modelData?.is_running || false;
             const isTraining = modelData?.is_training || false;
             const modelExists = modelData?.model_exists || false;
-            const lastTraining = modelStats?.last_training || null;
             const lastScore = modelStats?.last_score || null;
-            const totalTrainings = modelStats?.total_trainings || 0;
-            const dataPoints = modelStats?.data_points_used || 0;
-            const apiStatus = modelData?.api_status?.api_status || 'unknown';
-            const creditsRemaining = modelData?.api_status?.credits_remaining || 0;
 
-            const modelStatusBadge = modelExists ? 'badge-success' : 'badge-warning';
-            const modelStatusText = modelExists ? '✅ فعال' : '⚠️ غیرفعال';
-            const runningBadge = modelRunning ? 'badge-success' : 'badge-gray';
-            const runningText = modelRunning ? 'در حال اجرا' : 'متوقف';
+            let modelBadge = 'badge-gray';
+            let modelText = '⏹️ غیرفعال';
+            if (isTraining) {
+                modelBadge = 'badge-warning';
+                modelText = '⏳ در حال آموزش...';
+            } else if (modelExists && modelRunning) {
+                modelBadge = 'badge-success';
+                modelText = '✅ فعال';
+            } else if (modelExists) {
+                modelBadge = 'badge-warning';
+                modelText = '⚠️ غیرفعال';
+            }
 
             html += `
                 <div class="card" id="modelCard" style="border-color:rgba(0,212,255,0.08);">
                     <div class="card-title"><i class="fas fa-brain" style="color:#a855f7;"></i> وضعیت مدل</div>
-                    
                     <div class="model-status-row">
-                        <div class="info">
-                            <span class="badge ${modelStatusBadge}">${modelStatusText}</span>
-                            <span class="badge ${runningBadge}">${runningText}</span>
-                            ${isTraining ? '<span class="badge badge-warning">⏳ در حال آموزش...</span>' : ''}
-                            <span style="color:#4a5a6a;font-size:0.8rem;">
-                                اعتبار: ${creditsRemaining}
-                            </span>
-                            <span style="color:#4a5a6a;font-size:0.8rem;">
-                                API: ${apiStatus === 'ok' ? '✅' : '❌'}
-                            </span>
-                        </div>
-                        <div class="actions">
-                            ${!modelRunning ? 
-                                `<button class="btn btn-sm btn-success" onclick="toggleModel('start')">▶️ روشن</button>` :
-                                `<button class="btn btn-sm btn-danger" onclick="toggleModel('stop')">⏹️ خاموش</button>`
-                            }
-                            <button class="btn btn-sm btn-primary" onclick="trainNow()">🧠 آموزش دستی</button>
-                            <button class="btn btn-sm btn-warning" onclick="refreshModelStatus()">🔄</button>
-                        </div>
-                    </div>
-
-                    <div class="model-detail">
-                        <div class="item">
-                            <div class="val">${totalTrainings}</div>
-                            <div class="lbl">تعداد آموزش</div>
-                        </div>
-                        <div class="item">
-                            <div class="val">${lastScore !== null ? lastScore : '—'}</div>
-                            <div class="lbl">آخرین دقت</div>
-                        </div>
-                        <div class="item">
-                            <div class="val">${dataPoints > 0 ? dataPoints : '—'}</div>
-                            <div class="lbl">نقاط داده</div>
-                        </div>
-                        <div class="item">
-                            <div class="val">${lastTraining ? new Date(lastTraining).toLocaleString('fa-IR') : '—'}</div>
-                            <div class="lbl">آخرین آموزش</div>
-                        </div>
+                        <span class="badge ${modelBadge}">${modelText}</span>
+                        <span style="color:#4a5a6a;font-size:0.8rem;">
+                            ${lastScore !== null ? `دقت: ${lastScore}` : 'دقت: —'}
+                        </span>
+                        <span style="color:#4a5a6a;font-size:0.8rem;">
+                            ${modelExists ? 'مدل موجود است' : 'مدل موجود نیست'}
+                        </span>
                     </div>
                 </div>
             `;
@@ -601,119 +534,45 @@
                     }
                 })
                 .catch(err => console.error('RAM update error:', err));
-        }
 
-        // ============================================================
-        // کنترل مدل
-        // ============================================================
-        function toggleModel(action) {
-            const url = action === 'start' ? '/model/start' : '/model/stop';
-            fetch(url, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    alert(data.message || '✅ انجام شد');
-                    refreshModelStatus();
-                })
-                .catch(err => alert('❌ خطا: ' + err.message));
-        }
-
-        function trainNow() {
-            if (!confirm('آموزش دستی مدل ممکنه چند دقیقه طول بکشه. ادامه میدین؟')) return;
-            
-            const btn = document.querySelector('.btn-primary[onclick="trainNow()"]');
-            if (btn) {
-                btn.textContent = '⏳ در حال آموزش...';
-                btn.disabled = true;
-            }
-
-            fetch('/model/train', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(`✅ مدل آموزش دید!\nدقت: ${data.accuracy || 'N/A'}\nتعداد نمونه: ${data.samples || 0}`);
-                    } else {
-                        alert('❌ ' + data.message);
-                    }
-                    refreshModelStatus();
-                })
-                .catch(err => alert('❌ خطا: ' + err.message))
-                .finally(() => {
-                    if (btn) {
-                        btn.textContent = '🧠 آموزش دستی';
-                        btn.disabled = false;
-                    }
-                });
-        }
-
-        function refreshModelStatus() {
+            // مدل (ساده)
             fetch('/model/status')
                 .then(res => res.json())
                 .then(data => {
-                    // به‌روزرسانی کارت مدل بدون رفرش کامل
-                    const modelCard = document.getElementById('modelCard');
-                    if (!modelCard) {
-                        loadFullHealth();
-                        return;
-                    }
-
-                    const modelStats = data?.stats || {};
-                    const modelRunning = data?.is_running || false;
-                    const isTraining = data?.is_training || false;
                     const modelExists = data?.model_exists || false;
-                    const lastTraining = modelStats?.last_training || null;
-                    const lastScore = modelStats?.last_score || null;
-                    const totalTrainings = modelStats?.total_trainings || 0;
-                    const dataPoints = modelStats?.data_points_used || 0;
-                    const apiStatus = data?.api_status?.api_status || 'unknown';
-                    const creditsRemaining = data?.api_status?.credits_remaining || 0;
+                    const isTraining = data?.is_training || false;
+                    const modelRunning = data?.is_running || false;
+                    const lastScore = data?.stats?.last_score || null;
 
-                    // به‌روزرسانی متن‌ها
-                    const badges = modelCard.querySelectorAll('.badge');
-                    if (badges.length >= 2) {
-                        // وضعیت مدل
-                        badges[0].className = `badge ${modelExists ? 'badge-success' : 'badge-warning'}`;
-                        badges[0].textContent = modelExists ? '✅ فعال' : '⚠️ غیرفعال';
+                    const modelCard = document.getElementById('modelCard');
+                    if (modelCard) {
+                        const badge = modelCard.querySelector('.badge');
+                        const infoSpans = modelCard.querySelectorAll('.model-status-row span');
                         
-                        // وضعیت اجرا
-                        badges[1].className = `badge ${modelRunning ? 'badge-success' : 'badge-gray'}`;
-                        badges[1].textContent = modelRunning ? 'در حال اجرا' : 'متوقف';
-                    }
-
-                    // دکمه‌های روشن/خاموش
-                    const actionsDiv = modelCard.querySelector('.actions');
-                    if (actionsDiv) {
-                        const startBtn = actionsDiv.querySelector('.btn-success');
-                        const stopBtn = actionsDiv.querySelector('.btn-danger');
-                        
-                        if (modelRunning) {
-                            if (startBtn) startBtn.style.display = 'none';
-                            if (stopBtn) stopBtn.style.display = 'inline-flex';
-                        } else {
-                            if (startBtn) startBtn.style.display = 'inline-flex';
-                            if (stopBtn) stopBtn.style.display = 'none';
+                        if (badge) {
+                            let badgeClass = 'badge-gray';
+                            let badgeText = '⏹️ غیرفعال';
+                            if (isTraining) {
+                                badgeClass = 'badge-warning';
+                                badgeText = '⏳ در حال آموزش...';
+                            } else if (modelExists && modelRunning) {
+                                badgeClass = 'badge-success';
+                                badgeText = '✅ فعال';
+                            } else if (modelExists) {
+                                badgeClass = 'badge-warning';
+                                badgeText = '⚠️ غیرفعال';
+                            }
+                            badge.className = `badge ${badgeClass}`;
+                            badge.textContent = badgeText;
                         }
-                    }
 
-                    // به‌روزرسانی جزئیات
-                    const detailItems = modelCard.querySelectorAll('.model-detail .item .val');
-                    if (detailItems.length >= 4) {
-                        detailItems[0].textContent = totalTrainings;
-                        detailItems[1].textContent = lastScore !== null ? lastScore : '—';
-                        detailItems[2].textContent = dataPoints > 0 ? dataPoints : '—';
-                        detailItems[3].textContent = lastTraining ? new Date(lastTraining).toLocaleString('fa-IR') : '—';
-                    }
-
-                    // اعتبار و API
-                    const infoSpan = modelCard.querySelector('.info');
-                    if (infoSpan) {
-                        const spans = infoSpan.querySelectorAll('span');
-                        if (spans.length >= 4) {
-                            spans[2].textContent = `اعتبار: ${creditsRemaining}`;
-                            spans[3].textContent = `API: ${apiStatus === 'ok' ? '✅' : '❌'}`;
+                        if (infoSpans && infoSpans.length >= 2) {
+                            infoSpans[1].textContent = lastScore !== null ? `دقت: ${lastScore}` : 'دقت: —';
+                            infoSpans[2].textContent = modelExists ? 'مدل موجود است' : 'مدل موجود نیست';
                         }
                     }
                 })
-                .catch(err => console.error('Model status error:', err));
+                .catch(err => console.error('Model status update error:', err));
         }
 
         // ============================================================
