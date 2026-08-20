@@ -1,11 +1,12 @@
 # health_mother_system.py
 # ============================================================
 # سیستم مادر سلامت و اعتبارسنجی
-# شامل: سلامت سیستم، اعتبار API، آمار درخواست‌ها
+# شامل: سلامت سیستم، اعتبار API، آمار درخواست‌ها، مصرف CPU
 # ============================================================
+
 import os
 import time
-
+import psutil
 from flask import jsonify, request
 from datetime import datetime
 import logging
@@ -14,88 +15,31 @@ from app import app, system
 logger = logging.getLogger(__name__)
 
 
-
-# health_mother_system.py
-# ============================================================
-# سیستم مادر سلامت و اعتبارسنجی
-# ============================================================
-
 # ============================================================
 # توابع CPU
 # ============================================================
 
-def get_cpu_usage():
-    """دریافت مصرف CPU در کانتینر"""
-    try:
-        # روش 1: از /proc/stat
-        with open('/proc/stat', 'r') as f:
-            line = f.readline()
-            parts = line.split()
-            user = int(parts[1])
-            nice = int(parts[2])
-            system = int(parts[3])
-            idle = int(parts[4])
-            iowait = int(parts[5])
-            irq = int(parts[6])
-            softirq = int(parts[7])
-            steal = int(parts[8])
-            
-            total = user + nice + system + idle + iowait + irq + softirq + steal
-            idle_total = idle + iowait
-            
-            return {"total": total, "idle": idle_total}
-    except:
-        return None
-
-
 def get_cpu_percent():
-    """دریافت درصد مصرف CPU نسبت به محدودیت 0.1 هسته"""
-    stat1 = get_cpu_usage()
-    if not stat1:
+    """دریافت مصرف واقعی CPU با استفاده از psutil"""
+    try:
+        cpu_percent = psutil.cpu_percent(interval=0.5)
+        
+        # تعیین وضعیت بر اساس مصرف
+        if cpu_percent < 70:
+            status = "healthy"
+        elif cpu_percent < 90:
+            status = "warning"
+        else:
+            status = "danger"
+        
         return {
-            "cpu_percent": 0,
-            "actual_cores": 0,
-            "usage_of_limit": 0,
-            "limit_cores": 0.1,
-            "status": "unknown"
+            "cpu_percent": round(cpu_percent, 1),
+            "status": status
         }
-    
-    time.sleep(0.5)
-    stat2 = get_cpu_usage()
-    if not stat2:
-        return {
-            "cpu_percent": 0,
-            "actual_cores": 0,
-            "usage_of_limit": 0,
-            "limit_cores": 0.1,
-            "status": "unknown"
-        }
-    
-    total_diff = stat2["total"] - stat1["total"]
-    idle_diff = stat2["idle"] - stat1["idle"]
-    
-    if total_diff == 0:
-        return {
-            "cpu_percent": 0,
-            "actual_cores": 0,
-            "usage_of_limit": 0,
-            "limit_cores": 0.1,
-            "status": "healthy"
-        }
-    
-    cpu_percent = ((total_diff - idle_diff) / total_diff) * 100
-    actual_usage = cpu_percent * 0.1
-    usage_of_limit = (actual_usage / 0.1) * 100
-    
-    status = "healthy" if usage_of_limit < 80 else "warning" if usage_of_limit < 100 else "danger"
-    
-    return {
-        "cpu_percent": round(cpu_percent, 1),
-        "actual_cores": round(actual_usage, 3),
-        "usage_of_limit": round(usage_of_limit, 1),
-        "limit_cores": 0.1,
-        "status": status
-    }
+    except Exception as e:
+        logger.error(f"Error getting CPU: {e}")
+        return {"cpu_percent": 0, "status": "unknown"}
+
 
 # ============================================================
 # ۱. بررسی سلامت سیستم
@@ -168,10 +112,13 @@ def health_components():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+
 @app.route('/health/cpu', methods=['GET'])
 def health_cpu():
     """دریافت مصرف CPU"""
     return jsonify(get_cpu_percent())
+
+
 # ============================================================
 # ۲. اعتبار API
 # ============================================================
@@ -227,10 +174,8 @@ def get_credit_usage():
             used = data.get('usedCredits', 0)
             remaining = data.get('remainingCredits', 0)
             
-            # محاسبه درصد مصرف
             usage_percent = round((used / total) * 100, 1) if total > 0 else 0
             
-            # تعیین وضعیت مصرف
             if usage_percent > 80:
                 status = "critical"
             elif usage_percent > 60:
@@ -392,7 +337,7 @@ def system_status():
             "timestamp": datetime.now().isoformat()
         }), 500
 
-    
+
 # ============================================================
 # ۵. ریست/پاک کردن کش (برای مدیریت)
 # ============================================================
