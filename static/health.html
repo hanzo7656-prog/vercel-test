@@ -390,11 +390,22 @@
 
             // ===== کارت مدل (ساده) =====
             const modelStats = modelData?.stats || {};
+
+            const modelStats = modelData?.stats || {};
             const modelRunning = modelData?.is_running || false;
             const isTraining = modelData?.is_training || false;
             const modelExists = modelData?.model_exists || false;
             const lastScore = modelStats?.last_score || null;
+            const modelMode = modelStats?.mode || 'DEMO';  // ✅ اینجا اضافه شد
+    
+            // ============================================================
+            // ✅ کد جدید رو اینجا اضافه کن (بعد از تعریف متغیرها)
+            // ============================================================
+            const modeDisplay = modelMode === 'BETA' ? '🧪 بتا' : '📦 دمو';
 
+            // ============================================================
+            // ساخت کارت مدل
+            // ============================================================
             let modelBadge = 'badge-gray';
             let modelText = '⏹️ غیرفعال';
             if (isTraining) {
@@ -407,22 +418,23 @@
                 modelBadge = 'badge-warning';
                 modelText = '⚠️ غیرفعال';
             }
-
+ 
             html += `
                 <div class="card" id="modelCard" style="border-color:rgba(0,212,255,0.08);">
                     <div class="card-title"><i class="fas fa-brain" style="color:#a855f7;"></i> وضعیت مدل</div>
                     <div class="model-status-row">
                         <span class="badge ${modelBadge}">${modelText}</span>
                         <span style="color:#4a5a6a;font-size:0.8rem;">
-                            ${lastScore !== null ? `دقت: ${lastScore}` : 'دقت: —'}
+                            وضعیت: ${modeDisplay}
                         </span>
                         <span style="color:#4a5a6a;font-size:0.8rem;">
-                            ${modelExists ? 'مدل موجود است' : 'مدل موجود نیست'}
+                            ${lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : 'دقت: —'}
                         </span>
                     </div>
                 </div>
             `;
-
+    
+            /
             // ===== وضعیت کلی =====
             const statusClass = healthData.status === 'ok' ? 'badge-success' :
                                healthData.status === 'degraded' ? 'badge-warning' : 'badge-danger';
