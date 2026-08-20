@@ -11,12 +11,14 @@ import time
 import uuid
 import threading
 import numpy as np
+import logging
 from datetime import datetime
 from queue import Queue
 from flask import Flask, jsonify, request
 
 from api_handler import CoinStatsAPI
 from task_manager import get_task_manager, TaskPriority
+from auto_trainer import AutoTrainer
 
 
 # ============================================================
@@ -52,6 +54,13 @@ class TradingSignalSystem:
         
         # ثبت تسک‌های خودکار
         self._register_auto_tasks()
+
+        #اموزش خودکار مدل XGboost
+        self.trainer = AutoTrainer(self.api, "model.json")
+        self.trainer.start_auto_train_(interval_hours=6)
+
+        logger=logging.getLogger(__name__)
+        logger.info('AutoTrainer started')
 
     def _get_memory_usage(self):
         """دریافت دقیق حافظه مصرفی پروسه فعلی"""
@@ -745,6 +754,64 @@ def auto_stop_all():
     """متوقف کردن همه تسک‌های خودکار"""
     system.task_manager.stop_all_auto_tasks()
     return jsonify({"success": True, "message": "همه تسک‌های خودکار متوقف شدند"})
+
+
+
+
+
+# ============================================================
+# ✅ روت‌های مدل و آموز
+# ============================================================
+
+@app.route('/model/status', methods=['GET'])
+def model_status():
+    """دریافت وضعیت مدل و آموزش"""
+    try:
+        status = system.trainer.get_stats()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/model/train', methods=['POST'])
+def model_train():
+    """اجرای دستی آموزش"""
+    try:
+        result = system.trainer.train_model()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/start', methods=['POST'])
+def model_start():
+    """شروع آموزش خودکار"""
+    try:
+        interval = int(request.args.get('interval', 6))
+        result = system.trainer.start_auto_train(interval_hours=interval)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/stop', methods=['POST'])
+def model_stop():
+    """متوقف کردن آموزش خودکار"""
+    try:
+        result = system.trainer.stop_auto_train()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/check-api', methods=['GET'])
+def model_check_api():
+    """بررسی وضعیت API و اعتبار"""
+    try:
+        status = system.trainer.check_api_status()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================
