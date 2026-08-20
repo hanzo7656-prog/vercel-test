@@ -57,7 +57,7 @@ class TradingSignalSystem:
 
         #اموزش خودکار مدل XGboost
         self.trainer = AutoTrainer(self.api, "model.json")
-        self.trainer.start_auto_train_(interval_hours=6)
+        self.trainer.start_auto_train(interval_hours=6)
 
         logger=logging.getLogger(__name__)
         logger.info('AutoTrainer started')
