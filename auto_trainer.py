@@ -54,10 +54,12 @@ class AutoTrainer:
         ]
 
         self.training_history: List[Dict[str, Any]] = []
+        self.logs: List[str] = []
         self._add_log("✅ AutoTrainer initialized")
     
     def _add_log(self, message: str):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] {message}
         self.logs.append(f"[{timestamp}] {message}")
         if len(self.logs) > 200:
             self.logs = self.logs[-200:]
