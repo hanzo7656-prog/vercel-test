@@ -59,12 +59,18 @@ class AutoTrainer:
     
     def _add_log(self, message: str):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {message}
-        self.logs.append(f"[{timestamp}] {message}")
+        log_entry = f"[{timestamp}] {message}"
+        self.logs.append(log_entry)
         if len(self.logs) > 200:
             self.logs = self.logs[-200:]
         logger.info(message)
-    
+
+     
+    def clear_logs(self):
+        """پاک کردن لاگ‌ها"""
+        self._logs == []
+        self_add_logs:("لاگ‌ها پاک شدند")
+        
     # ============================================================
     # مدیریت وضعیت API
     # ============================================================
@@ -313,8 +319,26 @@ class AutoTrainer:
             # نگه‌داشتن فقط ۱۰۰ رکورد آخر
             if len(self.training_history) > 100:
                 self.training_history = self.training_history[-100:]
-        
+
+            
         return result
+    
+    def get_logs(self) -> List[str]:
+        return self._logs
+    
+    def get_stats(self) -> Dict[str, Any]:
+        status = self.check_api_status()
+        return {
+            "is_running": self.is_running,
+            "is_training": self.is_training,
+            "stats": self.stats,
+            "api_status": status,
+            "coins": self.coins,
+            "model_exists": os.path.exists(self.model_path),
+            "logs": self._logs[-30:],
+            "training_history": self.training_history[-50:],
+            "timestamp": datetime.now().isoformat()
+        }
     
     def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
         """دریافت سابقه آموزش با فیلتر دوره زمانی"""
