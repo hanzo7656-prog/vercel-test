@@ -816,6 +816,22 @@ def model_check_api():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# اضافه کردن به app.py - بخش روت‌های مدل
+
+@app.route('/model/history', methods=['GET'])
+def model_history():
+    """دریافت سابقه آموزش با فیلتر دوره"""
+    try:
+        period = request.args.get('period', None)
+        history = system.trainer.get_training_history(period)
+        return jsonify({
+            "success": True,
+            "data": history,
+            "count": len(history),
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ============================================================
 # Import روت‌های دیگر
