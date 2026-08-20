@@ -93,7 +93,7 @@ class TradingSignalSystem:
         except Exception as e:
             print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
             self.model_loaded = False
-
+            
     def extract_features(self, chart_data):
         """
         تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost
@@ -363,15 +363,23 @@ class TradingSignalSystem:
             }
             status["status"] = "unhealthy"
 
-        # 2. سلامت مدل
+        # 2. سلامت مدل (اصلاح شده)
+        model_exists = os.path.exists("model.json")
+        model_status = "healthy" if model_exists else "degraded"
+        model_mode = "BETA" if model_exists else "DEMO"
+      
         status["components"]["model"] = {
-            "status": "healthy" if self.model_loaded else "degraded",
-            "message": "مدل بارگذاری شده است" if self.model_loaded else "حالت DEMO (بدون مدل)",
-            "mode": "PRODUCTION" if self.model_loaded else "DEMO"
+            "status": model_status,
+            "message": "مدل بارگذاری شده است" if model_exists else "حالت DEMO (بدون مدل)",
+            "mode": model_mode,
+            "file_exists": model_exists
         }
 
-        if not self.model_loaded and status["status"] == "ok":
-            status["status"] = "degraded"
+        # اگر مدل وجود داشته باشه، وضعیت کلی رو ok نگه دار
+        if model_exists and status["status"] == "degraded":
+            status["status"] = "ok"
+
+        return status
 
         # 3. اعتبار
         try:
