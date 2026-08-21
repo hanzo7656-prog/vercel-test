@@ -19,7 +19,7 @@ from flask import Flask, jsonify, request
 from api_handler import CoinStatsAPI
 from task_manager import get_task_manager, TaskPriority
 from auto_trainer import AutoTrainer
-from database import get_redis, health_check, as db_health_check
+from database import get_redis, health_check as db_health_check
 from config import (
     get_config,
     get_model_config,
