@@ -6,7 +6,6 @@
     <title>مدل</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
 
@@ -122,10 +121,6 @@
         .badge-danger { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid rgba(255,68,68,0.3); }
         .badge-gray { background: rgba(255,255,255,0.05); color: #7a8fa3; border: 1px solid rgba(255,255,255,0.05); }
         .badge-info { background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
-        .badge-excellent { background: rgba(0,255,136,0.2); color: #00ff88; border: 1px solid #00ff88; }
-        .badge-good { background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid #00d4ff; }
-        .badge-average { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid #ffaa00; }
-        .badge-poor { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid #ff4444; }
 
         .btn {
             display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
@@ -137,7 +132,6 @@
         .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
         .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
         .btn-sm { padding: 5px 14px; font-size: 0.8rem; }
-        .btn-xs { padding: 3px 10px; font-size: 0.7rem; }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
@@ -380,16 +374,6 @@
             border-color: #00d4ff;
         }
 
-        .accuracy-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
         @media (max-width: 768px) {
             .model-config { grid-template-columns: 1fr; }
             .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
@@ -425,9 +409,9 @@
             <div class="model-status" id="modelStatusBar">
                 <div class="left">
                     <span>📊 وضعیت:</span>
-                    <span id="modelStatusBadge" class="badge badge-warning">⏳ در حال بررسی...</span>
+                    <span id="modelStatusBadge" class="badge badge-gray">⏳ در حال بررسی...</span>
                     <span id="modelRunningBadge" class="badge badge-gray">⏹️ متوقف</span>
-                    <span id="modelInfo" style="color:#4a5a6a;font-size:0.8rem;"></span>
+                    <span id="modelInfo" style="color:#4a5a6a;font-size:0.8rem;">در حال اتصال...</span>
                 </div>
                 <div class="right" id="modelControls">
                     <button class="btn btn-sm btn-success" onclick="toggleModel('start')">▶️ شروع آموزش</button>
@@ -547,14 +531,21 @@
         let currentProgress = 0;
         let currentStep = 0;
         const steps = ['دریافت داده', 'در حال آموزش', 'آموزش به پایان رسید'];
-        const totalSteps = steps.length;
+        let logCache = [];
 
         // ============================================================
-        // وضعیت مدل
+        // وضعیت مدل (با خطاگیری و timeout)
         // ============================================================
         function updateStatus() {
-            fetch('/model/status')
-                .then(res => res.json())
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            fetch('/model/status', { signal: controller.signal })
+                .then(res => {
+                    clearTimeout(timeoutId);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                })
                 .then(data => {
                     const modelStats = data?.stats || {};
                     const modelRunning = data?.is_running || false;
@@ -564,12 +555,10 @@
                     const creditsRemaining = data?.api_status?.credits_remaining || 0;
                     const lastScore = modelStats?.last_score || null;
                     const totalTrainings = modelStats?.total_trainings || 0;
-
-                    // در updateStatus
                     const mode = modelStats?.mode || 'DEMO';
+
                     const modeDisplay = mode === 'BETA' ? '🧪 بتا' : '📦 دمو';
 
-                    // نمایش در badge یا info
                     const info = document.getElementById('modelInfo');
                     if (info) {
                         const scoreText = lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : '';
@@ -577,8 +566,8 @@
                         const apiText = `API: ${apiStatus === 'ok' ? '✅' : '❌'} | اعتبار: ${creditsRemaining}`;
                         info.textContent = `${modeDisplay} ${scoreText} ${trainText} ${apiText}`.trim();
                     }
+
                     const badge = document.getElementById('modelStatusBadge');
-                    
                     if (badge) {
                         if (isTraining) {
                             badge.className = 'badge badge-warning';
@@ -606,14 +595,6 @@
                         }
                     }
 
-                    const info = document.getElementById('modelInfo');
-                    if (info) {
-                        const scoreText = lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : '';
-                        const trainText = totalTrainings > 0 ? `آموزش: ${totalTrainings} بار` : '';
-                        const apiText = `API: ${apiStatus === 'ok' ? '✅' : '❌'} | اعتبار: ${creditsRemaining}`;
-                        info.textContent = `${scoreText} ${trainText} ${apiText}`.trim();
-                    }
-
                     const startBtn = document.querySelector('#modelControls .btn-success');
                     const stopBtn = document.querySelector('#modelControls .btn-danger');
                     if (startBtn && stopBtn) {
@@ -630,21 +611,28 @@
                         showProgressModal();
                     }
 
-                    // بروزرسانی سابقه آموزش
                     loadHistoryChart();
+                    updateLogs();
                 })
-                .catch(() => {
+                .catch(err => {
+                    console.error('Status error:', err);
                     const badge = document.getElementById('modelStatusBadge');
                     if (badge) {
                         badge.className = 'badge badge-danger';
-                        badge.textContent = '❌ خطا';
+                        badge.textContent = '❌ خطا در اتصال';
                     }
+                    const info = document.getElementById('modelInfo');
+                    if (info) {
+                        info.textContent = '⚠️ سرور پاسخ نمی‌دهد';
+                    }
+                })
+                .finally(() => {
+                    clearTimeout(timeoutId);
                 });
         }
 
         function refreshStatus() {
             updateStatus();
-            updateLogs();
         }
 
         // ============================================================
@@ -713,9 +701,8 @@
                         currentStep = 2;
                         updateProgressModal();
                         const accuracyPercent = (data.accuracy * 100).toFixed(1);
-                        const badge = getAccuracyBadge(data.accuracy);
                         setTimeout(() => {
-                            alert(`✅ مدل آموزش دید!\nدقت: ${accuracyPercent}% ${badge}\nتعداد نمونه: ${data.samples || 0}`);
+                            alert(`✅ مدل آموزش دید!\nدقت: ${accuracyPercent}%\nتعداد نمونه: ${data.samples || 0}`);
                             closeProgressModal();
                         }, 500);
                     } else {
@@ -738,13 +725,6 @@
                         progressInterval = null;
                     }
                 });
-        }
-
-        function getAccuracyBadge(accuracy) {
-            if (accuracy >= 0.90) return '🌟 عالی!';
-            if (accuracy >= 0.80) return '✅ خوب';
-            if (accuracy >= 0.70) return '📊 متوسط';
-            return '⚠️ ضعیف';
         }
 
         // ============================================================
@@ -780,21 +760,28 @@
                 if (i === currentStep) dot.classList.add('active');
             });
         }
+
         // ============================================================
         // لاگ‌ها
         // ============================================================
-        let logCache = [];
-
         function updateLogs() {
             fetch('/model/status')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error('Network error');
+                    return res.json();
+                })
                 .then(data => {
                     const logs = data?.logs || [];
                     logCache = logs;
                     renderLogs(logs);
                 })
                 .catch(() => {
-                    document.getElementById('logConsole').innerHTML = '<div class="log-error">❌ خطا در دریافت لاگ</div>';
+                    // لاگ‌های قبلی رو نگه دار
+                    if (logCache.length > 0) {
+                        renderLogs(logCache);
+                    } else {
+                        document.getElementById('logConsole').innerHTML = '<div class="log-error">❌ خطا در دریافت لاگ</div>';
+                    }
                 });
         }
 
@@ -887,7 +874,6 @@
         }
 
         function clearLogs() {
-            // پاک کردن لاگ‌ها از سرور
             fetch('/model/clear-logs', { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
@@ -926,7 +912,6 @@
                         const canvas = document.getElementById('historyChart');
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        // نمایش پیام
                         const container = canvas.parentElement;
                         const existingMsg = container.querySelector('.no-data-msg');
                         if (!existingMsg) {
@@ -939,7 +924,6 @@
                         return;
                     }
 
-                    // حذف پیام no-data
                     const container = document.getElementById('historyChart').parentElement;
                     const msg = container.querySelector('.no-data-msg');
                     if (msg) msg.remove();
@@ -978,9 +962,7 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
-                                legend: {
-                                    display: false
-                                },
+                                legend: { display: false },
                                 tooltip: {
                                     backgroundColor: '#0d1624',
                                     titleColor: '#e0e6ed',
@@ -1029,11 +1011,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadNav();
             updateStatus();
-            updateLogs();
-            loadHistoryChart();
             
-            statusInterval = setInterval(updateStatus, 5000);
-            logInterval = setInterval(updateLogs, 3000);
+            statusInterval = setInterval(updateStatus, 15000);
+            logInterval = setInterval(updateLogs, 5000);
             setInterval(loadHistoryChart, 10000);
         });
     </script>
