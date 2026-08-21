@@ -173,26 +173,27 @@ class ConfigManager:
     def get_section(self, section: str) -> Dict[str, Any]:
         """دریافت یک بخش کامل"""
         return self._settings.get(section, {})
-    
+
     def update(self, path: str, value: Any):
         """به‌روزرسانی یک مقدار (و ذخیره در فایل)"""
         self._set_nested(path, value)
         self._save_to_file()
         self.get.cache_clear()
         logger.info(f"✅ تنظیمات {path} = {value} ذخیره شد")
-    
+
     def _save_to_file(self):
         """ذخیره تنظیمات در فایل"""
         try:
             settings_path = Path("config/settings.json")
             settings_path.parent.mkdir(parents=True, exist_ok=True)
-            
+        
             with open(settings_path, 'w', encoding='utf-8') as f:
                 json.dump(self._settings, f, indent=4, ensure_ascii=False)
+            logger.info("✅ تنظیمات در فایل ذخیره شد")
         except Exception as e:
             logger.error(f"❌ خطا در ذخیره تنظیمات: {e}")
-
-
+            raise
+            
 # ============================================================
 # نمونه Singleton و راهنماها
 # ============================================================
