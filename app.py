@@ -19,7 +19,7 @@ from flask import Flask, jsonify, request
 from api_handler import CoinStatsAPI
 from task_manager import get_task_manager, TaskPriority
 from auto_trainer import AutoTrainer
-
+from database import get_redis, health_check, as db_health_check
 
 # ============================================================
 # هسته اصلی سیستم
@@ -61,6 +61,26 @@ class TradingSignalSystem:
 
         logger=logging.getLogger(__name__)
         logger.info('AutoTrainer started')
+
+        # دیتابیس‌ها
+        self.db = get_redis()
+        is self.db and self.db.is_connected():
+            print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
+        else
+            print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
+
+
+    def cache_get(self, key: str):
+        """دریافت از کش (با دیتابیس)"""
+        if self.db and self.db.is_connected():
+            return self.db.get(key)
+        return None
+    
+    def cache_set(self, key: str, value: Any, ttl: int = 3600):
+        """ذخیره در کش (با دیتابیس)"""
+        if self.db and self.db.is_connected():
+            return self.db.set(key, value, ttl)
+        return False
 
     def _get_memory_usage(self):
         """دریافت دقیق حافظه مصرفی پروسه فعلی"""
@@ -768,7 +788,7 @@ def auto_stop_all():
 
 
 # ============================================================
-# ✅ روت‌های مدل و آموز
+# روت‌های مدل و آموزش
 # ============================================================
 
 @app.route('/model/status', methods=['GET'])
@@ -781,7 +801,7 @@ def model_status():
         return jsonify({"error": str(e)}), 500
 
 
-# اضافه کردن period به روت /model/train
+
 @app.route('/model/train', methods=['POST'])
 def model_train():
     """اجرای دستی آموزش"""
@@ -792,7 +812,7 @@ def model_train():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# اصلاح /model/start برای پذیرش interval
+
 @app.route('/model/start', methods=['POST'])
 def model_start():
     """شروع آموزش خودکار"""
@@ -824,7 +844,6 @@ def model_check_api():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# اضافه کردن به app.py - بخش روت‌های مدل
 
 @app.route('/model/history', methods=['GET'])
 def model_history():
@@ -842,8 +861,6 @@ def model_history():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# app.py - اضافه کردن روت جدید
-
 @app.route('/model/clear-logs', methods=['POST'])
 def model_clear_logs():
     """پاک کردن لاگ‌های آموزش"""
@@ -852,7 +869,20 @@ def model_clear_logs():
         return jsonify({"success": True, "message": "لاگ‌ها پاک شدند"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-        
+
+
+#===================================================================
+# روت‌های دیتابیس
+#===================================================================
+
+@app.route('/health/database', methods=['GET'])
+def health_database():
+    """بررسی سلامت دیتابیس‌ها"""
+    return jsonify({
+        "success": True,
+        "data": db_health_check(),
+        "timestamp": datetime.now().isoformat()
+    })
 # ============================================================
 # Import روت‌های دیگر
 # ============================================================
