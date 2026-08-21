@@ -12,6 +12,7 @@ import uuid
 import threading
 import numpy as np
 import logging
+from typing import Any
 from datetime import datetime
 from queue import Queue
 from flask import Flask, jsonify, request
@@ -83,7 +84,7 @@ class TradingSignalSystem:
         self.db = get_redis()
         if self.db and self.db.is_connected():
             print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
-        else
+        else:
             print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
 
 
@@ -401,7 +402,7 @@ class TradingSignalSystem:
             status["status"] = "unhealthy"
 
         # 2. سلامت مدل (اصلاح شده)
-        model_exists = os.path.exists("model.json")
+        model_exists = os.path.exists("model.xgb")
         model_status = "healthy" if model_exists else "degraded"
         model_mode = "BETA" if model_exists else "DEMO"
       
