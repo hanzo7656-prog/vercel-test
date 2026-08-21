@@ -46,7 +46,8 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"❌ خطا در بارگذاری تنظیمات: {e}")
             self._settings = self._get_default_settings()
-    
+
+
     def _get_default_settings(self) -> Dict:
         """تنظیمات پیش‌فرض"""
         return {
@@ -56,6 +57,30 @@ class ConfigManager:
                 "environment": "production",
                 "debug": False,
                 "timezone": "Asia/Tehran"
+            },
+            "model": {
+                "version": "1.0",
+                "mode": "DEMO",
+                "last_training": None,
+                "accuracy": None,
+                "default_period": "1m",
+                "auto_interval_hours": 6,
+                "min_data_points": 30,
+                "coins": ["bitcoin", "ethereum", "solana", "cardano", "ripple"],
+                "features": [
+                    "return_1", "return_3", "return_5", "return_10",
+                    "sma_5", "sma_10", "sma_20",
+                    "volatility", "fear_greed",
+                    "trend_5", "trend_10", "trend_20", "r2"
+                ]
+            },
+            "thresholds": {
+                "ram_warning": 70,
+                "ram_critical": 85,
+                "credit_warning": 15,
+                "credit_critical": 5,
+                "cpu_warning": 70,
+                "cpu_critical": 90
             },
             "cache": {
                 "default_ttl": 3600,
@@ -67,21 +92,10 @@ class ConfigManager:
                 "retry_attempts": 3,
                 "retry_delay": 1
             },
-            "model": {
-                "default_period": "1m",
-                "auto_train_interval": 6,
-                "min_data_points": 30
-            },
             "system": {
                 "max_tasks": 50,
                 "task_ttl": 300,
                 "num_workers": 1
-            },
-            "thresholds": {
-                "ram_warning": 70,
-                "ram_critical": 85,
-                "credit_warning": 15,
-                "credit_critical": 5
             },
             "logging": {
                 "level": "INFO",
@@ -107,7 +121,7 @@ class ConfigManager:
             if value is not None:
                 # تبدیل نوع
                 if value.lower() == 'true':
-                    value = True
+a                    value = True
                 elif value.lower() == 'false':
                     value = False
                 elif value.isdigit():
