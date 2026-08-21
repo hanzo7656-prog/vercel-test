@@ -52,11 +52,10 @@ def chart_page():
     return send_from_directory('static', 'chart.html')
 
 
-@app.route('/task-manager')
-def task_manager_page():
-    """صفحه مدیریت تسک‌ها"""
-    return send_from_directory('static', 'task-manager.html')
-
+@app.route('/database-page')
+def database_page():
+    """صفحه مدیریت دیتابیس"""
+    return send_from_directory('static', 'database.html')
 # ============================================================
 # سرو فایل‌های استاتیک (CSS, JS, Images)
 # ============================================================
