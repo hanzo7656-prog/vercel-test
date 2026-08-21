@@ -41,12 +41,11 @@ def health_page():
     return send_from_directory('static', 'health.html')
 
 
-@app.route('/stats-page')
-def stats_page():
-    """صفحه آمار"""
-    return send_from_directory('static', 'stats.html')
+@app.route('/settings-page')
+def settings_page():
+    """صفحه تنظیمات و آمار"""
+    return send_from_directory('static', 'settings.html')
     
-
 @app.route('/chart-page')
 def chart_page():
     return send_from_directory('static', 'chart.html')
@@ -56,7 +55,8 @@ def chart_page():
 def database_page():
     """صفحه مدیریت دیتابیس"""
     return send_from_directory('static', 'database.html')
-# ============================================================
+# ======================
+======================================
 # سرو فایل‌های استاتیک (CSS, JS, Images)
 # ============================================================
 
