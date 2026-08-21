@@ -100,7 +100,8 @@ class DatabaseFactory:
                 return match.group(0)  # برگردوندن خود متن (با خطا)
             return env_value
     
-    return re.sub(pattern, replace_match, text)
+        return re.sub(pattern, replace_match, text)
+    
     def _connect_all(self):
         """اتصال به همه دیتابیس‌های فعال"""
         databases = self._config.get("databases", {})
