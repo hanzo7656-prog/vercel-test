@@ -20,7 +20,12 @@ from api_handler import CoinStatsAPI
 from task_manager import get_task_manager, TaskPriority
 from auto_trainer import AutoTrainer
 from database import get_redis, health_check, as db_health_check
-
+from config import (
+    get_config,
+    get_model_config,
+    get_system_config,
+    get_thresholds
+)
 # ============================================================
 # هسته اصلی سیستم
 # ============================================================
@@ -37,13 +42,21 @@ class TradingSignalSystem:
         self.model = None
         self.model_loaded = False
         self.start_time = datetime.now()
-        
-        # استفاده از TaskManager جدید
+
+        self.config = {
+            "thresholds": get_thresholds(),
+            "model": get_model_config(),
+            "system": get_system_config(),
+            "cache_ttl": get_config("cache.default_ttl", 3600)
+        }
+
+        # تسک منیجر
         self.task_manager = get_task_manager(
-            num_workers=1,      # برای سرور ۵۱۲MB
-            max_tasks=50,       # حداکثر ۵۰ تسک در حافظه
-            task_ttl=300        # تسک‌ها بعد از ۵ دقیقه پاک میشن
+            num_workers=get_config("system.num_workers", 1),
+            max_tasks=get_config("system.max_tasks", 50),
+            task_ttl=get_config("system.task_ttl", 300)
         )
+        
         self.load_model()
         
         # کش برای داده‌های خودکار
@@ -56,8 +69,12 @@ class TradingSignalSystem:
         self._register_auto_tasks()
 
         #اموزش خودکار مدل XGboost
-        self.trainer = AutoTrainer(self.api, "model.xgb")
-        self.trainer.start_auto_train(interval_hours=6)
+
+        self.trainer = AutoTrainer(
+            self.api, 
+            "model.xgb",
+            interval=get_config("model.auto_train_interval", 6)
+        )
 
         logger=logging.getLogger(__name__)
         logger.info('AutoTrainer started')
