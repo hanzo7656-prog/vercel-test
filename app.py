@@ -17,8 +17,7 @@ from datetime import datetime
 from queue import Queue
 from flask import Flask, jsonify, request
 
-from api_handler import CoinStatsAPI
-from task_manager import get_task_manager, TaskPriority
+from api_handler import CoinStatsAPIa
 from auto_trainer import AutoTrainer
 from database import get_redis, health_check as db_health_check
 from config import (
@@ -51,12 +50,6 @@ class TradingSignalSystem:
             "cache_ttl": get_config("cache.default_ttl", 3600)
         }
 
-        # تسک منیجر
-        self.task_manager = get_task_manager(
-            num_workers=get_config("system.num_workers", 1),
-            max_tasks=get_config("system.max_tasks", 50),
-            task_ttl=get_config("system.task_ttl", 300)
-        )
         
         self.load_model()
         
@@ -65,12 +58,8 @@ class TradingSignalSystem:
         self._cached_news = None
         self._cached_fear_greed = None
         self._cached_market = None
-        
-        # ثبت تسک‌های خودکار
-        self._register_auto_tasks()
 
         #اموزش خودکار مدل XGboost
-
         self.trainer = AutoTrainer(
             self.api, 
             "model.xgb",
@@ -357,22 +346,6 @@ class TradingSignalSystem:
         prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
     
         return float(prediction)
-                
-    def predict_async(self, coin_id="bitcoin", period="24h"):
-        """نسخه غیرهمگام (Asynchronous) با TaskManager جدید"""
-        task_id = self.task_manager.submit(
-            func=self.predict_sync,
-            name=f"پیش‌بینی {coin_id} {period}",
-            args=(coin_id, period),
-            priority=TaskPriority.HIGH,
-            timeout=120
-        )
-        return {
-            "status": "processing",
-            "task_id": task_id,
-            "message": "پردازش در پس‌زمینه شروع شد",
-            "check_status": f"/task-status?task_id={task_id}"
-         }
 
     def health_check(self):
         """بررسی کامل سلامت سیستم"""
@@ -466,98 +439,7 @@ class TradingSignalSystem:
         # 5. آمار API
         status["components"]["api_stats"] = self.api.get_stats()
         
-        # 6. آمار TaskManager
-        status["components"]["task_manager"] = self.task_manager.get_stats()
-
         return status
-
-    # ============================================================
-    # تسک‌های خودکار
-    # ============================================================
-    
-    def _register_auto_tasks(self):
-        """ثبت تسک‌های خودکار در TaskManager"""
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        # 1. به‌روزرسانی ارزهای برتر
-        def update_top_coins():
-            try:
-                data = self.api.get_coins_list(limit=20)
-                if data and "error" not in data:
-                    self._cached_coins = data
-                    logger.info("✅ Top coins updated")
-                    return {"status": "success", "count": len(data.get('result', []))}
-                return {"status": "failed", "error": "No data"}
-            except Exception as e:
-                logger.error(f"Update top coins failed: {e}")
-                return {"status": "failed", "error": str(e)}
-        
-        # 2. به‌روزرسانی اخبار
-        def update_news():
-            try:
-                data = self.api.get_news(limit=6)
-                if data and "error" not in data:
-                    self._cached_news = data
-                    logger.info("✅ News updated")
-                    return {"status": "success", "count": len(data.get('data', []))}
-                return {"status": "failed", "error": "No data"}
-            except Exception as e:
-                logger.error(f"Update news failed: {e}")
-                return {"status": "failed", "error": str(e)}
-        
-        # 3. به‌روزرسانی شاخص ترس و طمع
-        def update_fear_greed():
-            try:
-                data = self.api.get_fear_greed(use_cache=False)
-                if data and "error" not in data:
-                    self._cached_fear_greed = data
-                    logger.info("✅ Fear & Greed updated")
-                    return {"status": "success", "data": data}
-                return {"status": "failed", "error": "No data"}
-            except Exception as e:
-                logger.error(f"Update fear greed failed: {e}")
-                return {"status": "failed", "error": str(e)}
-        
-        # 4. به‌روزرسانی وضعیت بازار
-        def update_market_stats():
-            try:
-                data = self.api.get_global_market()
-                if data and "error" not in data:
-                    self._cached_market = data
-                    logger.info("✅ Market stats updated")
-                    return {"status": "success", "data": data}
-                return {"status": "failed", "error": "No data"}
-            except Exception as e:
-                logger.error(f"Update market stats failed: {e}")
-                return {"status": "failed", "error": str(e)}
-        
-        # ثبت تسک‌ها
-        self.task_manager.register_auto_task(
-            "به‌روزرسانی ارزهای برتر", 
-            update_top_coins, 
-            120
-        )
-        self.task_manager.register_auto_task(
-            "به‌روزرسانی اخبار", 
-            update_news, 
-            120
-        )
-        self.task_manager.register_auto_task(
-            "شاخص ترس و طمع", 
-            update_fear_greed, 
-            300
-        )
-        self.task_manager.register_auto_task(
-            "وضعیت کلی بازار", 
-            update_market_stats, 
-            300
-        )
-        
-        # شروع خودکار همه تسک‌ها
-        self.task_manager.start_all_auto_tasks(stagger=5)
-        logger.info("✅ All auto tasks started")
-
 
 # ============================================================
 # راه‌اندازی وب سرویس Flask
