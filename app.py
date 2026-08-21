@@ -81,7 +81,7 @@ class TradingSignalSystem:
 
         # دیتابیس‌ها
         self.db = get_redis()
-        is self.db and self.db.is_connected():
+        if self.db and self.db.is_connected():
             print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
         else
             print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
