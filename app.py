@@ -720,9 +720,103 @@ def health_database():
         "data": db_health_check(),
         "timestamp": datetime.now().isoformat()
     })
+
 # ============================================================
-# Import روت‌های دیگر
+# روت‌های تنظیمات (Settings API)
 # ============================================================
+
+@app.route('/api/config', methods=['GET'])
+def get_settings():
+    """دریافت تمام تنظیمات سیستم (به جز توکن‌های حساس)"""
+    try:
+        from config import config as config_manager
+        
+        # دریافت تنظیمات
+        settings = config_manager.get_all()
+        
+        # حذف توکن‌ها از خروجی (برای امنیت)
+        if 'databases' in settings:
+            for db_name, db_config in settings['databases'].items():
+                if 'token' in db_config:
+                    # ماسک کردن توکن
+                    token = db_config['token']
+                    if token and len(token) > 10:
+                        db_config['token'] = token[:6] + '...' + token[-4:]
+                    else:
+                        db_config['token'] = '••••••••'
+        
+        return jsonify({
+            "success": True,
+            "data": settings,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error getting settings: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/config', methods=['POST'])
+def update_settings():
+    """به‌روزرسانی تنظیمات سیستم"""
+    try:
+        from config import config as config_manager
+        
+        data = request.json
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "داده ارسال نشده"
+            }), 400
+        
+        # به‌روزرسانی هر بخش
+        for section, values in data.items():
+            if isinstance(values, dict):
+                for key, value in values.items():
+                    path = f"{section}.{key}"
+                    config_manager.update(path, value)
+            else:
+                config_manager.update(section, values)
+        
+        return jsonify({
+            "success": True,
+            "message": "تنظیمات با موفقیت ذخیره شد",
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error updating settings: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/config/reset', methods=['POST'])
+def reset_settings():
+    """بازنشانی تنظیمات به حالت پیش‌فرض"""
+    try:
+        from config import config as config_manager
+        
+        # بارگذاری مجدد تنظیمات از فایل
+        config_manager.reload()
+        
+        return jsonify({
+            "success": True,
+            "message": "تنظیمات به حالت پیش‌فرض بازگشت",
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error resetting settings: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+#===============================
+#محل ایمپورت روت های جدید 
+#===============================
+
 
 from routes import *
 from health_mother_system import *
