@@ -145,11 +145,15 @@ class ConfigManager:
         target[keys[-1]] = value
     
     @lru_cache(maxsize=128)
+
     def get(self, path: str, default: Any = None) -> Any:
         """دریافت مقدار با مسیر (مثل 'app.environment')"""
+        if not isinstance(path, str):  # ← اگر path دیکشنری بود
+            return default
+    
         keys = path.split('.')
         target = self._settings
-        
+    
         try:
             for key in keys:
                 target = target[key]
@@ -172,7 +176,7 @@ class ConfigManager:
     
     def get_section(self, section: str) -> Dict[str, Any]:
         """دریافت یک بخش کامل"""
-        return self.get(section, {})
+        return self._settings.get(section, {})
     
     def update(self, path: str, value: Any):
         """به‌روزرسانی یک مقدار (و ذخیره در فایل)"""
