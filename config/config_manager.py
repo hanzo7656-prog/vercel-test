@@ -47,7 +47,6 @@ class ConfigManager:
             logger.error(f"❌ خطا در بارگذاری تنظیمات: {e}")
             self._settings = self._get_default_settings()
 
-
     def _get_default_settings(self) -> Dict:
         """تنظیمات پیش‌فرض"""
         return {
@@ -64,7 +63,7 @@ class ConfigManager:
                 "last_training": None,
                 "accuracy": None,
                 "default_period": "1m",
-                "auto_interval_hours": 6,
+                "auto_train_interval": 6,
                 "min_data_points": 30,
                 "coins": ["bitcoin", "ethereum", "solana", "cardano", "ripple"],
                 "features": [
@@ -93,9 +92,8 @@ class ConfigManager:
                 "retry_delay": 1
             },
             "system": {
-                "max_tasks": 50,
-                "task_ttl": 300,
-                "num_workers": 1
+                "health_check_interval": 30,
+                "metrics_collection": True
             },
             "logging": {
                 "level": "INFO",
@@ -112,7 +110,6 @@ class ConfigManager:
             "API_TIMEOUT": "api.timeout",
             "API_RETRY_ATTEMPTS": "api.retry_attempts",
             "MODEL_AUTO_TRAIN_INTERVAL": "model.auto_train_interval",
-            "SYSTEM_MAX_TASKS": "system.max_tasks",
             "LOG_LEVEL": "logging.level"
         }
         
@@ -145,15 +142,14 @@ class ConfigManager:
         target[keys[-1]] = value
     
     @lru_cache(maxsize=128)
-
     def get(self, path: str, default: Any = None) -> Any:
         """دریافت مقدار با مسیر (مثل 'app.environment')"""
-        if not isinstance(path, str):  # ← اگر path دیکشنری بود
+        if not isinstance(path, str):
             return default
-    
+        
         keys = path.split('.')
         target = self._settings
-    
+        
         try:
             for key in keys:
                 target = target[key]
