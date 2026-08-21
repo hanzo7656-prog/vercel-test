@@ -16,8 +16,7 @@ from typing import Any
 from datetime import datetime
 from queue import Queue
 from flask import Flask, jsonify, request
-
-from api_handler import CoinStatsAPIa
+from api_handler import CoinStatsAPI
 from auto_trainer import AutoTrainer
 from database import get_redis, health_check as db_health_check
 from config import (
