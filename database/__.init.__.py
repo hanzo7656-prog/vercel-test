@@ -1,24 +1,28 @@
-# database/__init__.py
+# config/__init__.py
 # ============================================================
-# پکیج دیتابیس - استفاده آسان
+# پکیج تنظیمات
 # ============================================================
 
-from database.database_factory import (
-    DatabaseFactory,
-    get_db,
-    get_redis,
-    health_check,
-    db_factory
+from config.config_manager import (
+    ConfigManager,
+    config,
+    get_config,
+    get_app_config,
+    get_cache_config,
+    get_api_config,
+    get_model_config,
+    get_system_config,
+    get_thresholds
 )
-from database.base import DatabaseBase
-from database.redis_manager import RedisManager
 
 __all__ = [
-    'DatabaseFactory',
-    'get_db',
-    'get_redis',
-    'health_check',
-    'db_factory',
-    'DatabaseBase',
-    'RedisManager'
+    'ConfigManager',
+    'config',
+    'get_config',
+    'get_app_config',
+    'get_cache_config',
+    'get_api_config',
+    'get_model_config',
+    'get_system_config',
+    'get_thresholds'
 ]
