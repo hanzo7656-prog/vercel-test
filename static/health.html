@@ -388,24 +388,16 @@
                 </div>
             `;
 
-            // ===== کارت مدل (ساده) =====
-            const modelStats = modelData?.stats || {};
-
+            // ===== کارت مدل =====
             const modelStats = modelData?.stats || {};
             const modelRunning = modelData?.is_running || false;
             const isTraining = modelData?.is_training || false;
             const modelExists = modelData?.model_exists || false;
             const lastScore = modelStats?.last_score || null;
-            const modelMode = modelStats?.mode || 'DEMO';  // ✅ اینجا اضافه شد
-    
-            // ============================================================
-            // ✅ کد جدید رو اینجا اضافه کن (بعد از تعریف متغیرها)
-            // ============================================================
-            const modeDisplay = modelMode === 'BETA' ? '🧪 بتا' : '📦 دمو';
+            const totalTrainings = modelStats?.total_trainings || 0;
+            const mode = modelStats?.mode || 'DEMO';
+            const modeDisplay = mode === 'BETA' ? '🧪 بتا' : '📦 دمو';
 
-            // ============================================================
-            // ساخت کارت مدل
-            // ============================================================
             let modelBadge = 'badge-gray';
             let modelText = '⏹️ غیرفعال';
             if (isTraining) {
@@ -418,7 +410,7 @@
                 modelBadge = 'badge-warning';
                 modelText = '⚠️ غیرفعال';
             }
- 
+
             html += `
                 <div class="card" id="modelCard" style="border-color:rgba(0,212,255,0.08);">
                     <div class="card-title"><i class="fas fa-brain" style="color:#a855f7;"></i> وضعیت مدل</div>
@@ -430,11 +422,13 @@
                         <span style="color:#4a5a6a;font-size:0.8rem;">
                             ${lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : 'دقت: —'}
                         </span>
+                        <span style="color:#4a5a6a;font-size:0.8rem;">
+                            ${totalTrainings > 0 ? `آموزش: ${totalTrainings} بار` : ''}
+                        </span>
                     </div>
                 </div>
             `;
-    
-            /
+
             // ===== وضعیت کلی =====
             const statusClass = healthData.status === 'ok' ? 'badge-success' :
                                healthData.status === 'degraded' ? 'badge-warning' : 'badge-danger';
@@ -547,7 +541,7 @@
                 })
                 .catch(err => console.error('RAM update error:', err));
 
-            // مدل (ساده)
+            // مدل
             fetch('/model/status')
                 .then(res => res.json())
                 .then(data => {
@@ -555,36 +549,40 @@
                     const isTraining = data?.is_training || false;
                     const modelRunning = data?.is_running || false;
                     const lastScore = data?.stats?.last_score || null;
+                    const totalTrainings = data?.stats?.total_trainings || 0;
+                    const mode = data?.stats?.mode || 'DEMO';
+                    const modeDisplay = mode === 'BETA' ? '🧪 بتا' : '📦 دمو';
 
                     const modelCard = document.getElementById('modelCard');
                     if (modelCard) {
-                        const badge = modelCard.querySelector('.badge');
-                        const infoSpans = modelCard.querySelectorAll('.model-status-row span');
-                        
-                        if (badge) {
-                            let badgeClass = 'badge-gray';
-                            let badgeText = '⏹️ غیرفعال';
+                        const badges = modelCard.querySelectorAll('.badge');
+                        if (badges.length >= 1) {
                             if (isTraining) {
-                                badgeClass = 'badge-warning';
-                                badgeText = '⏳ در حال آموزش...';
+                                badges[0].className = 'badge badge-warning';
+                                badges[0].textContent = '⏳ در حال آموزش...';
                             } else if (modelExists && modelRunning) {
-                                badgeClass = 'badge-success';
-                                badgeText = '✅ فعال';
+                                badges[0].className = 'badge badge-success';
+                                badges[0].textContent = '✅ فعال';
                             } else if (modelExists) {
-                                badgeClass = 'badge-warning';
-                                badgeText = '⚠️ غیرفعال';
+                                badges[0].className = 'badge badge-warning';
+                                badges[0].textContent = '⚠️ غیرفعال';
+                            } else {
+                                badges[0].className = 'badge badge-gray';
+                                badges[0].textContent = '⏹️ غیرفعال';
                             }
-                            badge.className = `badge ${badgeClass}`;
-                            badge.textContent = badgeText;
                         }
 
-                        if (infoSpans && infoSpans.length >= 2) {
-                            infoSpans[1].textContent = lastScore !== null ? `دقت: ${lastScore}` : 'دقت: —';
-                            infoSpans[2].textContent = modelExists ? 'مدل موجود است' : 'مدل موجود نیست';
+                        const spans = modelCard.querySelectorAll('.model-status-row span');
+                        if (spans.length >= 3) {
+                            spans[1].textContent = `وضعیت: ${modeDisplay}`;
+                            spans[2].textContent = lastScore !== null ? `دقت: ${(lastScore * 100).toFixed(1)}%` : 'دقت: —';
+                            if (spans.length >= 4) {
+                                spans[3].textContent = totalTrainings > 0 ? `آموزش: ${totalTrainings} بار` : '';
+                            }
                         }
                     }
                 })
-                .catch(err => console.error('Model status update error:', err));
+                .catch(err => console.error('Model update error:', err));
         }
 
         // ============================================================
