@@ -56,7 +56,7 @@ class TradingSignalSystem:
         self._register_auto_tasks()
 
         #اموزش خودکار مدل XGboost
-        self.trainer = AutoTrainer(self.api, "model.json")
+        self.trainer = AutoTrainer(self.api, "model.xgb")
         self.trainer.start_auto_train(interval_hours=6)
 
         logger=logging.getLogger(__name__)
@@ -81,10 +81,10 @@ class TradingSignalSystem:
     def load_model(self):
         """بارگذاری مدل XGBoost از فایل"""
         try:
-            if os.path.exists("model.json"):
+            if os.path.exists("model.xgb"):
                 import xgboost as xgb
                 self.model = xgb.Booster()
-                self.model.load_model("model.json")
+                self.model.load_model("model.xgb")
                 self.model_loaded = True
                 print("✅ مدل XGBoost با موفقیت بارگذاری شد", file=sys.stderr)
             else:
