@@ -74,8 +74,10 @@ class TradingSignalSystem:
         self.trainer = AutoTrainer(
             self.api, 
             "model.xgb",
-            interval=get_config("model.auto_train_interval", 6)
         )
+
+        interval = get_config("model.auto_train_interval", 6)
+        self.trainer.start_auto_train(interval_hours=interval)
 
         logger=logging.getLogger(__name__)
         logger.info('AutoTrainer started')
