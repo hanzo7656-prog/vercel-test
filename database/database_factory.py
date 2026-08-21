@@ -80,21 +80,24 @@ class DatabaseFactory:
                 "retry_delay": 1
             }
         }
-    
+
     def _replace_env_vars(self, text: str) -> str:
         """جایگزینی متغیرهای محیطی در متن"""
         if not text:
             return text
-        
+    
         import re
         pattern = r'\${([^}]+)}'
-        
+      
         def replace_match(match):
             var_name = match.group(1)
-            return os.getenv(var_name, match.group(0))
-        
-        return re.sub(pattern, replace_match, text)
+            env_value = os.getenv(var_name)
+            if env_value is None:
+                logger.warning(f"⚠️ متغیر محیطی {var_name} تنظیم نشده")
+                return match.group(0)  # برگردوندن خود متن (با خطا)
+            return env_value
     
+    return re.sub(pattern, replace_match, text)
     def _connect_all(self):
         """اتصال به همه دیتابیس‌های فعال"""
         databases = self._config.get("databases", {})
