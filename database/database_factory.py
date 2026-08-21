@@ -11,6 +11,8 @@ from pathlib import Path
 
 from database.base import DatabaseBase
 from database.redis_manager import RedisManager
+from config import get_config
+
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +61,10 @@ class DatabaseFactory:
         except Exception as e:
             logger.error(f"❌ خطا در بارگذاری تنظیمات: {e}")
             self._config = self._get_default_config()
-    
+
+
     def _get_default_config(self) -> Dict:
-        """تنظیمات پیش‌فرض"""
+        """تنظیمات پیش‌فرض از فایل تنظیمات عمومی"""
         return {
             "databases": {
                 "redis_main": {
@@ -73,11 +76,11 @@ class DatabaseFactory:
                     "description": "دیتابیس اصلی"
                 }
             },
-            "default_db": os.getenv("DATABASE_DEFAULT", "redis_main"),
+            "default_db": get_config("app.environment", "redis_main"),
             "settings": {
-                "cache_ttl": int(os.getenv("CACHE_TTL", 3600)),
-                "retry_attempts": 3,
-                "retry_delay": 1
+                "cache_ttl": get_config("cache.default_ttl", 3600),
+                "retry_attempts": get_config("api.retry_attempts", 3),
+                "retry_delay": get_config("api.retry_delay", 1)
             }
         }
 
