@@ -1,6 +1,6 @@
 # auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost
+# سیستم آموزش خودکار مدل XGBoost - نسخه اصلاح شده
 # ============================================================
 
 import os
@@ -12,7 +12,7 @@ import numpy as np
 import xgboost as xgb
 from datetime import datetime, timedelta
 from threading import Thread, Event
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 from api_handler import CoinStatsAPI
 
@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class AutoTrainer:
-    def __init__(self, api: CoinStatsAPI, model_path: str = "model.json"):
+    def __init__(self, api: CoinStatsAPI, model_path: str = "model.xgb"):
         self.api = api
         self.model_path = model_path
         self.is_running = False
         self.is_training = False
         self.stop_event = Event()
         self.thread: Optional[Thread] = None
+        
+        # لیست لاگ‌ها (یکسان سازی شده)
         self.logs: List[str] = []
         
         self.stats = {
@@ -39,7 +41,8 @@ class AutoTrainer:
             "data_points_used": 0,
             "api_status": "unknown",
             "credits_remaining": 0,
-            "training_period": "1m"
+            "training_period": "1m",
+            "mode": "DEMO"  # BETA یا DEMO
         }
         
         self.coins = ["bitcoin", "ethereum", "solana", "cardano", "ripple"]
@@ -54,28 +57,40 @@ class AutoTrainer:
         ]
 
         self.training_history: List[Dict[str, Any]] = []
-        self.logs: List[str] = []
+        
+        # بررسی وجود مدل و تنظیم حالت
+        if os.path.exists(self.model_path):
+            self.stats["mode"] = "BETA"
+            self._add_log(f"✅ مدل موجود است (حالت BETA)")
+        else:
+            self._add_log(f"📦 مدل یافت نشد (حالت DEMO)")
+        
         self._add_log("✅ AutoTrainer initialized")
     
     def _add_log(self, message: str):
+        """ثبت لاگ با زمان"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
         self.logs.append(log_entry)
         if len(self.logs) > 200:
             self.logs = self.logs[-200:]
         logger.info(message)
-
-     
+    
     def clear_logs(self):
         """پاک کردن لاگ‌ها"""
-        self._logs == []
-        self_add_logs:("لاگ‌ها پاک شدند")
-        
+        self.logs = []
+        self._add_log("🗑️ لاگ‌ها پاک شدند")
+    
+    def get_logs(self) -> List[str]:
+        """دریافت لاگ‌ها"""
+        return self.logs
+    
     # ============================================================
     # مدیریت وضعیت API
     # ============================================================
     
     def check_api_status(self) -> Dict[str, Any]:
+        """بررسی وضعیت API و اعتبار باقیمانده"""
         try:
             status = self.api.get_status()
             api_ok = status and status.get('status') == 'ok'
@@ -112,17 +127,19 @@ class AutoTrainer:
     # ============================================================
     
     def fetch_data_for_coin(self, coin_id: str, period: str = "1m") -> List[List]:
+        """دریافت داده‌های تاریخی برای یک ارز"""
         try:
             data = self.api.get_chart(coin_id, period)
             if data and isinstance(data, list) and len(data) > 0:
-                self._add_log(f"✅ Fetched {len(data)} points for {coin_id} ({period})")
+                self._add_log(f"✅ دریافت {len(data)} نقطه برای {coin_id} ({period})")
                 return data
             return []
         except Exception as e:
-            self._add_log(f"❌ Error fetching data for {coin_id}: {e}")
+            self._add_log(f"❌ خطا در دریافت داده برای {coin_id}: {e}")
             return []
     
-    def extract_features_for_training(self, chart_data: List[List]) -> tuple:
+    def extract_features_for_training(self, chart_data: List[List]) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """استخراج ویژگی‌ها و لیبل‌ها از داده‌های قیمت"""
         if not chart_data or len(chart_data) < 30:
             return None, None
         
@@ -144,9 +161,9 @@ class AutoTrainer:
             future_price = prices[i+3]
             
             label = 1 if future_price > current_price else 0
-            
             features = []
             
+            # 1. بازده‌ها
             for lag in [1, 3, 5]:
                 if len(window) > lag:
                     ret = (window[-1] - window[-lag-1]) / (window[-lag-1] + 1e-8)
@@ -154,6 +171,7 @@ class AutoTrainer:
                 else:
                     features.append(0.0)
             
+            # 2. میانگین متحرک
             for w in [5, 10]:
                 if len(window) >= w:
                     sma = np.mean(window[-w:])
@@ -162,6 +180,7 @@ class AutoTrainer:
                 else:
                     features.append(0.0)
             
+            # 3. نوسان
             if len(window) >= 10:
                 returns = np.diff(window[-10:]) / (window[-10:-1] + 1e-8)
                 volatility = np.std(returns)
@@ -169,6 +188,7 @@ class AutoTrainer:
             else:
                 features.append(0.0)
             
+            # 4. شاخص ترس و طمع
             try:
                 fg = self.api.get_fear_greed(use_cache=True)
                 if fg and 'now' in fg:
@@ -179,6 +199,7 @@ class AutoTrainer:
             except:
                 features.append(0.5)
             
+            # 5. شیب قیمت (روند)
             for w in [5, 10]:
                 if len(window) >= w:
                     slope = np.polyfit(range(w), window[-w:], 1)[0]
@@ -187,6 +208,7 @@ class AutoTrainer:
                 else:
                     features.append(0.0)
             
+            # 6. قدرت روند (R-squared)
             if len(window) >= 10:
                 x = np.arange(10)
                 y = window[-10:]
@@ -209,6 +231,7 @@ class AutoTrainer:
     # ============================================================
     
     def train_model(self, period: str = "1m") -> Dict[str, Any]:
+        """آموزش مدل XGBoost با داده‌های جدید"""
         if self.is_training:
             return {"success": False, "message": "آموزش در حال انجام است"}
         
@@ -224,7 +247,10 @@ class AutoTrainer:
         self.is_training = True
         self.stats["total_trainings"] += 1
         self.stats["training_period"] = period
-        self._add_log(f"📚 Starting training with period: {period}")
+        self._add_log(f"📚 شروع آموزش با بازه: {period}")
+        
+        # متغیر result برای استفاده در finally
+        result = {"success": False, "message": "خطای ناشناخته"}
         
         try:
             all_features = []
@@ -232,10 +258,10 @@ class AutoTrainer:
             total_points = 0
             
             for coin in self.coins:
-                self._add_log(f"🪙 Fetching {coin} ({period})...")
+                self._add_log(f"🪙 دریافت {coin} ({period})...")
                 chart_data = self.fetch_data_for_coin(coin, period)
                 if not chart_data:
-                    self._add_log(f"   ⚠️ No data for {coin}")
+                    self._add_log(f"   ⚠️ داده‌ای برای {coin} یافت نشد")
                     continue
                 
                 features, labels = self.extract_features_for_training(chart_data)
@@ -243,21 +269,24 @@ class AutoTrainer:
                     all_features.append(features)
                     all_labels.append(labels)
                     total_points += len(features)
-                    self._add_log(f"   ✅ {len(features)} samples from {coin}")
+                    self._add_log(f"   ✅ {len(features)} نمونه از {coin}")
             
             if not all_features:
-                self.is_training = False
+                result = {
+                    "success": False,
+                    "message": "داده‌ای برای آموزش یافت نشد"
+                }
                 self.stats["failed_trainings"] += 1
-                self._add_log("❌ No data found for training")
-                return {"success": False, "message": "داده‌ای برای آموزش یافت نشد"}
+                self._add_log("❌ داده‌ای برای آموزش یافت نشد")
+                return result
             
             X = np.vstack(all_features)
             y = np.concatenate(all_labels)
             
-            self._add_log(f"📊 Total training samples: {len(X)}")
+            self._add_log(f"📊 کل نمونه‌های آموزش: {len(X)}")
             self.stats["data_points_used"] = len(X)
             
-            self._add_log("🧠 Training XGBoost model...")
+            self._add_log("🧠 آموزش مدل XGBoost...")
             model = xgb.XGBClassifier(
                 n_estimators=50,
                 max_depth=4,
@@ -277,17 +306,19 @@ class AutoTrainer:
             score = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
             
+            # ذخیره مدل
             model.save_model(self.model_path)
+            self.stats["mode"] = "BETA"
             
             self.stats["successful_trainings"] += 1
             self.stats["last_training"] = datetime.now().isoformat()
             self.stats["last_error"] = None
             
-            self._add_log(f"✅ Model saved! Accuracy: {score:.3f}, Time: {training_time:.2f}s")
+            self._add_log(f"✅ مدل ذخیره شد! دقت: {score:.3f}, زمان: {training_time:.2f}s")
             
-            return {
+            result = {
                 "success": True,
-                "message": f"مدل با موفقیت آموزش دید",
+                "message": "مدل با موفقیت آموزش دید",
                 "accuracy": round(score, 3),
                 "samples": len(X),
                 "training_time": round(training_time, 2),
@@ -296,17 +327,17 @@ class AutoTrainer:
             }
             
         except Exception as e:
-            self._add_log(f"❌ Training failed: {e}")
+            self._add_log(f"❌ آموزش ناموفق: {e}")
             self.stats["failed_trainings"] += 1
             self.stats["last_error"] = str(e)
-            return {
+            result = {
                 "success": False,
                 "message": f"خطا در آموزش: {str(e)}"
             }
         finally:
             self.is_training = False
         
-        # بعد از آموزش موفق، سابقه رو ذخیره کن
+        # ذخیره سابقه در صورت موفقیت
         if result["success"]:
             self.training_history.append({
                 "timestamp": datetime.now().isoformat(),
@@ -319,34 +350,15 @@ class AutoTrainer:
             # نگه‌داشتن فقط ۱۰۰ رکورد آخر
             if len(self.training_history) > 100:
                 self.training_history = self.training_history[-100:]
-
-            
+        
         return result
     
-    def get_logs(self) -> List[str]:
-        return self._logs
+    # ============================================================
+    # دریافت آمار و اطلاعات
+    # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
-        status = self.check_api_status()
-        return {
-            "is_running": self.is_running,
-            "is_training": self.is_training,
-            "stats": self.stats,
-            "api_status": status,
-            "coins": self.coins,
-            "model_exists": os.path.exists(self.model_path),
-            "logs": self._logs[-30:],
-            "training_history": self.training_history[-50:],
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
-        """دریافت سابقه آموزش با فیلتر دوره زمانی"""
-        if period:
-            return [h for h in self.training_history if h.get("period") == period]
-        return self.training_history
-    
-    def get_stats(self) -> Dict[str, Any]:
+        """دریافت آمار کامل سیستم"""
         status = self.check_api_status()
         return {
             "is_running": self.is_running,
@@ -360,11 +372,18 @@ class AutoTrainer:
             "timestamp": datetime.now().isoformat()
         }
     
+    def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
+        """دریافت سابقه آموزش با فیلتر دوره زمانی"""
+        if period:
+            return [h for h in self.training_history if h.get("period") == period]
+        return self.training_history
+    
     # ============================================================
     # اجرای خودکار
     # ============================================================
     
     def start_auto_train(self, interval_hours: int = 6, period: str = "1m"):
+        """شروع آموزش خودکار با فاصله زمانی مشخص"""
         if self.is_running:
             return {"success": False, "message": "سیستم در حال اجراست"}
         
@@ -373,16 +392,18 @@ class AutoTrainer:
         self.stats["training_period"] = period
         
         def run():
-            self._add_log(f"🔄 Auto-training started (interval: {interval_hours}h, period: {period})")
+            self._add_log(f"🔄 آموزش خودکار شروع شد (فاصله: {interval_hours}h, بازه: {period})")
             while not self.stop_event.is_set():
                 result = self.train_model(period)
-                self._add_log(f"📊 Training result: {result}")
+                self._add_log(f"📊 نتیجه آموزش: {result.get('message', 'نامشخص')}")
+                
+                # انتظار به مدت interval_hours ساعت یا تا زمان توقف
                 for _ in range(interval_hours * 60 * 60):
                     if self.stop_event.is_set():
                         break
                     time.sleep(1)
             self.is_running = False
-            self._add_log("⏹️ Auto-training stopped")
+            self._add_log("⏹️ آموزش خودکار متوقف شد")
         
         self.thread = Thread(target=run, daemon=True)
         self.thread.start()
@@ -395,24 +416,13 @@ class AutoTrainer:
         }
     
     def stop_auto_train(self):
+        """متوقف کردن آموزش خودکار"""
         if not self.is_running:
             return {"success": False, "message": "سیستم در حال اجرا نیست"}
+        
         self.stop_event.set()
         if self.thread:
             self.thread.join(timeout=5)
         self.is_running = False
-        self._add_log("⏹️ Auto-training stopped by user")
+        self._add_log("⏹️ آموزش خودکار توسط کاربر متوقف شد")
         return {"success": True, "message": "آموزش خودکار متوقف شد"}
-    
-    def get_stats(self) -> Dict[str, Any]:
-        status = self.check_api_status()
-        return {
-            "is_running": self.is_running,
-            "is_training": self.is_training,
-            "stats": self.stats,
-            "api_status": status,
-            "coins": self.coins,
-            "model_exists": os.path.exists(self.model_path),
-            "logs": self.logs[-30:],
-            "timestamp": datetime.now().isoformat()
-        }
