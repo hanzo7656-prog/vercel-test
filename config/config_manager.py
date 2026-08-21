@@ -121,7 +121,7 @@ class ConfigManager:
             if value is not None:
                 # تبدیل نوع
                 if value.lower() == 'true':
-a                    value = True
+                    value = True
                 elif value.lower() == 'false':
                     value = False
                 elif value.isdigit():
