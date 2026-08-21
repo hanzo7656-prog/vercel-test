@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تنظیمات و آمار سیستم</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ============================================================
+           تنظیمات و آمار - استایل اختصاصی
+           ============================================================ */
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0e17;
+            min-height: 100vh;
+        }
+
+        /* ===== هدر ===== */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid #1a2a3a;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .dashboard-header .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00d4ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dashboard-header .status {
+            color: #7a8fa3;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dashboard-header .status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .dashboard-header .uptime {
+            color: #4a5a6a;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .menu-toggle {
+            width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
+            border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
+            cursor: pointer; transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 200;
+        }
+        .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
+        .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
+
+        .flyout-menu {
+            position: fixed; top: 80px; right: 20px;
+            background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
+            border: 1px solid #1a2a3a; border-radius: 16px; padding: 10px 0;
+            min-width: 200px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            transform: scale(0.8); opacity: 0; pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 150; transform-origin: top right;
+        }
+        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
+        .flyout-menu a {
+            display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+            color: #a0b4c8; text-decoration: none; font-size: 0.95rem;
+            transition: all 0.2s ease; border-right: 2px solid transparent;
+        }
+        .flyout-menu a:hover { background: rgba(0,212,255,0.05); color: #e0e6ed; border-right-color: #00d4ff; }
+        .flyout-menu a.active { color: #00d4ff; border-right-color: #00d4ff; background: rgba(0,212,255,0.05); }
+        .flyout-menu .menu-divider { height: 1px; background: #1a2a3a; margin: 6px 16px; }
+        .flyout-menu .menu-label { padding: 8px 20px 4px; font-size: 0.7rem; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.5px; }
+        .flyout-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 140;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .flyout-overlay.open { opacity: 1; pointer-events: all; }
+
+        /* ===== کانتینر اصلی ===== */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ===== هدر صفحه ===== */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .page-header h1 {
+            color: #e0e6ed;
+            font-size: 1.6rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-header h1 i {
+            color: #00d4ff;
+        }
+        .page-header .subtitle {
+            color: #7a8fa3;
+            font-size: 0.9rem;
+        }
+
+        /* ===== نوار اقدامات ===== */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 16px 20px;
+            background: #0d1624;
+            border-radius: 12px;
+            border: 1px solid #1a2a3a;
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
+            border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
+            transition: all 0.3s ease; font-weight: 500; font-family: inherit;
+            text-decoration: none;
+        }
+        .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
+        .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,170,0,0.3); }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
+        .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+        /* ===== کارت‌های تنظیمات ===== */
+        .settings-section {
+            background: linear-gradient(145deg, #111d2b, #0d1624);
+            border: 1px solid #1a2a3a;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .settings-section:hover {
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #0d1624;
+            flex-wrap: wrap;
+        }
+        .section-header i {
+            color: #00d4ff;
+            font-size: 1.2rem;
+            width: 28px;
+        }
+        .section-header h3 {
+            color: #e0e6ed;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .section-badge {
+            font-size: 0.7rem;
+            padding: 2px 12px;
+            border-radius: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            margin-right: auto;
+        }
+
+        .section-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 24px;
+        }
+        .section-body.full-width {
+            grid-template-columns: 1fr;
+        }
+
+        /* ===== فرم ===== */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-group label {
+            color: #a0b4c8;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .form-control {
+            padding: 10px 14px;
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            border-radius: 10px;
+            color: #e0e6ed;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            width: 100%;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+        .form-control:disabled,
+        .form-control[readonly] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d4ff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 14px center;
+            padding-left: 36px;
+        }
+        .checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            padding-top: 6px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #00d4ff;
+            cursor: pointer;
+        }
+        .checkbox-group label {
+            cursor: pointer;
+        }
+        .helper-text {
+            color: #4a5a6a;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+
+        /* ===== فیلد توکن با چشم ===== */
+        .token-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            border-radius: 10px;
+            padding: 0 4px 0 14px;
+            transition: border-color 0.3s ease;
+        }
+        .token-input-wrapper:focus-within {
+            border-color: #00d4ff;
+        }
+        .token-input-wrapper .form-control {
+            border: none;
+            padding: 10px 0;
+            background: transparent;
+            flex: 1;
+        }
+        .token-input-wrapper .form-control:focus {
+            box-shadow: none;
+        }
+        .token-input-wrapper .token-actions {
+            display: flex;
+            gap: 2px;
+        }
+        .token-input-wrapper .action-btn {
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #7a8fa3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            position: relative;
+        }
+        .token-input-wrapper .action-btn:hover {
+            color: #e0e6ed;
+            background: rgba(0, 212, 255, 0.06);
+        }
+        .token-input-wrapper .action-btn.active {
+            color: #00d4ff;
+        }
+        .token-input-wrapper .action-btn .slash-line {
+            position: absolute;
+            width: 18px;
+            height: 2px;
+            background: #ff4444;
+            border-radius: 2px;
+            transform: rotate(-45deg) scale(0);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .token-input-wrapper .action-btn.active .slash-line {
+            transform: rotate(-45deg) scale(1);
+            opacity: 1;
+        }
+        .token-input-wrapper .action-btn.copied {
+            color: #00ff88;
+        }
+
+        /* ===== بخش آمار (بالای صفحه) ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stats-grid .stat-item {
+            background: #0a0e17;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid #1a2a3a;
+            text-align: center;
+            transition: border-color 0.3s ease;
+        }
+        .stats-grid .stat-item:hover {
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+        .stats-grid .stat-item .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+        .stats-grid .stat-item .stat-label {
+            color: #7a8fa3;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        /* ===== بارگذاری ===== */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid #1a2a3a;
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            color: #ff4444;
+            text-align: center;
+            padding: 30px;
+            font-size: 1rem;
+        }
+        .success-msg {
+            color: #00ff88;
+            text-align: center;
+            padding: 30px;
+            font-size: 1rem;
+        }
+
+        /* ===== ریسپانسیو ===== */
+        @media (max-width: 768px) {
+            .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+            .container { padding: 12px; }
+            .page-header h1 { font-size: 1.2rem; }
+            .section-body { grid-template-columns: 1fr; }
+            .action-bar { flex-direction: column; }
+            .action-bar .btn { justify-content: center; }
+            .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .dashboard-header .uptime { display: none; }
+            .menu-toggle { width: 38px; height: 38px; font-size: 1rem; }
+            .flyout-menu { right: 8px; top: 64px; min-width: 150px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    منو
+    ============================================================ -->
+    <div id="navContainer"></div>
+
+    <!-- ============================================================
+    محتوای اصلی
+    ============================================================ -->
+    <div class="container">
+
+        <!-- هدر -->
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-sliders-h"></i> تنظیمات و آمار</h1>
+                <span class="subtitle">مدیریت تنظیمات سیستم و مشاهده آمار لحظه‌ای</span>
+            </div>
+            <span style="color:#4a5a6a;font-size:0.8rem;" id="pageTimestamp"></span>
+        </div>
+
+        <!-- نوار اقدامات -->
+        <div class="action-bar">
+            <button class="btn btn-success" onclick="saveSettings()">
+                <i class="fas fa-save"></i> ذخیره تنظیمات
+            </button>
+            <button class="btn btn-warning" onclick="resetSettings()">
+                <i class="fas fa-undo"></i> بازنشانی
+            </button>
+            <button class="btn btn-primary" onclick="loadAllData()">
+                <i class="fas fa-sync-alt"></i> بروزرسانی
+            </button>
+        </div>
+
+        <!-- ===== بخش آمار ===== -->
+        <div class="settings-section" id="statsSection">
+            <div class="section-header">
+                <i class="fas fa-chart-bar"></i>
+                <h3>آمار سیستم</h3>
+                <span class="section-badge">لحظه‌ای</span>
+            </div>
+            <div id="statsGrid" class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="statUptime">-</div>
+                    <div class="stat-label">آپتایم</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statRequests">-</div>
+                    <div class="stat-label">درخواست‌ها</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statCache">-</div>
+                    <div class="stat-label">کش</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statTasks">-</div>
+                    <div class="stat-label">تسک‌ها</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statCredits">-</div>
+                    <div class="stat-label">اعتبار باقیمانده</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statModel">-</div>
+                    <div class="stat-label">وضعیت مدل</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== بخش‌های تنظیمات ===== -->
+        <div id="settingsContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p style="color:#7a8fa3;">در حال بارگذاری تنظیمات...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================
+    اسکریپت‌ها
+    ============================================================ -->
+    <script src="/static/js/script.js"></script>
+    <script src="/static/js/menu.js"></script>
+    <script>
+        // ============================================================
+        // بارگذاری منو
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                })
+                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+        }
+
+        // ============================================================
+        // متغیرها
+        // ============================================================
+        let currentSettings = {};
+        let statsInterval = null;
+
+        // ============================================================
+        // بارگذاری همه داده‌ها
+        // ============================================================
+        function loadAllData() {
+            loadStats();
+            loadSettings();
+            document.getElementById('pageTimestamp').textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+        }
+
+        // ============================================================
+        // بارگذاری آمار
+        // ============================================================
+        function loadStats() {
+            fetch('/stats')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('statUptime').textContent = data.uptime || '-';
+                    document.getElementById('statRequests').textContent = data.api_stats?.total_requests || 0;
+                    document.getElementById('statCache').textContent = data.api_stats?.cache_size || 0;
+                    document.getElementById('statTasks').textContent = data.pending_tasks || 0;
+                    document.getElementById('statCredits').textContent = data.api_stats?.credits_remaining || '-';
+                    document.getElementById('statModel').textContent = data.model_loaded ? '✅ فعال' : '⚠️ دمو';
+                })
+                .catch(err => console.error('Stats error:', err));
+        }
+
+        // ============================================================
+        // بارگذاری تنظیمات
+        // ============================================================
+        function loadSettings() {
+            const container = document.getElementById('settingsContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;">در حال بارگذاری تنظیمات...</p></div>';
+
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        currentSettings = data.data;
+                        renderSettings(data.data);
+                    } else {
+                        container.innerHTML = `<div class="error-msg">❌ ${data.error || 'خطا در دریافت تنظیمات'}</div>`;
+                    }
+                })
+                .catch(err => {
+                    container.innerHTML = `<div class="error-msg">❌ خطا: ${err.message}</div>`;
+                });
+        }
+
+        // ============================================================
+        // رندر تنظیمات
+        // ============================================================
+        function renderSettings(settings) {
+            const container = document.getElementById('settingsContent');
+            let html = '';
+
+            // === ۱. عمومی ===
+            const app = settings.app || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-cog"></i>
+                        <h3>عمومی</h3>
+                        <span class="section-badge">تنظیمات اصلی</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>نام سیستم</label>
+                            <input type="text" id="app_name" class="form-control" value="${app.name || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>نسخه</label>
+                            <input type="text" id="app_version" class="form-control" value="${app.version || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>محیط</label>
+                            <select id="app_environment" class="form-control">
+                                <option value="development" ${app.environment === 'development' ? 'selected' : ''}>توسعه</option>
+                                <option value="production" ${app.environment === 'production' ? 'selected' : ''}>تولید</option>
+                            </select>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="app_debug" ${app.debug ? 'checked' : ''}>
+                            <label for="app_debug">حالت دیباگ</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // === ۲. مدل ===
+            const model = settings.model || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-brain"></i>
+                        <h3>مدل</h3>
+                        <span class="section-badge">آموزش و پیش‌بینی</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>دوره پیش‌فرض</label>
+                            <select id="model_default_period" class="form-control">
+                                <option value="24h" ${model.default_period === '24h' ? 'selected' : ''}>۲۴ ساعت</option>
+                                <option value="1w" ${model.default_period === '1w' ? 'selected' : ''}>۱ هفته</option>
+                                <option value="1m" ${model.default_period === '1m' ? 'selected' : ''}>۱ ماه</option>
+                                <option value="3m" ${model.default_period === '3m' ? 'selected' : ''}>۳ ماه</option>
+                                <option value="6m" ${model.default_period === '6m' ? 'selected' : ''}>۶ ماه</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>فاصله آموزش خودکار (ساعت)</label>
+                            <input type="number" id="model_auto_train_interval" class="form-control" min="1" max="72" value="${model.auto_train_interval || 6}">
+                        </div>
+                        <div class="form-group">
+                            <label>ارزهای تحت پوشش</label>
+                            <input type="text" id="model_coins" class="form-control" value="${(model.coins || []).join(', ')}">
+                            <span class="helper-text">با کاما جدا کنید</span>
+                        </div>
+                        <div class="form-group">
+                            <label>حداقل نقاط داده</label>
+                            <input type="number" id="model_min_data_points" class="form-control" min="10" max="200" value="${model.min_data_points || 30}">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // === ۳. آستانه‌ها ===
+            const thresholds = settings.thresholds || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>آستانه‌ها</h3>
+                        <span class="section-badge">هشدارها</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>هشدار رم (%)</label>
+                            <input type="number" id="thresholds_ram_warning" class="form-control" min="0" max="100" value="${thresholds.ram_warning || 70}">
+                        </div>
+                        <div class="form-group">
+                            <label>بحرانی رم (%)</label>
+                            <input type="number" id="thresholds_ram_critical" class="form-control" min="0" max="100" value="${thresholds.ram_critical || 85}">
+                        </div>
+                        <div class="form-group">
+                            <label>هشدار CPU (%)</label>
+                            <input type="number" id="thresholds_cpu_warning" class="form-control" min="0" max="100" value="${thresholds.cpu_warning || 70}">
+                        </div>
+                        <div class="form-group">
+                            <label>بحرانی CPU (%)</label>
+                            <input type="number" id="thresholds_cpu_critical" class="form-control" min="0" max="100" value="${thresholds.cpu_critical || 90}">
+                        </div>
+                        <div class="form-group">
+                            <label>هشدار اعتبار</label>
+                            <input type="number" id="thresholds_credit_warning" class="form-control" min="0" value="${thresholds.credit_warning || 15}">
+                        </div>
+                        <div class="form-group">
+                            <label>بحرانی اعتبار</label>
+                            <input type="number" id="thresholds_credit_critical" class="form-control" min="0" value="${thresholds.credit_critical || 5}">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // === ۴. کش ===
+            const cache = settings.cache || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-database"></i>
+                        <h3>کش</h3>
+                        <span class="section-badge">حافظه موقت</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>زمان TTL (ثانیه)</label>
+                            <input type="number" id="cache_default_ttl" class="form-control" min="60" max="86400" value="${cache.default_ttl || 3600}">
+                        </div>
+                        <div class="form-group">
+                            <label>حداکثر حجم کش</label>
+                            <input type="number" id="cache_max_size" class="form-control" min="10" max="10000" value="${cache.max_size || 1000}">
+                        </div>
+                        <div class="form-group">
+                            <label>فاصله پاکسازی (ثانیه)</label>
+                            <input type="number" id="cache_cleanup_interval" class="form-control" min="30" max="3600" value="${cache.cleanup_interval || 300}">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // === ۵. API ===
+            const api = settings.api || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-plug"></i>
+                        <h3>API</h3>
+                        <span class="section-badge">اتصالات</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>تایم‌اوت (ثانیه)</label>
+                            <input type="number" id="api_timeout" class="form-control" min="1" max="60" value="${api.timeout || 15}">
+                        </div>
+                        <div class="form-group">
+                            <label>تعداد تلاش مجدد</label>
+                            <input type="number" id="api_retry_attempts" class="form-control" min="0" max="10" value="${api.retry_attempts || 3}">
+                        </div>
+                        <div class="form-group">
+                            <label>تاخیر بین تلاش‌ها (ثانیه)</label>
+                            <input type="number" id="api_retry_delay" class="form-control" min="0" max="10" value="${api.retry_delay || 1}">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // === ۶. دیتابیس ===
+            const databases = settings.databases || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-server"></i>
+                        <h3>دیتابیس</h3>
+                        <span class="section-badge">اتصالات</span>
+                    </div>
+                    <div class="section-body full-width" id="databaseSection">
+            `;
+
+            for (const [name, db] of Object.entries(databases)) {
+                const isConnected = db.connected || false;
+                const statusIcon = isConnected ? '✅' : '❌';
+                const statusText = isConnected ? 'متصل' : 'قطع';
+                const token = db.token || '';
+                const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : '••••••••';
+
+                html += `
+                    <div class="settings-section" style="border-color:rgba(0,212,255,0.08);margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                            <span style="color:#00d4ff;font-weight:600;">${name}</span>
+                            <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.85rem;">${statusIcon} ${statusText}</span>
+                        </div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label>آدرس</label>
+                            <input type="text" class="form-control" value="${db.url || ''}" readonly disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>توکن</label>
+                            <div class="token-input-wrapper">
+                                <input type="password" id="token_${name}" class="form-control" value="${token}" readonly>
+                                <div class="token-actions">
+                                    <button class="action-btn" onclick="toggleTokenVisibility(this)" title="نمایش/پنهان کردن">
+                                        <i class="fas fa-eye eye-icon"></i>
+                                        <span class="slash-line"></span>
+                                    </button>
+                                    <button class="action-btn" onclick="copyToken(this)" title="کپی توکن">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            // === ۷. لاگ ===
+            const logging = settings.logging || {};
+            html += `
+                <div class="settings-section">
+                    <div class="section-header">
+                        <i class="fas fa-file-alt"></i>
+                        <h3>لاگ</h3>
+                        <span class="section-badge">ثبت رویدادها</span>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label>سطح لاگ</label>
+                            <select id="logging_level" class="form-control">
+                                <option value="DEBUG" ${logging.level === 'DEBUG' ? 'selected' : ''}>DEBUG</option>
+                                <option value="INFO" ${logging.level === 'INFO' ? 'selected' : ''}>INFO</option>
+                                <option value="WARNING" ${logging.level === 'WARNING' ? 'selected' : ''}>WARNING</option>
+                                <option value="ERROR" ${logging.level === 'ERROR' ? 'selected' : ''}>ERROR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>تعداد خطوط لاگ</label>
+                            <input type="number" id="logging_max_logs" class="form-control" min="10" max="5000" value="${logging.max_logs || 500}">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // توکن - نمایش/پنهان کردن
+        // ============================================================
+        function toggleTokenVisibility(btn) {
+            const wrapper = btn.closest('.token-input-wrapper');
+            const input = wrapper.querySelector('.form-control');
+            const eyeIcon = btn.querySelector('.eye-icon');
+            const slashLine = btn.querySelector('.slash-line');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.classList.add('active');
+                if (eyeIcon) {
+                    eyeIcon.className = 'fas fa-eye-slash eye-icon';
+                }
+                if (slashLine) {
+                    slashLine.style.transform = 'rotate(-45deg) scale(1)';
+                    slashLine.style.opacity = '1';
+                }
+            } else {
+                input.type = 'password';
+                btn.classList.remove('active');
+                if (eyeIcon) {
+                    eyeIcon.className = 'fas fa-eye eye-icon';
+                }
+                if (slashLine) {
+                    slashLine.style.transform = 'rotate(-45deg) scale(0)';
+                    slashLine.style.opacity = '0';
+                }
+            }
+        }
+
+        // ============================================================
+        // کپی توکن
+        // ============================================================
+        function copyToken(btn) {
+            const wrapper = btn.closest('.token-input-wrapper');
+            const input = wrapper.querySelector('.form-control');
+            const token = input.value;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(token).then(() => {
+                    btn.classList.add('copied');
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = '<i class="fas fa-copy"></i>';
+                    }, 2000);
+                    showToast('📋 توکن کپی شد!', 'success');
+                }).catch(() => {
+                    showToast('❌ کپی نشد!', 'error');
+                });
+            } else {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = token;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('📋 توکن کپی شد!', 'success');
+                } catch {
+                    showToast('❌ کپی نشد!', 'error');
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // ============================================================
+        // جمع‌آوری تنظیمات از فرم
+        // ============================================================
+        function collectSettings() {
+            return {
+                app: {
+                    name: document.getElementById('app_name')?.value,
+                    version: document.getElementById('app_version')?.value,
+                    environment: document.getElementById('app_environment')?.value,
+                    debug: document.getElementById('app_debug')?.checked || false
+                },
+                model: {
+                    default_period: document.getElementById('model_default_period')?.value || '1m',
+                    auto_train_interval: parseInt(document.getElementById('model_auto_train_interval')?.value) || 6,
+                    coins: document.getElementById('model_coins')?.value?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                    min_data_points: parseInt(document.getElementById('model_min_data_points')?.value) || 30
+                },
+                thresholds: {
+                    ram_warning: parseInt(document.getElementById('thresholds_ram_warning')?.value) || 70,
+                    ram_critical: parseInt(document.getElementById('thresholds_ram_critical')?.value) || 85,
+                    cpu_warning: parseInt(document.getElementById('thresholds_cpu_warning')?.value) || 70,
+                    cpu_critical: parseInt(document.getElementById('thresholds_cpu_critical')?.value) || 90,
+                    credit_warning: parseInt(document.getElementById('thresholds_credit_warning')?.value) || 15,
+                    credit_critical: parseInt(document.getElementById('thresholds_credit_critical')?.value) || 5
+                },
+                cache: {
+                    default_ttl: parseInt(document.getElementById('cache_default_ttl')?.value) || 3600,
+                    max_size: parseInt(document.getElementById('cache_max_size')?.value) || 1000,
+                    cleanup_interval: parseInt(document.getElementById('cache_cleanup_interval')?.value) || 300
+                },
+                api: {
+                    timeout: parseInt(document.getElementById('api_timeout')?.value) || 15,
+                    retry_attempts: parseInt(document.getElementById('api_retry_attempts')?.value) || 3,
+                    retry_delay: parseInt(document.getElementById('api_retry_delay')?.value) || 1
+                },
+                logging: {
+                    level: document.getElementById('logging_level')?.value || 'INFO',
+                    max_logs: parseInt(document.getElementById('logging_max_logs')?.value) || 500
+                }
+            };
+        }
+
+        // ============================================================
+        // ذخیره تنظیمات
+        // ============================================================
+        function saveSettings() {
+            const data = collectSettings();
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('✅ تنظیمات با موفقیت ذخیره شد!', 'success');
+                    loadSettings();
+                    loadStats();
+                } else {
+                    showToast('❌ ' + (data.error || 'خطا در ذخیره تنظیمات'), 'error');
+                }
+            })
+            .catch(err => {
+                showToast('❌ خطا: ' + err.message, 'error');
+            });
+        }
+
+        // ============================================================
+        // بازنشانی تنظیمات
+        // ============================================================
+        function resetSettings() {
+            if (!confirm('آیا از بازنشانی تنظیمات به حالت پیش‌فرض اطمینان دارید؟')) return;
+
+            fetch('/api/config/reset', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('✅ تنظیمات به حالت پیش‌فرض بازگشت!', 'success');
+                        loadSettings();
+                        loadStats();
+                    } else {
+                        showToast('❌ ' + (data.error || 'خطا در بازنشانی'), 'error');
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ خطا: ' + err.message, 'error');
+                });
+        }
+
+        // ============================================================
+        // Toast (نمایش پیام)
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const colors = {
+                info: '#00d4ff',
+                success: '#00ff88',
+                error: '#ff4444',
+                warning: '#ffaa00'
+            };
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            Object.assign(toast.style, {
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '12px 28px',
+                background: '#1a2a3a',
+                color: '#e0e6ed',
+                borderRadius: '12px',
+                border: `2px solid ${colors[type] || colors.info}`,
+                boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
+                zIndex: '9999',
+                fontSize: '0.95rem',
+                transition: 'all 0.3s ease',
+                maxWidth: '90%',
+                fontFamily: 'inherit'
+            });
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // ============================================================
+        // راه‌اندازی
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadAllData();
+
+            // بروزرسانی آمار هر ۱۰ ثانیه
+            if (statsInterval) clearInterval(statsInterval);
+            statsInterval = setInterval(loadStats, 10000);
+        });
+    </script>
+
+</body>
+</html>
