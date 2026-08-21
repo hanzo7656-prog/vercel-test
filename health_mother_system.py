@@ -227,8 +227,6 @@ def stats():
             "api_stats": system.api.get_stats(),
             "model_loaded": system.model_loaded,
             "uptime": str(datetime.now() - system.start_time).split('.')[0],
-            "pending_tasks": system.task_manager.queue.qsize(),
-            "total_tasks": len(system.task_manager.tasks),
             "timestamp": datetime.now().isoformat()
         }), 200
     except Exception as e:
