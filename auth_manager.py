@@ -59,7 +59,7 @@ class AuthManager:
         self._users = {
             "admin": {
                 "username": "admin",
-                "password": self._hash_password("Admin@123"),
+                "password": self._hash_password("hash_8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"),
                 "role": "admin",
                 "email": "admin@example.com",
                 "active": True,
