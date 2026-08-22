@@ -1019,11 +1019,36 @@ def update_user(username):
     
     return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
 
+
+# routes.py - بخش صفحات خطا
+
+# ============================================================
+# صفحات خطا
+# ============================================================
+
+@app.route('/404')
+def not_found_page():
+    """صفحه خطای ۴۰۴"""
+    return send_from_directory('static', '404.html'), 404
+
+
+@app.route('/403')
+def forbidden_page():
+    """صفحه خطای ۴۰۳"""
+    return send_from_directory('static', '403.html'), 403
+
+
+@app.route('/500')
+def internal_error_page():
+    """صفحه خطای ۵۰۰"""
+    return send_from_directory('static', '500.html'), 500
+
+
+
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
-
-
+w
 from routes import *
 from health_mother_system import *
 
