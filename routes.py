@@ -18,40 +18,47 @@ def home_page():
 
 
 @app.route('/dashboard')
+@require_auth()
 def dashboard_page():
     """داشبورد"""
     return send_from_directory('static', 'dashboard.html')
 
 
 @app.route('/predict-page')
+@require_auth()
 def predict_page():
     """صفحه پیش‌بینی"""
     return send_from_directory('static', 'predict.html')
 
 
 @app.route('/test-api-page')
+@require_auth()
 def test_api_page():
     """صفحه تست API"""
     return send_from_directory('static', 'test-api.html')
 
 
 @app.route('/health-page')
+@require_auth()
 def health_page():
     """صفحه سلامت سیستم"""
     return send_from_directory('static', 'health.html')
 
 
 @app.route('/settings-page')
+@require_auth()
 def settings_page():
     """صفحه تنظیمات و آمار"""
     return send_from_directory('static', 'settings.html')
     
 @app.route('/chart-page')
+@require_auth()
 def chart_page():
     return send_from_directory('static', 'chart.html')
 
 
 @app.route('/database-page')
+@require_auth()
 def database_page():
     """صفحه مدیریت دیتابیس"""
     return send_from_directory('static', 'database.html')
