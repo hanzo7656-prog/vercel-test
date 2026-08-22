@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تنظیمات و آمار سیستم</title>
+    <title>تنظیمات</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         /* ============================================================
-           تنظیمات و آمار - استایل اختصاصی
+           تنظیمات - استایل اختصاصی
            ============================================================ */
         
         body {
@@ -63,6 +63,10 @@
             color: #4a5a6a;
             font-size: 0.8rem;
             font-family: 'Courier New', monospace;
+        }
+        #userDisplay {
+            color: #00d4ff;
+            font-size: 0.85rem;
         }
 
         .menu-toggle {
@@ -137,40 +141,8 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* ===== نوار اقدامات ===== */
-        .action-bar {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 16px 20px;
-            background: #0d1624;
-            border-radius: 12px;
-            border: 1px solid #1a2a3a;
-        }
-
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
-            border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-weight: 500; font-family: inherit;
-            text-decoration: none;
-        }
-        .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
-        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
-        .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
-        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,170,0,0.3); }
-        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
-        .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
-        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
-        .btn-outline { background: transparent; border: 1px solid #1a2a3a; color: #7a8fa3; }
-        .btn-outline:hover { border-color: #00d4ff; color: #e0e6ed; transform: translateY(-2px); }
-        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
-        .btn-xs { padding: 4px 10px; font-size: 0.7rem; }
-
-        /* ===== کارت‌های تنظیمات ===== */
-        .settings-section {
+        /* ===== کارت‌ها ===== */
+        .settings-card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
             border: 1px solid #1a2a3a;
             border-radius: 16px;
@@ -178,11 +150,11 @@
             margin-bottom: 20px;
             transition: all 0.3s ease;
         }
-        .settings-section:hover {
+        .settings-card:hover {
             border-color: rgba(0, 212, 255, 0.15);
         }
 
-        .section-header {
+        .card-header {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -191,18 +163,18 @@
             border-bottom: 1px solid #0d1624;
             flex-wrap: wrap;
         }
-        .section-header i {
+        .card-header i {
             color: #00d4ff;
             font-size: 1.2rem;
             width: 28px;
         }
-        .section-header h3 {
+        .card-header h3 {
             color: #e0e6ed;
             font-size: 1.05rem;
             font-weight: 600;
             margin: 0;
         }
-        .section-badge {
+        .card-header .badge {
             font-size: 0.7rem;
             padding: 2px 12px;
             border-radius: 20px;
@@ -211,17 +183,18 @@
             border: 1px solid rgba(0, 212, 255, 0.15);
             margin-right: auto;
         }
-        .section-actions {
-            display: flex;
-            gap: 6px;
+        .card-header .badge.admin {
+            background: rgba(255, 170, 0, 0.1);
+            color: #ffaa00;
+            border-color: rgba(255, 170, 0, 0.15);
         }
 
-        .section-body {
+        .card-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px 24px;
         }
-        .section-body.full-width {
+        .card-body.full-width {
             grid-template-columns: 1fr;
         }
 
@@ -252,10 +225,13 @@
             border-color: #00d4ff;
             box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
         }
-        .form-control:disabled,
-        .form-control[readonly] {
+        .form-control:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+        .form-control[readonly] {
+            opacity: 0.7;
+            cursor: default;
         }
         select.form-control {
             appearance: none;
@@ -279,86 +255,27 @@
         .checkbox-group label {
             cursor: pointer;
         }
-        .helper-text {
-            color: #4a5a6a;
-            font-size: 0.75rem;
-            margin-top: 2px;
-        }
 
-        /* ===== فیلد توکن با چشم ===== */
-        .token-input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #0a0e17;
-            border: 1px solid #1a2a3a;
-            border-radius: 10px;
-            padding: 0 4px 0 14px;
-            transition: border-color 0.3s ease;
+        /* ===== دکمه‌ها ===== */
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
+            border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 500; font-family: inherit;
+            text-decoration: none;
         }
-        .token-input-wrapper:focus-within {
-            border-color: #00d4ff;
-        }
-        .token-input-wrapper .form-control {
-            border: none;
-            padding: 10px 0;
-            background: transparent;
-            flex: 1;
-        }
-        .token-input-wrapper .form-control:focus {
-            box-shadow: none;
-        }
-        .token-input-wrapper .token-actions {
-            display: flex;
-            gap: 2px;
-        }
-        .token-input-wrapper .action-btn {
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: 8px;
-            background: transparent;
-            color: #7a8fa3;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            position: relative;
-        }
-        .token-input-wrapper .action-btn:hover {
-            color: #e0e6ed;
-            background: rgba(0, 212, 255, 0.06);
-        }
-        .token-input-wrapper .action-btn.active {
-            color: #00d4ff;
-        }
-        .token-input-wrapper .action-btn .slash-line {
-            position: absolute;
-            width: 18px;
-            height: 2px;
-            background: #ff4444;
-            border-radius: 2px;
-            transform: rotate(-45deg) scale(0);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        .token-input-wrapper .action-btn.active .slash-line {
-            transform: rotate(-45deg) scale(1);
-            opacity: 1;
-        }
-        .token-input-wrapper .action-btn.copied {
-            color: #00ff88;
-        }
-        .token-input-wrapper .action-btn.copied i {
-            animation: pop 0.3s ease;
-        }
-        @keyframes pop {
-            0% { transform: scale(0.5); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-        }
+        .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
+        .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
+        .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,170,0,0.3); }
+        .btn-outline { background: transparent; border: 1px solid #1a2a3a; color: #7a8fa3; }
+        .btn-outline:hover { border-color: #00d4ff; color: #e0e6ed; transform: translateY(-2px); }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+        .btn-xs { padding: 4px 10px; font-size: 0.7rem; }
 
         /* ===== آمار ===== */
         .stats-grid {
@@ -403,125 +320,42 @@
         .stats-grid .stat-item .stat-value.danger { color: #ff4444; }
         .stats-grid .stat-item .stat-value.info { color: #00d4ff; }
 
-        /* ===== کنسول لاگ ===== */
-        .console-wrapper {
-            background: #080c14;
-            border: 1px solid #1a2a3a;
-            border-radius: 12px;
-            overflow: hidden;
+        /* ===== جدول کاربران ===== */
+        .table-wrapper {
+            overflow-x: auto;
         }
-        .console-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 16px;
-            background: #0a0e17;
-            border-bottom: 1px solid #1a2a3a;
-        }
-        .console-header .console-title {
-            color: #7a8fa3;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .console-header .console-title .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #00ff88;
-            animation: pulse 1.5s infinite;
-        }
-        .console-header .console-actions {
-            display: flex;
-            gap: 6px;
-        }
-        .console-body {
-            padding: 12px 16px;
-            max-height: 220px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.75rem;
-            color: #7a8fa3;
-            direction: ltr;
-            text-align: left;
-            line-height: 1.8;
-        }
-        .console-body::-webkit-scrollbar { width: 4px; }
-        .console-body::-webkit-scrollbar-track { background: transparent; }
-        .console-body::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
-
-        .console-body .log-entry {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            transition: background 0.2s ease;
-            border-right: 2px solid transparent;
-        }
-        .console-body .log-entry:hover {
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .console-body .log-entry .log-text {
-            flex: 1;
-            word-break: break-all;
-        }
-        .console-body .log-entry .log-actions {
-            display: flex;
-            gap: 4px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        .console-body .log-entry:hover .log-actions {
-            opacity: 1;
-        }
-        .console-body .log-entry .log-actions button {
-            background: none;
-            border: none;
-            color: #4a5a6a;
-            cursor: pointer;
-            font-size: 0.65rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-        .console-body .log-entry .log-actions button:hover {
-            color: #00d4ff;
-            background: rgba(0, 212, 255, 0.1);
-        }
-        .console-body .log-entry .log-actions button.copy-btn:hover {
-            color: #00ff88;
-        }
-        .console-body .log-entry .log-actions button.delete-btn:hover {
-            color: #ff4444;
-        }
-
-        .console-body .log-entry.info { border-right-color: #00d4ff; }
-        .console-body .log-entry.info .log-text { color: #00d4ff; }
-        .console-body .log-entry.success { border-right-color: #00ff88; }
-        .console-body .log-entry.success .log-text { color: #00ff88; }
-        .console-body .log-entry.error { border-right-color: #ff4444; }
-        .console-body .log-entry.error .log-text { color: #ff4444; }
-        .console-body .log-entry.warning { border-right-color: #ffaa00; }
-        .console-body .log-entry.warning .log-text { color: #ffaa00; }
-        .console-body .log-entry.stopped { border-right-color: #7a8fa3; }
-        .console-body .log-entry.stopped .log-text { color: #7a8fa3; }
-        .console-body .log-entry .log-time {
-            color: #4a5a6a;
-            font-size: 0.6rem;
-            white-space: nowrap;
-            min-width: 60px;
-        }
-
-        .console-empty {
-            color: #4a5a6a;
-            text-align: center;
-            padding: 20px;
+        .table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 0.85rem;
         }
+        .table th {
+            text-align: right;
+            padding: 10px 12px;
+            color: #00d4ff;
+            border-bottom: 2px solid #1a2a3a;
+            font-weight: 600;
+        }
+        .table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #0d1624;
+            color: #c0d0e0;
+        }
+        .table tr:hover td {
+            background: rgba(0, 212, 255, 0.03);
+        }
+        .table .badge-role {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .badge-role.admin { background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.2); }
+        .badge-role.vip { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2); }
+        .badge-role.guest { background: rgba(255, 255, 255, 0.05); color: #7a8fa3; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .badge-status.active { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); }
+        .badge-status.inactive { background: rgba(255, 68, 68, 0.15); color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.2); }
 
         /* ===== بارگذاری ===== */
         .loading {
@@ -541,19 +375,6 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .error-msg {
-            color: #ff4444;
-            text-align: center;
-            padding: 30px;
-            font-size: 1rem;
-        }
-        .success-msg {
-            color: #00ff88;
-            text-align: center;
-            padding: 30px;
-            font-size: 1rem;
-        }
 
         /* ===== Toast ===== */
         .toast-container {
@@ -588,6 +409,7 @@
         .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
         .toast.warning { border-color: #ffaa00; }
+        .toast.recovered { border-color: #ffaa00; background: #1a1a00; }
 
         /* ===== ریسپانسیو ===== */
         @media (max-width: 768px) {
@@ -595,12 +417,10 @@
             .container { padding: 12px; }
             .page-header h1 { font-size: 1.2rem; }
             .page-header .subtitle { font-size: 0.8rem; }
-            .section-body { grid-template-columns: 1fr; }
-            .action-bar { flex-direction: column; }
-            .action-bar .btn { justify-content: center; }
+            .card-body { grid-template-columns: 1fr; }
             .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
-            .console-body { max-height: 150px; font-size: 0.65rem; }
+            .table-wrapper { font-size: 0.75rem; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
@@ -614,44 +434,27 @@
 </head>
 <body>
 
-    <!-- ============================================================
-    منو
-    ============================================================ -->
+    <!-- ===== منو ===== -->
     <div id="navContainer"></div>
 
-    <!-- ============================================================
-    محتوای اصلی
-    ============================================================ -->
+    <!-- ===== محتوای اصلی ===== -->
     <div class="container">
 
         <!-- هدر -->
         <div class="page-header">
             <div>
-                <h1><i class="fas fa-sliders-h"></i> تنظیمات و آمار</h1>
-                <span class="subtitle">مدیریت تنظیمات سیستم و مشاهده آمار لحظه‌ای</span>
+                <h1><i class="fas fa-sliders-h"></i> تنظیمات</h1>
+                <span class="subtitle">شخصی‌سازی و مدیریت حساب کاربری</span>
             </div>
             <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
-        <!-- نوار اقدامات -->
-        <div class="action-bar">
-            <button class="btn btn-success" onclick="saveSettings()">
-                <i class="fas fa-save"></i> ذخیره تنظیمات
-            </button>
-            <button class="btn btn-warning" onclick="resetSettings()">
-                <i class="fas fa-undo"></i> بازنشانی
-            </button>
-            <button class="btn btn-primary" onclick="loadAllData()">
-                <i class="fas fa-sync-alt"></i> بروزرسانی
-            </button>
-        </div>
-
         <!-- ===== بخش آمار ===== -->
-        <div class="settings-section" id="statsSection">
-            <div class="section-header">
+        <div class="settings-card" id="statsSection">
+            <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
                 <h3>آمار سیستم</h3>
-                <span class="section-badge">لحظه‌ای</span>
+                <span class="badge">لحظه‌ای</span>
             </div>
             <div id="statsGrid" class="stats-grid">
                 <div class="stat-item">
@@ -682,57 +485,79 @@
             </div>
         </div>
 
-        <!-- ===== بخش‌های تنظیمات ===== -->
-        <div id="settingsContent">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p style="color:#7a8fa3;">در حال بارگذاری تنظیمات...</p>
+        <!-- ===== بخش حساب کاربری ===== -->
+        <div class="settings-card">
+            <div class="card-header">
+                <i class="fas fa-user-circle"></i>
+                <h3>حساب کاربری</h3>
+                <span class="badge" id="userRoleBadge">👤 مهمان</span>
+            </div>
+            <div class="card-body full-width">
+                <div id="userInfo">
+                    <div class="loading" style="padding:20px;">
+                        <div class="spinner" style="width:30px;height:30px;"></div>
+                        <p style="color:#7a8fa3;font-size:0.85rem;">در حال بارگذاری...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- ===== بخش کنسول لاگ ===== -->
-        <div class="settings-section">
-            <div class="section-header">
-                <i class="fas fa-terminal"></i>
-                <h3>کنسول لاگ</h3>
-                <span class="section-badge">دیباگ</span>
-                <div class="section-actions">
-                    <button class="btn btn-xs btn-outline" onclick="clearLogs()">
-                        <i class="fas fa-eraser"></i> پاک کردن
-                    </button>
+        <!-- ===== بخش مدیریت کاربران (فقط ادمین) ===== -->
+        <div class="settings-card" id="usersManagement" style="display:none;">
+            <div class="card-header">
+                <i class="fas fa-users-cog"></i>
+                <h3>مدیریت کاربران</h3>
+                <span class="badge admin">👑 فقط ادمین</span>
+            </div>
+            <div class="card-body full-width">
+                <div class="table-wrapper">
+                    <table class="table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>کاربر</th>
+                                <th>نقش</th>
+                                <th>وضعیت</th>
+                                <th>ایمیل</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <div class="section-body full-width">
-                <div class="console-wrapper">
-                    <div class="console-header">
-                        <span class="console-title">
-                            <span class="dot"></span>
-                            <span id="logCount">۰</span> رویداد
-                        </span>
-                        <div class="console-actions">
-                            <button class="btn btn-xs btn-outline" onclick="copyAllLogs()" title="کپی همه">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                            <button class="btn btn-xs btn-outline" onclick="clearLogs()" title="پاک کردن همه">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="console-body" id="logConsole">
-                        <div class="log-entry info">
-                            <span class="log-text">⏳ در حال اتصال به سرور...</span>
-                            <span class="log-time"></span>
-                        </div>
-                    </div>
+        </div>
+
+        <!-- ===== بخش تنظیمات ظاهری ===== -->
+        <div class="settings-card">
+            <div class="card-header">
+                <i class="fas fa-palette"></i>
+                <h3>ظاهر</h3>
+                <span class="badge">شخصی‌سازی</span>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>حالت نمایش</label>
+                    <select class="form-control" id="themeSelect">
+                        <option value="dark">🌙 تیره</option>
+                        <option value="light">☀️ روشن</option>
+                        <option value="auto">🔄 خودکار (بر اساس سیستم)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>زبان</label>
+                    <select class="form-control" id="languageSelect">
+                        <option value="fa">🇮🇷 فارسی</option>
+                        <option value="en">🇬🇧 English</option>
+                    </select>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <!-- ============================================================
-    Toast Container
-    ============================================================ -->
+    <!-- ===== Toast Container ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- ============================================================
@@ -753,6 +578,7 @@
                     container.innerHTML = html;
                     if (typeof initMenu === 'function') initMenu();
                     if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                    loadUserInfo();
                 })
                 .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
         }
@@ -760,12 +586,10 @@
         // ============================================================
         // متغیرها
         // ============================================================
-        let currentSettings = {};
         let statsInterval = null;
-        let logsInterval = null;
         let uptimeStartTime = null;
         let uptimeInterval = null;
-        let logEntries = [];
+        let currentUserRole = 'guest';
 
         // ============================================================
         // آپتایم زنده
@@ -813,676 +637,153 @@
         }
 
         // ============================================================
-        // بارگذاری همه داده‌ها
+        // بارگذاری اطلاعات کاربر
         // ============================================================
-        function loadAllData() {
-            loadStats();
-            loadSettings();
-            loadLogs();
-            document.getElementById('pageTimestamp').textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
-        }
-
-        // ============================================================
-        // بارگذاری آمار
-        // ============================================================
-        function loadStats() {
-            // ۱. دریافت آمار سیستم
-            fetch('/stats')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.uptime) startUptime(data.uptime);
-                    document.getElementById('statRequests').textContent = data.api_stats?.total_requests || 0;
-                    document.getElementById('statCache').textContent = data.api_stats?.cache_size || 0;
-                })
-                .catch(err => console.error('Stats error:', err));
-            
-            // ۲. دریافت اعتبار
-            fetch('/credits')
+        function loadUserInfo() {
+            fetch('/api/user')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        const remaining = data.data?.remaining || 0;
-                        const el = document.getElementById('statCredits');
-                        el.textContent = remaining.toLocaleString();
-                        el.className = 'stat-value ' + (remaining < 100 ? 'danger' : remaining < 500 ? 'warning' : 'success');
-                    } else {
-                        document.getElementById('statCredits').textContent = '❌';
-                    }
-                })
-                .catch(() => {
-                    document.getElementById('statCredits').textContent = '❌';
-                });
-            
-            // ۳. دریافت وضعیت مدل
-            fetch('/model/status')
-                .then(res => res.json())
-                .then(data => {
-                    const modelExists = data?.model_exists || false;
-                    const isTraining = data?.is_training || false;
-                    const mode = data?.stats?.mode || 'DEMO';
-                    const el = document.getElementById('statModel');
-                    
-                    if (isTraining) {
-                        el.textContent = '⏳ در حال آموزش...';
-                        el.className = 'stat-value warning';
-                    } else if (modelExists && mode === 'BETA') {
-                        el.textContent = '✅ بتا';
-                        el.className = 'stat-value success';
-                    } else if (modelExists) {
-                        el.textContent = '⚠️ فعال';
-                        el.className = 'stat-value warning';
-                    } else {
-                        el.textContent = '📦 دمو';
-                        el.className = 'stat-value info';
-                    }
-                })
-                .catch(() => {
-                    const el = document.getElementById('statModel');
-                    el.textContent = '❌';
-                    el.className = 'stat-value danger';
-                });
-        }
-
-        // ============================================================
-        // بارگذاری تنظیمات
-        // ============================================================
-        function loadSettings() {
-            const container = document.getElementById('settingsContent');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;">در حال بارگذاری تنظیمات...</p></div>';
-
-            fetch('/api/config')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        currentSettings = data.data;
-                        renderSettings(data.data);
-                    } else {
-                        container.innerHTML = `<div class="error-msg">❌ ${data.error || 'خطا در دریافت تنظیمات'}</div>`;
-                    }
-                })
-                .catch(err => {
-                    container.innerHTML = `<div class="error-msg">❌ خطا: ${err.message}</div>`;
-                });
-        }
-
-        // ============================================================
-        // رندر تنظیمات
-        // ============================================================
-        function renderSettings(settings) {
-            const container = document.getElementById('settingsContent');
-            let html = '';
-
-            // === ۱. عمومی ===
-            const app = settings.app || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-cog"></i>
-                        <h3>عمومی</h3>
-                        <span class="section-badge">تنظیمات اصلی</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>نام سیستم</label>
-                            <input type="text" id="app_name" class="form-control" value="${app.name || ''}">
-                        </div>
-                        <div class="form-group">
-                            <label>نسخه</label>
-                            <input type="text" id="app_version" class="form-control" value="${app.version || ''}">
-                        </div>
-                        <div class="form-group">
-                            <label>محیط</label>
-                            <select id="app_environment" class="form-control">
-                                <option value="development" ${app.environment === 'development' ? 'selected' : ''}>توسعه</option>
-                                <option value="production" ${app.environment === 'production' ? 'selected' : ''}>تولید</option>
-                            </select>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="app_debug" ${app.debug ? 'checked' : ''}>
-                            <label for="app_debug">حالت دیباگ</label>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // === ۲. مدل ===
-            const model = settings.model || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-brain"></i>
-                        <h3>مدل</h3>
-                        <span class="section-badge">آموزش و پیش‌بینی</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>دوره پیش‌فرض</label>
-                            <select id="model_default_period" class="form-control">
-                                <option value="24h" ${model.default_period === '24h' ? 'selected' : ''}>۲۴ ساعت</option>
-                                <option value="1w" ${model.default_period === '1w' ? 'selected' : ''}>۱ هفته</option>
-                                <option value="1m" ${model.default_period === '1m' ? 'selected' : ''}>۱ ماه</option>
-                                <option value="3m" ${model.default_period === '3m' ? 'selected' : ''}>۳ ماه</option>
-                                <option value="6m" ${model.default_period === '6m' ? 'selected' : ''}>۶ ماه</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>فاصله آموزش خودکار (ساعت)</label>
-                            <input type="number" id="model_auto_train_interval" class="form-control" min="1" max="72" value="${model.auto_train_interval || 6}">
-                        </div>
-                        <div class="form-group">
-                            <label>ارزهای تحت پوشش</label>
-                            <input type="text" id="model_coins" class="form-control" value="${(model.coins || []).join(', ')}">
-                            <span class="helper-text">با کاما جدا کنید</span>
-                        </div>
-                        <div class="form-group">
-                            <label>حداقل نقاط داده</label>
-                            <input type="number" id="model_min_data_points" class="form-control" min="10" max="200" value="${model.min_data_points || 30}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // === ۳. آستانه‌ها ===
-            const thresholds = settings.thresholds || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-chart-line"></i>
-                        <h3>آستانه‌ها</h3>
-                        <span class="section-badge">هشدارها</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>هشدار رم (%)</label>
-                            <input type="number" id="thresholds_ram_warning" class="form-control" min="0" max="100" value="${thresholds.ram_warning || 70}">
-                        </div>
-                        <div class="form-group">
-                            <label>بحرانی رم (%)</label>
-                            <input type="number" id="thresholds_ram_critical" class="form-control" min="0" max="100" value="${thresholds.ram_critical || 85}">
-                        </div>
-                        <div class="form-group">
-                            <label>هشدار CPU (%)</label>
-                            <input type="number" id="thresholds_cpu_warning" class="form-control" min="0" max="100" value="${thresholds.cpu_warning || 70}">
-                        </div>
-                        <div class="form-group">
-                            <label>بحرانی CPU (%)</label>
-                            <input type="number" id="thresholds_cpu_critical" class="form-control" min="0" max="100" value="${thresholds.cpu_critical || 90}">
-                        </div>
-                        <div class="form-group">
-                            <label>هشدار اعتبار</label>
-                            <input type="number" id="thresholds_credit_warning" class="form-control" min="0" value="${thresholds.credit_warning || 15}">
-                        </div>
-                        <div class="form-group">
-                            <label>بحرانی اعتبار</label>
-                            <input type="number" id="thresholds_credit_critical" class="form-control" min="0" value="${thresholds.credit_critical || 5}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // === ۴. کش ===
-            const cache = settings.cache || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-database"></i>
-                        <h3>کش</h3>
-                        <span class="section-badge">حافظه موقت</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>زمان TTL (ثانیه)</label>
-                            <input type="number" id="cache_default_ttl" class="form-control" min="60" max="86400" value="${cache.default_ttl || 3600}">
-                        </div>
-                        <div class="form-group">
-                            <label>حداکثر حجم کش</label>
-                            <input type="number" id="cache_max_size" class="form-control" min="10" max="10000" value="${cache.max_size || 1000}">
-                        </div>
-                        <div class="form-group">
-                            <label>فاصله پاکسازی (ثانیه)</label>
-                            <input type="number" id="cache_cleanup_interval" class="form-control" min="30" max="3600" value="${cache.cleanup_interval || 300}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // === ۵. API ===
-            const api = settings.api || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-plug"></i>
-                        <h3>API</h3>
-                        <span class="section-badge">اتصالات</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>تایم‌اوت (ثانیه)</label>
-                            <input type="number" id="api_timeout" class="form-control" min="1" max="60" value="${api.timeout || 15}">
-                        </div>
-                        <div class="form-group">
-                            <label>تعداد تلاش مجدد</label>
-                            <input type="number" id="api_retry_attempts" class="form-control" min="0" max="10" value="${api.retry_attempts || 3}">
-                        </div>
-                        <div class="form-group">
-                            <label>تاخیر بین تلاش‌ها (ثانیه)</label>
-                            <input type="number" id="api_retry_delay" class="form-control" min="0" max="10" value="${api.retry_delay || 1}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // === ۶. دیتابیس ===
-            const databases = settings.databases || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-server"></i>
-                        <h3>دیتابیس</h3>
-                        <span class="section-badge">اتصالات</span>
-                    </div>
-                    <div class="section-body full-width" id="databaseSection">
-            `;
-
-            if (Object.keys(databases).length === 0) {
-                html += `<p style="color:#4a5a6a;text-align:center;padding:20px;">هیچ دیتابیسی پیکربندی نشده است</p>`;
-            } else {
-                for (const [name, db] of Object.entries(databases)) {
-                    const isConnected = db.connected || false;
-                    const statusIcon = isConnected ? '✅' : '❌';
-                    const statusText = isConnected ? 'متصل' : 'قطع';
-                    const token = db.token || '';
-                    const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : '••••••••';
-
-                    html += `
-                        <div class="settings-section" style="border-color:rgba(0,212,255,0.08);margin-bottom:12px;padding:16px 20px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                                <span style="color:#00d4ff;font-weight:600;">${name}</span>
-                                <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.85rem;">${statusIcon} ${statusText}</span>
-                            </div>
-                            <div class="form-group" style="margin-bottom:8px;">
-                                <label>آدرس</label>
-                                <input type="text" class="form-control" value="${db.url || ''}" readonly disabled>
-                            </div>
-                            <div class="form-group">
-                                <label>توکن</label>
-                                <div class="token-input-wrapper">
-                                    <input type="password" id="token_${name}" class="form-control" value="${token}" readonly>
-                                    <div class="token-actions">
-                                        <button class="action-btn" onclick="toggleTokenVisibility(this)" title="نمایش/پنهان کردن">
-                                            <i class="fas fa-eye eye-icon"></i>
-                                            <span class="slash-line"></span>
-                                        </button>
-                                        <button class="action-btn" onclick="copyToken(this)" title="کپی توکن">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            html += `
-                    </div>
-                </div>
-            `;
-
-            // === ۷. لاگ ===
-            const logging = settings.logging || {};
-            html += `
-                <div class="settings-section">
-                    <div class="section-header">
-                        <i class="fas fa-file-alt"></i>
-                        <h3>لاگ</h3>
-                        <span class="section-badge">ثبت رویدادها</span>
-                    </div>
-                    <div class="section-body">
-                        <div class="form-group">
-                            <label>سطح لاگ</label>
-                            <select id="logging_level" class="form-control">
-                                <option value="DEBUG" ${logging.level === 'DEBUG' ? 'selected' : ''}>DEBUG</option>
-                                <option value="INFO" ${logging.level === 'INFO' ? 'selected' : ''}>INFO</option>
-                                <option value="WARNING" ${logging.level === 'WARNING' ? 'selected' : ''}>WARNING</option>
-                                <option value="ERROR" ${logging.level === 'ERROR' ? 'selected' : ''}>ERROR</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>تعداد خطوط لاگ</label>
-                            <input type="number" id="logging_max_logs" class="form-control" min="10" max="5000" value="${logging.max_logs || 500}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = html;
-        }
-
-        // ============================================================
-        // توکن - نمایش/پنهان کردن
-        // ============================================================
-        function toggleTokenVisibility(btn) {
-            const wrapper = btn.closest('.token-input-wrapper');
-            const input = wrapper.querySelector('.form-control');
-            const eyeIcon = btn.querySelector('.eye-icon');
-            const slashLine = btn.querySelector('.slash-line');
-
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.classList.add('active');
-                if (eyeIcon) {
-                    eyeIcon.className = 'fas fa-eye-slash eye-icon';
-                }
-                if (slashLine) {
-                    slashLine.style.transform = 'rotate(-45deg) scale(1)';
-                    slashLine.style.opacity = '1';
-                }
-            } else {
-                input.type = 'password';
-                btn.classList.remove('active');
-                if (eyeIcon) {
-                    eyeIcon.className = 'fas fa-eye eye-icon';
-                }
-                if (slashLine) {
-                    slashLine.style.transform = 'rotate(-45deg) scale(0)';
-                    slashLine.style.opacity = '0';
-                }
-            }
-        }
-
-        // ============================================================
-        // کپی توکن
-        // ============================================================
-        function copyToken(btn) {
-            const wrapper = btn.closest('.token-input-wrapper');
-            const input = wrapper.querySelector('.form-control');
-            const token = input.value;
-
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(token).then(() => {
-                    btn.classList.add('copied');
-                    btn.innerHTML = '<i class="fas fa-check"></i>';
-                    setTimeout(() => {
-                        btn.classList.remove('copied');
-                        btn.innerHTML = '<i class="fas fa-copy"></i>';
-                    }, 2000);
-                    showToast('📋 توکن کپی شد!', 'success');
-                }).catch(() => {
-                    showToast('❌ کپی نشد!', 'error');
-                });
-            } else {
-                const textarea = document.createElement('textarea');
-                textarea.value = token;
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    showToast('📋 توکن کپی شد!', 'success');
-                } catch {
-                    showToast('❌ کپی نشد!', 'error');
-                }
-                document.body.removeChild(textarea);
-            }
-        }
-
-        // ============================================================
-        // جمع‌آوری تنظیمات از فرم
-        // ============================================================
-        function collectSettings() {
-            return {
-                app: {
-                    name: document.getElementById('app_name')?.value,
-                    version: document.getElementById('app_version')?.value,
-                    environment: document.getElementById('app_environment')?.value,
-                    debug: document.getElementById('app_debug')?.checked || false
-                },
-                model: {
-                    default_period: document.getElementById('model_default_period')?.value || '1m',
-                    auto_train_interval: parseInt(document.getElementById('model_auto_train_interval')?.value) || 6,
-                    coins: document.getElementById('model_coins')?.value?.split(',').map(s => s.trim()).filter(Boolean) || [],
-                    min_data_points: parseInt(document.getElementById('model_min_data_points')?.value) || 30
-                },
-                thresholds: {
-                    ram_warning: parseInt(document.getElementById('thresholds_ram_warning')?.value) || 70,
-                    ram_critical: parseInt(document.getElementById('thresholds_ram_critical')?.value) || 85,
-                    cpu_warning: parseInt(document.getElementById('thresholds_cpu_warning')?.value) || 70,
-                    cpu_critical: parseInt(document.getElementById('thresholds_cpu_critical')?.value) || 90,
-                    credit_warning: parseInt(document.getElementById('thresholds_credit_warning')?.value) || 15,
-                    credit_critical: parseInt(document.getElementById('thresholds_credit_critical')?.value) || 5
-                },
-                cache: {
-                    default_ttl: parseInt(document.getElementById('cache_default_ttl')?.value) || 3600,
-                    max_size: parseInt(document.getElementById('cache_max_size')?.value) || 1000,
-                    cleanup_interval: parseInt(document.getElementById('cache_cleanup_interval')?.value) || 300
-                },
-                api: {
-                    timeout: parseInt(document.getElementById('api_timeout')?.value) || 15,
-                    retry_attempts: parseInt(document.getElementById('api_retry_attempts')?.value) || 3,
-                    retry_delay: parseInt(document.getElementById('api_retry_delay')?.value) || 1
-                },
-                logging: {
-                    level: document.getElementById('logging_level')?.value || 'INFO',
-                    max_logs: parseInt(document.getElementById('logging_max_logs')?.value) || 500
-                }
-            };
-        }
-
-        // ============================================================
-        // ذخیره تنظیمات
-        // ============================================================
-        function saveSettings() {
-            const data = collectSettings();
-
-            fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('✅ تنظیمات با موفقیت ذخیره شد!', 'success');
-                    loadSettings();
-                    loadStats();
-                } else {
-                    showToast('❌ ' + (data.error || 'خطا در ذخیره تنظیمات'), 'error');
-                }
-            })
-            .catch(err => {
-                showToast('❌ خطا: ' + err.message, 'error');
-            });
-        }
-
-        // ============================================================
-        // بازنشانی تنظیمات
-        // ============================================================
-        function resetSettings() {
-            if (!confirm('آیا از بازنشانی تنظیمات به حالت پیش‌فرض اطمینان دارید؟')) return;
-
-            fetch('/api/config/reset', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('✅ تنظیمات به حالت پیش‌فرض بازگشت!', 'success');
-                        loadSettings();
-                        loadStats();
-                    } else {
-                        showToast('❌ ' + (data.error || 'خطا در بازنشانی'), 'error');
-                    }
-                })
-                .catch(err => {
-                    showToast('❌ خطا: ' + err.message, 'error');
-                });
-        }
-
-        // ============================================================
-        // بارگذاری لاگ‌ها
-        // ============================================================
-        function loadLogs() {
-            const consoleEl = document.getElementById('logConsole');
-            
-            fetch('/model/status')
-                .then(res => res.json())
-                .then(data => {
-                    const logs = data?.logs || [];
-                    logEntries = logs;
-                    
-                    const countEl = document.getElementById('logCount');
-                    if (countEl) countEl.textContent = logs.length;
-                    
-                    if (logs.length === 0) {
-                        consoleEl.innerHTML = `<div class="console-empty">📭 هیچ لاگی ثبت نشده است</div>`;
-                        return;
-                    }
-                    
-                    let html = '';
-                    // نمایش آخرین ۵۰ لاگ به ترتیب معکوس (جدیدترین اول)
-                    const displayLogs = logs.slice(-50).reverse();
-                    displayLogs.forEach(log => {
-                        let cls = 'info';
-                        let text = log;
-                        if (log.includes('✅')) cls = 'success';
-                        else if (log.includes('❌')) cls = 'error';
-                        else if (log.includes('⚠️')) cls = 'warning';
-                        else if (log.includes('⏹️')) cls = 'stopped';
+                        const user = data.data;
+                        currentUserRole = user.role || 'guest';
+                        renderUserInfo(user);
                         
-                        // استخراج زمان از لاگ
-                        let time = '';
-                        const timeMatch = log.match(/\[([^\]]+)\]/);
-                        if (timeMatch) {
-                            time = timeMatch[1];
-                            text = log.replace(timeMatch[0], '').trim();
+                        // نمایش بخش مدیریت کاربران برای ادمین
+                        if (user.role === 'admin') {
+                            document.getElementById('usersManagement').style.display = 'block';
+                            loadUsers();
                         }
                         
-                        const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        
-                        html += `
-                            <div class="log-entry ${cls}">
-                                <span class="log-text">${escapedText}</span>
-                                <span class="log-time">${time}</span>
-                                <span class="log-actions">
-                                    <button class="copy-btn" onclick="copyLog('${escapedText.replace(/'/g, "\\'")}')" title="کپی">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </span>
-                            </div>
-                        `;
-                    });
-                    consoleEl.innerHTML = html;
-                    consoleEl.scrollTop = 0;
+                        // نمایش نوتیفیکیشن بازیابی
+                        if (user.recovered) {
+                            showToast('⚠️ شما با ایمیل بازیابی وارد شده‌اید. لطفاً رمز عبور و نام کاربری خود را در همین صفحه مشاهده کنید.', 'recovered');
+                        }
+                    }
                 })
                 .catch(() => {
-                    consoleEl.innerHTML = `<div class="log-entry error"><span class="log-text">❌ خطا در دریافت لاگ</span></div>`;
+                    document.getElementById('userInfo').innerHTML = `
+                        <div style="color:#ff4444;text-align:center;padding:20px;">
+                            ❌ خطا در دریافت اطلاعات کاربر
+                        </div>
+                    `;
                 });
         }
 
         // ============================================================
-        // کپی یک لاگ
+        // رندر اطلاعات کاربر
         // ============================================================
-        function copyLog(text) {
-            const plainText = text.replace(/<[^>]*>/g, '').trim();
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(plainText).then(() => {
-                    showToast('📋 لاگ کپی شد!', 'success');
-                }).catch(() => {
-                    fallbackCopyLog(plainText);
-                });
-            } else {
-                fallbackCopyLog(plainText);
-            }
-        }
-
-        function fallbackCopyLog(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showToast('📋 لاگ کپی شد!', 'success');
-            } catch {
-                showToast('❌ کپی نشد!', 'error');
-            }
-            document.body.removeChild(textarea);
-        }
-
-        // ============================================================
-        // کپی همه لاگ‌ها
-        // ============================================================
-        function copyAllLogs() {
-            if (logEntries.length === 0) {
-                showToast('📭 لاگی برای کپی وجود ندارد', 'warning');
-                return;
+        function renderUserInfo(user) {
+            const roleMap = {
+                'admin': '👑 ادمین (مدیر کل)',
+                'vip': '⭐ VIP',
+                'guest': '👤 مهمان'
+            };
+            
+            const roleBadge = document.getElementById('userRoleBadge');
+            if (roleBadge) {
+                roleBadge.textContent = roleMap[user.role] || '👤 مهمان';
+                roleBadge.className = 'badge';
+                if (user.role === 'admin') roleBadge.classList.add('admin');
             }
             
-            const allText = logEntries.join('\n');
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(allText).then(() => {
-                    showToast(`📋 ${logEntries.length} لاگ کپی شد!`, 'success');
-                }).catch(() => {
-                    fallbackCopyLog(allText);
-                });
+            document.getElementById('userInfo').innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">
+                    <div class="form-group">
+                        <label>👤 نام کاربری</label>
+                        <input type="text" class="form-control" value="${user.username || '-'}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>🔑 رمز عبور</label>
+                        <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay">
+                        <div style="margin-top:4px;">
+                            <button class="btn btn-xs btn-outline" onclick="togglePassword()">
+                                <i class="fas fa-eye" id="passwordEye"></i> نمایش رمز
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>📧 ایمیل</label>
+                        <input type="text" class="form-control" value="${user.recovery_email || '-'}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>📋 نقش</label>
+                        <input type="text" class="form-control" value="${roleMap[user.role] || 'مهمان'}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>📊 وضعیت</label>
+                        <input type="text" class="form-control" value="${user.active ? '✅ فعال' : '❌ غیرفعال'}" readonly>
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end;">
+                        <button class="btn btn-danger btn-sm" onclick="logoutUser()">
+                            <i class="fas fa-sign-out-alt"></i> خروج از حساب
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // نمایش/پنهان کردن رمز عبور
+        // ============================================================
+        let passwordVisible = false;
+
+        function togglePassword() {
+            const input = document.getElementById('passwordDisplay');
+            const eye = document.getElementById('passwordEye');
+            
+            if (passwordVisible) {
+                input.type = 'password';
+                eye.className = 'fas fa-eye';
+                passwordVisible = false;
             } else {
-                fallbackCopyLog(allText);
+                input.type = 'text';
+                eye.className = 'fas fa-eye-slash';
+                passwordVisible = true;
             }
         }
 
         // ============================================================
-        // پاک کردن لاگ‌ها
+        // خروج از حساب
         // ============================================================
-        function clearLogs() {
-            if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+        function logoutUser() {
+            if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
             
-            fetch('/model/clear-logs', { method: 'POST' })
+            fetch('/logout', { method: 'POST' })
+                .then(res => res.json())
+                .then(() => {
+                    window.location.href = '/login';
+                })
+                .catch(() => {
+                    window.location.href = '/login';
+                });
+        }
+
+        // ============================================================
+        // بارگذاری لیست کاربران (فقط ادمین)
+        // ============================================================
+        function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>`;
+            
+            fetch('/api/users')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        showToast('🗑️ لاگ‌ها پاک شدند', 'success');
-                        loadLogs();
+                        renderUsers(data.data);
                     } else {
-                        showToast('❌ ' + data.error, 'error');
+                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ${data.error}</td></tr>`;
                     }
                 })
-                .catch(err => {
-                    showToast('❌ خطا: ' + err.message, 'error');
+                .catch(() => {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در دریافت کاربران</td></tr>`;
                 });
         }
 
         // ============================================================
-        // Toast (نمایش پیام)
+        // رندر لیست کاربران
         // ============================================================
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
             
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    if (toast.parentNode) toast.parentNode.removeChild(toast);
-                }, 300);
-            }, 3000);
-        }
-
-        // ============================================================
-        // راه‌اندازی
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadAllData();
-
-            // بروزرسانی آمار هر ۱۰ ثانیه
-            if (statsInterval) clearInterval(statsInterval);
-            statsInterval = setInterval(() => {
-                loadStats();
-                loadLogs();
-            }, 10000);
-        });
-    </script>
-
-</body>
-</html>
+            if (!users || users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>
