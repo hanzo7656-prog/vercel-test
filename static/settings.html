@@ -131,6 +131,11 @@
             color: #7a8fa3;
             font-size: 0.9rem;
         }
+        .page-header .timestamp {
+            color: #4a5a6a;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+        }
 
         /* ===== نوار اقدامات ===== */
         .action-bar {
@@ -147,7 +152,8 @@
         .btn {
             display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
             border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
-            transition: all 0.3s ease; font-weight: 500; font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 500; font-family: inherit;
             text-decoration: none;
         }
         .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
@@ -158,7 +164,10 @@
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
         .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
+        .btn-outline { background: transparent; border: 1px solid #1a2a3a; color: #7a8fa3; }
+        .btn-outline:hover { border-color: #00d4ff; color: #e0e6ed; transform: translateY(-2px); }
         .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+        .btn-xs { padding: 4px 10px; font-size: 0.7rem; }
 
         /* ===== کارت‌های تنظیمات ===== */
         .settings-section {
@@ -201,6 +210,10 @@
             color: #00d4ff;
             border: 1px solid rgba(0, 212, 255, 0.15);
             margin-right: auto;
+        }
+        .section-actions {
+            display: flex;
+            gap: 6px;
         }
 
         .section-body {
@@ -338,34 +351,176 @@
         .token-input-wrapper .action-btn.copied {
             color: #00ff88;
         }
+        .token-input-wrapper .action-btn.copied i {
+            animation: pop 0.3s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.5); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
 
-        /* ===== بخش آمار (بالای صفحه) ===== */
+        /* ===== آمار ===== */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 12px;
-            margin-bottom: 20px;
         }
         .stats-grid .stat-item {
             background: #0a0e17;
-            padding: 14px 16px;
+            padding: 16px 18px;
             border-radius: 12px;
             border: 1px solid #1a2a3a;
             text-align: center;
-            transition: border-color 0.3s ease;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         .stats-grid .stat-item:hover {
-            border-color: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.2);
+            transform: translateY(-2px);
         }
         .stats-grid .stat-item .stat-value {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #00d4ff;
+            font-family: 'Courier New', monospace;
         }
         .stats-grid .stat-item .stat-label {
             color: #7a8fa3;
             font-size: 0.75rem;
             margin-top: 4px;
+        }
+        .stats-grid .stat-item .stat-icon {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            opacity: 0.1;
+            font-size: 1.8rem;
+        }
+        .stats-grid .stat-item .stat-value.success { color: #00ff88; }
+        .stats-grid .stat-item .stat-value.warning { color: #ffaa00; }
+        .stats-grid .stat-item .stat-value.danger { color: #ff4444; }
+        .stats-grid .stat-item .stat-value.info { color: #00d4ff; }
+
+        /* ===== کنسول لاگ ===== */
+        .console-wrapper {
+            background: #080c14;
+            border: 1px solid #1a2a3a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: #0a0e17;
+            border-bottom: 1px solid #1a2a3a;
+        }
+        .console-header .console-title {
+            color: #7a8fa3;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .console-header .console-title .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 1.5s infinite;
+        }
+        .console-header .console-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .console-body {
+            padding: 12px 16px;
+            max-height: 220px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #7a8fa3;
+            direction: ltr;
+            text-align: left;
+            line-height: 1.8;
+        }
+        .console-body::-webkit-scrollbar { width: 4px; }
+        .console-body::-webkit-scrollbar-track { background: transparent; }
+        .console-body::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+
+        .console-body .log-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+            border-right: 2px solid transparent;
+        }
+        .console-body .log-entry:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .console-body .log-entry .log-text {
+            flex: 1;
+            word-break: break-all;
+        }
+        .console-body .log-entry .log-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .console-body .log-entry:hover .log-actions {
+            opacity: 1;
+        }
+        .console-body .log-entry .log-actions button {
+            background: none;
+            border: none;
+            color: #4a5a6a;
+            cursor: pointer;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        .console-body .log-entry .log-actions button:hover {
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .console-body .log-entry .log-actions button.copy-btn:hover {
+            color: #00ff88;
+        }
+        .console-body .log-entry .log-actions button.delete-btn:hover {
+            color: #ff4444;
+        }
+
+        .console-body .log-entry.info { border-right-color: #00d4ff; }
+        .console-body .log-entry.info .log-text { color: #00d4ff; }
+        .console-body .log-entry.success { border-right-color: #00ff88; }
+        .console-body .log-entry.success .log-text { color: #00ff88; }
+        .console-body .log-entry.error { border-right-color: #ff4444; }
+        .console-body .log-entry.error .log-text { color: #ff4444; }
+        .console-body .log-entry.warning { border-right-color: #ffaa00; }
+        .console-body .log-entry.warning .log-text { color: #ffaa00; }
+        .console-body .log-entry.stopped { border-right-color: #7a8fa3; }
+        .console-body .log-entry.stopped .log-text { color: #7a8fa3; }
+        .console-body .log-entry .log-time {
+            color: #4a5a6a;
+            font-size: 0.6rem;
+            white-space: nowrap;
+            min-width: 60px;
+        }
+
+        .console-empty {
+            color: #4a5a6a;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.85rem;
         }
 
         /* ===== بارگذاری ===== */
@@ -400,16 +555,52 @@
             font-size: 1rem;
         }
 
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            padding: 12px 28px;
+            background: #1a2a3a;
+            color: #e0e6ed;
+            border-radius: 12px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            max-width: 90%;
+            pointer-events: all;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast.success { border-color: #00ff88; }
+        .toast.error { border-color: #ff4444; }
+        .toast.warning { border-color: #ffaa00; }
+
         /* ===== ریسپانسیو ===== */
         @media (max-width: 768px) {
             .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
             .container { padding: 12px; }
             .page-header h1 { font-size: 1.2rem; }
+            .page-header .subtitle { font-size: 0.8rem; }
             .section-body { grid-template-columns: 1fr; }
             .action-bar { flex-direction: column; }
             .action-bar .btn { justify-content: center; }
             .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
+            .console-body { max-height: 150px; font-size: 0.65rem; }
         }
         @media (max-width: 480px) {
             .dashboard-header .uptime { display: none; }
@@ -417,6 +608,7 @@
             .flyout-menu { right: 8px; top: 64px; min-width: 150px; }
             .stats-grid { grid-template-columns: 1fr; }
             .page-header { flex-direction: column; align-items: flex-start; }
+            .page-header .timestamp { font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -438,7 +630,7 @@
                 <h1><i class="fas fa-sliders-h"></i> تنظیمات و آمار</h1>
                 <span class="subtitle">مدیریت تنظیمات سیستم و مشاهده آمار لحظه‌ای</span>
             </div>
-            <span style="color:#4a5a6a;font-size:0.8rem;" id="pageTimestamp"></span>
+            <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
         <!-- نوار اقدامات -->
@@ -463,26 +655,27 @@
             </div>
             <div id="statsGrid" class="stats-grid">
                 <div class="stat-item">
-                    <div class="stat-value" id="statUptime">-</div>
+                    <span class="stat-icon"><i class="fas fa-clock"></i></span>
+                    <div class="stat-value info" id="statUptime">-</div>
                     <div class="stat-label">آپتایم</div>
                 </div>
                 <div class="stat-item">
+                    <span class="stat-icon"><i class="fas fa-code"></i></span>
                     <div class="stat-value" id="statRequests">-</div>
                     <div class="stat-label">درخواست‌ها</div>
                 </div>
                 <div class="stat-item">
+                    <span class="stat-icon"><i class="fas fa-memory"></i></span>
                     <div class="stat-value" id="statCache">-</div>
                     <div class="stat-label">کش</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="statTasks">-</div>
-                    <div class="stat-label">تسک‌ها</div>
-                </div>
-                <div class="stat-item">
+                    <span class="stat-icon"><i class="fas fa-coins"></i></span>
                     <div class="stat-value" id="statCredits">-</div>
                     <div class="stat-label">اعتبار باقیمانده</div>
                 </div>
                 <div class="stat-item">
+                    <span class="stat-icon"><i class="fas fa-brain"></i></span>
                     <div class="stat-value" id="statModel">-</div>
                     <div class="stat-label">وضعیت مدل</div>
                 </div>
@@ -497,7 +690,50 @@
             </div>
         </div>
 
+        <!-- ===== بخش کنسول لاگ ===== -->
+        <div class="settings-section">
+            <div class="section-header">
+                <i class="fas fa-terminal"></i>
+                <h3>کنسول لاگ</h3>
+                <span class="section-badge">دیباگ</span>
+                <div class="section-actions">
+                    <button class="btn btn-xs btn-outline" onclick="clearLogs()">
+                        <i class="fas fa-eraser"></i> پاک کردن
+                    </button>
+                </div>
+            </div>
+            <div class="section-body full-width">
+                <div class="console-wrapper">
+                    <div class="console-header">
+                        <span class="console-title">
+                            <span class="dot"></span>
+                            <span id="logCount">۰</span> رویداد
+                        </span>
+                        <div class="console-actions">
+                            <button class="btn btn-xs btn-outline" onclick="copyAllLogs()" title="کپی همه">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="btn btn-xs btn-outline" onclick="clearLogs()" title="پاک کردن همه">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="console-body" id="logConsole">
+                        <div class="log-entry info">
+                            <span class="log-text">⏳ در حال اتصال به سرور...</span>
+                            <span class="log-time"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <!-- ============================================================
+    Toast Container
+    ============================================================ -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- ============================================================
     اسکریپت‌ها
@@ -526,6 +762,55 @@
         // ============================================================
         let currentSettings = {};
         let statsInterval = null;
+        let logsInterval = null;
+        let uptimeStartTime = null;
+        let uptimeInterval = null;
+        let logEntries = [];
+
+        // ============================================================
+        // آپتایم زنده
+        // ============================================================
+        function startUptime(uptimeStr) {
+            if (!uptimeStr) return;
+            const parts = uptimeStr.split(':').map(Number);
+            let totalSeconds = 0;
+            if (parts.length === 3) {
+                totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+            } else if (parts.length === 2) {
+                totalSeconds = parts[0] * 60 + parts[1];
+            } else {
+                totalSeconds = parts[0] || 0;
+            }
+            
+            uptimeStartTime = Date.now() - (totalSeconds * 1000);
+            updateUptimeDisplay();
+            
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            uptimeInterval = setInterval(updateUptimeDisplay, 1000);
+        }
+
+        function updateUptimeDisplay() {
+            const el = document.getElementById('statUptime');
+            if (!el || !uptimeStartTime) return;
+            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
+            el.textContent = formatDuration(elapsed);
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) return `${seconds}ثانیه`;
+            const days = Math.floor(seconds / 86400);
+            seconds -= days * 86400;
+            const hours = Math.floor(seconds / 3600);
+            seconds -= hours * 3600;
+            const minutes = Math.floor(seconds / 60);
+            seconds -= minutes * 60;
+            let parts = [];
+            if (days > 0) parts.push(`${days}روز`);
+            if (hours > 0 || days > 0) parts.push(`${hours}ساعت`);
+            if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}دقیقه`);
+            parts.push(`${seconds}ثانیه`);
+            return parts.join(' ');
+        }
 
         // ============================================================
         // بارگذاری همه داده‌ها
@@ -533,6 +818,7 @@
         function loadAllData() {
             loadStats();
             loadSettings();
+            loadLogs();
             document.getElementById('pageTimestamp').textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
         }
 
@@ -540,17 +826,61 @@
         // بارگذاری آمار
         // ============================================================
         function loadStats() {
+            // ۱. دریافت آمار سیستم
             fetch('/stats')
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('statUptime').textContent = data.uptime || '-';
+                    if (data.uptime) startUptime(data.uptime);
                     document.getElementById('statRequests').textContent = data.api_stats?.total_requests || 0;
                     document.getElementById('statCache').textContent = data.api_stats?.cache_size || 0;
-                    document.getElementById('statTasks').textContent = data.pending_tasks || 0;
-                    document.getElementById('statCredits').textContent = data.api_stats?.credits_remaining || '-';
-                    document.getElementById('statModel').textContent = data.model_loaded ? '✅ فعال' : '⚠️ دمو';
                 })
                 .catch(err => console.error('Stats error:', err));
+            
+            // ۲. دریافت اعتبار
+            fetch('/credits')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const remaining = data.data?.remaining || 0;
+                        const el = document.getElementById('statCredits');
+                        el.textContent = remaining.toLocaleString();
+                        el.className = 'stat-value ' + (remaining < 100 ? 'danger' : remaining < 500 ? 'warning' : 'success');
+                    } else {
+                        document.getElementById('statCredits').textContent = '❌';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('statCredits').textContent = '❌';
+                });
+            
+            // ۳. دریافت وضعیت مدل
+            fetch('/model/status')
+                .then(res => res.json())
+                .then(data => {
+                    const modelExists = data?.model_exists || false;
+                    const isTraining = data?.is_training || false;
+                    const mode = data?.stats?.mode || 'DEMO';
+                    const el = document.getElementById('statModel');
+                    
+                    if (isTraining) {
+                        el.textContent = '⏳ در حال آموزش...';
+                        el.className = 'stat-value warning';
+                    } else if (modelExists && mode === 'BETA') {
+                        el.textContent = '✅ بتا';
+                        el.className = 'stat-value success';
+                    } else if (modelExists) {
+                        el.textContent = '⚠️ فعال';
+                        el.className = 'stat-value warning';
+                    } else {
+                        el.textContent = '📦 دمو';
+                        el.className = 'stat-value info';
+                    }
+                })
+                .catch(() => {
+                    const el = document.getElementById('statModel');
+                    el.textContent = '❌';
+                    el.className = 'stat-value danger';
+                });
         }
 
         // ============================================================
@@ -754,40 +1084,44 @@
                     <div class="section-body full-width" id="databaseSection">
             `;
 
-            for (const [name, db] of Object.entries(databases)) {
-                const isConnected = db.connected || false;
-                const statusIcon = isConnected ? '✅' : '❌';
-                const statusText = isConnected ? 'متصل' : 'قطع';
-                const token = db.token || '';
-                const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : '••••••••';
+            if (Object.keys(databases).length === 0) {
+                html += `<p style="color:#4a5a6a;text-align:center;padding:20px;">هیچ دیتابیسی پیکربندی نشده است</p>`;
+            } else {
+                for (const [name, db] of Object.entries(databases)) {
+                    const isConnected = db.connected || false;
+                    const statusIcon = isConnected ? '✅' : '❌';
+                    const statusText = isConnected ? 'متصل' : 'قطع';
+                    const token = db.token || '';
+                    const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : '••••••••';
 
-                html += `
-                    <div class="settings-section" style="border-color:rgba(0,212,255,0.08);margin-bottom:12px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                            <span style="color:#00d4ff;font-weight:600;">${name}</span>
-                            <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.85rem;">${statusIcon} ${statusText}</span>
-                        </div>
-                        <div class="form-group" style="margin-bottom:8px;">
-                            <label>آدرس</label>
-                            <input type="text" class="form-control" value="${db.url || ''}" readonly disabled>
-                        </div>
-                        <div class="form-group">
-                            <label>توکن</label>
-                            <div class="token-input-wrapper">
-                                <input type="password" id="token_${name}" class="form-control" value="${token}" readonly>
-                                <div class="token-actions">
-                                    <button class="action-btn" onclick="toggleTokenVisibility(this)" title="نمایش/پنهان کردن">
-                                        <i class="fas fa-eye eye-icon"></i>
-                                        <span class="slash-line"></span>
-                                    </button>
-                                    <button class="action-btn" onclick="copyToken(this)" title="کپی توکن">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
+                    html += `
+                        <div class="settings-section" style="border-color:rgba(0,212,255,0.08);margin-bottom:12px;padding:16px 20px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                                <span style="color:#00d4ff;font-weight:600;">${name}</span>
+                                <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.85rem;">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>آدرس</label>
+                                <input type="text" class="form-control" value="${db.url || ''}" readonly disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>توکن</label>
+                                <div class="token-input-wrapper">
+                                    <input type="password" id="token_${name}" class="form-control" value="${token}" readonly>
+                                    <div class="token-actions">
+                                        <button class="action-btn" onclick="toggleTokenVisibility(this)" title="نمایش/پنهان کردن">
+                                            <i class="fas fa-eye eye-icon"></i>
+                                            <span class="slash-line"></span>
+                                        </button>
+                                        <button class="action-btn" onclick="copyToken(this)" title="کپی توکن">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             }
 
             html += `
@@ -878,7 +1212,6 @@
                     showToast('❌ کپی نشد!', 'error');
                 });
             } else {
-                // Fallback
                 const textarea = document.createElement('textarea');
                 textarea.value = token;
                 document.body.appendChild(textarea);
@@ -984,38 +1317,154 @@
         }
 
         // ============================================================
+        // بارگذاری لاگ‌ها
+        // ============================================================
+        function loadLogs() {
+            const consoleEl = document.getElementById('logConsole');
+            
+            fetch('/model/status')
+                .then(res => res.json())
+                .then(data => {
+                    const logs = data?.logs || [];
+                    logEntries = logs;
+                    
+                    const countEl = document.getElementById('logCount');
+                    if (countEl) countEl.textContent = logs.length;
+                    
+                    if (logs.length === 0) {
+                        consoleEl.innerHTML = `<div class="console-empty">📭 هیچ لاگی ثبت نشده است</div>`;
+                        return;
+                    }
+                    
+                    let html = '';
+                    // نمایش آخرین ۵۰ لاگ به ترتیب معکوس (جدیدترین اول)
+                    const displayLogs = logs.slice(-50).reverse();
+                    displayLogs.forEach(log => {
+                        let cls = 'info';
+                        let text = log;
+                        if (log.includes('✅')) cls = 'success';
+                        else if (log.includes('❌')) cls = 'error';
+                        else if (log.includes('⚠️')) cls = 'warning';
+                        else if (log.includes('⏹️')) cls = 'stopped';
+                        
+                        // استخراج زمان از لاگ
+                        let time = '';
+                        const timeMatch = log.match(/\[([^\]]+)\]/);
+                        if (timeMatch) {
+                            time = timeMatch[1];
+                            text = log.replace(timeMatch[0], '').trim();
+                        }
+                        
+                        const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        
+                        html += `
+                            <div class="log-entry ${cls}">
+                                <span class="log-text">${escapedText}</span>
+                                <span class="log-time">${time}</span>
+                                <span class="log-actions">
+                                    <button class="copy-btn" onclick="copyLog('${escapedText.replace(/'/g, "\\'")}')" title="کپی">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </span>
+                            </div>
+                        `;
+                    });
+                    consoleEl.innerHTML = html;
+                    consoleEl.scrollTop = 0;
+                })
+                .catch(() => {
+                    consoleEl.innerHTML = `<div class="log-entry error"><span class="log-text">❌ خطا در دریافت لاگ</span></div>`;
+                });
+        }
+
+        // ============================================================
+        // کپی یک لاگ
+        // ============================================================
+        function copyLog(text) {
+            const plainText = text.replace(/<[^>]*>/g, '').trim();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(plainText).then(() => {
+                    showToast('📋 لاگ کپی شد!', 'success');
+                }).catch(() => {
+                    fallbackCopyLog(plainText);
+                });
+            } else {
+                fallbackCopyLog(plainText);
+            }
+        }
+
+        function fallbackCopyLog(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('📋 لاگ کپی شد!', 'success');
+            } catch {
+                showToast('❌ کپی نشد!', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // ============================================================
+        // کپی همه لاگ‌ها
+        // ============================================================
+        function copyAllLogs() {
+            if (logEntries.length === 0) {
+                showToast('📭 لاگی برای کپی وجود ندارد', 'warning');
+                return;
+            }
+            
+            const allText = logEntries.join('\n');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(allText).then(() => {
+                    showToast(`📋 ${logEntries.length} لاگ کپی شد!`, 'success');
+                }).catch(() => {
+                    fallbackCopyLog(allText);
+                });
+            } else {
+                fallbackCopyLog(allText);
+            }
+        }
+
+        // ============================================================
+        // پاک کردن لاگ‌ها
+        // ============================================================
+        function clearLogs() {
+            if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+            
+            fetch('/model/clear-logs', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+                        loadLogs();
+                    } else {
+                        showToast('❌ ' + data.error, 'error');
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ خطا: ' + err.message, 'error');
+                });
+        }
+
+        // ============================================================
         // Toast (نمایش پیام)
         // ============================================================
         function showToast(message, type = 'info') {
-            const colors = {
-                info: '#00d4ff',
-                success: '#00ff88',
-                error: '#ff4444',
-                warning: '#ffaa00'
-            };
+            const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
             toast.textContent = message;
-            Object.assign(toast.style, {
-                position: 'fixed',
-                bottom: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                padding: '12px 28px',
-                background: '#1a2a3a',
-                color: '#e0e6ed',
-                borderRadius: '12px',
-                border: `2px solid ${colors[type] || colors.info}`,
-                boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
-                zIndex: '9999',
-                fontSize: '0.95rem',
-                transition: 'all 0.3s ease',
-                maxWidth: '90%',
-                fontFamily: 'inherit'
-            });
-            document.body.appendChild(toast);
+            container.appendChild(toast);
+            
             setTimeout(() => {
                 toast.style.opacity = '0';
-                setTimeout(() => document.body.removeChild(toast), 300);
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 300);
             }, 3000);
         }
 
@@ -1028,7 +1477,10 @@
 
             // بروزرسانی آمار هر ۱۰ ثانیه
             if (statsInterval) clearInterval(statsInterval);
-            statsInterval = setInterval(loadStats, 10000);
+            statsInterval = setInterval(() => {
+                loadStats();
+                loadLogs();
+            }, 10000);
         });
     </script>
 
