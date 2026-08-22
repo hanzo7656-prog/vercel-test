@@ -16,6 +16,7 @@
             padding: 0;
             background: #0a0e17;
             min-height: 100vh;
+            font-family: 'Vazir', 'Segoe UI', sans-serif;
         }
 
         /* ===== هدر ===== */
@@ -67,6 +68,7 @@
         #userDisplay {
             color: #00d4ff;
             font-size: 0.85rem;
+            font-weight: 500;
         }
 
         .menu-toggle {
@@ -219,6 +221,7 @@
             transition: all 0.3s ease;
             font-family: inherit;
             width: 100%;
+            box-sizing: border-box;
         }
         .form-control:focus {
             outline: none;
@@ -344,7 +347,7 @@
         .table tr:hover td {
             background: rgba(0, 212, 255, 0.03);
         }
-        .table .badge-role {
+        .badge-role {
             display: inline-block;
             padding: 2px 12px;
             border-radius: 20px;
@@ -565,225 +568,7 @@
     ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
-    <script>
-        // ============================================================
-        // بارگذاری منو
-        // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            fetch('/static/nav.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    if (typeof initMenu === 'function') initMenu();
-                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
-                    loadUserInfo();
-                })
-                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
-        }
+    <script src="/static/js/settings.js"></script>
 
-        // ============================================================
-        // متغیرها
-        // ============================================================
-        let statsInterval = null;
-        let uptimeStartTime = null;
-        let uptimeInterval = null;
-        let currentUserRole = 'guest';
-
-        // ============================================================
-        // آپتایم زنده
-        // ============================================================
-        function startUptime(uptimeStr) {
-            if (!uptimeStr) return;
-            const parts = uptimeStr.split(':').map(Number);
-            let totalSeconds = 0;
-            if (parts.length === 3) {
-                totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-            } else if (parts.length === 2) {
-                totalSeconds = parts[0] * 60 + parts[1];
-            } else {
-                totalSeconds = parts[0] || 0;
-            }
-            
-            uptimeStartTime = Date.now() - (totalSeconds * 1000);
-            updateUptimeDisplay();
-            
-            if (uptimeInterval) clearInterval(uptimeInterval);
-            uptimeInterval = setInterval(updateUptimeDisplay, 1000);
-        }
-
-        function updateUptimeDisplay() {
-            const el = document.getElementById('statUptime');
-            if (!el || !uptimeStartTime) return;
-            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
-            el.textContent = formatDuration(elapsed);
-        }
-
-        function formatDuration(seconds) {
-            if (seconds < 60) return `${seconds}ثانیه`;
-            const days = Math.floor(seconds / 86400);
-            seconds -= days * 86400;
-            const hours = Math.floor(seconds / 3600);
-            seconds -= hours * 3600;
-            const minutes = Math.floor(seconds / 60);
-            seconds -= minutes * 60;
-            let parts = [];
-            if (days > 0) parts.push(`${days}روز`);
-            if (hours > 0 || days > 0) parts.push(`${hours}ساعت`);
-            if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}دقیقه`);
-            parts.push(`${seconds}ثانیه`);
-            return parts.join(' ');
-        }
-
-        // ============================================================
-        // بارگذاری اطلاعات کاربر
-        // ============================================================
-        function loadUserInfo() {
-            fetch('/api/user')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const user = data.data;
-                        currentUserRole = user.role || 'guest';
-                        renderUserInfo(user);
-                        
-                        // نمایش بخش مدیریت کاربران برای ادمین
-                        if (user.role === 'admin') {
-                            document.getElementById('usersManagement').style.display = 'block';
-                            loadUsers();
-                        }
-                        
-                        // نمایش نوتیفیکیشن بازیابی
-                        if (user.recovered) {
-                            showToast('⚠️ شما با ایمیل بازیابی وارد شده‌اید. لطفاً رمز عبور و نام کاربری خود را در همین صفحه مشاهده کنید.', 'recovered');
-                        }
-                    }
-                })
-                .catch(() => {
-                    document.getElementById('userInfo').innerHTML = `
-                        <div style="color:#ff4444;text-align:center;padding:20px;">
-                            ❌ خطا در دریافت اطلاعات کاربر
-                        </div>
-                    `;
-                });
-        }
-
-        // ============================================================
-        // رندر اطلاعات کاربر
-        // ============================================================
-        function renderUserInfo(user) {
-            const roleMap = {
-                'admin': '👑 ادمین (مدیر کل)',
-                'vip': '⭐ VIP',
-                'guest': '👤 مهمان'
-            };
-            
-            const roleBadge = document.getElementById('userRoleBadge');
-            if (roleBadge) {
-                roleBadge.textContent = roleMap[user.role] || '👤 مهمان';
-                roleBadge.className = 'badge';
-                if (user.role === 'admin') roleBadge.classList.add('admin');
-            }
-            
-            document.getElementById('userInfo').innerHTML = `
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">
-                    <div class="form-group">
-                        <label>👤 نام کاربری</label>
-                        <input type="text" class="form-control" value="${user.username || '-'}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>🔑 رمز عبور</label>
-                        <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay">
-                        <div style="margin-top:4px;">
-                            <button class="btn btn-xs btn-outline" onclick="togglePassword()">
-                                <i class="fas fa-eye" id="passwordEye"></i> نمایش رمز
-                            </button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>📧 ایمیل</label>
-                        <input type="text" class="form-control" value="${user.recovery_email || '-'}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>📋 نقش</label>
-                        <input type="text" class="form-control" value="${roleMap[user.role] || 'مهمان'}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>📊 وضعیت</label>
-                        <input type="text" class="form-control" value="${user.active ? '✅ فعال' : '❌ غیرفعال'}" readonly>
-                    </div>
-                    <div class="form-group" style="justify-content:flex-end;">
-                        <button class="btn btn-danger btn-sm" onclick="logoutUser()">
-                            <i class="fas fa-sign-out-alt"></i> خروج از حساب
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // ============================================================
-        // نمایش/پنهان کردن رمز عبور
-        // ============================================================
-        let passwordVisible = false;
-
-        function togglePassword() {
-            const input = document.getElementById('passwordDisplay');
-            const eye = document.getElementById('passwordEye');
-            
-            if (passwordVisible) {
-                input.type = 'password';
-                eye.className = 'fas fa-eye';
-                passwordVisible = false;
-            } else {
-                input.type = 'text';
-                eye.className = 'fas fa-eye-slash';
-                passwordVisible = true;
-            }
-        }
-
-        // ============================================================
-        // خروج از حساب
-        // ============================================================
-        function logoutUser() {
-            if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-            
-            fetch('/logout', { method: 'POST' })
-                .then(res => res.json())
-                .then(() => {
-                    window.location.href = '/login';
-                })
-                .catch(() => {
-                    window.location.href = '/login';
-                });
-        }
-
-        // ============================================================
-        // بارگذاری لیست کاربران (فقط ادمین)
-        // ============================================================
-        function loadUsers() {
-            const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>`;
-            
-            fetch('/api/users')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderUsers(data.data);
-                    } else {
-                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ${data.error}</td></tr>`;
-                    }
-                })
-                .catch(() => {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در دریافت کاربران</td></tr>`;
-                });
-        }
-
-        // ============================================================
-        // رندر لیست کاربران
-        // ============================================================
-        function renderUsers(users) {
-            const tbody = document.getElementById('usersTableBody');
-            
-            if (!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>
+</body>
+</html>
