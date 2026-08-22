@@ -1,6 +1,6 @@
 # auth_manager.py
 # ============================================================
-# سیستم احراز هویت و مدیریت کاربران - نسخه بدون هش (تست)
+# سیستم احراز هویت و مدیریت کاربران - نسخه نهایی
 # ============================================================
 
 import os
@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+from functools import wraps
+from flask import request, redirect
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +54,11 @@ class AuthManager:
             self._create_default_users()
     
     def _create_default_users(self):
-        """ایجاد کاربران پیش‌فرض (بدون هش)"""
+        """ایجاد کاربران پیش‌فرض"""
         self._users = {
             "admin": {
                 "username": "admin",
-                "password": "Admin@123",  # ← بدون هش
+                "password": "Admin@123",
                 "role": "admin",
                 "email": "admin@example.com",
                 "active": True,
@@ -90,7 +92,7 @@ class AuthManager:
         self._save_users()
     
     def _save_users(self):
-        """ذخیره کاربران در فایل (بدون هش)"""
+        """ذخیره کاربران در فایل"""
         try:
             users_path = Path("config/users.json")
             users_path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,7 +109,7 @@ class AuthManager:
             logger.error(f"❌ خطا در ذخیره کاربران: {e}")
     
     def login(self, username: str, password: str) -> Dict[str, Any]:
-        """ورود کاربر (بدون هش)"""
+        """ورود کاربر"""
         user = self._users.get(username)
         
         if not user:
@@ -116,11 +118,9 @@ class AuthManager:
         if not user.get("active", True):
             return {"success": False, "error": "حساب کاربری غیرفعال است"}
         
-        # مقایسه مستقیم رمز عبور (بدون هش)
         if user.get("password", "") != password:
             return {"success": False, "error": "نام کاربری یا رمز عبور اشتباه است"}
         
-        # ایجاد نشست (Session)
         session_id = secrets.token_hex(16)
         self._sessions[session_id] = {
             "username": username,
@@ -150,11 +150,15 @@ class AuthManager:
         if not session:
             return None
         
-        # بررسی انقضا
         expires_at = datetime.fromisoformat(session["expires_at"])
         if datetime.now() > expires_at:
             del self._sessions[session_id]
             return None
+        
+        if "role" not in session:
+            user = self._users.get(session["username"])
+            if user:
+                session["role"] = user.get("role", "guest")
         
         return session
     
@@ -258,6 +262,13 @@ class AuthManager:
         
         del self._sessions[f"recovery_{email}"]
         return session.get("username")
+    
+    def get_current_user(self, session_id: str) -> Optional[Dict]:
+        """دریافت کاربر فعلی از روی سشن"""
+        session = self.verify_session(session_id)
+        if not session:
+            return None
+        return self.get_user(session["username"])
 
 
 # ============================================================
@@ -274,9 +285,6 @@ def get_auth() -> AuthManager:
 
 def require_auth(role: str = None):
     """دکوراتور برای محافظت از صفحات"""
-    from functools import wraps
-    from flask import request, redirect
-    
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -284,8 +292,8 @@ def require_auth(role: str = None):
             if not session_id:
                 return redirect('/login')
             
-            auth = get_auth()
-            session = auth.verify_session(session_id)
+            auth_manager = get_auth()
+            session = auth_manager.verify_session(session_id)
             if not session:
                 return redirect('/login')
             
@@ -295,3 +303,11 @@ def require_auth(role: str = None):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def get_current_user_from_request():
+    """دریافت کاربر فعلی از درخواست (برای استفاده در روت‌ها)"""
+    session_id = request.cookies.get('session_id')
+    if not session_id:
+        return None
+    return get_auth().get_current_user(session_id)
