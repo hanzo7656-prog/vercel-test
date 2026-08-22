@@ -307,7 +307,7 @@ class AuthManager:
                     return redirect('/login')
             
                 if role and session.get("role") != role and session.get("role") != "admin":
-                    return "دسترسی غیرمجاز", 403
+                    return redirect('/403')
             
                 return func(*args, **kwargs)
             return wrapper
