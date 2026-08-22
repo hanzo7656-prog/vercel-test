@@ -13,7 +13,7 @@ import threading
 import numpy as np
 import logging
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Queue
 from flask import Flask, jsonify, request
 from api_handler import CoinStatsAPI
@@ -25,8 +25,9 @@ from config import (
     get_system_config,
     get_thresholds
 )
-from auth_manager import get_auth, require_auth
+from auth_manager import get_auth, require_auth, get_current_user_from_request
 import secrets
+
 
 # ============================================================
 # هسته اصلی سیستم
@@ -837,11 +838,10 @@ def login():
     if not username or not password:
         return jsonify({"success": False, "error": "لطفاً نام کاربری و رمز عبور را وارد کنید"}), 400
     
-    auth = get_auth()
-    result = auth.login(username, password)
+    auth_manager = get_auth()
+    result = auth_manager.login(username, password)
     
     if result["success"]:
-        # ایجاد سشن کوکی
         response = jsonify(result)
         response.set_cookie(
             'session_id', 
@@ -849,7 +849,8 @@ def login():
             max_age=86400,
             httponly=True,
             secure=True,
-            samesite='Lax'
+            samesite='Lax',
+            path='/'
         )
         return response
     
@@ -861,11 +862,11 @@ def logout():
     """خروج از حساب"""
     session_id = request.cookies.get('session_id')
     if session_id:
-        auth = get_auth()
-        auth.logout(session_id)
+        auth_manager = get_auth()
+        auth_manager.logout(session_id)
     
     response = jsonify({"success": True, "message": "خروج موفق"})
-    response.delete_cookie('session_id')
+    response.delete_cookie('session_id', path='/')
     return response
 
 
@@ -878,27 +879,23 @@ def recover_password():
     if not email:
         return jsonify({"success": False, "error": "لطفاً ایمیل خود را وارد کنید"}), 400
     
-    auth = get_auth()
-    username = auth.get_user_by_email(email)
+    auth_manager = get_auth()
+    username = auth_manager.get_user_by_email(email)
     
     if not username:
         return jsonify({
             "success": False, 
             "error": "ایمیل یافت نشد",
             "show_support": True,
-            "support_id": "@your_telegram_id"  # ← آیدی تلگرام شما
+            "support_id": "@your_telegram_id"
         }), 404
     
-    # تولید کد بازیابی
-    code = auth.generate_recovery_code(email)
+    code = auth_manager.generate_recovery_code(email)
     
     if code:
-        # TODO: ارسال ایمیل واقعی
-        # فعلاً کد رو توی پاسخ برمیگردونیم (برای تست)
         return jsonify({
             "success": True,
             "message": "کد تایید به ایمیل شما ارسال شد",
-            "code": code,  # برای تست (در تولید حذف کن)
             "email": email
         })
     
@@ -915,23 +912,21 @@ def verify_recovery_code():
     if not email or not code:
         return jsonify({"success": False, "error": "لطفاً ایمیل و کد تایید را وارد کنید"}), 400
     
-    auth = get_auth()
-    username = auth.verify_recovery_code(email, code)
+    auth_manager = get_auth()
+    username = auth_manager.verify_recovery_code(email, code)
     
     if not username:
         return jsonify({"success": False, "error": "کد اشتباه است یا منقضی شده"}), 401
     
-    # ورود خودکار کاربر
-    user = auth.get_user(username)
+    user = auth_manager.get_user(username)
     session_id = secrets.token_hex(16)
     
-    # ایجاد نشست
-    auth._sessions[session_id] = {
+    auth_manager._sessions[session_id] = {
         "username": username,
         "role": user.get("role", "guest"),
         "created_at": datetime.now().isoformat(),
-        "expires_at": (datetime.now() + timedelta(seconds=auth._config.get("session_timeout", 86400))).isoformat(),
-        "recovered": True  # نشانه بازیابی
+        "expires_at": (datetime.now() + timedelta(seconds=auth_manager._config.get("session_timeout", 86400))).isoformat(),
+        "recovered": True
     }
     
     response = jsonify({
@@ -939,9 +934,17 @@ def verify_recovery_code():
         "message": "✅ ورود با بازیابی موفق",
         "username": username,
         "role": user.get("role", "guest"),
-        "recovered": True  # برای نمایش نوتیفیکیشن
+        "recovered": True
     })
-    response.set_cookie('session_id', session_id, max_age=86400, httponly=True, secure=True, samesite='Lax')
+    response.set_cookie(
+        'session_id', 
+        session_id,
+        max_age=86400,
+        httponly=True,
+        secure=True,
+        samesite='Lax',
+        path='/'
+    )
     return response
 
 
@@ -952,12 +955,12 @@ def get_current_user():
     if not session_id:
         return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
     
-    auth = get_auth()
-    session = auth.verify_session(session_id)
+    auth_manager = get_auth()
+    session = auth_manager.verify_session(session_id)
     if not session:
         return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
     
-    user = auth.get_user(session["username"])
+    user = auth_manager.get_user(session["username"])
     if not user:
         return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
     
@@ -965,7 +968,7 @@ def get_current_user():
         "success": True,
         "data": {
             "username": session["username"],
-            "role": session["role"],
+            "role": session.get("role", "guest"),
             "recovered": session.get("recovered", False),
             **user
         }
@@ -979,15 +982,15 @@ def get_users():
     if not session_id:
         return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
     
-    auth = get_auth()
-    session = auth.verify_session(session_id)
+    auth_manager = get_auth()
+    session = auth_manager.verify_session(session_id)
     if not session:
         return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
     
-    if session["role"] != "admin":
+    if session.get("role") != "admin":
         return jsonify({"success": False, "error": "دسترسی غیرمجاز"}), 403
     
-    users = auth.get_all_users()
+    users = auth_manager.get_all_users()
     return jsonify({"success": True, "data": users})
 
 
@@ -998,23 +1001,22 @@ def update_user(username):
     if not session_id:
         return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
     
-    auth = get_auth()
-    session = auth.verify_session(session_id)
+    auth_manager = get_auth()
+    session = auth_manager.verify_session(session_id)
     if not session:
         return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
     
-    if session["role"] != "admin":
+    if session.get("role") != "admin":
         return jsonify({"success": False, "error": "دسترسی غیرمجاز"}), 403
+    
+    if username == "admin":
+        return jsonify({"success": False, "error": "امکان تغییر ادمین وجود ندارد"}), 403
     
     data = request.json
     if not data:
         return jsonify({"success": False, "error": "داده ارسال نشده"}), 400
     
-    # ادمین رو نمیشه تغییر داد
-    if username == "admin":
-        return jsonify({"success": False, "error": "امکان تغییر ادمین وجود ندارد"}), 403
-    
-    if auth.update_user(username, data):
+    if auth_manager.update_user(username, data):
         return jsonify({"success": True, "message": f"کاربر {username} به‌روزرسانی شد"})
     
     return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
