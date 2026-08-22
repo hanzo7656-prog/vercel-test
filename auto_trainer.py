@@ -307,7 +307,7 @@ class AutoTrainer:
             self.stats["last_score"] = round(score, 3)
             
             # ذخیره مدل
-            model.save_model(self.model_path)
+            model.save_model(self.model_path, format='json')
             self.stats["mode"] = "BETA"
             
             self.stats["successful_trainings"] += 1
