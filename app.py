@@ -25,6 +25,9 @@ from config import (
     get_system_config,
     get_thresholds
 )
+
+from auth_manager import get_auth
+import secrets
 # ============================================================
 # هسته اصلی سیستم
 # ============================================================
@@ -811,6 +814,210 @@ def reset_settings():
             "success": False,
             "error": str(e)
         }), 500
+
+
+# ============================================================
+# روت‌های احراز هویت
+# ========================================================= 
+
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    """صفحه ورود"""
+    return send_from_directory('static', 'login.html')
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    """ورود کاربر"""
+    data = request.json
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    
+    if not username or not password:
+        return jsonify({"success": False, "error": "لطفاً نام کاربری و رمز عبور را وارد کنید"}), 400
+    
+    auth = get_auth()
+    result = auth.login(username, password)
+    
+    if result["success"]:
+        # ایجاد سشن کوکی
+        response = jsonify(result)
+        response.set_cookie(
+            'session_id', 
+            result['session_id'],
+            max_age=86400,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+        return response
+    
+    return jsonify(result), 401
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    """خروج از حساب"""
+    session_id = request.cookies.get('session_id')
+    if session_id:
+        auth = get_auth()
+        auth.logout(session_id)
+    
+    response = jsonify({"success": True, "message": "خروج موفق"})
+    response.delete_cookie('session_id')
+    return response
+
+
+@app.route('/recover', methods=['POST'])
+def recover_password():
+    """درخواست بازیابی رمز عبور"""
+    data = request.json
+    email = data.get('email', '').strip()
+    
+    if not email:
+        return jsonify({"success": False, "error": "لطفاً ایمیل خود را وارد کنید"}), 400
+    
+    auth = get_auth()
+    username = auth.get_user_by_email(email)
+    
+    if not username:
+        return jsonify({
+            "success": False, 
+            "error": "ایمیل یافت نشد",
+            "show_support": True,
+            "support_id": "@your_telegram_id"  # ← آیدی تلگرام شما
+        }), 404
+    
+    # تولید کد بازیابی
+    code = auth.generate_recovery_code(email)
+    
+    if code:
+        # TODO: ارسال ایمیل واقعی
+        # فعلاً کد رو توی پاسخ برمیگردونیم (برای تست)
+        return jsonify({
+            "success": True,
+            "message": "کد تایید به ایمیل شما ارسال شد",
+            "code": code,  # برای تست (در تولید حذف کن)
+            "email": email
+        })
+    
+    return jsonify({"success": False, "error": "خطا در ارسال کد تایید"}), 500
+
+
+@app.route('/recover/verify', methods=['POST'])
+def verify_recovery_code():
+    """تایید کد بازیابی"""
+    data = request.json
+    email = data.get('email', '').strip()
+    code = data.get('code', '').strip()
+    
+    if not email or not code:
+        return jsonify({"success": False, "error": "لطفاً ایمیل و کد تایید را وارد کنید"}), 400
+    
+    auth = get_auth()
+    username = auth.verify_recovery_code(email, code)
+    
+    if not username:
+        return jsonify({"success": False, "error": "کد اشتباه است یا منقضی شده"}), 401
+    
+    # ورود خودکار کاربر
+    user = auth.get_user(username)
+    session_id = secrets.token_hex(16)
+    
+    # ایجاد نشست
+    auth._sessions[session_id] = {
+        "username": username,
+        "role": user.get("role", "guest"),
+        "created_at": datetime.now().isoformat(),
+        "expires_at": (datetime.now() + timedelta(seconds=auth._config.get("session_timeout", 86400))).isoformat(),
+        "recovered": True  # نشانه بازیابی
+    }
+    
+    response = jsonify({
+        "success": True,
+        "message": "✅ ورود با بازیابی موفق",
+        "username": username,
+        "role": user.get("role", "guest"),
+        "recovered": True  # برای نمایش نوتیفیکیشن
+    })
+    response.set_cookie('session_id', session_id, max_age=86400, httponly=True, secure=True, samesite='Lax')
+    return response
+
+
+@app.route('/api/user', methods=['GET'])
+def get_current_user():
+    """دریافت اطلاعات کاربر فعلی"""
+    session_id = request.cookies.get('session_id')
+    if not session_id:
+        return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
+    
+    auth = get_auth()
+    session = auth.verify_session(session_id)
+    if not session:
+        return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
+    
+    user = auth.get_user(session["username"])
+    if not user:
+        return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
+    
+    return jsonify({
+        "success": True,
+        "data": {
+            "username": session["username"],
+            "role": session["role"],
+            "recovered": session.get("recovered", False),
+            **user
+        }
+    })
+
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    """دریافت لیست کاربران (فقط ادمین)"""
+    session_id = request.cookies.get('session_id')
+    if not session_id:
+        return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
+    
+    auth = get_auth()
+    session = auth.verify_session(session_id)
+    if not session:
+        return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
+    
+    if session["role"] != "admin":
+        return jsonify({"success": False, "error": "دسترسی غیرمجاز"}), 403
+    
+    users = auth.get_all_users()
+    return jsonify({"success": True, "data": users})
+
+
+@app.route('/api/users/<username>', methods=['PUT'])
+def update_user(username):
+    """به‌روزرسانی کاربر (فقط ادمین)"""
+    session_id = request.cookies.get('session_id')
+    if not session_id:
+        return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
+    
+    auth = get_auth()
+    session = auth.verify_session(session_id)
+    if not session:
+        return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
+    
+    if session["role"] != "admin":
+        return jsonify({"success": False, "error": "دسترسی غیرمجاز"}), 403
+    
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "داده ارسال نشده"}), 400
+    
+    # ادمین رو نمیشه تغییر داد
+    if username == "admin":
+        return jsonify({"success": False, "error": "امکان تغییر ادمین وجود ندارد"}), 403
+    
+    if auth.update_user(username, data):
+        return jsonify({"success": True, "message": f"کاربر {username} به‌روزرسانی شد"})
+    
+    return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
 
 #===============================
 #محل ایمپورت روت های جدید 
