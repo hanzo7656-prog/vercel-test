@@ -1,18 +1,15 @@
 # auth_manager.py
 # ============================================================
-# سیستم احراز هویت و مدیریت کاربران
+# سیستم احراز هویت و مدیریت کاربران - نسخه بدون هش (تست)
 # ============================================================
 
 import os
 import json
-import hashlib
 import secrets
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
-from functools import wraps
-from flask import request, redirect
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +52,11 @@ class AuthManager:
             self._create_default_users()
     
     def _create_default_users(self):
-        """ایجاد کاربران پیش‌فرض"""
+        """ایجاد کاربران پیش‌فرض (بدون هش)"""
         self._users = {
             "admin": {
                 "username": "admin",
-                "password": self._hash_password("hash_8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"),
+                "password": "Admin@123",  # ← بدون هش
                 "role": "admin",
                 "email": "admin@example.com",
                 "active": True,
@@ -92,26 +89,14 @@ class AuthManager:
         }
         self._save_users()
     
-    def _hash_password(self, password: str) -> str:
-        """هش کردن رمز عبور"""
-        if not password:
-            return ""
-        return hashlib.sha256(password.encode()).hexdigest()
-    
     def _save_users(self):
-        """ذخیره کاربران در فایل"""
+        """ذخیره کاربران در فایل (بدون هش)"""
         try:
             users_path = Path("config/users.json")
             users_path.parent.mkdir(parents=True, exist_ok=True)
             
-            users_data = {}
-            for username, user in self._users.items():
-                users_data[username] = user.copy()
-                if user.get("password") and not user["password"].startswith("hash_"):
-                    users_data[username]["password"] = "hash_" + self._hash_password(user["password"])
-            
             data = {
-                "users": users_data,
+                "users": self._users,
                 "settings": self._config
             }
             
@@ -122,7 +107,7 @@ class AuthManager:
             logger.error(f"❌ خطا در ذخیره کاربران: {e}")
     
     def login(self, username: str, password: str) -> Dict[str, Any]:
-        """ورود کاربر"""
+        """ورود کاربر (بدون هش)"""
         user = self._users.get(username)
         
         if not user:
@@ -131,13 +116,11 @@ class AuthManager:
         if not user.get("active", True):
             return {"success": False, "error": "حساب کاربری غیرفعال است"}
         
-        stored_password = user.get("password", "")
-        if stored_password.startswith("hash_"):
-            stored_password = stored_password[5:]
-        
-        if self._hash_password(password) != stored_password:
+        # مقایسه مستقیم رمز عبور (بدون هش)
+        if user.get("password", "") != password:
             return {"success": False, "error": "نام کاربری یا رمز عبور اشتباه است"}
         
+        # ایجاد نشست (Session)
         session_id = secrets.token_hex(16)
         self._sessions[session_id] = {
             "username": username,
@@ -167,6 +150,7 @@ class AuthManager:
         if not session:
             return None
         
+        # بررسی انقضا
         expires_at = datetime.fromisoformat(session["expires_at"])
         if datetime.now() > expires_at:
             del self._sessions[session_id]
@@ -199,9 +183,7 @@ class AuthManager:
             return False
         
         for key, value in data.items():
-            if key == "password" and value:
-                self._users[username]["password"] = "hash_" + self._hash_password(value)
-            elif key != "username":
+            if key != "username":
                 self._users[username][key] = value
         
         self._save_users()
@@ -214,7 +196,7 @@ class AuthManager:
         
         self._users[username] = {
             "username": username,
-            "password": "hash_" + self._hash_password(password) if password else "",
+            "password": password,
             "role": role,
             "email": email,
             "active": True,
@@ -290,12 +272,11 @@ def get_auth() -> AuthManager:
     return auth
 
 
-# ============================================================
-# دکوراتور محافظت از صفحات
-# ============================================================
-
 def require_auth(role: str = None):
     """دکوراتور برای محافظت از صفحات"""
+    from functools import wraps
+    from flask import request, redirect
+    
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
