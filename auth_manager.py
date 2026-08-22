@@ -287,6 +287,31 @@ class AuthManager:
         
         return session.get("username")
 
+    # auth_manager.py - اضافه کردن به انتهای فایل
+
+    def require_auth(role: str = None):
+        """دکوراتور برای محافظت از صفحات"""
+        from functools import wraps
+        from flask import request, redirect
+    
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                session_id = request.cookies.get('session_id')
+                if not session_id:
+                    return redirect('/login')
+            
+                auth = get_auth()
+                session = auth.verify_session(session_id)
+                if not session:
+                    return redirect('/login')
+            
+                if role and session.get("role") != role and session.get("role") != "admin":
+                    return "دسترسی غیرمجاز", 403
+            
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
 
 # ============================================================
 # نمونه Singleton
