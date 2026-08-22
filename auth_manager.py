@@ -11,6 +11,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+from functools import wraps
+from flask import request, redirect
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +104,6 @@ class AuthManager:
             users_path = Path("config/users.json")
             users_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # قبل از ذخیره، رمزها رو هش کن (برای امنیت)
             users_data = {}
             for username, user in self._users.items():
                 users_data[username] = user.copy()
@@ -130,7 +131,6 @@ class AuthManager:
         if not user.get("active", True):
             return {"success": False, "error": "حساب کاربری غیرفعال است"}
         
-        # بررسی رمز عبور
         stored_password = user.get("password", "")
         if stored_password.startswith("hash_"):
             stored_password = stored_password[5:]
@@ -138,7 +138,6 @@ class AuthManager:
         if self._hash_password(password) != stored_password:
             return {"success": False, "error": "نام کاربری یا رمز عبور اشتباه است"}
         
-        # ایجاد نشست (Session)
         session_id = secrets.token_hex(16)
         self._sessions[session_id] = {
             "username": username,
@@ -168,7 +167,6 @@ class AuthManager:
         if not session:
             return None
         
-        # بررسی انقضا
         expires_at = datetime.fromisoformat(session["expires_at"])
         if datetime.now() > expires_at:
             del self._sessions[session_id]
@@ -180,7 +178,6 @@ class AuthManager:
         """دریافت اطلاعات کاربر"""
         user = self._users.get(username)
         if user:
-            # حذف رمز عبور از خروجی
             user_copy = user.copy()
             user_copy.pop("password", None)
             return user_copy
@@ -201,7 +198,6 @@ class AuthManager:
         if username not in self._users:
             return False
         
-        # به‌روزرسانی فیلدها
         for key, value in data.items():
             if key == "password" and value:
                 self._users[username]["password"] = "hash_" + self._hash_password(value)
@@ -245,7 +241,7 @@ class AuthManager:
         return None
     
     def generate_recovery_code(self, email: str) -> Optional[str]:
-        """تولید کد بازیابی و ارسال به ایمیل"""
+        """تولید کد بازیابی"""
         import random
         import string
         
@@ -253,10 +249,8 @@ class AuthManager:
         if not username:
             return None
         
-        # تولید کد ۶ رقمی
         code = ''.join(random.choices(string.digits, k=6))
         
-        # ذخیره کد در نشست موقت
         self._sessions[f"recovery_{email}"] = {
             "code": code,
             "username": username,
@@ -264,7 +258,6 @@ class AuthManager:
             "expires_at": (datetime.now() + timedelta(minutes=5)).isoformat()
         }
         
-        # TODO: ارسال ایمیل (فعلاً فقط کد رو برمیگردونه)
         return code
     
     def verify_recovery_code(self, email: str, code: str) -> Optional[str]:
@@ -273,7 +266,6 @@ class AuthManager:
         if not session:
             return None
         
-        # بررسی انقضا
         expires_at = datetime.fromisoformat(session["expires_at"])
         if datetime.now() > expires_at:
             del self._sessions[f"recovery_{email}"]
@@ -282,36 +274,9 @@ class AuthManager:
         if session.get("code") != code:
             return None
         
-        # حذف کد بعد از استفاده
         del self._sessions[f"recovery_{email}"]
-        
         return session.get("username")
 
-    # auth_manager.py - اضافه کردن به انتهای فایل
-
-    def require_auth(role: str = None):
-        """دکوراتور برای محافظت از صفحات"""
-        from functools import wraps
-        from flask import request, redirect
-    
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                session_id = request.cookies.get('session_id')
-                if not session_id:
-                    return redirect('/login')
-            
-                auth = get_auth()
-                session = auth.verify_session(session_id)
-                if not session:
-                    return redirect('/login')
-            
-                if role and session.get("role") != role and session.get("role") != "admin":
-                    return redirect('/403')
-            
-                return func(*args, **kwargs)
-            return wrapper
-        return decorator
 
 # ============================================================
 # نمونه Singleton
@@ -323,3 +288,29 @@ auth = AuthManager()
 def get_auth() -> AuthManager:
     """دریافت نمونه AuthManager"""
     return auth
+
+
+# ============================================================
+# دکوراتور محافظت از صفحات
+# ============================================================
+
+def require_auth(role: str = None):
+    """دکوراتور برای محافظت از صفحات"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            session_id = request.cookies.get('session_id')
+            if not session_id:
+                return redirect('/login')
+            
+            auth = get_auth()
+            session = auth.verify_session(session_id)
+            if not session:
+                return redirect('/login')
+            
+            if role and session.get("role") != role and session.get("role") != "admin":
+                return redirect('/403')
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
