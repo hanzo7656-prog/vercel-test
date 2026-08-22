@@ -9,6 +9,7 @@
             <span id="statusText">آنلاین</span>
         </div>
         <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+        <span id="userDisplay" style="color:#00d4ff;font-size:0.85rem;"></span>
         <button class="menu-toggle" id="menuToggle" aria-label="منو">
             <i class="fas fa-bars"></i>
         </button>
@@ -25,6 +26,49 @@
     <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
     <div class="menu-divider"></div>
     <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
-    <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a> 
+    <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
     <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
+    <div class="menu-divider"></div>
+    <a href="#" onclick="logout()" style="color:#ff4444;">
+        <i class="fas fa-sign-out-alt"></i> خروج
+    </a>
 </nav>
+
+<script>
+    // ============================================================
+    // نمایش نام کاربری و خروج
+    // ============================================================
+    function loadUserInfo() {
+        fetch('/api/user')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const display = document.getElementById('userDisplay');
+                    const roleMap = {
+                        'admin': '👑 ادمین',
+                        'vip': '⭐ VIP',
+                        'guest': '👤 مهمان'
+                    };
+                    display.textContent = roleMap[data.data.role] || data.data.username;
+                }
+            })
+            .catch(() => {});
+    }
+
+    function logout() {
+        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+        
+        fetch('/logout', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                window.location.href = '/login';
+            })
+            .catch(() => {
+                window.location.href = '/login';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUserInfo();
+    });
+</script>
