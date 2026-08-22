@@ -4,6 +4,7 @@
 # ============================================================
 
 from flask import send_from_directory, render_template_string, redirect
+from auth_manager import require_auth
 from app import app
 
 
