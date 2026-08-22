@@ -75,6 +75,11 @@ def static_files(filename):
 # ============================================================
 # صفحات خطا
 # ============================================================
+@app.route('/403')
+def forbidden_page():
+    """صفحه خطای ۴۰۳"""
+    return send_from_directory('static', '403.html'), 403
+
 
 @app.errorhandler(404)
 def not_found(error):
