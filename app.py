@@ -1020,30 +1020,35 @@ def update_user(username):
     return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
 
 
-# routes.py - بخش صفحات خطا
-
 # ============================================================
 # صفحات خطا
 # ============================================================
 
-@app.route('/404')
-def not_found_page():
-    """صفحه خطای ۴۰۴"""
+@app.errorhandler(404)
+def not_found(error):
+    """صفحه خطای ۴۰۴ - صفحه یافت نشد"""
     return send_from_directory('static', '404.html'), 404
 
 
-@app.route('/403')
-def forbidden_page():
-    """صفحه خطای ۴۰۳"""
+@app.errorhandler(403)
+def forbidden(error):
+    """صفحه خطای ۴۰۳ - دسترسی غیرمجاز"""
     return send_from_directory('static', '403.html'), 403
 
 
-@app.route('/500')
-def internal_error_page():
-    """صفحه خطای ۵۰۰"""
+@app.errorhandler(500)
+def internal_error(error):
+    """صفحه خطای ۵۰۰ - خطای داخلی سرور"""
     return send_from_directory('static', '500.html'), 500
 
 
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """مدیریت تمام خطاهای پیش‌بینی‌نشده"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {error}")
+    return send_from_directory('static', '500.html'), 500
 
 #===============================
 #محل ایمپورت روت های جدید 
