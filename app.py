@@ -25,9 +25,9 @@ from config import (
     get_system_config,
     get_thresholds
 )
-
-from auth_manager import get_auth
+from auth_manager import get_auth, require_auth
 import secrets
+
 # ============================================================
 # هسته اصلی سیستم
 # ============================================================
