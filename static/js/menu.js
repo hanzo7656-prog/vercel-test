@@ -1,5 +1,5 @@
 // ============================================================
-// menu.js - مدیریت منو
+// menu.js - مدیریت منو (بدون دکمه خروج)
 // ============================================================
 
 function initMenu() {
@@ -40,34 +40,5 @@ function initMenu() {
         }
     });
 
-    // ============================================================
-    // دکمه خروج از منو - با همون مکانیک ساده
-    // ============================================================
-    const logoutBtn = document.getElementById('logoutMenuBtn');
-    if (logoutBtn) {
-        // حذف event listener قبلی
-        const newBtn = logoutBtn.cloneNode(true);
-        logoutBtn.parentNode.replaceChild(newBtn, logoutBtn);
-        
-        newBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🚪 Logout from menu');
-            
-            if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-            
-            fetch('/logout', { 
-                method: 'POST',
-                credentials: 'include'
-            })
-            .then(() => {
-                window.location.href = '/login';
-            })
-            .catch(() => {
-                window.location.href = '/login';
-            });
-        });
-    }
-
-    console.log('✅ منو راه‌اندازی شد');
+    console.log('✅ منو راه‌اندازی شد (بدون دکمه خروج)');
 }
