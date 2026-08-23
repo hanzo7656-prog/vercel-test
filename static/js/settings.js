@@ -1,5 +1,5 @@
 // ============================================================
-// settings.js - نسخه ساده و عملیاتی
+// settings.js - نسخه نهایی
 // ============================================================
 
 // ============================================================
@@ -11,11 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     loadNav();
     loadAllData();
     
-    // بروزرسانی هر ۳۰ ثانیه
-    setInterval(() => {
-        loadStats();
-        updateTimestamp();
-    }, 30000);
+    // ⭐ آپدیت ساعت هر ۱ ثانیه (مشکل ۲ حل شد)
+    setInterval(updateTimestamp, 1000);
+    
+    // بروزرسانی آمار هر ۳۰ ثانیه
+    setInterval(loadStats, 30000);
 });
 
 // ============================================================
@@ -64,7 +64,6 @@ function updateTimestamp() {
 function loadStats() {
     console.log('📊 Loading stats...');
     
-    // آمار سیستم
     fetch('/stats', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
@@ -80,11 +79,9 @@ function loadStats() {
         })
         .catch(err => console.error('Stats error:', err));
     
-    // اعتبار
     fetch('/credits', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
-            console.log('💰 Credits data:', data);
             if (data.success) {
                 const el = document.getElementById('statCredits');
                 if (el) el.textContent = data.data?.remaining || 0;
@@ -92,11 +89,9 @@ function loadStats() {
         })
         .catch(() => {});
     
-    // وضعیت مدل
     fetch('/model/status', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
-            console.log('🧠 Model data:', data);
             const el = document.getElementById('statModel');
             if (!el) return;
             
@@ -146,8 +141,10 @@ function loadUserInfo() {
 }
 
 // ============================================================
-// نمایش اطلاعات کاربر
+// نمایش اطلاعات کاربر (با چشم اصلاح شده)
 // ============================================================
+
+let passwordVisible = false;
 
 function renderUserInfo(user) {
     const container = document.getElementById('userInfo');
@@ -169,7 +166,8 @@ function renderUserInfo(user) {
                 <label>🔑 رمز عبور</label>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
-                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" style="white-space:nowrap;padding:6px 12px;">
+                    <!-- ⭐ دکمه چشم با onclick مستقیم (مشکل ۳ حل شد) -->
+                    <button class="btn btn-xs btn-outline" onclick="togglePasswordVisibility()" style="white-space:nowrap;padding:6px 12px;">
                         <i class="fas fa-eye" id="passwordEye"></i>
                     </button>
                 </div>
@@ -179,7 +177,7 @@ function renderUserInfo(user) {
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <span id="userEmailDisplay" style="color:#e0e6ed;padding:10px 14px;background:#0a0e17;border-radius:10px;flex:1;min-width:150px;">${user.recovery_email || '-'}</span>
                     <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید" value="${user.recovery_email || ''}">
-                    <button class="btn btn-xs btn-outline" id="editEmailBtn" onclick="toggleEmailEdit(true)">
+                    <button class="btn btn-xs btn-outline" onclick="toggleEmailEdit(true)">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()">
@@ -203,34 +201,38 @@ function renderUserInfo(user) {
         </div>
     `;
     
-    // اتصال دکمه چشم
-    const toggleBtn = document.getElementById('togglePasswordBtn');
-    if (toggleBtn) {
-        toggleBtn.onclick = togglePasswordVisibility;
+    // ریست کردن وضعیت چشم
+    passwordVisible = false;
+    const eye = document.getElementById('passwordEye');
+    if (eye) {
+        eye.className = 'fas fa-eye';
     }
 }
 
 // ============================================================
-// چشم رمز عبور
+// چشم رمز عبور (مشکل ۳ حل شد - با onclick مستقیم)
 // ============================================================
 
-let passwordVisible = false;
-
 function togglePasswordVisibility() {
-    console.log('🔑 Toggle password');
+    console.log('🔑 Toggle password called');
     const input = document.getElementById('passwordDisplay');
     const eye = document.getElementById('passwordEye');
     
-    if (!input || !eye) return;
+    if (!input || !eye) {
+        console.warn('⚠️ Elements not found!');
+        return;
+    }
     
     if (passwordVisible) {
         input.type = 'password';
         eye.className = 'fas fa-eye';
         passwordVisible = false;
+        console.log('🔒 Password hidden');
     } else {
         input.type = 'text';
         eye.className = 'fas fa-eye-slash';
         passwordVisible = true;
+        console.log('🔓 Password shown');
     }
 }
 
@@ -241,20 +243,20 @@ function togglePasswordVisibility() {
 function toggleEmailEdit(enable) {
     const input = document.getElementById('userEmailInput');
     const display = document.getElementById('userEmailDisplay');
-    const editBtn = document.getElementById('editEmailBtn');
+    const editBtn = document.querySelector('.btn-outline[onclick*="toggleEmailEdit"]');
     const saveBtn = document.getElementById('saveEmailBtn');
     
     if (enable) {
         input.style.display = 'block';
         display.style.display = 'none';
-        editBtn.style.display = 'none';
-        saveBtn.style.display = 'inline-flex';
+        if (editBtn) editBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'inline-flex';
         input.focus();
     } else {
         input.style.display = 'none';
         display.style.display = 'block';
-        editBtn.style.display = 'inline-flex';
-        saveBtn.style.display = 'none';
+        if (editBtn) editBtn.style.display = 'inline-flex';
+        if (saveBtn) saveBtn.style.display = 'none';
     }
 }
 
@@ -288,20 +290,23 @@ function updateUserEmail() {
 }
 
 // ============================================================
-// خروج از حساب (همون مکانیک ساده)
+// خروج از حساب (فقط از اینجا)
 // ============================================================
 
 function logoutUser() {
     console.log('🚪 Logout from settings');
-    if (!confirm('آیا از خروج اطمینان دارید؟')) return;
+    if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
     
-    fetch('/logout', { method: 'POST', credentials: 'include' })
-        .then(() => {
-            window.location.href = '/login';
-        })
-        .catch(() => {
-            window.location.href = '/login';
-        });
+    fetch('/logout', { 
+        method: 'POST',
+        credentials: 'include'
+    })
+    .then(() => {
+        window.location.href = '/login';
+    })
+    .catch(() => {
+        window.location.href = '/login';
+    });
 }
 
 // ============================================================
