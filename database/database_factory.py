@@ -140,13 +140,23 @@ class DatabaseFactory:
         """دریافت همه دیتابیس‌های متصل"""
         return self._databases
     
+    # database/database_factory.py - اصلاح تابع get_health
+
     def get_health(self) -> Dict[str, Any]:
-        """دریافت سلامت همه دیتابیس‌ها"""
+        """دریافت سلامت همه دیتابیس‌ها با اطلاعات کامل"""
         health = {}
         for name, db in self._databases.items():
-            health[name] = db.health_check()
+            base_health = db.health_check()
+            # اضافه کردن اطلاعات بیشتر برای نمایش
+            health[name] = {
+                **base_health,
+                "url": db.config.get("url", ""),
+                "token": db.config.get("token", ""),
+                "type": db.config.get("type", "redis"),
+                "protocol": db.config.get("protocol", "rest")
+            }
         return health
-    
+        
     def add_database(self, name: str, config: Dict[str, Any]) -> bool:
         """افزودن دیتابیس جدید در زمان اجرا"""
         try:
