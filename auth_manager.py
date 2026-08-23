@@ -166,9 +166,7 @@ class AuthManager:
         """دریافت اطلاعات کاربر"""
         user = self._users.get(username)
         if user:
-            user_copy = user.copy()
-            user_copy.pop("password", None)
-            return user_copy
+            return user.copy()
         return None
     
     def get_all_users(self) -> List[Dict]:
