@@ -35,9 +35,6 @@
 </nav>
 
 <script>
-    // ============================================================
-    // نمایش نام کاربری
-    // ============================================================
     function loadUserInfo() {
         fetch('/api/user', { credentials: 'include' })
             .then(res => res.json())
@@ -45,11 +42,7 @@
                 if (data.success) {
                     const display = document.getElementById('userDisplay');
                     if (display) {
-                        const roleMap = {
-                            'admin': '👑 ادمین',
-                            'vip': '⭐ VIP',
-                            'guest': '👤 مهمان'
-                        };
+                        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
                         display.textContent = roleMap[data.data.role] || data.data.username;
                     }
                 }
@@ -57,20 +50,5 @@
             .catch(() => {});
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        loadUserInfo();
-        
-        // اگه menu.js لود نشد، اینجا یه fallback برای خروج بذار
-        const logoutBtn = document.getElementById('logoutMenuBtn');
-        if (logoutBtn && !window._menuInitialized) {
-            console.log('⚠️ menu.js not loaded, using fallback logout');
-            logoutBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-                fetch('/logout', { method: 'POST', credentials: 'include' })
-                    .then(() => window.location.href = '/login')
-                    .catch(() => window.location.href = '/login');
-            });
-        }
-    });
+    document.addEventListener('DOMContentLoaded', loadUserInfo);
 </script>
