@@ -29,43 +29,52 @@
     <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
     <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
     <div class="menu-divider"></div>
-    <a href="#" onclick="logout()" style="color:#ff4444;">
+    <a href="#" onclick="logoutFromMenu(event)" style="color:#ff4444;">
         <i class="fas fa-sign-out-alt"></i> خروج
     </a>
 </nav>
 
 <script>
     // ============================================================
-    // نمایش نام کاربری و خروج
+    // تابع خروج از منو
+    // ============================================================
+    function logoutFromMenu(event) {
+        event.preventDefault();
+        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+        
+        fetch('/logout', { 
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(res => res.json())
+        .then(() => {
+            window.location.href = '/login';
+        })
+        .catch(() => {
+            window.location.href = '/login';
+        });
+    }
+
+    // ============================================================
+    // نمایش نام کاربری
     // ============================================================
     function loadUserInfo() {
-        fetch('/api/user')
+        fetch('/api/user', { credentials: 'include' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     const display = document.getElementById('userDisplay');
-                    const roleMap = {
-                        'admin': '👑 ادمین',
-                        'vip': '⭐ VIP',
-                        'guest': '👤 مهمان'
-                    };
-                    display.textContent = roleMap[data.data.role] || data.data.username;
+                    if (display) {
+                        const roleMap = {
+                            'admin': '👑 ادمین',
+                            'vip': '⭐ VIP',
+                            'guest': '👤 مهمان'
+                        };
+                        display.textContent = roleMap[data.data.role] || data.data.username;
+                    }
                 }
             })
             .catch(() => {});
-    }
-
-    function logout() {
-        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-        
-        fetch('/logout', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                window.location.href = '/login';
-            })
-            .catch(() => {
-                window.location.href = '/login';
-            });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
