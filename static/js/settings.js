@@ -1,5 +1,5 @@
 // ============================================================
-// settings.js - نسخه نهایی
+// settings.js - نسخه نهایی با مکانیسم چشم مثل دیتابیس
 // ============================================================
 
 // ============================================================
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadNav();
     loadAllData();
     
-    // ⭐ آپدیت ساعت هر ۱ ثانیه (مشکل ۲ حل شد)
+    // آپدیت ساعت هر ۱ ثانیه
     setInterval(updateTimestamp, 1000);
     
     // بروزرسانی آمار هر ۳۰ ثانیه
@@ -141,10 +141,8 @@ function loadUserInfo() {
 }
 
 // ============================================================
-// نمایش اطلاعات کاربر (با چشم اصلاح شده)
+// نمایش اطلاعات کاربر (با چشم اصلاح شده مثل دیتابیس)
 // ============================================================
-
-let passwordVisible = false;
 
 function renderUserInfo(user) {
     const container = document.getElementById('userInfo');
@@ -166,8 +164,8 @@ function renderUserInfo(user) {
                 <label>🔑 رمز عبور</label>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
-                    <!-- ⭐ دکمه چشم با onclick مستقیم (مشکل ۳ حل شد) -->
-                    <button class="btn btn-xs btn-outline" onclick="togglePasswordVisibility()" style="white-space:nowrap;padding:6px 12px;">
+                    <!-- ⭐ دکمه چشم با onclick مستقیم (مثل دیتابیس) -->
+                    <button class="btn btn-xs btn-outline" onclick="togglePasswordVisibility()" style="white-space:nowrap;padding:6px 12px;cursor:pointer;">
                         <i class="fas fa-eye" id="passwordEye"></i>
                     </button>
                 </div>
@@ -201,28 +199,38 @@ function renderUserInfo(user) {
         </div>
     `;
     
-    // ریست کردن وضعیت چشم
+    // ریست کردن وضعیت چشم (برای اینکه چشم بسته باشه)
     passwordVisible = false;
+    const input = document.getElementById('passwordDisplay');
     const eye = document.getElementById('passwordEye');
-    if (eye) {
-        eye.className = 'fas fa-eye';
-    }
+    if (input) input.type = 'password';
+    if (eye) eye.className = 'fas fa-eye';
 }
 
 // ============================================================
-// چشم رمز عبور (مشکل ۳ حل شد - با onclick مستقیم)
+// چشم رمز عبور (با مکانیسم مثل دیتابیس - کاملاً مستقل)
 // ============================================================
+
+let passwordVisible = false;
 
 function togglePasswordVisibility() {
     console.log('🔑 Toggle password called');
+    
+    // پیدا کردن مستقیم المنت‌ها (مثل دیتابیس)
     const input = document.getElementById('passwordDisplay');
     const eye = document.getElementById('passwordEye');
     
-    if (!input || !eye) {
-        console.warn('⚠️ Elements not found!');
+    // اگه المنت‌ها وجود نداشتند، خطا ثبت کن و برگرد
+    if (!input) {
+        console.warn('⚠️ passwordDisplay element not found!');
+        return;
+    }
+    if (!eye) {
+        console.warn('⚠️ passwordEye element not found!');
         return;
     }
     
+    // تغییر وضعیت نمایش (همون مکانیسم دیتابیس)
     if (passwordVisible) {
         input.type = 'password';
         eye.className = 'fas fa-eye';
@@ -243,8 +251,10 @@ function togglePasswordVisibility() {
 function toggleEmailEdit(enable) {
     const input = document.getElementById('userEmailInput');
     const display = document.getElementById('userEmailDisplay');
-    const editBtn = document.querySelector('.btn-outline[onclick*="toggleEmailEdit"]');
     const saveBtn = document.getElementById('saveEmailBtn');
+    
+    // پیدا کردن دکمه ویرایش (چون id نداره)
+    const editBtn = document.querySelector('.btn-outline[onclick*="toggleEmailEdit(true)"]');
     
     if (enable) {
         input.style.display = 'block';
@@ -290,7 +300,7 @@ function updateUserEmail() {
 }
 
 // ============================================================
-// خروج از حساب (فقط از اینجا)
+// خروج از حساب
 // ============================================================
 
 function logoutUser() {
