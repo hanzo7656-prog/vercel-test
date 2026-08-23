@@ -12,6 +12,7 @@ const SettingsState = {
     uptimeStartTime: null,
     uptimeInterval: null,
     statsInterval: null,
+    timestampInterval: null,  // ← جدید برای آپدیت ساعت
     isLoaded: false
 };
 
@@ -27,9 +28,15 @@ function initializeSettings() {
     loadNav();
     loadAllData();
     
+    // بروزرسانی آمار هر ۳۰ ثانیه
     SettingsState.statsInterval = setInterval(() => {
         loadStats();
     }, 30000);
+    
+    // بروزرسانی ساعت هر ۱ ثانیه (مشکل ۱)
+    SettingsState.timestampInterval = setInterval(() => {
+        updateTimestamp();
+    }, 1000);
 }
 
 // ============================================================
@@ -250,7 +257,7 @@ function updateUserDisplay(user) {
 }
 
 // ============================================================
-// ۴. رندر اطلاعات کاربر
+// ۴. رندر اطلاعات کاربر (با چشم اصلاح شده)
 // ============================================================
 
 function renderUserInfo(user) {
@@ -273,7 +280,7 @@ function renderUserInfo(user) {
                 <label>🔑 رمز عبور</label>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
-                    <button class="btn btn-xs btn-outline" onclick="togglePasswordVisibility()" style="white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" onclick="togglePasswordVisibility()" style="white-space:nowrap;">
                         <i class="fas fa-eye" id="passwordEye"></i>
                     </button>
                 </div>
@@ -306,6 +313,12 @@ function renderUserInfo(user) {
             </div>
         </div>
     `;
+    
+    // اتصال مجدد دکمه چشم (مشکل ۲)
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (toggleBtn) {
+        toggleBtn.onclick = togglePasswordVisibility;
+    }
 }
 
 // ============================================================
@@ -391,25 +404,33 @@ function loadSettings() {
 }
 
 // ============================================================
-// ۷. چشم رمز عبور
+// ۷. چشم رمز عبور (اصلاح شده - مشکل ۲)
 // ============================================================
 
 let passwordVisible = false;
 
 function togglePasswordVisibility() {
+    console.log('🔑 togglePasswordVisibility called'); // دیباگ
     const input = document.getElementById('passwordDisplay');
     const eye = document.getElementById('passwordEye');
     
-    if (!input || !eye) return;
+    console.log('Input:', input, 'Eye:', eye); // دیباگ
+    
+    if (!input || !eye) {
+        console.warn('⚠️ Element not found!');
+        return;
+    }
     
     if (passwordVisible) {
         input.type = 'password';
         eye.className = 'fas fa-eye';
         passwordVisible = false;
+        console.log('🔒 Password hidden');
     } else {
         input.type = 'text';
         eye.className = 'fas fa-eye-slash';
         passwordVisible = true;
+        console.log('🔓 Password shown');
     }
 }
 
@@ -475,7 +496,7 @@ function updateUserEmail() {
 }
 
 // ============================================================
-// ۹. خروج از حساب
+// ۹. خروج از حساب (صفحه تنظیمات)
 // ============================================================
 
 function logoutUser() {
