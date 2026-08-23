@@ -202,6 +202,7 @@
             font-size: 0.85rem;
             font-family: 'Courier New', monospace;
             width: 100%;
+            box-sizing: border-box;
         }
         .db-card .form-control:disabled {
             opacity: 0.6;
@@ -339,7 +340,7 @@
         }
 
         function loadUserInfo() {
-            fetch('/api/user')
+            fetch('/api/user', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -399,11 +400,10 @@
                 const isConnected = info.connected && info.ping;
                 const statusClass = isConnected ? 'online' : 'offline';
                 const statusText = isConnected ? '✅ متصل' : '❌ قطع';
-                const statusColor = isConnected ? '#00ff88' : '#ff4444';
-
-                // ماسک کردن توکن
+                
+                const url = info.url || 'تنظیم نشده';
                 const token = info.token || '';
-                const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : '••••••••';
+                const maskedToken = token.length > 10 ? token.substring(0, 6) + '••••••••' : (token || '••••••••');
 
                 html += `
                     <div class="db-card">
@@ -414,7 +414,7 @@
 
                         <div class="form-group">
                             <label>📡 آدرس</label>
-                            <input type="text" class="form-control" value="${info.url || '-'}" disabled>
+                            <input type="text" class="form-control" value="${url}" disabled>
                         </div>
 
                         <div class="form-group">
@@ -442,7 +442,6 @@
                 `;
             }
 
-            // دکمه بروزرسانی مجدد
             html += `
                 <div style="text-align:center;margin-top:12px;">
                     <button class="btn btn-primary btn-sm" onclick="loadDbStatus()">
@@ -458,8 +457,10 @@
         // توکن - نمایش/پنهان کردن
         // ============================================================
         function toggleTokenVisibility(name) {
-            const wrapper = document.querySelector(`#token_${name}`).closest('.token-input-wrapper');
-            const input = wrapper.querySelector('.form-control');
+            const input = document.getElementById(`token_${name}`);
+            if (!input) return;
+            
+            const wrapper = input.closest('.token-input-wrapper');
             const btn = wrapper.querySelector('.action-btn');
             const eyeIcon = btn.querySelector('.eye-icon');
             const slashLine = btn.querySelector('.slash-line');
@@ -495,7 +496,8 @@
             if (!input) return;
 
             const token = input.value;
-            const btn = input.closest('.token-input-wrapper').querySelector('.action-btn:last-child');
+            const wrapper = input.closest('.token-input-wrapper');
+            const btn = wrapper.querySelector('.action-btn:last-child');
 
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(token).then(() => {
