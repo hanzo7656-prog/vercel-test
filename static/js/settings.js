@@ -12,7 +12,6 @@ const SettingsState = {
     uptimeStartTime: null,
     uptimeInterval: null,
     statsInterval: null,
-    logInterval: null,
     isLoaded: false
 };
 
@@ -28,7 +27,6 @@ function initializeSettings() {
     loadNav();
     loadAllData();
     
-    // بروزرسانی دوره‌ای
     SettingsState.statsInterval = setInterval(() => {
         loadStats();
     }, 30000);
@@ -282,7 +280,16 @@ function renderUserInfo(user) {
             </div>
             <div class="form-group">
                 <label>📧 ایمیل</label>
-                <input type="text" class="form-control" value="${user.recovery_email || '-'}" readonly>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <span id="userEmailDisplay" style="color:#e0e6ed;padding:10px 14px;background:#0a0e17;border-radius:10px;flex:1;min-width:150px;">${user.recovery_email || '-'}</span>
+                    <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید را وارد کنید" value="${user.recovery_email || ''}">
+                    <button class="btn btn-xs btn-outline" id="editEmailBtn" onclick="toggleEmailEdit(true)" title="ویرایش ایمیل">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()">
+                        <i class="fas fa-save"></i> ذخیره
+                    </button>
+                </div>
             </div>
             <div class="form-group">
                 <label>📋 نقش</label>
@@ -381,11 +388,10 @@ function renderUsers(users) {
 
 function loadSettings() {
     // این تابع در نسخه فعلی فقط نمایشی است
-    // برای نسخه‌های بعدی کامل خواهد شد
 }
 
 // ============================================================
-// ۷. توکن - نمایش/پنهان کردن
+// ۷. چشم رمز عبور
 // ============================================================
 
 let passwordVisible = false;
@@ -408,7 +414,68 @@ function togglePasswordVisibility() {
 }
 
 // ============================================================
-// ۸. خروج از حساب
+// ۸. مدیریت ایمیل
+// ============================================================
+
+function toggleEmailEdit(enable) {
+    const input = document.getElementById('userEmailInput');
+    const display = document.getElementById('userEmailDisplay');
+    const editBtn = document.getElementById('editEmailBtn');
+    const saveBtn = document.getElementById('saveEmailBtn');
+    
+    if (enable) {
+        input.style.display = 'block';
+        display.style.display = 'none';
+        editBtn.style.display = 'none';
+        saveBtn.style.display = 'inline-flex';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        display.style.display = 'block';
+        editBtn.style.display = 'inline-flex';
+        saveBtn.style.display = 'none';
+    }
+}
+
+function updateUserEmail() {
+    const emailInput = document.getElementById('userEmailInput');
+    if (!emailInput) return;
+    
+    const newEmail = emailInput.value.trim();
+    if (!newEmail) {
+        showToast('❌ لطفاً ایمیل را وارد کنید', 'error');
+        return;
+    }
+    
+    if (!newEmail.includes('@') || !newEmail.includes('.')) {
+        showToast('❌ ایمیل نامعتبر است', 'error');
+        return;
+    }
+    
+    fetch('/api/user/email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: newEmail })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('✅ ایمیل با موفقیت به‌روزرسانی شد', 'success');
+            const displayEl = document.getElementById('userEmailDisplay');
+            if (displayEl) displayEl.textContent = newEmail;
+            toggleEmailEdit(false);
+        } else {
+            showToast('❌ ' + data.error, 'error');
+        }
+    })
+    .catch(() => {
+        showToast('❌ خطا در ارتباط با سرور', 'error');
+    });
+}
+
+// ============================================================
+// ۹. خروج از حساب
 // ============================================================
 
 function logoutUser() {
@@ -428,7 +495,7 @@ function logoutUser() {
 }
 
 // ============================================================
-// ۹. توابع کمکی
+// ۱۰. توابع کمکی
 // ============================================================
 
 function updateElement(id, value) {
@@ -460,7 +527,7 @@ function showError(container, message) {
 }
 
 // ============================================================
-// ۱۰. Toast
+// ۱۱. Toast
 // ============================================================
 
 function showToast(message, type = 'info') {
@@ -482,18 +549,17 @@ function showToast(message, type = 'info') {
 }
 
 // ============================================================
-// ۱۱. مدیریت کاربران (عملیات)
+// ۱۲. مدیریت کاربران (عملیات)
 // ============================================================
 
 function toggleUserStatus(username) {
     if (!confirm(`آیا از تغییر وضعیت کاربر ${username} اطمینان دارید؟`)) return;
     
-    // پیدا کردن کاربر و تغییر وضعیت
     fetch(`/api/users/${username}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ active: false }) // فعلاً فقط غیرفعال
+        body: JSON.stringify({ active: false })
     })
     .then(res => res.json())
     .then(data => {
