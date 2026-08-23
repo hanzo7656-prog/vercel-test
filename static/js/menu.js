@@ -1,5 +1,5 @@
 // ============================================================
-// منو - راه‌اندازی بعد از بارگذاری
+// menu.js - مدیریت منو و نویگیشن
 // ============================================================
 
 function initMenu() {
@@ -42,5 +42,83 @@ function initMenu() {
         }
     });
 
+    // ⭐ اتصال دکمه خروج از منو (مشکل اصلی)
+    const logoutLink = document.getElementById('logoutMenuBtn');
+    if (logoutLink) {
+        console.log('✅ Logout button found in menu, attaching event listener');
+        // حذف event listenerهای قبلی
+        const newLogoutLink = logoutLink.cloneNode(true);
+        logoutLink.parentNode.replaceChild(newLogoutLink, logoutLink);
+        
+        newLogoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🚪 Logout button clicked from menu');
+            
+            if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
+                console.log('❌ User cancelled logout');
+                return;
+            }
+            
+            console.log('✅ User confirmed logout, sending request...');
+            
+            fetch('/logout', { 
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => {
+                console.log('📡 Response status:', res.status);
+                return res.json();
+            })
+            .then(data => {
+                console.log('📡 Response data:', data);
+                window.location.href = '/login';
+            })
+            .catch(err => {
+                console.error('❌ Logout error:', err);
+                window.location.href = '/login';
+            });
+        });
+    } else {
+        console.warn('⚠️ Logout button not found in menu!');
+    }
+
     console.log('✅ منو راه‌اندازی شد');
+}
+
+// ============================================================
+// تابع کمکی برای خروج از منو (در صورت نیاز)
+// ============================================================
+function logoutFromMenu() {
+    console.log('🚪 logoutFromMenu called');
+    
+    if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
+        console.log('❌ User cancelled logout');
+        return;
+    }
+    
+    console.log('✅ User confirmed logout, sending request...');
+    
+    fetch('/logout', { 
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => {
+        console.log('📡 Response status:', res.status);
+        return res.json();
+    })
+    .then(data => {
+        console.log('📡 Response data:', data);
+        window.location.href = '/login';
+    })
+    .catch(err => {
+        console.error('❌ Logout error:', err);
+        window.location.href = '/login';
+    });
 }
