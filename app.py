@@ -715,14 +715,46 @@ def model_clear_logs():
 # روت‌های دیتابیس
 #===================================================================
 
+# app.py - تغییرات
+from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
+
+# ============================================================
+# روت سلامت دیتابیس
+# ============================================================
+
 @app.route('/health/database', methods=['GET'])
 def health_database():
-    """بررسی سلامت دیتابیس‌ها"""
+    """بررسی سلامت همه دیتابیس‌ها"""
     return jsonify({
         "success": True,
-        "data": db_health_check(),
+        "data": health_check(),
         "timestamp": datetime.now().isoformat()
     })
+
+# ============================================================
+# استفاده در سیستم
+# ============================================================
+
+# مثال: ذخیره سشن در Redis (کش)
+def save_session(session_id, data):
+    cache = get_cache()
+    if cache:
+        cache.set(f"session_{session_id}", data, 86400)
+
+# مثال: ذخیره کاربر در PostgreSQL (اصلی)
+def save_user(user_data):
+    primary = get_primary()
+    if primary:
+        primary.execute(
+            "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
+            (user_data["username"], user_data["password"], user_data["role"])
+        )
+
+# مثال: ذخیره بک‌آپ در SQLite
+def save_backup(data):
+    backup = get_backup()
+    if backup:
+        backup.execute("INSERT INTO backup (data) VALUES (%s)", (data,))w
 
 # ============================================================
 # روت‌های تنظیمات (Settings API)
