@@ -75,7 +75,7 @@ class TradingSignalSystem:
         logger.info('AutoTrainer started')
 
         # دیتابیس‌ها
-        self.db = get_redis()
+        self.db = get_cache()
         if self.db and self.db.is_connected():
             print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
         else:
