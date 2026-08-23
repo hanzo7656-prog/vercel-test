@@ -19,7 +19,6 @@
             font-family: 'Vazir', 'Segoe UI', sans-serif;
         }
 
-        /* ===== هدر ===== */
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -106,14 +105,12 @@
         }
         .flyout-overlay.open { opacity: 1; pointer-events: all; }
 
-        /* ===== کانتینر اصلی ===== */
         .container {
             max-width: 1100px;
             margin: 0 auto;
             padding: 20px;
         }
 
-        /* ===== هدر صفحه ===== */
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -143,7 +140,6 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* ===== کارت‌ها ===== */
         .settings-card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
             border: 1px solid #1a2a3a;
@@ -200,7 +196,6 @@
             grid-template-columns: 1fr;
         }
 
-        /* ===== فرم ===== */
         .form-group {
             display: flex;
             flex-direction: column;
@@ -259,7 +254,6 @@
             cursor: pointer;
         }
 
-        /* ===== دکمه‌ها ===== */
         .btn {
             display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
             border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
@@ -280,7 +274,6 @@
         .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
         .btn-xs { padding: 4px 10px; font-size: 0.7rem; }
 
-        /* ===== آمار ===== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -323,7 +316,6 @@
         .stats-grid .stat-item .stat-value.danger { color: #ff4444; }
         .stats-grid .stat-item .stat-value.info { color: #00d4ff; }
 
-        /* ===== جدول کاربران ===== */
         .table-wrapper {
             overflow-x: auto;
         }
@@ -360,7 +352,6 @@
         .badge-status.active { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); }
         .badge-status.inactive { background: rgba(255, 68, 68, 0.15); color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.2); }
 
-        /* ===== بارگذاری ===== */
         .loading {
             display: flex;
             flex-direction: column;
@@ -379,7 +370,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ===== Toast ===== */
         .toast-container {
             position: fixed;
             bottom: 24px;
@@ -414,7 +404,6 @@
         .toast.warning { border-color: #ffaa00; }
         .toast.recovered { border-color: #ffaa00; background: #1a1a00; }
 
-        /* ===== ریسپانسیو ===== */
         @media (max-width: 768px) {
             .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
             .container { padding: 12px; }
@@ -564,11 +553,545 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- ============================================================
-    اسکریپت‌ها
+    اسکریپت‌ها (همه چیز اینجاست)
     ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
-    <script src="/static/js/settings.js"></script>
+    
+    <script>
+        // ============================================================
+        // settings.js - همه منطق مستقیم در HTML
+        // ============================================================
+
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Settings page loaded (direct HTML)');
+            loadNav();
+            loadAllData();
+            
+            // آپدیت ساعت هر ۱ ثانیه
+            setInterval(updateTimestamp, 1000);
+            
+            // بروزرسانی آمار هر ۳۰ ثانیه
+            setInterval(loadStats, 30000);
+        });
+
+        // ============================================================
+        // بارگذاری منو
+        // ============================================================
+
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    loadUserInfo();
+                })
+                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+        }
+
+        // ============================================================
+        // بارگذاری همه داده‌ها
+        // ============================================================
+
+        function loadAllData() {
+            loadStats();
+            loadUserInfo();
+            updateTimestamp();
+        }
+
+        // ============================================================
+        // آپدیت تاریخ و ساعت (هر ثانیه)
+        // ============================================================
+
+        function updateTimestamp() {
+            const el = document.getElementById('pageTimestamp');
+            if (el) {
+                el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+            }
+        }
+
+        // ============================================================
+        // بارگذاری آمار
+        // ============================================================
+
+        function loadStats() {
+            console.log('📊 Loading stats...');
+            
+            fetch('/stats', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.uptime) {
+                        let uptimeStartTime = null;
+                        let uptimeInterval = null;
+   
+                        function startUptime(uptimeStr) {
+                            if (!uptimeStr) return;
+        
+                            const parts = uptimeStr.split(':').map(Number);
+                            let totalSeconds = 0;
+                            if (parts.length === 3) {
+                                totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                            } else if (parts.length === 2) {
+                                totalSeconds = parts[0] * 60 + parts[1];
+                            } else {
+                                totalSeconds = parts[0] || 0;
+                            }
+    
+                            uptimeStartTime = Date.now() - (totalSeconds * 1000);
+                            updateUptimeDisplay();
+    
+                            if (uptimeInterval) clearInterval(uptimeInterval);
+                            uptimeInterval = setInterval(updateUptimeDisplay, 1000);
+                        }
+
+                        function updateUptimeDisplay() {
+                            const el = document.getElementById('statUptime');
+                            if (!el || !uptimeStartTime) return;
+    
+                            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
+                            el.textContent = formatDuration(elapsed);
+                        }
+
+                        function formatDuration(seconds) {
+                            if (seconds < 60) return `${seconds} ثانیه`;
+                            const days = Math.floor(seconds / 86400);
+                            seconds -= days * 86400;
+                            const hours = Math.floor(seconds / 3600);
+                            seconds -= hours * 3600;
+                            const minutes = Math.floor(seconds / 60);
+                            seconds -= minutes * 60;
+    
+                            const parts = [];
+                            if (days > 0) parts.push(`${days} روز`);
+                            if (hours > 0 || days > 0) parts.push(`${hours} ساعت`);
+                            if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes} دقیقه`);
+                            parts.push(`${seconds} ثانیه`);
+                            return parts.join(' ');
+                        }
+                    
+                    const requests = document.getElementById('statRequests');
+                    if (requests) requests.textContent = data.api_stats?.total_requests || 0;
+                    const cache = document.getElementById('statCache');
+                    if (cache) cache.textContent = data.api_stats?.cache_size || 0;
+                })
+                .catch(err => console.error('Stats error:', err));
+            
+            fetch('/credits', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const el = document.getElementById('statCredits');
+                        if (el) el.textContent = data.data?.remaining || 0;
+                    }
+                })
+                .catch(() => {});
+            
+            fetch('/model/status', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('statModel');
+                    if (!el) return;
+                    
+                    if (data?.is_training) {
+                        el.textContent = '⏳ در حال آموزش...';
+                    } else if (data?.model_exists) {
+                        el.textContent = '✅ فعال';
+                    } else {
+                        el.textContent = '📦 دمو';
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ============================================================
+        // بارگذاری اطلاعات کاربر
+        // ============================================================
+
+        function loadUserInfo() {
+            console.log('👤 Loading user info...');
+            const userInfo = document.getElementById('userInfo');
+            if (!userInfo) return;
+            
+            userInfo.innerHTML = '<div style="text-align:center;padding:20px;color:#7a8fa3;">⏳ در حال بارگذاری...</div>';
+            
+            fetch('/api/user', { credentials: 'include' })
+                .then(res => {
+                    if (res.status === 401) {
+                        window.location.href = '/login';
+                        return null;
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data && data.success) {
+                        renderUserInfo(data.data);
+                        updateUserDisplay(data.data);
+                    } else if (data && !data.success) {
+                        userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ ${data.error}</div>`;
+                    }
+                })
+                .catch(err => {
+                    console.error('User info error:', err);
+                    userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در ارتباط با سرور</div>`;
+                });
+        }
+
+        // ============================================================
+        // نمایش اطلاعات کاربر (با چشم مستقیم)
+        // ============================================================
+
+        let passwordVisible = false;
+
+        function renderUserInfo(user) {
+            const container = document.getElementById('userInfo');
+            if (!container) return;
+            
+            const roleMap = {
+                'admin': '👑 ادمین',
+                'vip': '⭐ VIP',
+                'guest': '👤 مهمان'
+            };
+            
+            container.innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">
+                    <div class="form-group">
+                        <label>👤 نام کاربری</label>
+                        <input type="text" class="form-control" value="${user.username || '-'}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>🔑 رمز عبور</label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
+                            <button class="btn btn-xs btn-outline" onclick="togglePasswordVisibility()" style="white-space:nowrap;padding:6px 12px;cursor:pointer;">
+                                <i class="fas fa-eye" id="passwordEye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>📧 ایمیل</label>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <span id="userEmailDisplay" style="color:#e0e6ed;padding:10px 14px;background:#0a0e17;border-radius:10px;flex:1;min-width:150px;">${user.recovery_email || '-'}</span>
+                            <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید" value="${user.recovery_email || ''}">
+                            <button class="btn btn-xs btn-outline" onclick="toggleEmailEdit(true)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()">
+                                <i class="fas fa-save"></i> ذخیره
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>📋 نقش</label>
+                        <input type="text" class="form-control" value="${roleMap[user.role] || 'مهمان'}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>📊 وضعیت</label>
+                        <input type="text" class="form-control" value="${user.active ? '✅ فعال' : '❌ غیرفعال'}" readonly>
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end;">
+                        <button class="btn btn-danger btn-sm" onclick="logoutUser()">
+                            <i class="fas fa-sign-out-alt"></i> خروج
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // ریست کردن وضعیت چشم
+            passwordVisible = false;
+            const input = document.getElementById('passwordDisplay');
+            const eye = document.getElementById('passwordEye');
+            if (input) input.type = 'password';
+            if (eye) eye.className = 'fas fa-eye';
+        }
+
+        // ============================================================
+        // چشم رمز عبور - مستقیم در HTML
+        // ============================================================
+
+        function togglePasswordVisibility() {
+            console.log('🔑 Toggle password called from HTML');
+            
+            const input = document.getElementById('passwordDisplay');
+            const eye = document.getElementById('passwordEye');
+            
+            if (!input) {
+                console.warn('⚠️ passwordDisplay not found!');
+                return;
+            }
+            if (!eye) {
+                console.warn('⚠️ passwordEye not found!');
+                return;
+            }
+            
+            if (passwordVisible) {
+                input.type = 'password';
+                eye.className = 'fas fa-eye';
+                passwordVisible = false;
+                console.log('🔒 Password hidden');
+            } else {
+                input.type = 'text';
+                eye.className = 'fas fa-eye-slash';
+                passwordVisible = true;
+                console.log('🔓 Password shown');
+            }
+        }
+
+        // ============================================================
+        // ویرایش ایمیل
+        // ============================================================
+
+        function toggleEmailEdit(enable) {
+            const input = document.getElementById('userEmailInput');
+            const display = document.getElementById('userEmailDisplay');
+            const saveBtn = document.getElementById('saveEmailBtn');
+            
+            const editBtn = document.querySelector('.btn-outline[onclick*="toggleEmailEdit(true)"]');
+            
+            if (enable) {
+                input.style.display = 'block';
+                display.style.display = 'none';
+                if (editBtn) editBtn.style.display = 'none';
+                if (saveBtn) saveBtn.style.display = 'inline-flex';
+                input.focus();
+            } else {
+                input.style.display = 'none';
+                display.style.display = 'block';
+                if (editBtn) editBtn.style.display = 'inline-flex';
+                if (saveBtn) saveBtn.style.display = 'none';
+            }
+        }
+
+        function updateUserEmail() {
+            const emailInput = document.getElementById('userEmailInput');
+            if (!emailInput) return;
+            
+            const newEmail = emailInput.value.trim();
+            if (!newEmail || !newEmail.includes('@')) {
+                alert('❌ ایمیل نامعتبر است');
+                return;
+            }
+            
+            fetch('/api/user/email', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: newEmail })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ایمیل به‌روزرسانی شد');
+                    document.getElementById('userEmailDisplay').textContent = newEmail;
+                    toggleEmailEdit(false);
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            })
+            .catch(() => alert('❌ خطا در ارتباط با سرور'));
+        }
+
+        // ============================================================
+        // خروج از حساب
+        // ============================================================
+
+        function logoutUser() {
+            console.log('🚪 Logout from settings');
+            if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+            
+            fetch('/logout', { 
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(() => {
+                window.location.href = '/login';
+            })
+            .catch(() => {
+                window.location.href = '/login';
+            });
+        }
+
+        // ============================================================
+        // نمایش نام کاربری در منو
+        // ============================================================
+
+        function updateUserDisplay(user) {
+            const display = document.getElementById('userDisplay');
+            const badge = document.getElementById('userRoleBadge');
+            
+            if (display) {
+                const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                display.textContent = roleMap[user.role] || user.username;
+            }
+            
+            if (badge) {
+                const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                badge.textContent = roleMap[user.role] || '👤 مهمان';
+            }
+        }
+
+        // ============================================================
+        // مدیریت کاربران (فقط ادمین)
+        // ============================================================
+
+        function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>`;
+            
+            fetch('/api/users', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderUsers(data.data);
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ${data.error}</td></tr>`;
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در دریافت کاربران</td></tr>`;
+                });
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+            
+            if (!users || users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>`;
+                return;
+            }
+            
+            const roleMap = {
+                'admin': '<span class="badge-role admin">👑 ادمین</span>',
+                'vip': '<span class="badge-role vip">⭐ VIP</span>',
+                'guest': '<span class="badge-role guest">👤 مهمان</span>'
+            };
+            
+            let html = '';
+            users.forEach(user => {
+                const isAdmin = user.username === 'admin';
+                const statusBadge = user.active 
+                    ? '<span class="badge-status active">✅ فعال</span>' 
+                    : '<span class="badge-status inactive">⛔ غیرفعال</span>';
+                
+                html += `
+                    <tr>
+                        <td>${user.username}</td>
+                        <td>${roleMap[user.role] || '👤 مهمان'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${user.recovery_email || '-'}</td>
+                        <td>
+                            ${isAdmin ? '<span style="color:#4a5a6a;font-size:0.7rem;">غیرقابل تغییر</span>' : `
+                                <button class="btn btn-xs btn-primary" onclick="toggleUserStatus('${user.username}')" title="تغییر وضعیت">
+                                    <i class="fas fa-power-off"></i>
+                                </button>
+                                <button class="btn btn-xs btn-warning" onclick="changeUserRole('${user.username}')" title="تغییر نقش">
+                                    <i class="fas fa-user-tag"></i>
+                                </button>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        function toggleUserStatus(username) {
+            if (!confirm(`آیا از تغییر وضعیت کاربر ${username} اطمینان دارید؟`)) return;
+            
+            fetch(`/api/users/${username}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ active: false })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`✅ وضعیت کاربر ${username} تغییر کرد`, 'success');
+                    loadUsers();
+                } else {
+                    showToast(`❌ ${data.error}`, 'error');
+                }
+            })
+            .catch(() => {
+                showToast('❌ خطا در تغییر وضعیت کاربر', 'error');
+            });
+        }
+
+        function changeUserRole(username) {
+            const newRole = prompt(`نقش جدید برای کاربر ${username} را وارد کنید:`, 'vip');
+            if (!newRole) return;
+            
+            if (!['admin', 'vip', 'guest'].includes(newRole)) {
+                showToast('❌ نقش نامعتبر است. گزینه‌ها: admin, vip, guest', 'error');
+                return;
+            }
+            
+            fetch(`/api/users/${username}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ role: newRole })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`✅ نقش کاربر ${username} به ${newRole} تغییر کرد`, 'success');
+                    loadUsers();
+                } else {
+                    showToast(`❌ ${data.error}`, 'error');
+                }
+            })
+            .catch(() => {
+                showToast('❌ خطا در تغییر نقش کاربر', 'error');
+            });
+        }
+
+        // ============================================================
+        // Toast
+        // ============================================================
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const colors = {
+                info: '#00d4ff',
+                success: '#00ff88',
+                error: '#ff4444',
+                warning: '#ffaa00'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            Object.assign(toast.style, {
+                borderColor: colors[type] || colors.info
+            });
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        console.log('✅ All settings logic loaded from HTML');
+    </script>
 
 </body>
 </html>
