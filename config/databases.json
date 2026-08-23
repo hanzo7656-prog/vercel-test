@@ -1,25 +1,59 @@
 {
     "databases": {
-        "redis_main": {
-            "type": "redis",
-            "protocol": "rest",
-            "url": "${REDIS_MAIN_URL}",
-            "token": "${REDIS_MAIN_TOKEN}",
-            "description": "دیتابیس اصلی - کش و داده‌های موقت",
-            "enabled": true
-        },
-        "redis_secondary": {
+        "redis": {
             "type": "redis",
             "protocol": "tcp",
-            "url": "${REDIS_SECONDARY_URL}",
-            "description": "دیتابیس ثانویه - برای آینده",
-            "enabled": false
+            "host": "redis-001-ripe-port.cloud.layerbase.dev",
+            "port": 6379,
+            "password": "8ernhlYazyo6HRmX7gIsZt1w",
+            "ssl": true,
+            "database": 0,
+            "description": "کش و داده‌های سریع",
+            "enabled": true,
+            "roles": ["cache", "session", "temp"]
+        },
+        "postgresql": {
+            "type": "postgresql",
+            "host": "postgresql-001-bow-dwarf.cloud.layerbase.dev",
+            "port": 5432,
+            "user": "postgres",
+            "password": "YNd0ebQlinmPKXizjE6yfdaV",
+            "database": "postgresql_001",
+            "ssl": true,
+            "description": "داده‌های اصلی و ماندگار",
+            "enabled": true,
+            "roles": ["primary", "users", "history", "logs"]
+        },
+        "sqlite": {
+            "type": "sqlite",
+            "host": "sqlite-001-dry-fable.cloud.layerbase.dev",
+            "port": 5432,
+            "user": "layerbase",
+            "password": "kJVd0k4EeOheyX10i98HUDOp",
+            "database": "sqlite_001",
+            "ssl": true,
+            "description": "بک‌آپ و گزارش‌ها",
+            "enabled": true,
+            "roles": ["backup", "reports", "archive"]
         }
     },
-    "default_db": "redis_main",
+    "default_db": "postgresql",
+    "routing": {
+        "users": "postgresql",
+        "predictions": "postgresql",
+        "training_history": "postgresql",
+        "system_logs": "postgresql",
+        "cache": "redis",
+        "session": "redis",
+        "temp_data": "redis",
+        "backup": "sqlite",
+        "reports": "sqlite",
+        "archive": "sqlite"
+    },
     "settings": {
         "cache_ttl": 3600,
         "retry_attempts": 3,
-        "retry_delay": 1
+        "retry_delay": 1,
+        "backup_interval": 86400
     }
 }
