@@ -1028,6 +1028,7 @@ def update_user(username):
 
 
 @app.route('/api/user/email', methods=['PUT'])
+@require_auth()
 def update_user_email():
     """به‌روزرسانی ایمیل کاربر"""
     session_id = request.cookies.get('session_id')
