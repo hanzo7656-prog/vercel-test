@@ -1,43 +1,22 @@
 // ============================================================
-// settings.js - منطق کامل صفحه تنظیمات
+// settings.js - نسخه ساده و عملیاتی
 // ============================================================
-
-// ============================================================
-// حالت‌ها و متغیرها
-// ============================================================
-
-const SettingsState = {
-    currentUser: null,
-    currentRole: 'guest',
-    uptimeStartTime: null,
-    uptimeInterval: null,
-    statsInterval: null,
-    timestampInterval: null,  // ← جدید برای آپدیت ساعت
-    isLoaded: false
-};
 
 // ============================================================
 // راه‌اندازی اولیه
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeSettings();
-});
-
-function initializeSettings() {
+    console.log('🚀 Settings page loaded');
     loadNav();
     loadAllData();
     
-    // بروزرسانی آمار هر ۳۰ ثانیه
-    SettingsState.statsInterval = setInterval(() => {
+    // بروزرسانی هر ۳۰ ثانیه
+    setInterval(() => {
         loadStats();
-    }, 30000);
-    
-    // بروزرسانی ساعت هر ۱ ثانیه (مشکل ۱)
-    SettingsState.timestampInterval = setInterval(() => {
         updateTimestamp();
-    }, 1000);
-}
+    }, 30000);
+});
 
 // ============================================================
 // بارگذاری منو
@@ -52,7 +31,6 @@ function loadNav() {
         .then(html => {
             container.innerHTML = html;
             if (typeof initMenu === 'function') initMenu();
-            if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
             loadUserInfo();
         })
         .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
@@ -64,10 +42,13 @@ function loadNav() {
 
 function loadAllData() {
     loadStats();
-    loadSettings();
     loadUserInfo();
     updateTimestamp();
 }
+
+// ============================================================
+// آپدیت تاریخ و ساعت (هر ثانیه)
+// ============================================================
 
 function updateTimestamp() {
     const el = document.getElementById('pageTimestamp');
@@ -77,135 +58,69 @@ function updateTimestamp() {
 }
 
 // ============================================================
-// ۱. آمار سیستم
+// بارگذاری آمار
 // ============================================================
 
 function loadStats() {
-    // ۱.۱. آمار عمومی
+    console.log('📊 Loading stats...');
+    
+    // آمار سیستم
     fetch('/stats', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
-            if (data.uptime) startUptime(data.uptime);
-            updateElement('statRequests', data.api_stats?.total_requests || 0);
-            updateElement('statCache', data.api_stats?.cache_size || 0);
+            console.log('📊 Stats data:', data);
+            if (data.uptime) {
+                const el = document.getElementById('statUptime');
+                if (el) el.textContent = data.uptime;
+            }
+            const requests = document.getElementById('statRequests');
+            if (requests) requests.textContent = data.api_stats?.total_requests || 0;
+            const cache = document.getElementById('statCache');
+            if (cache) cache.textContent = data.api_stats?.cache_size || 0;
         })
         .catch(err => console.error('Stats error:', err));
     
-    // ۱.۲. اعتبار
+    // اعتبار
     fetch('/credits', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
+            console.log('💰 Credits data:', data);
             if (data.success) {
-                const remaining = data.data?.remaining || 0;
                 const el = document.getElementById('statCredits');
-                if (el) {
-                    el.textContent = remaining.toLocaleString();
-                    el.className = 'stat-value ' + getCreditStatus(remaining);
-                }
-            } else {
-                updateElement('statCredits', '❌');
+                if (el) el.textContent = data.data?.remaining || 0;
             }
         })
-        .catch(() => updateElement('statCredits', '❌'));
+        .catch(() => {});
     
-    // ۱.۳. وضعیت مدل
+    // وضعیت مدل
     fetch('/model/status', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
+            console.log('🧠 Model data:', data);
             const el = document.getElementById('statModel');
             if (!el) return;
             
-            const modelExists = data?.model_exists || false;
-            const isTraining = data?.is_training || false;
-            const mode = data?.stats?.mode || 'DEMO';
-            
-            if (isTraining) {
+            if (data?.is_training) {
                 el.textContent = '⏳ در حال آموزش...';
-                el.className = 'stat-value warning';
-            } else if (modelExists && mode === 'BETA') {
-                el.textContent = '✅ بتا';
-                el.className = 'stat-value success';
-            } else if (modelExists) {
-                el.textContent = '⚠️ فعال';
-                el.className = 'stat-value warning';
+            } else if (data?.model_exists) {
+                el.textContent = '✅ فعال';
             } else {
                 el.textContent = '📦 دمو';
-                el.className = 'stat-value info';
             }
         })
-        .catch(() => {
-            const el = document.getElementById('statModel');
-            if (el) {
-                el.textContent = '❌';
-                el.className = 'stat-value danger';
-            }
-        });
+        .catch(() => {});
 }
 
 // ============================================================
-// ۲. آپتایم زنده
-// ============================================================
-
-function startUptime(uptimeStr) {
-    if (!uptimeStr) return;
-    
-    const totalSeconds = parseUptime(uptimeStr);
-    SettingsState.uptimeStartTime = Date.now() - (totalSeconds * 1000);
-    
-    updateUptimeDisplay();
-    
-    if (SettingsState.uptimeInterval) {
-        clearInterval(SettingsState.uptimeInterval);
-    }
-    SettingsState.uptimeInterval = setInterval(updateUptimeDisplay, 1000);
-}
-
-function parseUptime(uptimeStr) {
-    const parts = uptimeStr.split(':').map(Number);
-    if (parts.length === 3) {
-        return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-        return parts[0] * 60 + parts[1];
-    }
-    return parts[0] || 0;
-}
-
-function updateUptimeDisplay() {
-    const el = document.getElementById('statUptime');
-    if (!el || !SettingsState.uptimeStartTime) return;
-    
-    const elapsed = Math.floor((Date.now() - SettingsState.uptimeStartTime) / 1000);
-    el.textContent = formatDuration(elapsed);
-}
-
-function formatDuration(seconds) {
-    if (seconds < 60) return `${seconds}ثانیه`;
-    
-    const days = Math.floor(seconds / 86400);
-    seconds -= days * 86400;
-    const hours = Math.floor(seconds / 3600);
-    seconds -= hours * 3600;
-    const minutes = Math.floor(seconds / 60);
-    seconds -= minutes * 60;
-    
-    const parts = [];
-    if (days > 0) parts.push(`${days}روز`);
-    if (hours > 0 || days > 0) parts.push(`${hours}ساعت`);
-    if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}دقیقه`);
-    parts.push(`${seconds}ثانیه`);
-    
-    return parts.join(' ');
-}
-
-// ============================================================
-// ۳. اطلاعات کاربر
+// بارگذاری اطلاعات کاربر
 // ============================================================
 
 function loadUserInfo() {
+    console.log('👤 Loading user info...');
     const userInfo = document.getElementById('userInfo');
     if (!userInfo) return;
     
-    showLoading(userInfo);
+    userInfo.innerHTML = '<div style="text-align:center;padding:20px;color:#7a8fa3;">⏳ در حال بارگذاری...</div>';
     
     fetch('/api/user', { credentials: 'include' })
         .then(res => {
@@ -216,90 +131,22 @@ function loadUserInfo() {
             return res.json();
         })
         .then(data => {
+            console.log('👤 User data:', data);
             if (data && data.success) {
-                SettingsState.currentUser = data.data;
-                SettingsState.currentRole = data.data.role || 'guest';
-                
-                updateUserDisplay(data.data);
                 renderUserInfo(data.data);
-                
-                if (data.data.role === 'admin') {
-                    showUsersManagement();
-                    loadUsers();
-                }
-                
-                if (data.data.recovered) {
-                    showToast('⚠️ شما با ایمیل بازیابی وارد شده‌اید. لطفاً رمز عبور و نام کاربری خود را در همین صفحه مشاهده کنید.', 'recovered');
-                }
+                updateUserDisplay(data.data);
             } else if (data && !data.success) {
-                showError(userInfo, data.error || 'خطا در دریافت اطلاعات کاربر');
+                userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ ${data.error}</div>`;
             }
         })
-        .catch(() => {
-            showError(userInfo, 'خطا در ارتباط با سرور');
+        .catch(err => {
+            console.error('User info error:', err);
+            userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در ارتباط با سرور</div>`;
         });
 }
 
-function updateUserDisplay(user) {
-    const display = document.getElementById('userDisplay');
-    const badge = document.getElementById('userRoleBadge');
-    
-    if (display) {
-        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
-        display.textContent = roleMap[user.role] || user.username;
-    }
-    
-    if (badge) {
-        const roleMap = { 'admin': '👑 ادمین (مدیر کل)', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
-        badge.textContent = roleMap[user.role] || '👤 مهمان';
-        badge.className = 'badge' + (user.role === 'admin' ? ' admin' : '');
-    }
-}
-
 // ============================================================
-// ۷. چشم رمز عبور (اصلاح شده - با اتصال مجدد)
-// ============================================================
-
-let passwordVisible = false;
-
-function togglePasswordVisibility() {
-    console.log('🔑 togglePasswordVisibility called');
-    const input = document.getElementById('passwordDisplay');
-    const eye = document.getElementById('passwordEye');
-    
-    console.log('Input:', input, 'Eye:', eye);
-    
-    if (!input || !eye) {
-        console.warn('⚠️ Element not found!');
-        // تلاش برای پیدا کردن مجدد
-        const newInput = document.querySelector('#passwordDisplay');
-        const newEye = document.querySelector('#passwordEye');
-        if (newInput && newEye) {
-            console.log('✅ Found elements with querySelector');
-            togglePasswordVisibilityDirect(newInput, newEye);
-        }
-        return;
-    }
-    
-    togglePasswordVisibilityDirect(input, eye);
-}
-
-function togglePasswordVisibilityDirect(input, eye) {
-    if (passwordVisible) {
-        input.type = 'password';
-        eye.className = 'fas fa-eye';
-        passwordVisible = false;
-        console.log('🔒 Password hidden');
-    } else {
-        input.type = 'text';
-        eye.className = 'fas fa-eye-slash';
-        passwordVisible = true;
-        console.log('🔓 Password shown');
-    }
-}
-
-// ============================================================
-// ۴. رندر اطلاعات کاربر (با اتصال مجدد چشم)
+// نمایش اطلاعات کاربر
 // ============================================================
 
 function renderUserInfo(user) {
@@ -307,7 +154,7 @@ function renderUserInfo(user) {
     if (!container) return;
     
     const roleMap = {
-        'admin': '👑 ادمین (مدیر کل)',
+        'admin': '👑 ادمین',
         'vip': '⭐ VIP',
         'guest': '👤 مهمان'
     };
@@ -322,7 +169,7 @@ function renderUserInfo(user) {
                 <label>🔑 رمز عبور</label>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
-                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" style="white-space:nowrap;font-size:0.8rem;padding:6px 12px;">
+                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" style="white-space:nowrap;padding:6px 12px;">
                         <i class="fas fa-eye" id="passwordEye"></i>
                     </button>
                 </div>
@@ -331,8 +178,8 @@ function renderUserInfo(user) {
                 <label>📧 ایمیل</label>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <span id="userEmailDisplay" style="color:#e0e6ed;padding:10px 14px;background:#0a0e17;border-radius:10px;flex:1;min-width:150px;">${user.recovery_email || '-'}</span>
-                    <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید را وارد کنید" value="${user.recovery_email || ''}">
-                    <button class="btn btn-xs btn-outline" id="editEmailBtn" onclick="toggleEmailEdit(true)" title="ویرایش ایمیل">
+                    <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید" value="${user.recovery_email || ''}">
+                    <button class="btn btn-xs btn-outline" id="editEmailBtn" onclick="toggleEmailEdit(true)">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()">
@@ -350,140 +197,45 @@ function renderUserInfo(user) {
             </div>
             <div class="form-group" style="justify-content:flex-end;">
                 <button class="btn btn-danger btn-sm" onclick="logoutUser()">
-                    <i class="fas fa-sign-out-alt"></i> خروج از حساب
+                    <i class="fas fa-sign-out-alt"></i> خروج
                 </button>
             </div>
         </div>
     `;
     
-    // ⭐ اتصال مجدد دکمه چشم (مشکل اصلی اینجاست)
+    // اتصال دکمه چشم
     const toggleBtn = document.getElementById('togglePasswordBtn');
     if (toggleBtn) {
-        console.log('✅ Toggle button found, attaching event listener');
-        toggleBtn.onclick = function(e) {
-            e.preventDefault();
-            togglePasswordVisibility();
-        };
-    } else {
-        console.warn('⚠️ Toggle button not found!');
+        toggleBtn.onclick = togglePasswordVisibility;
     }
 }
 
 // ============================================================
-// ۵. مدیریت کاربران (فقط ادمین)
-// ============================================================
-
-function showUsersManagement() {
-    const el = document.getElementById('usersManagement');
-    if (el) el.style.display = 'block';
-}
-
-function loadUsers() {
-    const tbody = document.getElementById('usersTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>`;
-    
-    fetch('/api/users', { credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                renderUsers(data.data);
-            } else {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ${data.error}</td></tr>`;
-            }
-        })
-        .catch(() => {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در دریافت کاربران</td></tr>`;
-        });
-}
-
-function renderUsers(users) {
-    const tbody = document.getElementById('usersTableBody');
-    if (!tbody) return;
-    
-    if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>`;
-        return;
-    }
-    
-    const roleMap = {
-        'admin': '<span class="badge-role admin">👑 ادمین</span>',
-        'vip': '<span class="badge-role vip">⭐ VIP</span>',
-        'guest': '<span class="badge-role guest">👤 مهمان</span>'
-    };
-    
-    let html = '';
-    users.forEach(user => {
-        const isAdmin = user.username === 'admin';
-        const statusBadge = user.active 
-            ? '<span class="badge-status active">✅ فعال</span>' 
-            : '<span class="badge-status inactive">⛔ غیرفعال</span>';
-        
-        html += `
-            <tr>
-                <td>${user.username}</td>
-                <td>${roleMap[user.role] || '👤 مهمان'}</td>
-                <td>${statusBadge}</td>
-                <td>${user.recovery_email || '-'}</td>
-                <td>
-                    ${isAdmin ? '<span style="color:#4a5a6a;font-size:0.7rem;">غیرقابل تغییر</span>' : `
-                        <button class="btn btn-xs btn-primary" onclick="toggleUserStatus('${user.username}')" title="تغییر وضعیت">
-                            <i class="fas fa-power-off"></i>
-                        </button>
-                        <button class="btn btn-xs btn-warning" onclick="changeUserRole('${user.username}')" title="تغییر نقش">
-                            <i class="fas fa-user-tag"></i>
-                        </button>
-                    `}
-                </td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
-}
-
-// ============================================================
-// ۶. تنظیمات
-// ============================================================
-
-function loadSettings() {
-    // این تابع در نسخه فعلی فقط نمایشی است
-}
-
-// ============================================================
-// ۷. چشم رمز عبور (اصلاح شده - مشکل ۲)
+// چشم رمز عبور
 // ============================================================
 
 let passwordVisible = false;
 
 function togglePasswordVisibility() {
-    console.log('🔑 togglePasswordVisibility called'); // دیباگ
+    console.log('🔑 Toggle password');
     const input = document.getElementById('passwordDisplay');
     const eye = document.getElementById('passwordEye');
     
-    console.log('Input:', input, 'Eye:', eye); // دیباگ
-    
-    if (!input || !eye) {
-        console.warn('⚠️ Element not found!');
-        return;
-    }
+    if (!input || !eye) return;
     
     if (passwordVisible) {
         input.type = 'password';
         eye.className = 'fas fa-eye';
         passwordVisible = false;
-        console.log('🔒 Password hidden');
     } else {
         input.type = 'text';
         eye.className = 'fas fa-eye-slash';
         passwordVisible = true;
-        console.log('🔓 Password shown');
     }
 }
 
 // ============================================================
-// ۸. مدیریت ایمیل
+// ویرایش ایمیل
 // ============================================================
 
 function toggleEmailEdit(enable) {
@@ -511,13 +263,8 @@ function updateUserEmail() {
     if (!emailInput) return;
     
     const newEmail = emailInput.value.trim();
-    if (!newEmail) {
-        showToast('❌ لطفاً ایمیل را وارد کنید', 'error');
-        return;
-    }
-    
-    if (!newEmail.includes('@') || !newEmail.includes('.')) {
-        showToast('❌ ایمیل نامعتبر است', 'error');
+    if (!newEmail || !newEmail.includes('@')) {
+        alert('❌ ایمیل نامعتبر است');
         return;
     }
     
@@ -530,145 +277,48 @@ function updateUserEmail() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showToast('✅ ایمیل با موفقیت به‌روزرسانی شد', 'success');
-            const displayEl = document.getElementById('userEmailDisplay');
-            if (displayEl) displayEl.textContent = newEmail;
+            alert('✅ ایمیل به‌روزرسانی شد');
+            document.getElementById('userEmailDisplay').textContent = newEmail;
             toggleEmailEdit(false);
         } else {
-            showToast('❌ ' + data.error, 'error');
+            alert('❌ ' + data.error);
         }
     })
-    .catch(() => {
-        showToast('❌ خطا در ارتباط با سرور', 'error');
-    });
+    .catch(() => alert('❌ خطا در ارتباط با سرور'));
 }
 
 // ============================================================
-// ۹. خروج از حساب (صفحه تنظیمات)
+// خروج از حساب (همون مکانیک ساده)
 // ============================================================
 
 function logoutUser() {
-    if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+    console.log('🚪 Logout from settings');
+    if (!confirm('آیا از خروج اطمینان دارید؟')) return;
     
-    fetch('/logout', { 
-        method: 'POST',
-        credentials: 'include'
-    })
-    .then(res => res.json())
-    .then(() => {
-        window.location.href = '/login';
-    })
-    .catch(() => {
-        window.location.href = '/login';
-    });
+    fetch('/logout', { method: 'POST', credentials: 'include' })
+        .then(() => {
+            window.location.href = '/login';
+        })
+        .catch(() => {
+            window.location.href = '/login';
+        });
 }
 
 // ============================================================
-// ۱۰. توابع کمکی
+// نمایش نام کاربری در منو
 // ============================================================
 
-function updateElement(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
-
-function getCreditStatus(remaining) {
-    if (remaining < 100) return 'danger';
-    if (remaining < 500) return 'warning';
-    return 'success';
-}
-
-function showLoading(container) {
-    container.innerHTML = `
-        <div class="loading" style="padding:20px;">
-            <div class="spinner" style="width:30px;height:30px;"></div>
-            <p style="color:#7a8fa3;font-size:0.85rem;">در حال بارگذاری...</p>
-        </div>
-    `;
-}
-
-function showError(container, message) {
-    container.innerHTML = `
-        <div style="color:#ff4444;text-align:center;padding:20px;">
-            ❌ ${message}
-        </div>
-    `;
-}
-
-// ============================================================
-// ۱۱. Toast
-// ============================================================
-
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+function updateUserDisplay(user) {
+    const display = document.getElementById('userDisplay');
+    const badge = document.getElementById('userRoleBadge');
     
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-10px)';
-        setTimeout(() => {
-            if (toast.parentNode) toast.parentNode.removeChild(toast);
-        }, 300);
-    }, 3000);
-}
-
-// ============================================================
-// ۱۲. مدیریت کاربران (عملیات)
-// ============================================================
-
-function toggleUserStatus(username) {
-    if (!confirm(`آیا از تغییر وضعیت کاربر ${username} اطمینان دارید؟`)) return;
-    
-    fetch(`/api/users/${username}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ active: false })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showToast(`✅ وضعیت کاربر ${username} تغییر کرد`, 'success');
-            loadUsers();
-        } else {
-            showToast(`❌ ${data.error}`, 'error');
-        }
-    })
-    .catch(() => {
-        showToast('❌ خطا در تغییر وضعیت کاربر', 'error');
-    });
-}
-
-function changeUserRole(username) {
-    const newRole = prompt(`نقش جدید برای کاربر ${username} را وارد کنید:`, 'vip');
-    if (!newRole) return;
-    
-    if (!['admin', 'vip', 'guest'].includes(newRole)) {
-        showToast('❌ نقش نامعتبر است. گزینه‌ها: admin, vip, guest', 'error');
-        return;
+    if (display) {
+        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+        display.textContent = roleMap[user.role] || user.username;
     }
     
-    fetch(`/api/users/${username}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ role: newRole })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showToast(`✅ نقش کاربر ${username} به ${newRole} تغییر کرد`, 'success');
-            loadUsers();
-        } else {
-            showToast(`❌ ${data.error}`, 'error');
-        }
-    })
-    .catch(() => {
-        showToast('❌ خطا در تغییر نقش کاربر', 'error');
-    });
+    if (badge) {
+        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+        badge.textContent = roleMap[user.role] || '👤 مهمان';
+    }
 }
