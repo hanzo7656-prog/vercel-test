@@ -725,12 +725,12 @@ from database import get_db, get_db_for, get_cache, get_primary, get_backup, hea
 @app.route('/health/database', methods=['GET'])
 def health_database():
     """بررسی سلامت همه دیتابیس‌ها"""
+    from database import health_check
     return jsonify({
         "success": True,
         "data": health_check(),
         "timestamp": datetime.now().isoformat()
     })
-
 # ============================================================
 # استفاده در سیستم
 # ============================================================
