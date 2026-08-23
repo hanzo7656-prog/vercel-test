@@ -1023,6 +1023,37 @@ def update_user(username):
 
 
 # ============================================================
+# روت برای به‌روزرسانی ایمیل
+# ============================================================
+
+
+@app.route('/api/user/email', methods=['PUT'])
+def update_user_email():
+    """به‌روزرسانی ایمیل کاربر"""
+    session_id = request.cookies.get('session_id')
+    if not session_id:
+        return jsonify({"success": False, "error": "وارد نشده‌اید"}), 401
+    
+    auth_manager = get_auth()
+    session = auth_manager.verify_session(session_id)
+    if not session:
+        return jsonify({"success": False, "error": "نشست منقضی شده"}), 401
+    
+    data = request.json
+    email = data.get('email', '').strip()
+    
+    if not email:
+        return jsonify({"success": False, "error": "لطفاً ایمیل را وارد کنید"}), 400
+    
+    if '@' not in email or '.' not in email:
+        return jsonify({"success": False, "error": "ایمیل نامعتبر است"}), 400
+    
+    username = session["username"]
+    if auth_manager.update_user(username, {"recovery_email": email, "email": email}):
+        return jsonify({"success": True, "message": "ایمیل با موفقیت به‌روزرسانی شد"})
+    
+    return jsonify({"success": False, "error": "خطا در به‌روزرسانی ایمیل"}), 500
+# ============================================================
 # صفحات خطا
 # ============================================================
 
