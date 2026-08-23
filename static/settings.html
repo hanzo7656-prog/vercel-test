@@ -7,432 +7,88 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        /* ============================================================
-           تنظیمات - استایل اختصاصی
-           ============================================================ */
-        
-        body {
-            margin: 0;
-            padding: 0;
-            background: #0a0e17;
-            min-height: 100vh;
-            font-family: 'Vazir', 'Segoe UI', sans-serif;
-        }
-
-        .dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 24px;
-            background: rgba(10, 14, 23, 0.85);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid #1a2a3a;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .dashboard-header .logo {
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #00d4ff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .dashboard-header .status {
-            color: #7a8fa3;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .dashboard-header .status .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #00ff88;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-        .dashboard-header .uptime {
-            color: #4a5a6a;
-            font-size: 0.8rem;
-            font-family: 'Courier New', monospace;
-        }
-        #userDisplay {
-            color: #00d4ff;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .menu-toggle {
-            width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
-            border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
-            cursor: pointer; transition: all 0.3s ease;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; z-index: 200;
-        }
+        body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; font-family: 'Vazir', 'Segoe UI', sans-serif; }
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(10, 14, 23, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid #1a2a3a; position: sticky; top: 0; z-index: 100; }
+        .dashboard-header .logo { font-size: 1.3rem; font-weight: bold; color: #00d4ff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+        .dashboard-header .status { color: #7a8fa3; font-size: 0.85rem; display: flex; align-items: center; gap: 12px; }
+        .dashboard-header .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00ff88; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .dashboard-header .uptime { color: #4a5a6a; font-size: 0.8rem; font-family: 'Courier New', monospace; }
+        #userDisplay { color: #00d4ff; font-size: 0.85rem; font-weight: 500; }
+        .menu-toggle { width: 44px; height: 44px; border-radius: 50%; background: #0d1624; border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; position: relative; z-index: 200; }
         .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
         .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
-
-        .flyout-menu {
-            position: fixed; top: 80px; right: 20px;
-            background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
-            border: 1px solid #1a2a3a; border-radius: 16px; padding: 10px 0;
-            min-width: 200px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            transform: scale(0.8); opacity: 0; pointer-events: none;
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            z-index: 150; transform-origin: top right;
-        }
+        .flyout-menu { position: fixed; top: 80px; right: 20px; background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px); border: 1px solid #1a2a3a; border-radius: 16px; padding: 10px 0; min-width: 200px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); transform: scale(0.8); opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 150; transform-origin: top right; }
         .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
-        .flyout-menu a {
-            display: flex; align-items: center; gap: 12px; padding: 12px 20px;
-            color: #a0b4c8; text-decoration: none; font-size: 0.95rem;
-            transition: all 0.2s ease; border-right: 2px solid transparent;
-        }
+        .flyout-menu a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #a0b4c8; text-decoration: none; font-size: 0.95rem; transition: all 0.2s ease; border-right: 2px solid transparent; }
         .flyout-menu a:hover { background: rgba(0,212,255,0.05); color: #e0e6ed; border-right-color: #00d4ff; }
         .flyout-menu a.active { color: #00d4ff; border-right-color: #00d4ff; background: rgba(0,212,255,0.05); }
         .flyout-menu .menu-divider { height: 1px; background: #1a2a3a; margin: 6px 16px; }
         .flyout-menu .menu-label { padding: 8px 20px 4px; font-size: 0.7rem; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.5px; }
-        .flyout-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 140;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-        }
+        .flyout-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 140; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .flyout-overlay.open { opacity: 1; pointer-events: all; }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .page-header h1 {
-            color: #e0e6ed;
-            font-size: 1.6rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .page-header h1 i {
-            color: #00d4ff;
-        }
-        .page-header .subtitle {
-            color: #7a8fa3;
-            font-size: 0.9rem;
-        }
-        .page-header .timestamp {
-            color: #4a5a6a;
-            font-size: 0.8rem;
-            font-family: 'Courier New', monospace;
-        }
-
-        .settings-card {
-            background: linear-gradient(145deg, #111d2b, #0d1624);
-            border: 1px solid #1a2a3a;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-        }
-        .settings-card:hover {
-            border-color: rgba(0, 212, 255, 0.15);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #0d1624;
-            flex-wrap: wrap;
-        }
-        .card-header i {
-            color: #00d4ff;
-            font-size: 1.2rem;
-            width: 28px;
-        }
-        .card-header h3 {
-            color: #e0e6ed;
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin: 0;
-        }
-        .card-header .badge {
-            font-size: 0.7rem;
-            padding: 2px 12px;
-            border-radius: 20px;
-            background: rgba(0, 212, 255, 0.1);
-            color: #00d4ff;
-            border: 1px solid rgba(0, 212, 255, 0.15);
-            margin-right: auto;
-        }
-        .card-header .badge.admin {
-            background: rgba(255, 170, 0, 0.1);
-            color: #ffaa00;
-            border-color: rgba(255, 170, 0, 0.15);
-        }
-
-        .card-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px 24px;
-        }
-        .card-body.full-width {
-            grid-template-columns: 1fr;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .form-group label {
-            color: #a0b4c8;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .form-control {
-            padding: 10px 14px;
-            background: #0a0e17;
-            border: 1px solid #1a2a3a;
-            border-radius: 10px;
-            color: #e0e6ed;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: #00d4ff;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
-        }
-        .form-control:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .form-control[readonly] {
-            opacity: 0.7;
-            cursor: default;
-        }
-        select.form-control {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d4ff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: left 14px center;
-            padding-left: 36px;
-        }
-        .checkbox-group {
-            flex-direction: row;
-            align-items: center;
-            gap: 10px;
-            padding-top: 6px;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #00d4ff;
-            cursor: pointer;
-        }
-        .checkbox-group label {
-            cursor: pointer;
-        }
-
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px;
-            border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-weight: 500; font-family: inherit;
-            text-decoration: none;
-        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .page-header h1 { color: #e0e6ed; font-size: 1.6rem; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+        .page-header h1 i { color: #00d4ff; }
+        .page-header .subtitle { color: #7a8fa3; font-size: 0.9rem; }
+        .page-header .timestamp { color: #4a5a6a; font-size: 0.8rem; font-family: 'Courier New', monospace; }
+        .settings-card { background: linear-gradient(145deg, #111d2b, #0d1624); border: 1px solid #1a2a3a; border-radius: 16px; padding: 24px; margin-bottom: 20px; transition: all 0.3s ease; }
+        .settings-card:hover { border-color: rgba(0, 212, 255, 0.15); }
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #0d1624; flex-wrap: wrap; }
+        .card-header i { color: #00d4ff; font-size: 1.2rem; width: 28px; }
+        .card-header h3 { color: #e0e6ed; font-size: 1.05rem; font-weight: 600; margin: 0; }
+        .card-header .badge { font-size: 0.7rem; padding: 2px 12px; border-radius: 20px; background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.15); margin-right: auto; }
+        .card-header .badge.admin { background: rgba(255, 170, 0, 0.1); color: #ffaa00; border-color: rgba(255, 170, 0, 0.15); }
+        .card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+        .card-body.full-width { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { color: #a0b4c8; font-size: 0.85rem; font-weight: 500; }
+        .form-control { padding: 10px 14px; background: #0a0e17; border: 1px solid #1a2a3a; border-radius: 10px; color: #e0e6ed; font-size: 0.9rem; transition: all 0.3s ease; font-family: inherit; width: 100%; box-sizing: border-box; }
+        .form-control:focus { outline: none; border-color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.05); }
+        .form-control:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-control[readonly] { opacity: 0.7; cursor: default; }
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300d4ff' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 14px center; padding-left: 36px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); font-weight: 500; font-family: inherit; text-decoration: none; }
         .btn-success { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0e17; }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,255,136,0.3); }
         .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,68,68,0.3); }
         .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
-        .btn-warning { background: linear-gradient(135deg, #ffaa00, #cc8800); color: #0a0e17; }
-        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,170,0,0.3); }
         .btn-outline { background: transparent; border: 1px solid #1a2a3a; color: #7a8fa3; }
         .btn-outline:hover { border-color: #00d4ff; color: #e0e6ed; transform: translateY(-2px); }
         .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
         .btn-xs { padding: 4px 10px; font-size: 0.7rem; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-        }
-        .stats-grid .stat-item {
-            background: #0a0e17;
-            padding: 16px 18px;
-            border-radius: 12px;
-            border: 1px solid #1a2a3a;
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .stats-grid .stat-item:hover {
-            border-color: rgba(0, 212, 255, 0.2);
-            transform: translateY(-2px);
-        }
-        .stats-grid .stat-item .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #00d4ff;
-            font-family: 'Courier New', monospace;
-        }
-        .stats-grid .stat-item .stat-label {
-            color: #7a8fa3;
-            font-size: 0.75rem;
-            margin-top: 4px;
-        }
-        .stats-grid .stat-item .stat-icon {
-            position: absolute;
-            top: 8px;
-            left: 12px;
-            opacity: 0.1;
-            font-size: 1.8rem;
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .stats-grid .stat-item { background: #0a0e17; padding: 16px 18px; border-radius: 12px; border: 1px solid #1a2a3a; text-align: center; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .stats-grid .stat-item:hover { border-color: rgba(0, 212, 255, 0.2); transform: translateY(-2px); }
+        .stats-grid .stat-item .stat-value { font-size: 1.5rem; font-weight: 700; color: #00d4ff; font-family: 'Courier New', monospace; }
+        .stats-grid .stat-item .stat-label { color: #7a8fa3; font-size: 0.75rem; margin-top: 4px; }
+        .stats-grid .stat-item .stat-icon { position: absolute; top: 8px; left: 12px; opacity: 0.1; font-size: 1.8rem; }
         .stats-grid .stat-item .stat-value.success { color: #00ff88; }
         .stats-grid .stat-item .stat-value.warning { color: #ffaa00; }
         .stats-grid .stat-item .stat-value.danger { color: #ff4444; }
         .stats-grid .stat-item .stat-value.info { color: #00d4ff; }
-
-        .table-wrapper {
-            overflow-x: auto;
-        }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .table th {
-            text-align: right;
-            padding: 10px 12px;
-            color: #00d4ff;
-            border-bottom: 2px solid #1a2a3a;
-            font-weight: 600;
-        }
-        .table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #0d1624;
-            color: #c0d0e0;
-        }
-        .table tr:hover td {
-            background: rgba(0, 212, 255, 0.03);
-        }
-        .badge-role {
-            display: inline-block;
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-        .badge-role.admin { background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.2); }
-        .badge-role.vip { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2); }
-        .badge-role.guest { background: rgba(255, 255, 255, 0.05); color: #7a8fa3; border: 1px solid rgba(255, 255, 255, 0.05); }
-        .badge-status.active { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); }
-        .badge-status.inactive { background: rgba(255, 68, 68, 0.15); color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.2); }
-
-        .loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            gap: 16px;
-        }
-        .spinner {
-            width: 44px;
-            height: 44px;
-            border: 4px solid #1a2a3a;
-            border-top: 4px solid #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 16px; }
+        .spinner { width: 44px; height: 44px; border: 4px solid #1a2a3a; border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .toast-container {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: center;
-            pointer-events: none;
-        }
-        .toast {
-            padding: 12px 28px;
-            background: #1a2a3a;
-            color: #e0e6ed;
-            border-radius: 12px;
-            border: 2px solid #00d4ff;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            max-width: 90%;
-            pointer-events: all;
-            animation: slideUp 0.3s ease;
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
+        .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+        .toast { padding: 12px 28px; background: #1a2a3a; color: #e0e6ed; border-radius: 12px; border: 2px solid #00d4ff; box-shadow: 0 4px 30px rgba(0,0,0,0.5); font-size: 0.95rem; transition: all 0.3s ease; max-width: 90%; pointer-events: all; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
         .toast.warning { border-color: #ffaa00; }
-        .toast.recovered { border-color: #ffaa00; background: #1a1a00; }
-
-        @media (max-width: 768px) {
-            .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
-            .container { padding: 12px; }
-            .page-header h1 { font-size: 1.2rem; }
-            .page-header .subtitle { font-size: 0.8rem; }
-            .card-body { grid-template-columns: 1fr; }
-            .flyout-menu { right: 12px; top: 72px; min-width: 170px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-            .table-wrapper { font-size: 0.75rem; }
-        }
-        @media (max-width: 480px) {
-            .dashboard-header .uptime { display: none; }
-            .menu-toggle { width: 38px; height: 38px; font-size: 1rem; }
-            .flyout-menu { right: 8px; top: 64px; min-width: 150px; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .page-header { flex-direction: column; align-items: flex-start; }
-            .page-header .timestamp { font-size: 0.7rem; }
-        }
+        @media (max-width: 768px) { .dashboard-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; } .container { padding: 12px; } .page-header h1 { font-size: 1.2rem; } .card-body { grid-template-columns: 1fr; } .flyout-menu { right: 12px; top: 72px; min-width: 170px; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 480px) { .dashboard-header .uptime { display: none; } .menu-toggle { width: 38px; height: 38px; font-size: 1rem; } .flyout-menu { right: 8px; top: 64px; min-width: 150px; } .stats-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-    <!-- ===== منو ===== -->
     <div id="navContainer"></div>
 
-    <!-- ===== محتوای اصلی ===== -->
     <div class="container">
 
-        <!-- هدر -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-sliders-h"></i> تنظیمات</h1>
@@ -441,7 +97,6 @@
             <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
-        <!-- ===== بخش آمار ===== -->
         <div class="settings-card" id="statsSection">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -477,7 +132,6 @@
             </div>
         </div>
 
-        <!-- ===== بخش حساب کاربری ===== -->
         <div class="settings-card">
             <div class="card-header">
                 <i class="fas fa-user-circle"></i>
@@ -494,7 +148,6 @@
             </div>
         </div>
 
-        <!-- ===== بخش مدیریت کاربران (فقط ادمین) ===== -->
         <div class="settings-card" id="usersManagement" style="display:none;">
             <div class="card-header">
                 <i class="fas fa-users-cog"></i>
@@ -521,7 +174,6 @@
             </div>
         </div>
 
-        <!-- ===== بخش تنظیمات ظاهری ===== -->
         <div class="settings-card">
             <div class="card-header">
                 <i class="fas fa-palette"></i>
@@ -534,7 +186,7 @@
                     <select class="form-control" id="themeSelect">
                         <option value="dark">🌙 تیره</option>
                         <option value="light">☀️ روشن</option>
-                        <option value="auto">🔄 خودکار (بر اساس سیستم)</option>
+                        <option value="auto">🔄 خودکار</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -549,44 +201,31 @@
 
     </div>
 
-    <!-- ===== Toast Container ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- ============================================================
-    اسکریپت‌ها (همه چیز اینجاست)
-    ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
     
     <script>
-        // ============================================================
-        // settings.js - همه منطق مستقیم در HTML
-        // ============================================================
+        console.log('🚀 Settings page loaded');
 
         // ============================================================
         // راه‌اندازی اولیه
         // ============================================================
-
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Settings page loaded (direct HTML)');
+            console.log('✅ DOM loaded');
             loadNav();
             loadAllData();
-            
-            // آپدیت ساعت هر ۱ ثانیه
             setInterval(updateTimestamp, 1000);
-            
-            // بروزرسانی آمار هر ۳۰ ثانیه
             setInterval(loadStats, 30000);
         });
 
         // ============================================================
         // بارگذاری منو
         // ============================================================
-
         function loadNav() {
             const container = document.getElementById('navContainer');
             if (!container) return;
-            
             fetch('/static/nav.html')
                 .then(res => res.text())
                 .then(html => {
@@ -594,13 +233,12 @@
                     if (typeof initMenu === 'function') initMenu();
                     loadUserInfo();
                 })
-                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+                .catch(err => console.error('❌ Nav error:', err));
         }
 
         // ============================================================
         // بارگذاری همه داده‌ها
         // ============================================================
-
         function loadAllData() {
             loadStats();
             loadUserInfo();
@@ -608,82 +246,73 @@
         }
 
         // ============================================================
-        // آپدیت تاریخ و ساعت (هر ثانیه)
+        // آپدیت تاریخ و ساعت
         // ============================================================
-
         function updateTimestamp() {
             const el = document.getElementById('pageTimestamp');
-            if (el) {
-                el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
-            }
+            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+        }
+
+        // ============================================================
+        // آپتایم زنده
+        // ============================================================
+        let uptimeStartTime = null;
+        let uptimeInterval = null;
+
+        function startUptime(uptimeStr) {
+            if (!uptimeStr) return;
+            const parts = uptimeStr.split(':').map(Number);
+            let totalSeconds = 0;
+            if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+            else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
+            else totalSeconds = parts[0] || 0;
+            
+            uptimeStartTime = Date.now() - (totalSeconds * 1000);
+            updateUptimeDisplay();
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            uptimeInterval = setInterval(updateUptimeDisplay, 1000);
+        }
+
+        function updateUptimeDisplay() {
+            const el = document.getElementById('statUptime');
+            if (!el || !uptimeStartTime) return;
+            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
+            el.textContent = formatDuration(elapsed);
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) return seconds + ' ثانیه';
+            const days = Math.floor(seconds / 86400);
+            seconds -= days * 86400;
+            const hours = Math.floor(seconds / 3600);
+            seconds -= hours * 3600;
+            const minutes = Math.floor(seconds / 60);
+            seconds -= minutes * 60;
+            let parts = [];
+            if (days > 0) parts.push(days + ' روز');
+            if (hours > 0 || days > 0) parts.push(hours + ' ساعت');
+            if (minutes > 0 || hours > 0 || days > 0) parts.push(minutes + ' دقیقه');
+            parts.push(seconds + ' ثانیه');
+            return parts.join(' ');
         }
 
         // ============================================================
         // بارگذاری آمار
         // ============================================================
-
         function loadStats() {
             console.log('📊 Loading stats...');
-            
             fetch('/stats', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.uptime) {
-                        let uptimeStartTime = null;
-                        let uptimeInterval = null;
-   
-                        function startUptime(uptimeStr) {
-                            if (!uptimeStr) return;
-        
-                            const parts = uptimeStr.split(':').map(Number);
-                            let totalSeconds = 0;
-                            if (parts.length === 3) {
-                                totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                            } else if (parts.length === 2) {
-                                totalSeconds = parts[0] * 60 + parts[1];
-                            } else {
-                                totalSeconds = parts[0] || 0;
-                            }
-    
-                            uptimeStartTime = Date.now() - (totalSeconds * 1000);
-                            updateUptimeDisplay();
-    
-                            if (uptimeInterval) clearInterval(uptimeInterval);
-                            uptimeInterval = setInterval(updateUptimeDisplay, 1000);
-                        }
-
-                        function updateUptimeDisplay() {
-                            const el = document.getElementById('statUptime');
-                            if (!el || !uptimeStartTime) return;
-    
-                            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
-                            el.textContent = formatDuration(elapsed);
-                        }
-
-                        function formatDuration(seconds) {
-                            if (seconds < 60) return `${seconds} ثانیه`;
-                            const days = Math.floor(seconds / 86400);
-                            seconds -= days * 86400;
-                            const hours = Math.floor(seconds / 3600);
-                            seconds -= hours * 3600;
-                            const minutes = Math.floor(seconds / 60);
-                            seconds -= minutes * 60;
-    
-                            const parts = [];
-                            if (days > 0) parts.push(`${days} روز`);
-                            if (hours > 0 || days > 0) parts.push(`${hours} ساعت`);
-                            if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes} دقیقه`);
-                            parts.push(`${seconds} ثانیه`);
-                            return parts.join(' ');
-                        }
-                    
-                    const requests = document.getElementById('statRequests');
-                    if (requests) requests.textContent = data.api_stats?.total_requests || 0;
+                    console.log('📊 Stats data:', data);
+                    if (data.uptime) startUptime(data.uptime);
+                    const req = document.getElementById('statRequests');
+                    if (req) req.textContent = data.api_stats?.total_requests || 0;
                     const cache = document.getElementById('statCache');
                     if (cache) cache.textContent = data.api_stats?.cache_size || 0;
                 })
                 .catch(err => console.error('Stats error:', err));
-            
+
             fetch('/credits', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
@@ -693,20 +322,15 @@
                     }
                 })
                 .catch(() => {});
-            
+
             fetch('/model/status', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
                     const el = document.getElementById('statModel');
                     if (!el) return;
-                    
-                    if (data?.is_training) {
-                        el.textContent = '⏳ در حال آموزش...';
-                    } else if (data?.model_exists) {
-                        el.textContent = '✅ فعال';
-                    } else {
-                        el.textContent = '📦 دمو';
-                    }
+                    if (data?.is_training) el.textContent = '⏳ در حال آموزش...';
+                    else if (data?.model_exists) el.textContent = '✅ فعال';
+                    else el.textContent = '📦 دمو';
                 })
                 .catch(() => {});
         }
@@ -714,51 +338,41 @@
         // ============================================================
         // بارگذاری اطلاعات کاربر
         // ============================================================
-
         function loadUserInfo() {
             console.log('👤 Loading user info...');
             const userInfo = document.getElementById('userInfo');
             if (!userInfo) return;
-            
             userInfo.innerHTML = '<div style="text-align:center;padding:20px;color:#7a8fa3;">⏳ در حال بارگذاری...</div>';
             
             fetch('/api/user', { credentials: 'include' })
                 .then(res => {
-                    if (res.status === 401) {
-                        window.location.href = '/login';
-                        return null;
-                    }
+                    if (res.status === 401) { window.location.href = '/login'; return null; }
                     return res.json();
                 })
                 .then(data => {
+                    console.log('👤 User data:', data);
                     if (data && data.success) {
                         renderUserInfo(data.data);
                         updateUserDisplay(data.data);
                     } else if (data && !data.success) {
-                        userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ ${data.error}</div>`;
+                        userInfo.innerHTML = '<div style="color:#ff4444;text-align:center;padding:20px;">❌ ' + data.error + '</div>';
                     }
                 })
                 .catch(err => {
                     console.error('User info error:', err);
-                    userInfo.innerHTML = `<div style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در ارتباط با سرور</div>`;
+                    userInfo.innerHTML = '<div style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در ارتباط با سرور</div>';
                 });
         }
 
         // ============================================================
-        // نمایش اطلاعات کاربر (با چشم مستقیم)
+        // نمایش اطلاعات کاربر
         // ============================================================
-
         let passwordVisible = false;
 
         function renderUserInfo(user) {
             const container = document.getElementById('userInfo');
             if (!container) return;
-            
-            const roleMap = {
-                'admin': '👑 ادمین',
-                'vip': '⭐ VIP',
-                'guest': '👤 مهمان'
-            };
+            const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
             
             container.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">
@@ -780,12 +394,8 @@
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                             <span id="userEmailDisplay" style="color:#e0e6ed;padding:10px 14px;background:#0a0e17;border-radius:10px;flex:1;min-width:150px;">${user.recovery_email || '-'}</span>
                             <input type="email" id="userEmailInput" class="form-control" style="display:none;flex:1;min-width:150px;" placeholder="ایمیل جدید" value="${user.recovery_email || ''}">
-                            <button class="btn btn-xs btn-outline" onclick="toggleEmailEdit(true)">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()">
-                                <i class="fas fa-save"></i> ذخیره
-                            </button>
+                            <button class="btn btn-xs btn-outline" onclick="toggleEmailEdit(true)"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-xs btn-success" id="saveEmailBtn" style="display:none;" onclick="updateUserEmail()"><i class="fas fa-save"></i> ذخیره</button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -797,64 +407,50 @@
                         <input type="text" class="form-control" value="${user.active ? '✅ فعال' : '❌ غیرفعال'}" readonly>
                     </div>
                     <div class="form-group" style="justify-content:flex-end;">
-                        <button class="btn btn-danger btn-sm" onclick="logoutUser()">
-                            <i class="fas fa-sign-out-alt"></i> خروج
-                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> خروج</button>
                     </div>
                 </div>
             `;
             
-            // ریست کردن وضعیت چشم
             passwordVisible = false;
             const input = document.getElementById('passwordDisplay');
             const eye = document.getElementById('passwordEye');
             if (input) input.type = 'password';
             if (eye) eye.className = 'fas fa-eye';
+            
+            // اگر ادمین هست، کاربران رو بارگذاری کن
+            if (user.role === 'admin') {
+                document.getElementById('usersManagement').style.display = 'block';
+                loadUsers();
+            }
         }
 
         // ============================================================
-        // چشم رمز عبور - مستقیم در HTML
+        // چشم رمز عبور
         // ============================================================
-
         function togglePasswordVisibility() {
-            console.log('🔑 Toggle password called from HTML');
-            
             const input = document.getElementById('passwordDisplay');
             const eye = document.getElementById('passwordEye');
-            
-            if (!input) {
-                console.warn('⚠️ passwordDisplay not found!');
-                return;
-            }
-            if (!eye) {
-                console.warn('⚠️ passwordEye not found!');
-                return;
-            }
-            
+            if (!input || !eye) return;
             if (passwordVisible) {
                 input.type = 'password';
                 eye.className = 'fas fa-eye';
                 passwordVisible = false;
-                console.log('🔒 Password hidden');
             } else {
                 input.type = 'text';
                 eye.className = 'fas fa-eye-slash';
                 passwordVisible = true;
-                console.log('🔓 Password shown');
             }
         }
 
         // ============================================================
         // ویرایش ایمیل
         // ============================================================
-
         function toggleEmailEdit(enable) {
             const input = document.getElementById('userEmailInput');
             const display = document.getElementById('userEmailDisplay');
             const saveBtn = document.getElementById('saveEmailBtn');
-            
             const editBtn = document.querySelector('.btn-outline[onclick*="toggleEmailEdit(true)"]');
-            
             if (enable) {
                 input.style.display = 'block';
                 display.style.display = 'none';
@@ -872,13 +468,8 @@
         function updateUserEmail() {
             const emailInput = document.getElementById('userEmailInput');
             if (!emailInput) return;
-            
             const newEmail = emailInput.value.trim();
-            if (!newEmail || !newEmail.includes('@')) {
-                alert('❌ ایمیل نامعتبر است');
-                return;
-            }
-            
+            if (!newEmail || !newEmail.includes('@')) { alert('❌ ایمیل نامعتبر است'); return; }
             fetch('/api/user/email', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -901,36 +492,23 @@
         // ============================================================
         // خروج از حساب
         // ============================================================
-
         function logoutUser() {
-            console.log('🚪 Logout from settings');
             if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-            
-            fetch('/logout', { 
-                method: 'POST',
-                credentials: 'include'
-            })
-            .then(() => {
-                window.location.href = '/login';
-            })
-            .catch(() => {
-                window.location.href = '/login';
-            });
+            fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = '/login')
+                .catch(() => window.location.href = '/login');
         }
 
         // ============================================================
-        // نمایش نام کاربری در منو
+        // نمایش نام کاربری
         // ============================================================
-
         function updateUserDisplay(user) {
             const display = document.getElementById('userDisplay');
             const badge = document.getElementById('userRoleBadge');
-            
             if (display) {
                 const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
                 display.textContent = roleMap[user.role] || user.username;
             }
-            
             if (badge) {
                 const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
                 badge.textContent = roleMap[user.role] || '👤 مهمان';
@@ -938,78 +516,54 @@
         }
 
         // ============================================================
-        // مدیریت کاربران (فقط ادمین)
+        // مدیریت کاربران
         // ============================================================
-
         function loadUsers() {
             const tbody = document.getElementById('usersTableBody');
             if (!tbody) return;
-            
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>`;
-            
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>';
             fetch('/api/users', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success) {
-                        renderUsers(data.data);
-                    } else {
-                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ${data.error}</td></tr>`;
-                    }
+                    if (data.success) { renderUsers(data.data); }
+                    else { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ' + data.error + '</td></tr>'; }
                 })
-                .catch(() => {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در دریافت کاربران</td></tr>`;
-                });
+                .catch(() => { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا</td></tr>'; });
         }
 
         function renderUsers(users) {
             const tbody = document.getElementById('usersTableBody');
             if (!tbody) return;
-            
             if (!users || users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">هیچ کاربری یافت نشد</td></tr>';
                 return;
             }
-            
             const roleMap = {
                 'admin': '<span class="badge-role admin">👑 ادمین</span>',
                 'vip': '<span class="badge-role vip">⭐ VIP</span>',
                 'guest': '<span class="badge-role guest">👤 مهمان</span>'
             };
-            
             let html = '';
             users.forEach(user => {
                 const isAdmin = user.username === 'admin';
-                const statusBadge = user.active 
-                    ? '<span class="badge-status active">✅ فعال</span>' 
-                    : '<span class="badge-status inactive">⛔ غیرفعال</span>';
-                
-                html += `
-                    <tr>
-                        <td>${user.username}</td>
-                        <td>${roleMap[user.role] || '👤 مهمان'}</td>
-                        <td>${statusBadge}</td>
-                        <td>${user.recovery_email || '-'}</td>
-                        <td>
-                            ${isAdmin ? '<span style="color:#4a5a6a;font-size:0.7rem;">غیرقابل تغییر</span>' : `
-                                <button class="btn btn-xs btn-primary" onclick="toggleUserStatus('${user.username}')" title="تغییر وضعیت">
-                                    <i class="fas fa-power-off"></i>
-                                </button>
-                                <button class="btn btn-xs btn-warning" onclick="changeUserRole('${user.username}')" title="تغییر نقش">
-                                    <i class="fas fa-user-tag"></i>
-                                </button>
-                            `}
-                        </td>
-                    </tr>
-                `;
+                const statusBadge = user.active ? '<span class="badge-status active">✅ فعال</span>' : '<span class="badge-status inactive">⛔ غیرفعال</span>';
+                html += `<tr>
+                    <td>${user.username}</td>
+                    <td>${roleMap[user.role] || '👤 مهمان'}</td>
+                    <td>${statusBadge}</td>
+                    <td>${user.recovery_email || '-'}</td>
+                    <td>${isAdmin ? '<span style="color:#4a5a6a;font-size:0.7rem;">غیرقابل تغییر</span>' : `
+                        <button class="btn btn-xs btn-primary" onclick="toggleUserStatus('${user.username}')"><i class="fas fa-power-off"></i></button>
+                        <button class="btn btn-xs btn-warning" onclick="changeUserRole('${user.username}')"><i class="fas fa-user-tag"></i></button>
+                    `}</td>
+                </tr>`;
             });
-            
             tbody.innerHTML = html;
         }
 
         function toggleUserStatus(username) {
-            if (!confirm(`آیا از تغییر وضعیت کاربر ${username} اطمینان دارید؟`)) return;
-            
-            fetch(`/api/users/${username}`, {
+            if (!confirm('تغییر وضعیت کاربر ' + username + '؟')) return;
+            fetch('/api/users/' + username, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -1017,28 +571,16 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.success) {
-                    showToast(`✅ وضعیت کاربر ${username} تغییر کرد`, 'success');
-                    loadUsers();
-                } else {
-                    showToast(`❌ ${data.error}`, 'error');
-                }
+                if (data.success) { showToast('✅ وضعیت تغییر کرد', 'success'); loadUsers(); }
+                else { showToast('❌ ' + data.error, 'error'); }
             })
-            .catch(() => {
-                showToast('❌ خطا در تغییر وضعیت کاربر', 'error');
-            });
+            .catch(() => showToast('❌ خطا', 'error'));
         }
 
         function changeUserRole(username) {
-            const newRole = prompt(`نقش جدید برای کاربر ${username} را وارد کنید:`, 'vip');
-            if (!newRole) return;
-            
-            if (!['admin', 'vip', 'guest'].includes(newRole)) {
-                showToast('❌ نقش نامعتبر است. گزینه‌ها: admin, vip, guest', 'error');
-                return;
-            }
-            
-            fetch(`/api/users/${username}`, {
+            const newRole = prompt('نقش جدید برای ' + username + ': (admin, vip, guest)');
+            if (!newRole || !['admin', 'vip', 'guest'].includes(newRole)) return;
+            fetch('/api/users/' + username, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -1046,51 +588,28 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.success) {
-                    showToast(`✅ نقش کاربر ${username} به ${newRole} تغییر کرد`, 'success');
-                    loadUsers();
-                } else {
-                    showToast(`❌ ${data.error}`, 'error');
-                }
+                if (data.success) { showToast('✅ نقش تغییر کرد', 'success'); loadUsers(); }
+                else { showToast('❌ ' + data.error, 'error'); }
             })
-            .catch(() => {
-                showToast('❌ خطا در تغییر نقش کاربر', 'error');
-            });
+            .catch(() => showToast('❌ خطا', 'error'));
         }
 
         // ============================================================
         // Toast
         // ============================================================
-
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             if (!container) return;
-            
-            const colors = {
-                info: '#00d4ff',
-                success: '#00ff88',
-                error: '#ff4444',
-                warning: '#ffaa00'
-            };
-            
+            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ffaa00' };
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.className = 'toast ' + type;
             toast.textContent = message;
-            Object.assign(toast.style, {
-                borderColor: colors[type] || colors.info
-            });
+            toast.style.borderColor = colors[type] || colors.info;
             container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    if (toast.parentNode) toast.parentNode.removeChild(toast);
-                }, 300);
-            }, 3000);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px)'; setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300); }, 3000);
         }
 
-        console.log('✅ All settings logic loaded from HTML');
+        console.log('✅ All settings logic loaded');
     </script>
 
 </body>
