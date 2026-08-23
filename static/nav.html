@@ -29,31 +29,63 @@
     <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
     <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
     <div class="menu-divider"></div>
-    <a href="#" onclick="logoutFromMenu(event)" style="color:#ff4444;">
+    <a href="#" id="logoutMenuBtn" style="color:#ff4444;">
         <i class="fas fa-sign-out-alt"></i> خروج
     </a>
 </nav>
 
 <script>
     // ============================================================
-    // تابع خروج از منو
+    // تابع خروج از منو (اصلاح شده - مشکل ۳)
     // ============================================================
-    function logoutFromMenu(event) {
-        event.preventDefault();
-        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+    function logoutFromMenu() {
+        console.log('🚪 logoutFromMenu called'); // دیباگ
+        
+        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
+            console.log('❌ User cancelled logout');
+            return;
+        }
+        
+        console.log('✅ User confirmed logout, sending request...');
         
         fetch('/logout', { 
             method: 'POST',
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         })
-        .then(res => res.json())
-        .then(() => {
+        .then(res => {
+            console.log('📡 Response status:', res.status);
+            return res.json();
+        })
+        .then(data => {
+            console.log('📡 Response data:', data);
             window.location.href = '/login';
         })
-        .catch(() => {
+        .catch(err => {
+            console.error('❌ Logout error:', err);
             window.location.href = '/login';
         });
     }
+
+    // ============================================================
+    // اتصال دکمه خروج به تابع (مشکل ۳)
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const logoutBtn = document.getElementById('logoutMenuBtn');
+        if (logoutBtn) {
+            console.log('✅ Logout button found, attaching event listener');
+            logoutBtn.onclick = function(e) {
+                e.preventDefault();
+                logoutFromMenu();
+            };
+        } else {
+            console.warn('⚠️ Logout button not found!');
+        }
+        
+        loadUserInfo();
+    });
 
     // ============================================================
     // نمایش نام کاربری
@@ -76,20 +108,4 @@
             })
             .catch(() => {});
     }
-
-    // ============================================================
-    // بارگذاری منو
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        loadUserInfo();
-        
-        // تنظیم کلاس active
-        const currentPath = window.location.pathname;
-        document.querySelectorAll('.flyout-menu a').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPath || (currentPath !== '/' && href === currentPath)) {
-                link.classList.add('active');
-            }
-        });
-    });
 </script>
