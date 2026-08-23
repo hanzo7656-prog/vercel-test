@@ -754,7 +754,7 @@ def save_user(user_data):
 def save_backup(data):
     backup = get_backup()
     if backup:
-        backup.execute("INSERT INTO backup (data) VALUES (%s)", (data,))w
+        backup.execute("INSERT INTO backup (data) VALUES (%s)", (data,))
 
 # ============================================================
 # روت‌های تنظیمات (Settings API)
