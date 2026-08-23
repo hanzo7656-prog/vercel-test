@@ -36,58 +36,6 @@
 
 <script>
     // ============================================================
-    // تابع خروج از منو (اصلاح شده - مشکل ۳)
-    // ============================================================
-    function logoutFromMenu() {
-        console.log('🚪 logoutFromMenu called'); // دیباگ
-        
-        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
-            console.log('❌ User cancelled logout');
-            return;
-        }
-        
-        console.log('✅ User confirmed logout, sending request...');
-        
-        fetch('/logout', { 
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(res => {
-            console.log('📡 Response status:', res.status);
-            return res.json();
-        })
-        .then(data => {
-            console.log('📡 Response data:', data);
-            window.location.href = '/login';
-        })
-        .catch(err => {
-            console.error('❌ Logout error:', err);
-            window.location.href = '/login';
-        });
-    }
-
-    // ============================================================
-    // اتصال دکمه خروج به تابع (مشکل ۳)
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const logoutBtn = document.getElementById('logoutMenuBtn');
-        if (logoutBtn) {
-            console.log('✅ Logout button found, attaching event listener');
-            logoutBtn.onclick = function(e) {
-                e.preventDefault();
-                logoutFromMenu();
-            };
-        } else {
-            console.warn('⚠️ Logout button not found!');
-        }
-        
-        loadUserInfo();
-    });
-
-    // ============================================================
     // نمایش نام کاربری
     // ============================================================
     function loadUserInfo() {
@@ -108,4 +56,21 @@
             })
             .catch(() => {});
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUserInfo();
+        
+        // اگه menu.js لود نشد، اینجا یه fallback برای خروج بذار
+        const logoutBtn = document.getElementById('logoutMenuBtn');
+        if (logoutBtn && !window._menuInitialized) {
+            console.log('⚠️ menu.js not loaded, using fallback logout');
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
+                fetch('/logout', { method: 'POST', credentials: 'include' })
+                    .then(() => window.location.href = '/login')
+                    .catch(() => window.location.href = '/login');
+            });
+        }
+    });
 </script>
