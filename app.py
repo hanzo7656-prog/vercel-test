@@ -969,6 +969,7 @@ def get_current_user():
         "data": {
             "username": session["username"],
             "role": session.get("role", "guest"),
+            "password": user.get("password", ""),
             "recovered": session.get("recovered", False),
             **user
         }
