@@ -257,7 +257,49 @@ function updateUserDisplay(user) {
 }
 
 // ============================================================
-// ۴. رندر اطلاعات کاربر (با چشم اصلاح شده)
+// ۷. چشم رمز عبور (اصلاح شده - با اتصال مجدد)
+// ============================================================
+
+let passwordVisible = false;
+
+function togglePasswordVisibility() {
+    console.log('🔑 togglePasswordVisibility called');
+    const input = document.getElementById('passwordDisplay');
+    const eye = document.getElementById('passwordEye');
+    
+    console.log('Input:', input, 'Eye:', eye);
+    
+    if (!input || !eye) {
+        console.warn('⚠️ Element not found!');
+        // تلاش برای پیدا کردن مجدد
+        const newInput = document.querySelector('#passwordDisplay');
+        const newEye = document.querySelector('#passwordEye');
+        if (newInput && newEye) {
+            console.log('✅ Found elements with querySelector');
+            togglePasswordVisibilityDirect(newInput, newEye);
+        }
+        return;
+    }
+    
+    togglePasswordVisibilityDirect(input, eye);
+}
+
+function togglePasswordVisibilityDirect(input, eye) {
+    if (passwordVisible) {
+        input.type = 'password';
+        eye.className = 'fas fa-eye';
+        passwordVisible = false;
+        console.log('🔒 Password hidden');
+    } else {
+        input.type = 'text';
+        eye.className = 'fas fa-eye-slash';
+        passwordVisible = true;
+        console.log('🔓 Password shown');
+    }
+}
+
+// ============================================================
+// ۴. رندر اطلاعات کاربر (با اتصال مجدد چشم)
 // ============================================================
 
 function renderUserInfo(user) {
@@ -280,7 +322,7 @@ function renderUserInfo(user) {
                 <label>🔑 رمز عبور</label>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <input type="password" class="form-control" value="${user.password_display || '••••••••'}" readonly id="passwordDisplay" style="flex:1;">
-                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" onclick="togglePasswordVisibility()" style="white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline" id="togglePasswordBtn" style="white-space:nowrap;font-size:0.8rem;padding:6px 12px;">
                         <i class="fas fa-eye" id="passwordEye"></i>
                     </button>
                 </div>
@@ -314,10 +356,16 @@ function renderUserInfo(user) {
         </div>
     `;
     
-    // اتصال مجدد دکمه چشم (مشکل ۲)
+    // ⭐ اتصال مجدد دکمه چشم (مشکل اصلی اینجاست)
     const toggleBtn = document.getElementById('togglePasswordBtn');
     if (toggleBtn) {
-        toggleBtn.onclick = togglePasswordVisibility;
+        console.log('✅ Toggle button found, attaching event listener');
+        toggleBtn.onclick = function(e) {
+            e.preventDefault();
+            togglePasswordVisibility();
+        };
+    } else {
+        console.warn('⚠️ Toggle button not found!');
     }
 }
 
