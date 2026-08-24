@@ -1057,6 +1057,7 @@ def update_user(username):
     return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
 
 
+
 # ============================================================
 # روت برای به‌روزرسانی ایمیل
 # ============================================================
@@ -1423,7 +1424,80 @@ def get_sqlite_table_data(table_name):
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-        
+
+
+@app.route('/api/db/search', methods=['GET'])
+def search_databases():
+    """جستجوی یکپارچه در همه دیتابیس‌ها"""
+    from database import get_primary, get_cache, get_backup
+    
+    query = request.args.get('q', '').strip()
+    target = request.args.get('target', 'all')
+    
+    if not query or len(query) < 2:
+        return jsonify({"success": False, "error": "حداقل ۲ کاراکتر وارد کنید"}), 400
+    
+    results = []
+    
+    # جستجو در PostgreSQL
+    if target in ['all', 'postgresql']:
+        pg = get_primary()
+        if pg and pg.is_connected():
+            try:
+                tables = pg.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                for table in tables:
+                    table_name = table['table_name']
+                    data = pg.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
+                    for row in data:
+                        results.append({
+                            'database': 'PostgreSQL',
+                            'type': 'table',
+                            'table': table_name,
+                            'content': str(row)
+                        })
+            except:
+                pass
+    
+    # جستجو در Redis
+    if target in ['all', 'redis']:
+        redis = get_cache()
+        if redis and redis.is_connected():
+            try:
+                keys = redis._client.keys(f'*{query}*')
+                for key in keys[:10]:
+                    value = redis.get(key)
+                    results.append({
+                        'database': 'Redis',
+                        'type': 'key',
+                        'key': key,
+                        'content': str(value)[:200]
+                    })
+            except:
+                pass
+    
+    # جستجو در SQLite
+    if target in ['all', 'sqlite']:
+        sqlite = get_backup()
+        if sqlite and sqlite.is_connected():
+            try:
+                tables = sqlite.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                for table in tables:
+                    table_name = table['name']
+                    data = sqlite.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
+                    for row in data:
+                        results.append({
+                            'database': 'SQLite',
+                            'type': 'table',
+                            'table': table_name,
+                            'content': str(row)
+                        })
+            except:
+                pass
+    
+    return jsonify({
+        "success": True,
+        "data": results[:50]  # محدود به ۵۰ نتیجه
+    })
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
