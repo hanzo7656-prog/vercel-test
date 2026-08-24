@@ -1,0 +1,114 @@
+<div class="summary-card" id="overviewSummary">
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div class="summary-number" id="ovTotal">-</div>
+            <div class="summary-label">کل دیتابیس‌ها</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-number online" id="ovOnline">-</div>
+            <div class="summary-label">✅ متصل</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-number offline" id="ovOffline">-</div>
+            <div class="summary-label">❌ قطع</div>
+        </div>
+    </div>
+</div>
+
+<div id="overviewCards"></div>
+
+<script>
+    // بارگذاری نمای کلی
+    function loadOverview() {
+        const container = document.getElementById('overviewCards');
+        container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;font-size:0.8rem;">در حال دریافت...</p></div>';
+
+        fetch('/health/database')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderOverview(data.data);
+                } else {
+                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ خطا در دریافت اطلاعات</p></div>`;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ خطا: ${err.message}</p></div>`;
+            });
+    }
+
+    function renderOverview(dbData) {
+        const dbNames = Object.keys(dbData);
+        let online = 0, offline = 0;
+
+        for (const name of dbNames) {
+            if (dbData[name].connected && dbData[name].ping) online++;
+            else offline++;
+        }
+
+        document.getElementById('ovTotal').textContent = dbNames.length;
+        document.getElementById('ovOnline').textContent = online;
+        document.getElementById('ovOffline').textContent = offline;
+
+        const container = document.getElementById('overviewCards');
+        const dbStyles = {
+            'redis': { icon: 'fa-bolt', class: 'redis', label: 'کش و داده‌های سریع' },
+            'postgresql': { icon: 'fa-database', class: 'postgresql', label: 'داده‌های اصلی و ماندگار' },
+            'sqlite': { icon: 'fa-file', class: 'sqlite', label: 'بک‌آپ و گزارش‌ها' }
+        };
+
+        let html = '';
+        for (const name of dbNames) {
+            const info = dbData[name];
+            const style = dbStyles[name] || dbStyles['postgresql'];
+            const isConnected = info.connected && info.ping;
+            const stats = info.stats || {};
+
+            html += `
+                <div class="db-card ${style.class}">
+                    <div class="db-header">
+                        <div class="db-info">
+                            <span class="db-icon"><i class="fas ${style.icon}"></i></span>
+                            <span class="db-name">${name}</span>
+                            <span class="db-description">${style.label}</span>
+                        </div>
+                        <span class="db-status ${isConnected ? 'online' : 'offline'}">
+                            ${isConnected ? '✅ متصل' : '❌ قطع'}
+                        </span>
+                    </div>
+                    <div class="db-body">
+                        <div class="db-field">
+                            <label>📡 آدرس</label>
+                            <div class="db-value">${info.host || info.url || 'تنظیم نشده'}</div>
+                        </div>
+                        <div class="db-field">
+                            <label>📊 وضعیت</label>
+                            <div class="db-value">${info.enabled ? '✅ فعال' : '⛔ غیرفعال'}</div>
+                        </div>
+                    </div>
+                    <div class="db-stats">
+                        ${Object.entries(stats).map(([key, value]) => `
+                            <span class="stat-item">
+                                <i class="fas fa-chart-simple"></i>
+                                ${key}: <span class="stat-value">${value}</span>
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `
+            <div style="text-align:center;margin-top:12px;">
+                <button class="btn-refresh" onclick="loadOverview()" style="padding:8px 20px;">
+                    <i class="fas fa-sync-alt"></i> بروزرسانی
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // اجرا
+    loadOverview();
+</script>
