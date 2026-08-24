@@ -1,196 +1,174 @@
-<div class="db-card postgresql">
-    <div class="db-header">
-        <div class="db-info">
-            <span class="db-icon"><i class="fas fa-database"></i></span>
-            <span class="db-name">PostgreSQL</span>
-            <span class="db-description">داده‌های اصلی و ماندگار</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <span class="db-status" id="pgStatus">⏳ در حال بررسی...</span>
-            <button class="btn-refresh" onclick="loadPostgresTables()" title="بروزرسانی">
-                <i class="fas fa-sync-alt"></i>
+<!-- static/db-parts/postgresql.html -->
+<div class="card-glow">
+    <div class="card-header">
+        <h3><i class="fas fa-database" style="color:#3366ff;"></i> مدیریت PostgreSQL</h3>
+        <div class="header-tools">
+            <button class="btn-action success" onclick="refreshPostgres()">
+                <i class="fas fa-sync-alt"></i> بروزرسانی
+            </button>
+            <button class="btn-action primary" onclick="showToast('⏳ بک‌آپ در حال انجام...', 'info')">
+                <i class="fas fa-download"></i> بک‌آپ
             </button>
         </div>
     </div>
 
-    <!-- آمار سریع -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:12px;background:#0a0e17;padding:10px;border-radius:8px;border:1px solid #1a2a3a;">
-        <div style="text-align:center;">
-            <div style="color:#7a8fa3;font-size:0.55rem;">جدول‌ها</div>
-            <div style="color:#00d4ff;font-size:1rem;font-weight:700;" id="pgTableCount">-</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="color:#7a8fa3;font-size:0.55rem;">کل رکوردها</div>
-            <div style="color:#00ff88;font-size:1rem;font-weight:700;" id="pgTotalRows">-</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="color:#7a8fa3;font-size:0.55rem;">حجم کل</div>
-            <div style="color:#ffaa00;font-size:1rem;font-weight:700;" id="pgTotalSize">-</div>
-        </div>
+    <div class="stats-grid" id="postgresStats">
+        <!-- کارت‌های آماری PostgreSQL -->
     </div>
 
-    <!-- جستجو و فیلتر -->
-    <div class="search-box">
-        <select id="pgTableSelect" onchange="loadPostgresTableData()">
-            <option value="">-- انتخاب جدول --</option>
-        </select>
-        <input type="text" id="pgSearchInput" placeholder="🔍 جستجو در رکوردها..." style="flex:2;">
-        <button class="btn-refresh" onclick="loadPostgresTables()"><i class="fas fa-sync-alt"></i></button>
-        <button class="btn-refresh" onclick="exportPostgresCSV()" style="color:#00ff88;" title="خروجی CSV">📥</button>
+    <div class="search-bar">
+        <input type="text" id="postgresSearch" placeholder="جستجوی جدول..." onkeyup="filterPostgresTables(this.value)">
+        <button class="btn-action primary" onclick="filterPostgresTables(document.getElementById('postgresSearch').value)">
+            <i class="fas fa-search"></i>
+        </button>
     </div>
 
-    <div id="pgTableInfo" style="font-size:0.65rem;color:#7a8fa3;margin-bottom:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
-        <span id="pgRowInfo">یک جدول را انتخاب کنید</span>
-        <span id="pgUpdateTime"></span>
-    </div>
-
-    <div class="table-wrapper">
-        <table class="table" id="pgTable">
-            <thead id="pgTableHead"></thead>
-            <tbody id="pgTableBody">
-                <tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>
+    <div class="table-wrap">
+        <table class="table-modern" id="postgresTable">
+            <thead>
+                <tr>
+                    <th>نام جدول</th>
+                    <th>تعداد رکوردها</th>
+                    <th>حجم (MB)</th>
+                    <th>آخرین بروزرسانی</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody id="postgresTableBody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">در حال بارگذاری...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-    let pgTables = [];
-    let pgCurrentTable = '';
+function init_postgres() {
+    loadPostgresStats();
+    loadPostgresTables();
+}
 
-    function init_postgresql() {
-        console.log('🔄 PostgreSQL tab initialized');
-        loadPostgresTables();
-        
-        document.getElementById('pgTableSelect').addEventListener('change', loadPostgresTableData);
-        document.getElementById('pgSearchInput').addEventListener('keyup', function(e) {
-            const search = this.value.toLowerCase();
-            document.querySelectorAll('#pgTableBody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(search) ? '' : 'none';
-            });
-        });
-    }
+function loadPostgresStats() {
+    const container = document.getElementById('postgresStats');
+    if (!container) return;
 
-    function loadPostgresTables() {
-        const select = document.getElementById('pgTableSelect');
-        const status = document.getElementById('pgStatus');
-        select.innerHTML = '<option value="">در حال بارگذاری...</option>';
+    fetch('/api/db/postgresql/tables')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const totalTables = data.data.length;
+                const totalRows = data.data.reduce((sum, t) => sum + (t.row_count || 0), 0);
+                const totalSize = data.data.reduce((sum, t) => sum + (t.size_mb || 0), 0);
 
-        fetch('/api/db/postgresql/tables')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    pgTables = data.data;
-                    select.innerHTML = '<option value="">-- انتخاب جدول --</option>';
-                    let totalRows = 0;
-                    pgTables.forEach(table => {
-                        const option = document.createElement('option');
-                        option.value = table.table_name;
-                        const rowCount = table.row_count || 0;
-                        totalRows += rowCount;
-                        option.textContent = `${table.table_name} (${rowCount.toLocaleString()} رکورد)`;
-                        select.appendChild(option);
-                    });
-                    document.getElementById('pgTableCount').textContent = pgTables.length;
-                    document.getElementById('pgTotalRows').textContent = totalRows.toLocaleString();
-                    
-                    // محاسبه حجم کل
-                    let totalSize = 0;
-                    pgTables.forEach(t => totalSize += (t.size_mb || 0));
-                    document.getElementById('pgTotalSize').textContent = totalSize > 0 ? totalSize.toFixed(1) + ' MB' : '-';
-                    
-                    status.textContent = '✅ متصل';
-                    status.className = 'db-status online';
-                } else {
-                    status.textContent = '❌ خطا';
-                    status.className = 'db-status offline';
+                container.innerHTML = `
+                    <div class="stat-item">
+                        <span class="stat-icon"><i class="fas fa-table"></i></span>
+                        <div class="stat-value cyan">${totalTables}</div>
+                        <div class="stat-label">جدول</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon"><i class="fas fa-database"></i></span>
+                        <div class="stat-value green">${totalRows.toLocaleString()}</div>
+                        <div class="stat-label">رکورد</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon"><i class="fas fa-weight"></i></span>
+                        <div class="stat-value orange">${totalSize.toFixed(1)} MB</div>
+                        <div class="stat-label">حجم کل</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon"><i class="fas fa-clock"></i></span>
+                        <div class="stat-value pink">${new Date().toLocaleTimeString('fa-IR')}</div>
+                        <div class="stat-label">آخرین بروزرسانی</div>
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {});
+}
+
+function loadPostgresTables(filter = '') {
+    const tbody = document.getElementById('postgresTableBody');
+    if (!tbody) return;
+
+    fetch('/api/db/postgresql/tables')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                let tables = data.data;
+                if (filter) {
+                    tables = tables.filter(t => t.table_name.includes(filter));
                 }
-            })
-            .catch(() => {
-                status.textContent = '❌ قطع';
-                status.className = 'db-status offline';
-            });
-    }
-
-    function loadPostgresTableData() {
-        const select = document.getElementById('pgTableSelect');
-        const tableName = select.value;
-        const tbody = document.getElementById('pgTableBody');
-        const thead = document.getElementById('pgTableHead');
-        const info = document.getElementById('pgRowInfo');
-        const timeEl = document.getElementById('pgUpdateTime');
-
-        if (!tableName) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>';
-            thead.innerHTML = '';
-            info.textContent = 'یک جدول را انتخاب کنید';
-            timeEl.textContent = '';
-            pgCurrentTable = '';
-            return;
-        }
-
-        pgCurrentTable = tableName;
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>';
-
-        fetch(`/api/db/postgresql/table/${tableName}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const columns = data.data.columns || [];
-                    const rows = data.data.rows || [];
-
-                    let headerHtml = '<tr>';
-                    columns.forEach(col => {
-                        headerHtml += `<th>${col.column_name}</th>`;
-                    });
-                    headerHtml += '</tr>';
-                    thead.innerHTML = headerHtml;
-
-                    if (rows.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#4a5a6a;">هیچ رکوردی یافت نشد</td></tr>';
-                    } else {
-                        let bodyHtml = '';
-                        rows.forEach(row => {
-                            bodyHtml += '<tr>';
-                            columns.forEach(col => {
-                                const value = row[col.column_name];
-                                bodyHtml += `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
-                            });
-                            bodyHtml += '</tr>';
-                        });
-                        tbody.innerHTML = bodyHtml;
-                    }
-
-                    info.textContent = `${rows.length} رکورد نمایش داده شده`;
-                    timeEl.textContent = '🔄 ' + new Date().toLocaleTimeString('fa-IR');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ' + data.error + '</td></tr>';
+                if (tables.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">جدولی یافت نشد</td></tr>';
+                    return;
                 }
-            })
-            .catch(err => {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا: ' + err.message + '</td></tr>';
-            });
-    }
-
-    function exportPostgresCSV() {
-        if (!pgCurrentTable) {
-            showToast('⚠️ لطفاً ابتدا یک جدول را انتخاب کنید', 'warning');
-            return;
-        }
-        // ساده: کپی محتوای جدول
-        const rows = document.querySelectorAll('#pgTableBody tr');
-        let csv = '';
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            const rowData = [];
-            cells.forEach(cell => rowData.push(cell.textContent.trim()));
-            csv += rowData.join(',') + '\n';
+                let html = '';
+                tables.forEach(table => {
+                    const size = table.size_mb ? table.size_mb.toFixed(2) : '0.00';
+                    html += `
+                        <tr>
+                            <td><strong>${table.table_name}</strong></td>
+                            <td>${(table.row_count || 0).toLocaleString()}</td>
+                            <td>${size}</td>
+                            <td>${table.last_update ? new Date(table.last_update).toLocaleString('fa-IR') : '—'}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button onclick="viewTable('${table.table_name}')" title="مشاهده">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button onclick="showToast('📊 آنالیز ${table.table_name}...', 'info')" title="آنالیز">
+                                        <i class="fas fa-chart-line"></i>
+                                    </button>
+                                    <button class="danger" onclick="showToast('⚠️ حذف ${table.table_name} نیاز به تایید دارد', 'warning')" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا</td></tr>';
+            }
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا در ارتباط با سرور</td></tr>';
         });
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(csv).then(() => {
-                showToast('📋 CSV کپی شد!', 'success');
-            });
-        }
-    }
+}
+
+function filterPostgresTables(value) {
+    loadPostgresTables(value);
+}
+
+function viewTable(tableName) {
+    showToast(`📋 نمایش داده‌های جدول ${tableName}...`, 'info');
+    fetch(`/api/db/postgresql/table/${tableName}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const columns = data.data.columns || [];
+                const rows = data.data.rows || [];
+                let msg = `📊 جدول: ${tableName}\n`;
+                msg += `ستون‌ها: ${columns.map(c => c.column_name).join(', ')}\n`;
+                msg += `تعداد رکوردها: ${rows.length}\n`;
+                if (rows.length > 0) {
+                    msg += '\nنمونه داده:\n';
+                    rows.slice(0, 3).forEach(row => {
+                        msg += JSON.stringify(row, null, 2) + '\n';
+                    });
+                }
+                alert(msg);
+            } else {
+                showToast('❌ ' + (data.error || 'خطا'), 'error');
+            }
+        })
+        .catch(() => showToast('❌ خطا', 'error'));
+}
+
+function refreshPostgres() {
+    loadPostgresStats();
+    loadPostgresTables();
+    showToast('🔄 بروزرسانی شد', 'success');
+}
 </script>
