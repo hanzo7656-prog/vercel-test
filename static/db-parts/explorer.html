@@ -2,13 +2,83 @@
     <div class="db-header">
         <div class="db-info">
             <span class="db-icon"><i class="fas fa-search"></i></span>
-            <span class="db-name">کاوشگر داده</span>
-            <span class="db-description">جستجو و مشاهده رکوردها</span>
+            <span class="db-name">کاوشگر یکپارچه</span>
+            <span class="db-description">جستجو در همه دیتابیس‌ها</span>
         </div>
     </div>
-    <div style="padding:12px;text-align:center;color:#7a8fa3;">
-        <i class="fas fa-tools" style="font-size:2rem;opacity:0.3;"></i>
-        <p style="margin-top:8px;">در حال توسعه...</p>
-        <p style="font-size:0.7rem;">به زودی: مشاهده، جستجو و مدیریت داده‌ها</p>
+
+    <div class="search-box">
+        <input type="text" id="explorerSearch" placeholder="🔍 جستجوی جهانی..." style="flex:2;">
+        <select id="explorerTarget" style="flex:1;">
+            <option value="all">همه دیتابیس‌ها</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="redis">Redis</option>
+            <option value="sqlite">SQLite</option>
+        </select>
+        <button class="btn-refresh" onclick="searchExplorer()"><i class="fas fa-search"></i> جستجو</button>
+    </div>
+
+    <div id="explorerResults" style="margin-top:12px;">
+        <p style="color:#7a8fa3;text-align:center;font-size:0.8rem;">🔍 برای جستجو، عبارت را وارد کنید</p>
     </div>
 </div>
+
+<script>
+    function searchExplorer() {
+        const query = document.getElementById('explorerSearch').value.trim();
+        const target = document.getElementById('explorerTarget').value;
+        const results = document.getElementById('explorerResults');
+
+        if (!query) {
+            results.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.8rem;">🔍 لطفاً عبارت جستجو را وارد کنید</p>';
+            return;
+        }
+
+        results.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.8rem;">⏳ در حال جستجو...</p>';
+
+        fetch(`/api/db/search?q=${encodeURIComponent(query)}&target=${target}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderSearchResults(data.data);
+                } else {
+                    results.innerHTML = `<p style="color:#ff4444;text-align:center;">❌ ${data.error}</p>`;
+                }
+            })
+            .catch(err => {
+                results.innerHTML = `<p style="color:#ff4444;text-align:center;">❌ ${err.message}</p>`;
+            });
+    }
+
+    function renderSearchResults(results) {
+        const container = document.getElementById('explorerResults');
+        if (!results || results.length === 0) {
+            container.innerHTML = '<p style="color:#7a8fa3;text-align:center;font-size:0.8rem;">🔍 نتیجه‌ای یافت نشد</p>';
+            return;
+        }
+
+        let html = '';
+        results.forEach(item => {
+            html += `
+                <div class="db-card" style="margin-bottom:8px;padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <span style="color:#00d4ff;font-weight:600;">${item.database}</span>
+                        <span class="badge" style="background:rgba(0,212,255,0.1);color:#00d4ff;font-size:0.6rem;">${item.type}</span>
+                    </div>
+                    <div style="font-family:'Courier New',monospace;font-size:0.75rem;color:#e0e6ed;margin-top:4px;word-break:break-all;">
+                        ${item.content}
+                    </div>
+                    <div style="font-size:0.6rem;color:#4a5a6a;margin-top:4px;">
+                        ${item.table || item.key || ''}
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // جستجو با Enter
+    document.getElementById('explorerSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') searchExplorer();
+    });
+</script>
