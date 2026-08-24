@@ -63,6 +63,13 @@ def chart_page():
 def database_page():
     """صفحه مدیریت دیتابیس"""
     return send_from_directory('static', 'database.html')
+
+
+@app.route('/debug-page')
+@require_auth()
+def debug_page():
+    """صفحه دیباگ"""
+    return send_from_directory('static', 'debug.html')
 # ===========================================================
 # سرو فایل‌های استاتیک (CSS, JS, Images)
 # ============================================================
