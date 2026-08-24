@@ -1203,12 +1203,6 @@ def debug_env():
         "data": env_vars
     })
 
-
-@app.route('/debug-page')
-def debug_page():
-    """صفحه دیباگ"""
-    return send_from_directory('static', 'debug.html')
-
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
