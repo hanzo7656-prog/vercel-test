@@ -713,7 +713,6 @@
             const container = document.getElementById(tab + 'Content');
             if (!container) return;
 
-            // نمایش لودینگ
             container.innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
@@ -721,7 +720,6 @@
                 </div>
             `;
 
-            // بارگذاری محتوای تب از فایل جداگانه
             fetch(`/static/db-parts/${tab}.html`)
                 .then(res => {
                     if (!res.ok) throw new Error('تاب یافت نشد');
@@ -729,14 +727,26 @@
                 })
                 .then(html => {
                     container.innerHTML = html;
-                    // اجرای اسکریپت‌های داخل تب
+            
+                    // ⭐ اجرای اسکریپت‌های داخل تب
                     const scripts = container.querySelectorAll('script');
-                    scripts.forEach(script => {
+                    scripts.forEach(oldScript => {
                         const newScript = document.createElement('script');
-                        newScript.textContent = script.textContent;
-                        document.body.appendChild(newScript);
-                        script.remove();
+                        // کپی کردن محتوا
+                        newScript.textContent = oldScript.textContent;
+                        // کپی کردن atribut های src (اگه باشه)
+                        if (oldScript.src) {
+                            newScript.src = oldScript.src;
+                        }
+                        // جایگزینی
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
                     });
+            
+                    // ⭐ اگر تابع مخصوص تب وجود داشت، اجرا کن
+                    const initFn = window['init_' + tab];
+                    if (typeof initFn === 'function') {
+                        initFn();
+                    }
                 })
                 .catch(err => {
                     container.innerHTML = `
