@@ -50,7 +50,8 @@ class DatabaseFactory:
             
             self._config = config_data
             logger.info(f"✅ تنظیمات دیتابیس‌ها بارگذاری شد")
-            
+
+            registry.set_config(config_data)
             # تنظیم مسیریاب
             routing = config_data.get("routing", {})
             router.set_routing(routing)
