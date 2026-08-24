@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دیباگ سیستم</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0e17;
+            min-height: 100vh;
+            font-family: 'Vazir', 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid #1a2a3a;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .dashboard-header .logo {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #00d4ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dashboard-header .status {
+            color: #7a8fa3;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dashboard-header .status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .dashboard-header .uptime {
+            color: #4a5a6a;
+            font-size: 0.65rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        #userDisplay {
+            color: #00d4ff;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .menu-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #0d1624;
+            border: 1px solid #1a2a3a;
+            color: #e0e6ed;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 200;
+        }
+
+        .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
+        .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
+
+        /* ===== FLYOUT MENU ===== */
+        .flyout-menu {
+            position: fixed;
+            top: 70px;
+            right: 12px;
+            background: rgba(13, 22, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid #1a2a3a;
+            border-radius: 16px;
+            padding: 10px 0;
+            min-width: 170px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transform: scale(0.8);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 150;
+            transform-origin: top right;
+        }
+
+        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
+        .flyout-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            border-right: 2px solid transparent;
+        }
+
+        .flyout-menu a:hover { background: rgba(0, 212, 255, 0.05); color: #e0e6ed; border-right-color: #00d4ff; }
+        .flyout-menu a.active { color: #00d4ff; border-right-color: #00d4ff; background: rgba(0, 212, 255, 0.05); }
+        .flyout-menu .menu-divider { height: 1px; background: #1a2a3a; margin: 6px 16px; }
+        .flyout-menu .menu-label { padding: 8px 16px 4px; font-size: 0.65rem; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .flyout-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 140;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .flyout-overlay.open { opacity: 1; pointer-events: all; }
+
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .page-header h1 {
+            color: #e0e6ed;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .page-header h1 i {
+            color: #ff6b00;
+        }
+
+        .page-header .subtitle {
+            color: #7a8fa3;
+            font-size: 0.75rem;
+        }
+
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: #0d1624;
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid #1a2a3a;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+
+        .tabs .tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: #7a8fa3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            font-family: inherit;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tabs .tab-btn:hover {
+            color: #e0e6ed;
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .tabs .tab-btn.active {
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        /* ===== CARD ===== */
+        .debug-card {
+            background: linear-gradient(145deg, #111d2b, #0d1624);
+            border: 1px solid #1a2a3a;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .debug-card:hover {
+            border-color: rgba(0, 212, 255, 0.1);
+        }
+
+        .debug-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .debug-card .card-header h3 {
+            color: #e0e6ed;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .debug-card .card-header h3 i {
+            color: #00d4ff;
+        }
+
+        .debug-card .card-header .badge {
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+        }
+
+        .debug-card .card-header .badge.success { background: rgba(0, 255, 136, 0.1); color: #00ff88; border-color: rgba(0, 255, 136, 0.2); }
+        .debug-card .card-header .badge.error { background: rgba(255, 68, 68, 0.1); color: #ff4444; border-color: rgba(255, 68, 68, 0.2); }
+
+        /* ===== STATUS GRID ===== */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .status-item {
+            background: #0a0e17;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #1a2a3a;
+        }
+
+        .status-item .status-label {
+            color: #7a8fa3;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-item .status-value {
+            color: #e0e6ed;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-item .status-value.success { color: #00ff88; }
+        .status-item .status-value.error { color: #ff4444; }
+        .status-item .status-value.warning { color: #ffaa00; }
+
+        /* ===== CONSOLE ===== */
+        .console-output {
+            background: #080c14;
+            border: 1px solid #1a2a3a;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #7a8fa3;
+            direction: ltr;
+            text-align: left;
+            line-height: 1.8;
+        }
+
+        .console-output::-webkit-scrollbar { width: 4px; }
+        .console-output::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+
+        .console-output .log-line {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            display: flex;
+            gap: 8px;
+        }
+
+        .console-output .log-line .log-time {
+            color: #4a5a6a;
+            min-width: 70px;
+        }
+
+        .console-output .log-line .log-level {
+            min-width: 50px;
+            font-weight: 600;
+        }
+
+        .console-output .log-line .log-level.info { color: #00d4ff; }
+        .console-output .log-line .log-level.success { color: #00ff88; }
+        .console-output .log-line .log-level.error { color: #ff4444; }
+        .console-output .log-line .log-level.warning { color: #ffaa00; }
+
+        /* ===== CLI ===== */
+        .cli-input-wrapper {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .cli-input-wrapper .cli-prompt {
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .cli-input-wrapper .cli-input {
+            flex: 1;
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e6ed;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            outline: none;
+            min-width: 150px;
+        }
+
+        .cli-input-wrapper .cli-input:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+
+        .cli-input-wrapper .cli-btn {
+            background: #00d4ff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #0a0e17;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .cli-input-wrapper .cli-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+        }
+
+        .cli-input-wrapper .cli-btn.danger {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .cli-input-wrapper .cli-btn.danger:hover {
+            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.3);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (min-width: 768px) {
+            .dashboard-header { padding: 16px 24px; }
+            .dashboard-header .logo { font-size: 1.3rem; }
+            .container { padding: 20px; }
+            .page-header h1 { font-size: 1.6rem; }
+            .debug-card { padding: 20px 24px; }
+            .status-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+            .console-output { max-height: 400px; font-size: 0.8rem; }
+            .tabs .tab-btn { padding: 10px 24px; font-size: 0.9rem; }
+        }
+
+        @media (max-width: 480px) {
+            .status-grid { grid-template-columns: 1fr; }
+            .dashboard-header .uptime { display: none; }
+            .flyout-menu { right: 8px; top: 60px; min-width: 150px; }
+            .tabs .tab-btn { font-size: 0.7rem; padding: 6px 10px; }
+            .cli-input-wrapper { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== MENU ===== -->
+    <div id="navContainer"></div>
+
+    <!-- ===== CONTENT ===== -->
+    <div class="container">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-bug"></i> دیباگ سیستم</h1>
+                <span class="subtitle">مشاهده وضعیت، لاگ‌ها و اجرای دستورات</span>
+            </div>
+            <span id="pageTimestamp" style="color:#4a5a6a;font-size:0.65rem;font-family:'Courier New',monospace;"></span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabContainer">
+            <button class="tab-btn active" data-tab="status"><i class="fas fa-heartbeat"></i> وضعیت</button>
+            <button class="tab-btn" data-tab="logs"><i class="fas fa-list"></i> لاگ‌ها</button>
+            <button class="tab-btn" data-tab="cli"><i class="fas fa-terminal"></i> CLI</button>
+            <button class="tab-btn" data-tab="files"><i class="fas fa-file"></i> فایل‌ها</button>
+            <button class="tab-btn" data-tab="env"><i class="fas fa-cog"></i> متغیرها</button>
+        </div>
+
+        <!-- ===== TAB: STATUS ===== -->
+        <div class="tab-content" id="tab-status">
+            <div class="debug-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-server"></i> وضعیت سرویس‌ها</h3>
+                    <span class="badge" id="statusTimestamp">لحظه‌ای</span>
+                </div>
+                <div class="status-grid" id="statusGrid">
+                    <div class="status-item">
+                        <div class="status-label">🟢 دیتابیس</div>
+                        <div class="status-value" id="dbStatus">⏳ در حال بررسی...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🧠 مدل</div>
+                        <div class="status-value" id="modelStatus">⏳ در حال بررسی...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🔌 API</div>
+                        <div class="status-value" id="apiStatus">⏳ در حال بررسی...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">💾 حافظه</div>
+                        <div class="status-value" id="memoryStatus">⏳ در حال بررسی...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">⏱️ آپتایم</div>
+                        <div class="status-value" id="uptimeStatus">⏳ در حال بررسی...</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">📊 اعتبار</div>
+                        <div class="status-value" id="creditsStatus">⏳ در حال بررسی...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: LOGS ===== -->
+        <div class="tab-content" id="tab-logs" style="display:none;">
+            <div class="debug-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> لاگ‌های سیستم</h3>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="cli-btn" onclick="refreshLogs()" style="font-size:0.65rem;padding:4px 12px;">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="cli-btn danger" onclick="clearLogs()" style="font-size:0.65rem;padding:4px 12px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="console-output" id="logOutput">
+                    <div class="log-line">
+                        <span class="log-time">⏳</span>
+                        <span class="log-level info">INFO</span>
+                        <span>در حال بارگذاری لاگ‌ها...</span>
+                    </div>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="cli-btn" onclick="filterLogs('all')" style="font-size:0.6rem;padding:4px 10px;">همه</button>
+                    <button class="cli-btn" onclick="filterLogs('info')" style="font-size:0.6rem;padding:4px 10px;background:#00d4ff;">INFO</button>
+                    <button class="cli-btn" onclick="filterLogs('success')" style="font-size:0.6rem;padding:4px 10px;background:#00ff88;color:#0a0e17;">SUCCESS</button>
+                    <button class="cli-btn" onclick="filterLogs('warning')" style="font-size:0.6rem;padding:4px 10px;background:#ffaa00;color:#0a0e17;">WARNING</button>
+                    <button class="cli-btn danger" onclick="filterLogs('error')" style="font-size:0.6rem;padding:4px 10px;">ERROR</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: CLI ===== -->
+        <div class="tab-content" id="tab-cli" style="display:none;">
+            <div class="debug-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-terminal"></i> کنسول تعاملی (CLI)</h3>
+                    <span class="badge">دستورات پایتون</span>
+                </div>
+                <div class="console-output" id="cliOutput" style="max-height:250px;">
+                    <div class="log-line">
+                        <span class="log-time">⏳</span>
+                        <span class="log-level info">INFO</span>
+                        <span>کنسول آماده است. دستورات پایتون را وارد کنید.</span>
+                    </div>
+                </div>
+                <div class="cli-input-wrapper">
+                    <span class="cli-prompt">&gt;&gt;&gt;</span>
+                    <input type="text" class="cli-input" id="cliInput" placeholder="مثال: print('Hello') یا import os; os.listdir('.')" spellcheck="false">
+                    <button class="cli-btn" onclick="executeCommand()"><i class="fas fa-play"></i> اجرا</button>
+                    <button class="cli-btn danger" onclick="clearCli()"><i class="fas fa-eraser"></i> پاک کردن</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: FILES ===== -->
+        <div class="tab-content" id="tab-files" style="display:none;">
+            <div class="debug-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-file"></i> مشاهده فایل‌ها</h3>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="cli-btn" onclick="loadFile('config/settings.json')" style="font-size:0.65rem;padding:4px 12px;">settings.json</button>
+                        <button class="cli-btn" onclick="loadFile('config/databases.json')" style="font-size:0.65rem;padding:4px 12px;">databases.json</button>
+                        <button class="cli-btn" onclick="loadFile('config/users.json')" style="font-size:0.65rem;padding:4px 12px;">users.json</button>
+                    </div>
+                </div>
+                <div class="console-output" id="fileOutput" style="max-height:400px;">
+                    <div class="log-line">
+                        <span class="log-time">📁</span>
+                        <span>برای مشاهده فایل، روی دکمه بالا کلیک کنید</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: ENV ===== -->
+        <div class="tab-content" id="tab-env" style="display:none;">
+            <div class="debug-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-cog"></i> متغیرهای محیطی و تنظیمات</h3>
+                    <span class="badge">فقط مشاهده</span>
+                </div>
+                <div class="console-output" id="envOutput" style="max-height:400px;">
+                    <div class="log-line">
+                        <span class="log-time">⏳</span>
+                        <span>در حال بارگذاری...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
+    <script src="/static/js/script.js"></script>
+    <script src="/static/js/menu.js"></script>
+
+    <script>
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadStatus();
+            loadLogs();
+            loadEnv();
+
+            // بروزرسانی هر ۱۰ ثانیه
+            setInterval(loadStatus, 10000);
+            setInterval(updateTimestamp, 1000);
+
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+                    const tabId = this.dataset.tab;
+                    document.getElementById('tab-' + tabId).style.display = 'block';
+
+                    // بارگذاری مجدد بعضی تب‌ها
+                    if (tabId === 'logs') loadLogs();
+                    if (tabId === 'env') loadEnv();
+                });
+            });
+
+            // Enter key برای CLI
+            document.getElementById('cliInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') executeCommand();
+            });
+        });
+
+        // ============================================================
+        // توابع کمکی
+        // ============================================================
+        function updateTimestamp() {
+            const el = document.getElementById('pageTimestamp');
+            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ffaa00' };
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            toast.style.borderColor = colors[type] || colors.info;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+            }, 3000);
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'ok' || status === 'healthy' || status === 'connected') return 'success';
+            if (status === 'degraded' || status === 'warning') return 'warning';
+            return 'error';
+        }
+
+        // ============================================================
+        // بارگذاری منو
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    loadUserInfo();
+                })
+                .catch(err => console.error('❌ Nav error:', err));
+        }
+
+        function loadUserInfo() {
+            fetch('/api/user', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const display = document.getElementById('userDisplay');
+                        if (display) {
+                            const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                            display.textContent = roleMap[data.data.role] || data.data.username;
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ============================================================
+        // TAB: وضعیت
+        // ============================================================
+        function loadStatus() {
+            // دیتابیس
+            fetch('/health/database')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('dbStatus');
+                    if (data.success && data.data) {
+                        const total = Object.keys(data.data).length;
+                        const online = Object.values(data.data).filter(d => d.connected && d.ping).length;
+                        el.textContent = `${online}/${total} متصل`;
+                        el.className = 'status-value ' + (online === total ? 'success' : online > 0 ? 'warning' : 'error');
+                    } else {
+                        el.textContent = '❌ خطا';
+                        el.className = 'status-value error';
+                    }
+                })
+                .catch(() => {
+                    const el = document.getElementById('dbStatus');
+                    el.textContent = '❌ قطع';
+                    el.className = 'status-value error';
+                });
+
+            // مدل
+            fetch('/model/status')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('modelStatus');
+                    if (data) {
+                        const exists = data.model_exists;
+                        const training = data.is_training;
+                        if (training) {
+                            el.textContent = '⏳ در حال آموزش';
+                            el.className = 'status-value warning';
+                        } else if (exists) {
+                            el.textContent = '✅ بارگذاری شده';
+                            el.className = 'status-value success';
+                        } else {
+                            el.textContent = '📦 دمو';
+                            el.className = 'status-value warning';
+                        }
+                    }
+                })
+                .catch(() => {
+                    const el = document.getElementById('modelStatus');
+                    el.textContent = '❌ خطا';
+                    el.className = 'status-value error';
+                });
+
+            // API
+            fetch('/health')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('apiStatus');
+                    const status = data.status || 'unknown';
+                    el.textContent = status === 'ok' ? '✅ سالم' : status === 'degraded' ? '⚠️ ضعیف' : '❌ مشکل';
+                    el.className = 'status-value ' + getStatusBadge(status);
+                })
+                .catch(() => {
+                    const el = document.getElementById('apiStatus');
+                    el.textContent = '❌ قطع';
+                    el.className = 'status-value error';
+                });
+
+            // حافظه
+            fetch('/stats/memory')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('memoryStatus');
+                    if (data.success) {
+                        const percent = data.data.percent || 0;
+                        el.textContent = `${Math.round(percent)}% (${Math.round(data.data.used_mb)}/${Math.round(data.data.total_mb)} MB)`;
+                        el.className = 'status-value ' + (percent < 60 ? 'success' : percent < 80 ? 'warning' : 'error');
+                    }
+                })
+                .catch(() => {
+                    const el = document.getElementById('memoryStatus');
+                    el.textContent = '❌ نامشخص';
+                    el.className = 'status-value error';
+                });
+
+            // آپتایم
+            fetch('/stats')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('uptimeStatus');
+                    el.textContent = data.uptime || 'نامشخص';
+                    el.className = 'status-value info';
+                })
+                .catch(() => {
+                    const el = document.getElementById('uptimeStatus');
+                    el.textContent = '❌ نامشخص';
+                    el.className = 'status-value error';
+                });
+
+            // اعتبار
+            fetch('/credits')
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('creditsStatus');
+                    if (data.success) {
+                        const remaining = data.data?.remaining || 0;
+                        el.textContent = remaining.toLocaleString();
+                        el.className = 'status-value ' + (remaining > 500 ? 'success' : remaining > 100 ? 'warning' : 'error');
+                    } else {
+                        el.textContent = '❌ خطا';
+                        el.className = 'status-value error';
+                    }
+                })
+                .catch(() => {
+                    const el = document.getElementById('creditsStatus');
+                    el.textContent = '❌ خطا';
+                    el.className = 'status-value error';
+                });
+        }
+
+        // ============================================================
+        // TAB: لاگ‌ها
+        // ============================================================
+        let currentLogs = [];
+
+        function loadLogs() {
+            fetch('/model/status')
+                .then(res => res.json())
+                .then(data => {
+                    const logs = data?.logs || [];
+                    currentLogs = logs;
+                    renderLogs(logs);
+                })
+                .catch(() => {
+                    const output = document.getElementById('logOutput');
+                    output.innerHTML = `<div class="log-line"><span class="log-time">❌</span><span class="log-level error">ERROR</span><span>خطا در دریافت لاگ‌ها</span></div>`;
+                });
+        }
+
+        function renderLogs(logs, filter = 'all') {
+            const output = document.getElementById('logOutput');
+            if (!logs || logs.length === 0) {
+                output.innerHTML = `<div class="log-line"><span class="log-time">📭</span><span>هیچ لاگی ثبت نشده است</span></div>`;
+                return;
+            }
+
+            let filtered = logs;
+            if (filter !== 'all') {
+                filtered = logs.filter(log => {
+                    const lower = log.toLowerCase();
+                    if (filter === 'info') return lower.includes('info') || lower.includes('✅');
+                    if (filter === 'success') return lower.includes('success') || lower.includes('✅');
+                    if (filter === 'warning') return lower.includes('warning') || lower.includes('⚠️');
+                    if (filter === 'error') return lower.includes('error') || lower.includes('❌');
+                    return true;
+                });
+            }
+
+            let html = '';
+            const displayLogs = filtered.slice(-100).reverse();
+            displayLogs.forEach(log => {
+                let level = 'info';
+                let text = log;
+                if (log.includes('✅')) level = 'success';
+                else if (log.includes('❌')) level = 'error';
+                else if (log.includes('⚠️')) level = 'warning';
+
+                const timeMatch = log.match(/\[([^\]]+)\]/);
+                let time = '';
+                if (timeMatch) {
+                    time = timeMatch[1];
+                    text = log.replace(timeMatch[0], '').trim();
+                }
+
+                html += `<div class="log-line">
+                    <span class="log-time">${time || '--:--'}</span>
+                    <span class="log-level ${level}">${level.toUpperCase()}</span>
+                    <span>${text}</span>
+                </div>`;
+            });
+
+            output.innerHTML = html;
+            output.scrollTop = 0;
+        }
+
+        let currentLogFilter = 'all';
+
+        function filterLogs(filter) {
+            currentLogFilter = filter;
+            renderLogs(currentLogs, filter);
+        }
+
+        function refreshLogs() {
+            loadLogs();
+            showToast('🔄 لاگ‌ها بروزرسانی شدند', 'success');
+        }
+
+        function clearLogs() {
+            if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+            fetch('/model/clear-logs', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+                        loadLogs();
+                    } else {
+                        showToast('❌ ' + data.error, 'error');
+                    }
+                })
+                .catch(() => showToast('❌ خطا', 'error'));
+        }
+
+        // ============================================================
+        // TAB: CLI
+        // ============================================================
+        function executeCommand() {
+            const input = document.getElementById('cliInput');
+            const output = document.getElementById('cliOutput');
+            const cmd = input.value.trim();
+
+            if (!cmd) return;
+
+            // نمایش دستور
+            output.innerHTML += `<div class="log-line">
+                <span class="log-time">&gt;&gt;&gt;</span>
+                <span class="log-level info">CMD</span>
+                <span style="color:#00ff88;">${cmd}</span>
+            </div>`;
+
+            input.value = '';
+
+            fetch('/api/debug/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ command: cmd })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const result = data.result || '✅ انجام شد';
+                    output.innerHTML += `<div class="log-line">
+                        <span class="log-time">📤</span>
+                        <span class="log-level success">RESULT</span>
+                        <span style="color:#e0e6ed;white-space:pre-wrap;">${result}</span>
+                    </div>`;
+                } else {
+                    output.innerHTML += `<div class="log-line">
+                        <span class="log-time">❌</span>
+                        <span class="log-level error">ERROR</span>
+                        <span>${data.error || 'خطا در اجرا'}</span>
+                    </div>`;
+                }
+                output.scrollTop = output.scrollHeight;
+            })
+            .catch(err => {
+                output.innerHTML += `<div class="log-line">
+                    <span class="log-time">❌</span>
+                    <span class="log-level error">ERROR</span>
+                    <span>${err.message}</span>
+                </div>`;
+                output.scrollTop = output.scrollHeight;
+            });
+        }
+
+        function clearCli() {
+            const output = document.getElementById('cliOutput');
+            output.innerHTML = `<div class="log-line">
+                <span class="log-time">🧹</span>
+                <span class="log-level info">INFO</span>
+                <span>کنسول پاک شد</span>
+            </div>`;
+        }
+
+        // ============================================================
+        // TAB: فایل‌ها
+        // ============================================================
+        function loadFile(filename) {
+            const output = document.getElementById('fileOutput');
+            output.innerHTML = `<div class="log-line"><span class="log-time">⏳</span><span>در حال بارگذاری ${filename}...</span></div>`;
+
+            fetch('/api/debug/file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ filename: filename })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    output.innerHTML = `<div class="log-line">
+                        <span class="log-time">📄</span>
+                        <span class="log-level success">${filename}</span>
+                    </div>
+                    <pre style="color:#7a8fa3;font-family:'Courier New',monospace;font-size:0.7rem;margin-top:8px;white-space:pre-wrap;word-break:break-all;">${data.content}</pre>`;
+                } else {
+                    output.innerHTML = `<div class="log-line">
+                        <span class="log-time">❌</span>
+                        <span class="log-level error">ERROR</span>
+                        <span>${data.error || 'خطا در خواندن فایل'}</span>
+                    </div>`;
+                }
+            })
+            .catch(err => {
+                output.innerHTML = `<div class="log-line">
+                    <span class="log-time">❌</span>
+                    <span class="log-level error">ERROR</span>
+                    <span>${err.message}</span>
+                </div>`;
+            });
+        }
+
+        // ============================================================
+        // TAB: متغیرها
+        // ============================================================
+        function loadEnv() {
+            const output = document.getElementById('envOutput');
+            output.innerHTML = `<div class="log-line"><span class="log-time">⏳</span><span>در حال بارگذاری...</span></div>`;
+
+            fetch('/api/debug/env')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const env = data.data || {};
+                        let html = `<div class="log-line"><span class="log-time">📋</span><span class="log-level success">متغیرهای محیطی</span></div>`;
+                        for (const [key, value] of Object.entries(env)) {
+                            const displayValue = key.toLowerCase().includes('token') || key.toLowerCase().includes('password')
+                                ? '••••••••'
+                                : value || '(empty)';
+                            html += `<div class="log-line">
+                                <span class="log-time">${key}</span>
+                                <span style="color:#7a8fa3;">${displayValue}</span>
+                            </div>`;
+                        }
+                        output.innerHTML = html;
+                    } else {
+                        output.innerHTML = `<div class="log-line"><span class="log-time">❌</span><span class="log-level error">ERROR</span><span>${data.error}</span></div>`;
+                    }
+                })
+                .catch(err => {
+                    output.innerHTML = `<div class="log-line"><span class="log-time">❌</span><span class="log-level error">ERROR</span><span>${err.message}</span></div>`;
+                });
+        }
+    </script>
+
+</body>
+</html>
