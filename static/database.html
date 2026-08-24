@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>مدیریت دیتابیس</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/themes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         /* ============================================================
            RESET & BASE
            ============================================================ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -67,10 +64,7 @@
             animation: pulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
         .dashboard-header .uptime {
             color: #4a5a6a;
@@ -101,16 +95,8 @@
             z-index: 200;
         }
 
-        .menu-toggle:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
-        }
-
-        .menu-toggle.open {
-            border-color: #00d4ff;
-            background: #00d4ff;
-            color: #0a0e17;
-        }
+        .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
+        .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
 
         .flyout-menu {
             position: fixed;
@@ -131,12 +117,7 @@
             transform-origin: top right;
         }
 
-        .flyout-menu.open {
-            transform: scale(1);
-            opacity: 1;
-            pointer-events: all;
-        }
-
+        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
         .flyout-menu a {
             display: flex;
             align-items: center;
@@ -149,31 +130,10 @@
             border-right: 2px solid transparent;
         }
 
-        .flyout-menu a:hover {
-            background: rgba(0, 212, 255, 0.05);
-            color: #e0e6ed;
-            border-right-color: #00d4ff;
-        }
-
-        .flyout-menu a.active {
-            color: #00d4ff;
-            border-right-color: #00d4ff;
-            background: rgba(0, 212, 255, 0.05);
-        }
-
-        .flyout-menu .menu-divider {
-            height: 1px;
-            background: #1a2a3a;
-            margin: 6px 16px;
-        }
-
-        .flyout-menu .menu-label {
-            padding: 8px 16px 4px;
-            font-size: 0.65rem;
-            color: #4a5a6a;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .flyout-menu a:hover { background: rgba(0, 212, 255, 0.05); color: #e0e6ed; border-right-color: #00d4ff; }
+        .flyout-menu a.active { color: #00d4ff; border-right-color: #00d4ff; background: rgba(0, 212, 255, 0.05); }
+        .flyout-menu .menu-divider { height: 1px; background: #1a2a3a; margin: 6px 16px; }
+        .flyout-menu .menu-label { padding: 8px 16px 4px; font-size: 0.65rem; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .flyout-overlay {
             position: fixed;
@@ -185,13 +145,10 @@
             transition: opacity 0.3s ease;
         }
 
-        .flyout-overlay.open {
-            opacity: 1;
-            pointer-events: all;
-        }
+        .flyout-overlay.open { opacity: 1; pointer-events: all; }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 12px;
         }
@@ -214,40 +171,56 @@
             gap: 8px;
         }
 
-        .page-header h1 i {
-            color: #00d4ff;
-        }
+        .page-header h1 i { color: #00d4ff; }
+        .page-header .subtitle { color: #7a8fa3; font-size: 0.75rem; }
+        .page-header .timestamp { color: #4a5a6a; font-size: 0.65rem; font-family: 'Courier New', monospace; }
 
-        .page-header .subtitle {
-            color: #7a8fa3;
-            font-size: 0.75rem;
-        }
-
-        .page-header .timestamp {
-            color: #4a5a6a;
-            font-size: 0.65rem;
-            font-family: 'Courier New', monospace;
-        }
-
-        .page-header .btn-refresh {
-            background: transparent;
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: #0d1624;
+            border-radius: 10px;
+            padding: 4px;
             border: 1px solid #1a2a3a;
-            color: #7a8fa3;
-            padding: 6px 12px;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+
+        .tabs .tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
             border-radius: 8px;
+            color: #7a8fa3;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
+            font-family: inherit;
+            white-space: nowrap;
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .page-header .btn-refresh:hover {
-            border-color: #00d4ff;
-            color: #e0e6ed;
+        .tabs .tab-btn:hover { color: #e0e6ed; background: rgba(0, 212, 255, 0.05); }
+        .tabs .tab-btn.active { color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+
+        /* ===== TAB CONTENT ===== */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
         }
 
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== CARDS ===== */
         .db-card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
             border: 1px solid #1a2a3a;
@@ -259,24 +232,15 @@
             overflow: hidden;
         }
 
-        .db-card:hover {
-            border-color: rgba(0, 212, 255, 0.15);
-            transform: translateY(-2px);
-        }
+        .db-card:hover { border-color: rgba(0, 212, 255, 0.15); transform: translateY(-2px); }
 
-        .db-card.redis {
-            border-left: 4px solid #ff4444;
-        }
+        .db-card.redis { border-left: 4px solid #ff4444; }
         .db-card.redis .db-icon { color: #ff4444; }
 
-        .db-card.postgresql {
-            border-left: 4px solid #3366ff;
-        }
+        .db-card.postgresql { border-left: 4px solid #3366ff; }
         .db-card.postgresql .db-icon { color: #3366ff; }
 
-        .db-card.sqlite {
-            border-left: 4px solid #00ff88;
-        }
+        .db-card.sqlite { border-left: 4px solid #00ff88; }
         .db-card.sqlite .db-icon { color: #00ff88; }
 
         .db-card .db-header {
@@ -294,22 +258,9 @@
             gap: 10px;
         }
 
-        .db-card .db-header .db-info .db-icon {
-            font-size: 1.2rem;
-            width: 28px;
-            text-align: center;
-        }
-
-        .db-card .db-header .db-info .db-name {
-            color: #e0e6ed;
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-
-        .db-card .db-header .db-info .db-description {
-            color: #7a8fa3;
-            font-size: 0.7rem;
-        }
+        .db-card .db-header .db-info .db-icon { font-size: 1.2rem; width: 28px; text-align: center; }
+        .db-card .db-header .db-info .db-name { color: #e0e6ed; font-weight: 600; font-size: 0.95rem; }
+        .db-card .db-header .db-info .db-description { color: #7a8fa3; font-size: 0.7rem; }
 
         .db-card .db-header .db-status {
             display: flex;
@@ -320,46 +271,13 @@
             border-radius: 20px;
         }
 
-        .db-card .db-header .db-status.online {
-            color: #00ff88;
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid rgba(0, 255, 136, 0.2);
-        }
+        .db-card .db-header .db-status.online { color: #00ff88; background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.2); }
+        .db-card .db-header .db-status.offline { color: #ff4444; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); }
 
-        .db-card .db-header .db-status.offline {
-            color: #ff4444;
-            background: rgba(255, 68, 68, 0.1);
-            border: 1px solid rgba(255, 68, 68, 0.2);
-        }
-
-        .db-card .db-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 16px;
-        }
-
-        .db-card .db-body .db-field {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .db-card .db-body .db-field label {
-            color: #7a8fa3;
-            font-size: 0.65rem;
-            font-weight: 500;
-        }
-
-        .db-card .db-body .db-field .db-value {
-            color: #e0e6ed;
-            font-size: 0.8rem;
-            font-family: 'Courier New', monospace;
-            background: #0a0e17;
-            padding: 4px 8px;
-            border-radius: 6px;
-            border: 1px solid #1a2a3a;
-            word-break: break-all;
-        }
+        .db-card .db-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+        .db-card .db-body .db-field { display: flex; flex-direction: column; gap: 2px; }
+        .db-card .db-body .db-field label { color: #7a8fa3; font-size: 0.65rem; font-weight: 500; }
+        .db-card .db-body .db-field .db-value { color: #e0e6ed; font-size: 0.8rem; font-family: 'Courier New', monospace; background: #0a0e17; padding: 4px 8px; border-radius: 6px; border: 1px solid #1a2a3a; word-break: break-all; }
 
         .token-wrapper {
             display: flex;
@@ -396,20 +314,9 @@
             min-height: 28px;
         }
 
-        .token-wrapper .action-btn:hover {
-            border-color: #00d4ff;
-            color: #e0e6ed;
-        }
-
-        .token-wrapper .action-btn.active {
-            border-color: #00d4ff;
-            color: #00d4ff;
-        }
-
-        .token-wrapper .action-btn.copied {
-            border-color: #00ff88;
-            color: #00ff88;
-        }
+        .token-wrapper .action-btn:hover { border-color: #00d4ff; color: #e0e6ed; }
+        .token-wrapper .action-btn.active { border-color: #00d4ff; color: #00d4ff; }
+        .token-wrapper .action-btn.copied { border-color: #00ff88; color: #00ff88; }
 
         .db-stats {
             display: flex;
@@ -428,15 +335,8 @@
             font-size: 0.65rem;
         }
 
-        .db-stats .stat-item i {
-            color: #7a8fa3;
-            font-size: 0.6rem;
-        }
-
-        .db-stats .stat-item .stat-value {
-            color: #e0e6ed;
-            font-weight: 500;
-        }
+        .db-stats .stat-item i { color: #7a8fa3; font-size: 0.6rem; }
+        .db-stats .stat-item .stat-value { color: #e0e6ed; font-weight: 500; }
 
         .summary-card {
             background: linear-gradient(145deg, #111d2b, #0d1624);
@@ -460,18 +360,8 @@
             border: 1px solid #1a2a3a;
         }
 
-        .summary-card .summary-item .summary-number {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #00d4ff;
-        }
-
-        .summary-card .summary-item .summary-label {
-            color: #7a8fa3;
-            font-size: 0.6rem;
-            margin-top: 2px;
-        }
-
+        .summary-card .summary-item .summary-number { font-size: 1.2rem; font-weight: 700; color: #00d4ff; }
+        .summary-card .summary-item .summary-label { color: #7a8fa3; font-size: 0.6rem; margin-top: 2px; }
         .summary-card .summary-item .summary-number.online { color: #00ff88; }
         .summary-card .summary-item .summary-number.offline { color: #ff4444; }
 
@@ -493,9 +383,7 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .toast-container {
             position: fixed;
@@ -535,6 +423,63 @@
         .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
 
+        .btn-refresh {
+            background: transparent;
+            border: 1px solid #1a2a3a;
+            color: #7a8fa3;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-refresh:hover { border-color: #00d4ff; color: #e0e6ed; }
+
+        /* ===== TABLE ===== */
+        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table { width: 100%; border-collapse: collapse; font-size: 0.7rem; min-width: 400px; }
+        .table th { text-align: right; padding: 8px 10px; color: #00d4ff; border-bottom: 2px solid #1a2a3a; font-weight: 600; }
+        .table td { padding: 8px 10px; border-bottom: 1px solid #0d1624; color: #c0d0e0; }
+        .table tr:hover td { background: rgba(0, 212, 255, 0.03); }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            border-radius: 8px;
+            color: #e0e6ed;
+            font-size: 0.8rem;
+            min-width: 150px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .search-box select {
+            padding: 8px 12px;
+            background: #0a0e17;
+            border: 1px solid #1a2a3a;
+            border-radius: 8px;
+            color: #e0e6ed;
+            font-size: 0.8rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
         @media (min-width: 768px) {
             .dashboard-header { padding: 16px 24px; }
             .dashboard-header .logo { font-size: 1.3rem; }
@@ -544,6 +489,8 @@
             .db-card .db-body { grid-template-columns: 1fr 1fr; gap: 12px 24px; }
             .summary-card .summary-grid { gap: 16px; }
             .summary-card .summary-item .summary-number { font-size: 1.5rem; }
+            .tabs .tab-btn { padding: 10px 24px; font-size: 0.9rem; }
+            .table { font-size: 0.85rem; min-width: auto; }
         }
 
         @media (max-width: 480px) {
@@ -552,6 +499,9 @@
             .flyout-menu { right: 8px; top: 60px; min-width: 150px; }
             .summary-card .summary-grid { grid-template-columns: 1fr 1fr; }
             .page-header h1 { font-size: 1rem; }
+            .tabs .tab-btn { font-size: 0.7rem; padding: 6px 10px; }
+            .search-box { flex-direction: column; }
+            .search-box input { width: 100%; }
         }
 
         @media (max-width: 380px) {
@@ -575,54 +525,135 @@
 </head>
 <body>
 
+    <!-- ===== MENU ===== -->
     <div id="navContainer"></div>
 
+    <!-- ===== CONTENT ===== -->
     <div class="container">
 
+        <!-- Page Header -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-database"></i> مدیریت دیتابیس</h1>
-                <span class="subtitle">وضعیت و اطلاعات اتصالات دیتابیس</span>
+                <span class="subtitle">وضعیت، مانیتورینگ و کاوشگر داده</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <span class="timestamp" id="pageTimestamp"></span>
-                <button class="btn-refresh" onclick="loadDbStatus()">
+                <button class="btn-refresh" onclick="refreshAll()">
                     <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
         </div>
 
-        <div class="summary-card" id="summaryCard">
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-number" id="totalDbs">-</div>
-                    <div class="summary-label">کل دیتابیس‌ها</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-number online" id="onlineDbs">-</div>
-                    <div class="summary-label">✅ متصل</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-number offline" id="offlineDbs">-</div>
-                    <div class="summary-label">❌ قطع</div>
+        <!-- ===== TABS ===== -->
+        <div class="tabs" id="tabContainer">
+            <button class="tab-btn active" data-tab="overview">
+                <i class="fas fa-chart-pie"></i> نمای کلی
+            </button>
+            <button class="tab-btn" data-tab="explorer">
+                <i class="fas fa-search"></i> کاوشگر
+            </button>
+            <button class="tab-btn" data-tab="monitor">
+                <i class="fas fa-chart-line"></i> مانیتورینگ
+            </button>
+            <button class="tab-btn" data-tab="postgresql">
+                <i class="fas fa-database"></i> PostgreSQL
+            </button>
+            <button class="tab-btn" data-tab="redis">
+                <i class="fas fa-bolt"></i> Redis
+            </button>
+            <button class="tab-btn" data-tab="sqlite">
+                <i class="fas fa-file"></i> SQLite
+            </button>
+        </div>
+
+        <!-- ===== TAB: OVERVIEW ===== -->
+        <div class="tab-content active" id="tab-overview">
+            <div id="overviewContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
                 </div>
             </div>
         </div>
 
-        <div id="dbContent">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p style="color:#7a8fa3;font-size:0.8rem;">در حال دریافت اطلاعات...</p>
+        <!-- ===== TAB: EXPLORER ===== -->
+        <div class="tab-content" id="tab-explorer">
+            <div id="explorerContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: MONITOR ===== -->
+        <div class="tab-content" id="tab-monitor">
+            <div id="monitorContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: POSTGRESQL ===== -->
+        <div class="tab-content" id="tab-postgresql">
+            <div id="postgresqlContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: REDIS ===== -->
+        <div class="tab-content" id="tab-redis">
+            <div id="redisContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: SQLITE ===== -->
+        <div class="tab-content" id="tab-sqlite">
+            <div id="sqliteContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
+                </div>
             </div>
         </div>
 
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
+    <script src="/static/js/settings-theme.js"></script>
+
     <script>
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+        console.log('🚀 Database page loaded');
+
+        let currentTab = 'overview';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadTab('overview');
+            setInterval(updateTimestamp, 1000);
+            setInterval(refreshAll, 30000);
+        });
+
         // ============================================================
         // بارگذاری منو
         // ============================================================
@@ -636,7 +667,7 @@
                     if (typeof initMenu === 'function') initMenu();
                     loadUserInfo();
                 })
-                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
+                .catch(err => console.error('❌ Nav error:', err));
         }
 
         function loadUserInfo() {
@@ -654,6 +685,9 @@
                 .catch(() => {});
         }
 
+        // ============================================================
+        // آپدیت تاریخ و ساعت
+        // ============================================================
         function updateTimestamp() {
             const el = document.getElementById('pageTimestamp');
             if (el) {
@@ -661,220 +695,65 @@
             }
         }
 
-        function loadDbStatus() {
-            const container = document.getElementById('dbContent');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;font-size:0.8rem;">در حال دریافت...</p></div>';
-
-            fetch('/health/database')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderDbStatus(data.data);
-                        updateSummary(data.data);
-                    } else {
-                        container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ ${data.error || 'خطا در دریافت اطلاعات'}</p></div>`;
-                    }
-                })
-                .catch(err => {
-                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ خطا: ${err.message}</p></div>`;
-                });
-
-            updateTimestamp();
-        }
-
-        function updateSummary(dbData) {
-            const dbNames = Object.keys(dbData);
-            const total = dbNames.length;
-            let online = 0;
-            let offline = 0;
-
-            for (const name of dbNames) {
-                if (dbData[name].connected && dbData[name].ping) {
-                    online++;
-                } else {
-                    offline++;
-                }
-            }
-
-            document.getElementById('totalDbs').textContent = total;
-            document.getElementById('onlineDbs').textContent = online;
-            document.getElementById('offlineDbs').textContent = offline;
-        }
-
         // ============================================================
-        // رندر وضعیت دیتابیس‌ها
+        // مدیریت تب‌ها
         // ============================================================
-        let passwordVisible = {};
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
 
-        function renderDbStatus(dbData) {
-            const container = document.getElementById('dbContent');
-            const dbNames = Object.keys(dbData);
+                const tab = this.dataset.tab;
+                currentTab = tab;
+                loadTab(tab);
+            });
+        });
 
-            if (dbNames.length === 0) {
-                container.innerHTML = `
-                    <div class="db-card">
-                        <p style="color:#7a8fa3;text-align:center;padding:20px;">
-                            📭 هیچ دیتابیسی پیکربندی نشده است
-                        </p>
-                    </div>
-                `;
-                return;
-            }
+        function loadTab(tab) {
+            const container = document.getElementById(tab + 'Content');
+            if (!container) return;
 
-            let html = '';
-
-            const dbStyles = {
-                'redis': { icon: 'fa-bolt', class: 'redis', label: 'کش و داده‌های سریع' },
-                'postgresql': { icon: 'fa-database', class: 'postgresql', label: 'داده‌های اصلی و ماندگار' },
-                'sqlite': { icon: 'fa-file', class: 'sqlite', label: 'بک‌آپ و گزارش‌ها' }
-            };
-
-            for (const name of dbNames) {
-                const info = dbData[name];
-                const style = dbStyles[name] || dbStyles['postgresql'];
-                const isConnected = info.connected && info.ping;
-
-                const address = info.host || info.url || 'تنظیم نشده';
-                const password = info.token || info.password || '';
-                const maskedPassword = password.length > 10 ? password.substring(0, 6) + '••••••••' : (password || '••••••••');
-
-                const stats = info.stats || {};
-                const statsHtml = Object.keys(stats).length > 0 ? `
-                    <div class="db-stats">
-                        ${Object.entries(stats).map(([key, value]) => `
-                            <span class="stat-item">
-                                <i class="fas fa-chart-simple"></i>
-                                ${key}: <span class="stat-value">${value}</span>
-                            </span>
-                        `).join('')}
-                    </div>
-                ` : '';
-
-                html += `
-                    <div class="db-card ${style.class}">
-                        <div class="db-header">
-                            <div class="db-info">
-                                <span class="db-icon"><i class="fas ${style.icon}"></i></span>
-                                <span class="db-name">${name}</span>
-                                <span class="db-description">${style.label}</span>
-                            </div>
-                            <span class="db-status ${isConnected ? 'online' : 'offline'}">
-                                ${isConnected ? '✅ متصل' : '❌ قطع'}
-                            </span>
-                        </div>
-
-                        <div class="db-body">
-                            <div class="db-field">
-                                <label>📡 آدرس</label>
-                                <div class="db-value">${address}</div>
-                            </div>
-                            <div class="db-field">
-                                <label>🔑 توکن / رمز عبور</label>
-                                <div class="token-wrapper">
-                                    <div class="db-value" id="password_display_${name}" data-original="${password}">${maskedPassword}</div>
-                                    <button class="action-btn" onclick="togglePassword('${name}')" title="نمایش/پنهان کردن" id="eye_btn_${name}">
-                                        <i class="fas fa-eye" id="eye_icon_${name}"></i>
-                                    </button>
-                                    <button class="action-btn" onclick="copyPassword('${name}')" title="کپی">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="db-field">
-                                <label>📊 وضعیت</label>
-                                <div class="db-value">${info.enabled ? '✅ فعال' : '⛔ غیرفعال'}</div>
-                            </div>
-                            <div class="db-field">
-                                <label>📡 Ping</label>
-                                <div class="db-value" style="color:${isConnected ? '#00ff88' : '#ff4444'};">${isConnected ? '✅ پاسخ می‌دهد' : '❌ پاسخ نمی‌دهد'}</div>
-                            </div>
-                        </div>
-
-                        ${statsHtml}
-                    </div>
-                `;
-            }
-
-            html += `
-                <div style="text-align:center;margin-top:12px;">
-                    <button class="btn-refresh" onclick="loadDbStatus()" style="padding:8px 20px;">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی مجدد
-                    </button>
+            // نمایش لودینگ
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
                 </div>
             `;
 
-            container.innerHTML = html;
-        }
-
-        // ============================================================
-        // نمایش/پنهان کردن رمز
-        // ============================================================
-        function togglePassword(name) {
-            const display = document.getElementById(`password_display_${name}`);
-            const eye = document.getElementById(`eye_icon_${name}`);
-            const btn = document.getElementById(`eye_btn_${name}`);
-            
-            if (!display || !eye) return;
-
-            if (!display.dataset.original) {
-                display.dataset.original = display.textContent;
-            }
-
-            if (passwordVisible[name]) {
-                const original = display.dataset.original || '';
-                display.textContent = original.length > 10 ? original.substring(0, 6) + '••••••••' : '••••••••';
-                eye.className = 'fas fa-eye';
-                if (btn) btn.classList.remove('active');
-                passwordVisible[name] = false;
-            } else {
-                const original = display.dataset.original || '';
-                display.textContent = original || '••••••••';
-                eye.className = 'fas fa-eye-slash';
-                if (btn) btn.classList.add('active');
-                passwordVisible[name] = true;
-            }
-        }
-
-        // ============================================================
-        // کپی رمز
-        // ============================================================
-        function copyPassword(name) {
-            const display = document.getElementById(`password_display_${name}`);
-            if (!display) return;
-
-            let text = display.dataset.original || display.textContent;
-            if (text.includes('••••••••')) {
-                text = display.dataset.original || '';
-            }
-
-            if (!text) {
-                showToast('❌ توکن موجود نیست', 'error');
-                return;
-            }
-
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast('📋 کپی شد!', 'success');
-                }).catch(() => {
-                    fallbackCopy(text);
+            // بارگذاری محتوای تب از فایل جداگانه
+            fetch(`/static/db-parts/${tab}.html`)
+                .then(res => {
+                    if (!res.ok) throw new Error('تاب یافت نشد');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    // اجرای اسکریپت‌های داخل تب
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.body.appendChild(newScript);
+                        script.remove();
+                    });
+                })
+                .catch(err => {
+                    container.innerHTML = `
+                        <div class="db-card">
+                            <p style="color:#ff4444;text-align:center;padding:20px;">
+                                ❌ خطا در بارگذاری: ${err.message}
+                            </p>
+                        </div>
+                    `;
                 });
-            } else {
-                fallbackCopy(text);
-            }
         }
 
-        function fallbackCopy(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showToast('📋 کپی شد!', 'success');
-            } catch {
-                showToast('❌ کپی نشد!', 'error');
-            }
-            document.body.removeChild(textarea);
+        // ============================================================
+        // بروزرسانی همه
+        // ============================================================
+        function refreshAll() {
+            loadTab(currentTab);
         }
 
         // ============================================================
@@ -883,7 +762,7 @@
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             if (!container) return;
-            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444' };
+            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ffaa00' };
             const toast = document.createElement('div');
             toast.className = 'toast ' + type;
             toast.textContent = message;
@@ -892,21 +771,9 @@
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    if (toast.parentNode) toast.parentNode.removeChild(toast);
-                }, 300);
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
             }, 3000);
         }
-
-        // ============================================================
-        // راه‌اندازی
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadDbStatus();
-            setInterval(loadDbStatus, 30000);
-            setInterval(updateTimestamp, 1000);
-        });
     </script>
 
 </body>
