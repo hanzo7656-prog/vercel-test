@@ -115,7 +115,20 @@ class RedisManager(DatabaseBase):
         except Exception as e:
             logger.error(f"❌ خطا در flush: {e}")
             return False
-    
+
+    def get_stats(self) -> Dict[str, Any]:
+        """دریافت آمار Redis"""
+        try:
+            info = self._client.info()
+            return {
+                "keys": info.get("db0", {}).get("keys", 0),
+                "memory": info.get("used_memory_human", "0"),
+                "clients": info.get("connected_clients", 0),
+                "uptime": info.get("uptime_in_seconds", 0)
+            }
+        except:
+            return {}
+            
     def ping(self) -> bool:
         """بررسی سلامت"""
         try:
