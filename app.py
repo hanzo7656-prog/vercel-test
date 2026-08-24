@@ -1203,6 +1203,42 @@ def debug_env():
         "data": env_vars
     })
 
+@app.route('/api/debug/file', methods=['POST'])
+def debug_file():
+    """خواندن محتوای فایل"""
+    data = request.json
+    filename = data.get('filename', '').strip()
+    
+    if not filename:
+        return jsonify({"success": False, "error": "نام فایل وارد نشده"}), 400
+    
+    # ✅ اضافه کردن فایل‌های بیشتر
+    allowed_files = [
+        'config/settings.json', 
+        'config/databases.json', 
+        'config/users.json',
+        'app.py',
+        'routes.py',
+        'auth_manager.py',
+        'api_handler.py',
+        'requirements.txt'
+    ]
+    
+    if filename not in allowed_files:
+        return jsonify({"success": False, "error": "دسترسی به این فایل مجاز نیست"}), 403
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({
+            "success": True,
+            "content": content
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
