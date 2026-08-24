@@ -1211,6 +1211,83 @@ def debug_env():
         "data": env_vars
     })
 
+#==============================================
+# روت دیتابیس
+#==============================================
+
+
+@app.route('/api/db/postgresql/tables', methods=['GET'])
+def get_postgresql_tables():
+    """دریافت لیست جدول‌های PostgreSQL با تعداد رکوردها"""
+    from database import get_primary
+    
+    db = get_primary()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
+    
+    try:
+        # دریافت لیست جدول‌ها
+        tables = db.execute("""
+            SELECT 
+                table_name,
+                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
+            FROM information_schema.tables t
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        
+        # دریافت حجم هر جدول
+        for table in tables:
+            size_result = db.execute(f"""
+                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
+            """)
+            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
+            
+            # دریافت آخرین بروزرسانی
+            update_result = db.execute(f"""
+                SELECT last_analyze FROM pg_stat_user_tables 
+                WHERE relname = '{table['table_name']}'
+            """)
+            table['last_update'] = update_result[0]['last_analyze'] if update_result else None
+        
+        return jsonify({
+            "success": True,
+            "data": tables
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/db/postgresql/table/<table_name>', methods=['GET'])
+def get_postgresql_table_data(table_name):
+    """دریافت محتوای یک جدول خاص"""
+    from database import get_primary
+    
+    db = get_primary()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
+    
+    try:
+        # دریافت ستون‌ها
+        columns = db.execute(f"""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}'
+            ORDER BY ordinal_position
+        """)
+        
+        # دریافت داده‌ها (محدود به ۱۰۰ رکورد)
+        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "columns": columns,
+                "rows": data
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
