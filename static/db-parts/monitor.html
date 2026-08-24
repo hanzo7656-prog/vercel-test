@@ -3,12 +3,71 @@
         <div class="db-info">
             <span class="db-icon"><i class="fas fa-chart-line"></i></span>
             <span class="db-name">مانیتورینگ دیتابیس</span>
-            <span class="db-description">آمار و عملکرد</span>
+            <span class="db-description">آمار و عملکرد لحظه‌ای</span>
+        </div>
+        <button class="btn-refresh" onclick="loadMonitor()"><i class="fas fa-sync-alt"></i></button>
+    </div>
+
+    <div id="monitorContent">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p>
         </div>
     </div>
-    <div style="padding:12px;text-align:center;color:#7a8fa3;">
-        <i class="fas fa-tools" style="font-size:2rem;opacity:0.3;"></i>
-        <p style="margin-top:8px;">در حال توسعه...</p>
-        <p style="font-size:0.7rem;">به زودی: حجم داده، ترافیک و آمار پیشرفته</p>
-    </div>
 </div>
+
+<script>
+    function loadMonitor() {
+        const container = document.getElementById('monitorContent');
+        container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p></div>';
+
+        fetch('/health/database')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderMonitor(data.data);
+                } else {
+                    container.innerHTML = '<p style="color:#ff4444;text-align:center;">❌ خطا در دریافت اطلاعات</p>';
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<p style="color:#ff4444;text-align:center;">❌ ${err.message}</p>`;
+            });
+    }
+
+    function renderMonitor(dbData) {
+        const container = document.getElementById('monitorContent');
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">';
+
+        for (const [name, info] of Object.entries(dbData)) {
+            const isConnected = info.connected && info.ping;
+            const stats = info.stats || {};
+
+            html += `
+                <div class="db-card" style="margin-bottom:0;padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-weight:600;color:#00d4ff;">${name}</span>
+                        <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.7rem;">
+                            ${isConnected ? '✅' : '❌'}
+                        </span>
+                    </div>
+                    <div style="font-size:0.7rem;color:#7a8fa3;">
+                        ${Object.entries(stats).map(([key, value]) => `
+                            <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #0d1624;">
+                                <span>${key}</span>
+                                <span style="color:#e0e6ed;">${value}</span>
+                            </div>
+                        `).join('')}
+                        ${Object.keys(stats).length === 0 ? '<p style="color:#4a5a6a;text-align:center;font-size:0.6rem;">هیچ آماری موجود نیست</p>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // اجرا
+    loadMonitor();
+</script>
