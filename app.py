@@ -1287,6 +1287,142 @@ def get_postgresql_table_data(table_name):
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/redis/keys', methods=['GET'])
+def get_redis_keys():
+    """دریافت لیست کلیدهای Redis با نوع و حجم"""
+    from database import get_cache
+    
+    db = get_cache()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
+    
+    try:
+        # دریافت همه کلیدها
+        keys = db._client.keys('*')
+        result = []
+        for key in keys:
+            key_type = db._client.type(key)
+            ttl = db._client.ttl(key)
+            # دریافت حجم (برای stringها)
+            size = 0
+            if key_type == 'string':
+                size = len(db._client.get(key) or '')
+            elif key_type in ['hash', 'list', 'set', 'zset']:
+                size = db._client.dbsize()  # تقریبی
+            
+            result.append({
+                'key': key,
+                'type': key_type,
+                'ttl': ttl if ttl > 0 else '∞',
+                'size': size
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": result,
+            "count": len(result)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/redis/key/<path:key>', methods=['GET'])
+def get_redis_key_value(key):
+    """دریافت مقدار یک کلید خاص"""
+    from database import get_cache
+    import json
+    
+    db = get_cache()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
+    
+    try:
+        value = db.get(key)
+        key_type = db._client.type(key)
+        ttl = db._client.ttl(key)
+        
+        # تلاش برای JSON decode
+        display_value = value
+        try:
+            if isinstance(value, str):
+                json.loads(value)
+        except:
+            pass
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "key": key,
+                "value": value,
+                "type": key_type,
+                "ttl": ttl if ttl > 0 else '∞'
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/sqlite/tables', methods=['GET'])
+def get_sqlite_tables():
+    """دریافت لیست جدول‌های SQLite"""
+    from database import get_backup
+    
+    db = get_backup()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
+    
+    try:
+        # دریافت لیست جدول‌ها
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        
+        result = []
+        for table in tables:
+            table_name = table['name']
+            # تعداد رکوردها
+            count_result = db.execute(f"SELECT COUNT(*) as count FROM {table_name}")
+            row_count = count_result[0]['count'] if count_result else 0
+            
+            result.append({
+                'table_name': table_name,
+                'row_count': row_count
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": result
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/sqlite/table/<table_name>', methods=['GET'])
+def get_sqlite_table_data(table_name):
+    """دریافت محتوای یک جدول SQLite"""
+    from database import get_backup
+    
+    db = get_backup()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
+    
+    try:
+        # دریافت اطلاعات ستون‌ها (PRAGMA)
+        columns_info = db.execute(f"PRAGMA table_info({table_name})")
+        columns = [col['name'] for col in columns_info]
+        
+        # دریافت داده‌ها
+        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "columns": columns,
+                "rows": data
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
         
 #===============================
 #محل ایمپورت روت های جدید 
