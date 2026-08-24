@@ -5,7 +5,12 @@
             <span class="db-name">مانیتورینگ دیتابیس</span>
             <span class="db-description">آمار و عملکرد لحظه‌ای</span>
         </div>
-        <button class="btn-refresh" onclick="loadMonitor()"><i class="fas fa-sync-alt"></i></button>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:#7a8fa3;font-size:0.6rem;" id="monitorTime"></span>
+            <button class="btn-refresh" onclick="loadMonitor()" title="بروزرسانی">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
     </div>
 
     <div id="monitorContent">
@@ -17,8 +22,15 @@
 </div>
 
 <script>
+    function init_monitor() {
+        console.log('🔄 Monitor tab initialized');
+        loadMonitor();
+        setInterval(loadMonitor, 30000);
+    }
+
     function loadMonitor() {
         const container = document.getElementById('monitorContent');
+        const timeEl = document.getElementById('monitorTime');
         container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;font-size:0.8rem;">در حال بارگذاری...</p></div>';
 
         fetch('/health/database')
@@ -26,6 +38,7 @@
             .then(data => {
                 if (data.success) {
                     renderMonitor(data.data);
+                    timeEl.textContent = '🔄 ' + new Date().toLocaleTimeString('fa-IR');
                 } else {
                     container.innerHTML = '<p style="color:#ff4444;text-align:center;">❌ خطا در دریافت اطلاعات</p>';
                 }
@@ -37,28 +50,42 @@
 
     function renderMonitor(dbData) {
         const container = document.getElementById('monitorContent');
-        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">';
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">';
+
+        const dbIcons = {
+            'redis': { icon: 'fa-bolt', color: '#ff4444' },
+            'postgresql': { icon: 'fa-database', color: '#3366ff' },
+            'sqlite': { icon: 'fa-file', color: '#00ff88' }
+        };
 
         for (const [name, info] of Object.entries(dbData)) {
             const isConnected = info.connected && info.ping;
+            const style = dbIcons[name] || { icon: 'fa-server', color: '#00d4ff' };
             const stats = info.stats || {};
 
             html += `
-                <div class="db-card" style="margin-bottom:0;padding:12px;">
+                <div class="db-card" style="margin-bottom:0;padding:14px;border-left:4px solid ${style.color};">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="font-weight:600;color:#00d4ff;">${name}</span>
-                        <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.7rem;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <i class="fas ${style.icon}" style="color:${style.color};"></i>
+                            <span style="font-weight:600;color:#e0e6ed;">${name}</span>
+                        </div>
+                        <span style="color:${isConnected ? '#00ff88' : '#ff4444'};font-size:0.7rem;display:flex;align-items:center;gap:4px;">
                             ${isConnected ? '✅' : '❌'}
+                            ${isConnected ? 'متصل' : 'قطع'}
                         </span>
                     </div>
                     <div style="font-size:0.7rem;color:#7a8fa3;">
                         ${Object.entries(stats).map(([key, value]) => `
-                            <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #0d1624;">
+                            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0d1624;">
                                 <span>${key}</span>
-                                <span style="color:#e0e6ed;">${value}</span>
+                                <span style="color:#e0e6ed;font-family:'Courier New',monospace;">${value}</span>
                             </div>
                         `).join('')}
                         ${Object.keys(stats).length === 0 ? '<p style="color:#4a5a6a;text-align:center;font-size:0.6rem;">هیچ آماری موجود نیست</p>' : ''}
+                    </div>
+                    <div style="margin-top:6px;font-size:0.5rem;color:#4a5a6a;">
+                        ${info.version ? 'نسخه: ' + info.version : ''}
                     </div>
                 </div>
             `;
@@ -67,7 +94,4 @@
         html += '</div>';
         container.innerHTML = html;
     }
-
-    // اجرا
-    loadMonitor();
 </script>
