@@ -55,9 +55,12 @@ class DatabaseBase(ABC):
         pass
     
     def is_connected(self) -> bool:
-        """بررسی وضعیت اتصال"""
-        return self._connected and self._client is not None
-    
+        """بررسی وضعیت اتصال با تست واقعی"""
+        if not self._connected or not self._client:
+            return False
+        # تست واقعی با ping
+        return self.ping()
+        
     def get_client(self):
         """دریافت کلاینت اصلی (برای دسترسی مستقیم)"""
         return self._client
