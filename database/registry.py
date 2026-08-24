@@ -45,7 +45,15 @@ class DatabaseRegistry:
         health = {}
         for name, db in self._databases.items():
             base = db.health_check()
-            # ✅ اضافه کردن اطلاعات کامل
+        
+            # دریافت stats
+            stats = {}
+            if hasattr(db, 'get_stats'):
+                try:
+                    stats = db.get_stats()
+                except:
+                    pass
+        
             health[name] = {
                 "name": name,
                 "type": db.config.get("type", "unknown"),
@@ -55,9 +63,8 @@ class DatabaseRegistry:
                 "connected": base.get("connected", False),
                 "ping": base.get("ping", False),
                 "enabled": db.config.get("enabled", True),
-                "version": base.get("version", "unknown"),
-                "description": db.config.get("description", ""),
-                "stats": self._get_db_stats(db)
+                "version": stats.get("version", "unknown"),
+                "stats": stats
             }
         return health
     
