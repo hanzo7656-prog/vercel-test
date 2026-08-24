@@ -1,6 +1,6 @@
 # database/registry.py
 # ============================================================
-# ثبت و مدیریت دیتابیس‌ها - مانند پریز برق
+# ثبت و مدیریت دیتابیس‌ها
 # ============================================================
 
 from typing import Dict, Any, Optional, List
@@ -8,14 +8,11 @@ from database.base import DatabaseBase
 
 
 class DatabaseRegistry:
-    """
-    ثبت‌کننده دیتابیس‌ها
-    هر دیتابیس با یک نام و نقش ثبت میشه
-    """
     
     _instance = None
     _databases: Dict[str, DatabaseBase] = {}
-    _roles: Dict[str, str] = {}  # نقش → نام دیتابیس
+    _roles: Dict[str, str] = {}
+    _config: Dict = {}
     
     def __new__(cls):
         if cls._instance is None:
@@ -23,43 +20,59 @@ class DatabaseRegistry:
         return cls._instance
     
     def register(self, name: str, db: DatabaseBase, roles: List[str] = None):
-        """ثبت یک دیتابیس با نقش‌های آن"""
         self._databases[name] = db
-        
         if roles:
             for role in roles:
                 self._roles[role] = name
-        
         print(f"✅ دیتابیس {name} با نقش‌های {roles} ثبت شد")
     
     def get(self, name: str = None) -> Optional[DatabaseBase]:
-        """دریافت دیتابیس با نام"""
         if name is None:
             name = self._config.get("default_db", "postgresql")
         return self._databases.get(name)
     
     def get_by_role(self, role: str) -> Optional[DatabaseBase]:
-        """دریافت دیتابیس بر اساس نقش"""
         db_name = self._roles.get(role)
         if db_name:
             return self._databases.get(db_name)
         return None
     
     def get_all(self) -> Dict[str, DatabaseBase]:
-        """دریافت همه دیتابیس‌ها"""
         return self._databases
     
     def get_health(self) -> Dict[str, Any]:
-        """بررسی سلامت همه دیتابیس‌ها"""
+        """بررسی سلامت همه دیتابیس‌ها با اطلاعات کامل"""
         health = {}
         for name, db in self._databases.items():
-            health[name] = db.health_check()
+            base = db.health_check()
+            # ✅ اضافه کردن اطلاعات کامل
+            health[name] = {
+                "name": name,
+                "type": db.config.get("type", "unknown"),
+                "host": db.config.get("host") or db.config.get("url", ""),
+                "port": db.config.get("port", ""),
+                "password": db.config.get("password") or db.config.get("token", ""),
+                "connected": base.get("connected", False),
+                "ping": base.get("ping", False),
+                "enabled": db.config.get("enabled", True),
+                "version": base.get("version", "unknown"),
+                "description": db.config.get("description", ""),
+                "stats": self._get_db_stats(db)
+            }
         return health
     
+    def _get_db_stats(self, db) -> Dict:
+        """دریافت آمار دیتابیس (اگه ممکن باشه)"""
+        stats = {}
+        try:
+            if hasattr(db, 'get_stats'):
+                stats = db.get_stats()
+        except:
+            pass
+        return stats
+    
     def set_config(self, config: Dict):
-        """تنظیم پیکربندی"""
         self._config = config
 
 
-# نمونه Singleton
 registry = DatabaseRegistry()
