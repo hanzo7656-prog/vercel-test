@@ -51,6 +51,11 @@
             font-size: 0.8rem;
             font-family: 'Courier New', monospace;
         }
+        #userDisplay {
+            color: #00d4ff;
+            font-size: 0.85rem;
+        }
+
         .menu-toggle {
             width: 44px; height: 44px; border-radius: 50%; background: #0d1624;
             border: 1px solid #1a2a3a; color: #e0e6ed; font-size: 1.2rem;
@@ -60,6 +65,7 @@
         }
         .menu-toggle:hover { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
         .menu-toggle.open { border-color: #00d4ff; background: #00d4ff; color: #0a0e17; }
+
         .flyout-menu {
             position: fixed; top: 80px; right: 20px;
             background: rgba(13, 22, 36, 0.95); backdrop-filter: blur(20px);
@@ -250,10 +256,45 @@
 </head>
 <body>
 
-    <!-- منو -->
-    <div id="navContainer"></div>
+    <!-- ============================================================
+    MENU - مستقیم در HTML (بدون fetch)
+    ============================================================ -->
+    <header class="dashboard-header">
+        <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <div class="status">
+                <span class="dot"></span>
+                <span id="statusText">آنلاین</span>
+            </div>
+            <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+            <span id="userDisplay" style="color:#00d4ff;font-size:0.85rem;"></span>
+            <button class="menu-toggle" id="menuToggle" aria-label="منو">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
 
-    <!-- محتوا -->
+    <div class="flyout-overlay" id="flyoutOverlay"></div>
+
+    <nav class="flyout-menu" id="flyoutMenu">
+        <div class="menu-label">🔹 منوی اصلی</div>
+        <a href="/dashboard"><i class="fas fa-chart-pie"></i> داشبورد</a>
+        <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار</a>
+        <a href="/predict-page"><i class="fas fa-bullseye"></i> مدل</a>
+        <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
+        <div class="menu-divider"></div>
+        <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
+        <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
+        <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
+        <div class="menu-divider"></div>
+        <a href="/debug-page" style="color:#ff6b00;">
+            <i class="fas fa-bug"></i> دیباگ
+        </a>
+    </nav>
+
+    <!-- ============================================================
+    محتوای اصلی داشبورد
+    ============================================================ -->
     <main class="dashboard-content">
 
         <div class="row">
@@ -280,27 +321,15 @@
 
     </main>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
+
     <script>
         // ============================================================
-        // بارگذاری منو
-        // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            fetch('/static/nav.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    if (typeof initMenu === 'function') initMenu();
-                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
-                })
-                .catch(err => console.error('❌ خطا در بارگذاری منو:', err));
-        }
-
-        // ============================================================
-        // لیست ارزهای معروف (فیلتر شده)
+        // لیست ارزهای معروف
         // ============================================================
         const TOP_COINS = [
             'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
@@ -308,6 +337,60 @@
             'avalanche', 'polygon', 'tron', 'uniSwap', 'litecoin',
             'bitcoin-cash', 'cosmos', 'ethereum-classic', 'filecoin', 'stellar'
         ];
+
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // راه‌اندازی منو
+            if (typeof initMenu === 'function') {
+                initMenu();
+            }
+            
+            // نمایش نام کاربری
+            loadUserInfo();
+            
+            // شروع آپتایم
+            if (typeof fetchAndStartUptime === 'function') {
+                fetchAndStartUptime();
+            }
+            
+            // بارگذاری داده‌های داشبورد
+            loadMarketStats();
+            loadFearGreed();
+            loadTopCoins();
+            loadNews();
+
+            // بروزرسانی دوره‌ای
+            setInterval(() => {
+                loadMarketStats();
+                loadFearGreed();
+                loadTopCoins();
+                loadNews();
+            }, 60000);
+        });
+
+        // ============================================================
+        // نمایش نام کاربری
+        // ============================================================
+        function loadUserInfo() {
+            fetch('/api/user', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const display = document.getElementById('userDisplay');
+                        if (display) {
+                            const roleMap = {
+                                'admin': '👑 ادمین',
+                                'vip': '⭐ VIP',
+                                'guest': '👤 مهمان'
+                            };
+                            display.textContent = roleMap[data.data.role] || data.data.username;
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
 
         // ============================================================
         // توابع داشبورد
@@ -380,7 +463,6 @@
             const container = document.getElementById('topCoinsContainer');
             container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال دریافت...</p></div>';
 
-            // برای هر ارز معروف، اطلاعات رو جداگانه بگیر
             const promises = TOP_COINS.map(coinId =>
                 fetch(`/test-api?type=coin&coin=${coinId}`)
                     .then(res => res.json())
@@ -401,7 +483,6 @@
                         return;
                     }
 
-                    // مرتب‌سازی بر اساس مارکت‌کپ
                     validCoins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 
                     let html = '';
@@ -432,9 +513,7 @@
             fetch('/test-api?type=news&limit=6')
                 .then(res => res.json())
                 .then(data => {
-                    console.log('News response:', data);
                     if (data.success && data.data) {
-                        // بررسی ساختار پاسخ
                         let news = [];
                         if (data.data.data && Array.isArray(data.data.data)) {
                             news = data.data.data;
@@ -484,24 +563,6 @@
                     container.innerHTML = '<p style="color:#ff4444;text-align:center;font-size:0.9rem;">❌ خطا در دریافت اخبار</p>';
                 });
         }
-
-        // ============================================================
-        // راه‌اندازی
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadMarketStats();
-            loadFearGreed();
-            loadTopCoins();
-            loadNews();
-
-            setInterval(() => {
-                loadMarketStats();
-                loadFearGreed();
-                loadTopCoins();
-                loadNews();
-            }, 60000);
-        });
     </script>
 
 </body>
