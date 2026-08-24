@@ -120,11 +120,15 @@ class PostgreSQLManager(DatabaseBase):
         """دریافت آمار PostgreSQL"""
         try:
             result = self.execute("SELECT version()")
-            return {
-                "version": result[0].get("version", "unknown") if result else "unknown"
-            }
-        except:
-            return {}
+            if result:
+                return {
+                    "version": result[0].get("version", "unknown")
+                }
+            return {"version": "unknown"}
+        except Exception as e:
+            logger.warning(f"⚠️ Could not get stats for PostgreSQL: {e}")
+            return {"version": "unknown"}
+            
     def create_table(self, table_name: str, schema: Dict[str, str]) -> bool:
         """ایجاد جدول جدید"""
         try:
