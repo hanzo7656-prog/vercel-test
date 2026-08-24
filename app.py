@@ -12,6 +12,8 @@ import uuid
 import threading
 import numpy as np
 import logging
+import subprocess
+import io
 from typing import Any
 from datetime import datetime, timedelta
 from queue import Queue
@@ -1116,6 +1118,96 @@ def handle_exception(error):
     logger = logging.getLogger(__name__)
     logger.error(f"Unhandled exception: {error}")
     return send_from_directory('static', '500.html'), 500
+
+
+# ============================================================
+# روت‌های دیباگ (فقط برای توسعه)
+# ============================================================
+
+
+@app.route('/api/debug/exec', methods=['POST'])
+def debug_exec():
+    """اجرای دستور پایتون (فقط توسعه)"""
+    data = request.json
+    command = data.get('command', '').strip()
+    
+    if not command:
+        return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
+    
+    try:
+        # اجرای دستور در محیط امن
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        
+        # اجرا
+        exec(command, globals(), locals())
+        
+        result = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+        
+        return jsonify({
+            "success": True,
+            "result": result or "✅ اجرا شد (بدون خروجی)"
+        })
+    except Exception as e:
+        sys.stdout = sys.__stdout__
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/debug/file', methods=['POST'])
+def debug_file():
+    """خواندن محتوای فایل"""
+    data = request.json
+    filename = data.get('filename', '').strip()
+    
+    if not filename:
+        return jsonify({"success": False, "error": "نام فایل وارد نشده"}), 400
+    
+    # محدود کردن به فایل‌های خاص
+    allowed_files = ['config/settings.json', 'config/databases.json', 'config/users.json']
+    if filename not in allowed_files:
+        return jsonify({"success": False, "error": "دسترسی به این فایل مجاز نیست"}), 403
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({
+            "success": True,
+            "content": content
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/debug/env', methods=['GET'])
+def debug_env():
+    """دریافت متغیرهای محیطی (فقط کلیدها، بدون مقادیر حساس)"""
+    env_vars = {}
+    sensitive = ['TOKEN', 'PASSWORD', 'SECRET', 'KEY']
+    
+    for key, value in os.environ.items():
+        # مخفی کردن مقادیر حساس
+        if any(s in key.upper() for s in sensitive):
+            env_vars[key] = '••••••••'
+        else:
+            env_vars[key] = value
+    
+    return jsonify({
+        "success": True,
+        "data": env_vars
+    })
+
+
+@app.route('/debug-page')
+def debug_page():
+    """صفحه دیباگ"""
+    return send_from_directory('static', 'debug.html')
 
 #===============================
 #محل ایمپورت روت های جدید 
