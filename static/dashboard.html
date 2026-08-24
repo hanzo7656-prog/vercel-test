@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         /* ===== تمام استایل‌های قبلی ===== */
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; background: #0a0e17; min-height: 100vh; }
+        
         .dashboard-header {
             display: flex;
             justify-content: space-between;
@@ -257,40 +258,9 @@
 <body>
 
     <!-- ============================================================
-    MENU - مستقیم در HTML (بدون fetch)
+    منو - بارگذاری از فایل nav.html
     ============================================================ -->
-    <header class="dashboard-header">
-        <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
-        <div style="display:flex;align-items:center;gap:16px;">
-            <div class="status">
-                <span class="dot"></span>
-                <span id="statusText">آنلاین</span>
-            </div>
-            <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
-            <span id="userDisplay" style="color:#00d4ff;font-size:0.85rem;"></span>
-            <button class="menu-toggle" id="menuToggle" aria-label="منو">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </header>
-
-    <div class="flyout-overlay" id="flyoutOverlay"></div>
-
-    <nav class="flyout-menu" id="flyoutMenu">
-        <div class="menu-label">🔹 منوی اصلی</div>
-        <a href="/dashboard"><i class="fas fa-chart-pie"></i> داشبورد</a>
-        <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار</a>
-        <a href="/predict-page"><i class="fas fa-bullseye"></i> مدل</a>
-        <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
-        <div class="menu-divider"></div>
-        <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
-        <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
-        <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
-        <div class="menu-divider"></div>
-        <a href="/debug-page" style="color:#ff6b00;">
-            <i class="fas fa-bug"></i> دیباگ
-        </a>
-    </nav>
+    <div id="navContainer"></div>
 
     <!-- ============================================================
     محتوای اصلی داشبورد
@@ -329,46 +299,40 @@
 
     <script>
         // ============================================================
-        // لیست ارزهای معروف
+        // بارگذاری منو
         // ============================================================
-        const TOP_COINS = [
-            'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
-            'ripple', 'cardano', 'dogecoin', 'polkadot', 'chainlink',
-            'avalanche', 'polygon', 'tron', 'uniSwap', 'litecoin',
-            'bitcoin-cash', 'cosmos', 'ethereum-classic', 'filecoin', 'stellar'
-        ];
-
-        // ============================================================
-        // راه‌اندازی اولیه
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // راه‌اندازی منو
-            if (typeof initMenu === 'function') {
-                initMenu();
-            }
-            
-            // نمایش نام کاربری
-            loadUserInfo();
-            
-            // شروع آپتایم
-            if (typeof fetchAndStartUptime === 'function') {
-                fetchAndStartUptime();
-            }
-            
-            // بارگذاری داده‌های داشبورد
-            loadMarketStats();
-            loadFearGreed();
-            loadTopCoins();
-            loadNews();
-
-            // بروزرسانی دوره‌ای
-            setInterval(() => {
-                loadMarketStats();
-                loadFearGreed();
-                loadTopCoins();
-                loadNews();
-            }, 60000);
-        });
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html یافت نشد');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                    loadUserInfo();
+                })
+                .catch(err => {
+                    console.error('❌ خطا در بارگذاری منو:', err);
+                    // نمایش منوی ساده در صورت خطا
+                    container.innerHTML = `
+                        <header class="dashboard-header">
+                            <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+                            <div style="display:flex;align-items:center;gap:16px;">
+                                <div class="status">
+                                    <span class="dot"></span>
+                                    <span>آنلاین</span>
+                                </div>
+                                <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+                                <button class="menu-toggle" onclick="window.location.href='/dashboard'">☰</button>
+                            </div>
+                        </header>
+                    `;
+                });
+        }
 
         // ============================================================
         // نمایش نام کاربری
@@ -391,6 +355,37 @@
                 })
                 .catch(() => {});
         }
+
+        // ============================================================
+        // لیست ارزهای معروف
+        // ============================================================
+        const TOP_COINS = [
+            'bitcoin', 'ethereum', 'tether', 'binancecoin', 'solana',
+            'ripple', 'cardano', 'dogecoin', 'polkadot', 'chainlink',
+            'avalanche', 'polygon', 'tron', 'uniSwap', 'litecoin',
+            'bitcoin-cash', 'cosmos', 'ethereum-classic', 'filecoin', 'stellar'
+        ];
+
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            
+            // بارگذاری داده‌های داشبورد
+            loadMarketStats();
+            loadFearGreed();
+            loadTopCoins();
+            loadNews();
+
+            // بروزرسانی دوره‌ای
+            setInterval(() => {
+                loadMarketStats();
+                loadFearGreed();
+                loadTopCoins();
+                loadNews();
+            }, 60000);
+        });
 
         // ============================================================
         // توابع داشبورد
