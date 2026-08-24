@@ -10,6 +10,9 @@ from database.redis_manager import RedisManager
 from database.postgresql_manager import PostgreSQLManager
 from database.sqlite_manager import SQLiteManager
 
+# ✅ اجرای دیتابیس فکتوری در زمان import
+from database.database_factory import db_factory
+
 
 def get_db(name: str = None):
     """دریافت دیتابیس با نام"""
