@@ -394,6 +394,118 @@
         .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
 
+        /* ===== SIDEBAR STYLES ===== */
+        .db-sidebar {
+            width: 220px;
+            background: #0d1624;
+            border-left: 1px solid #1a2a3a;
+            padding: 12px 0;
+            flex-shrink: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow-y: auto;
+            position: sticky;
+            top: 70px;
+            height: calc(100vh - 70px);
+            z-index: 50;
+        }
+
+        .db-sidebar::-webkit-scrollbar { width: 3px; }
+        .db-sidebar::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+
+        .db-sidebar .sidebar-brand {
+            padding: 12px 16px 16px;
+            border-bottom: 1px solid #1a2a3a;
+            margin-bottom: 8px;
+        }
+
+        .db-sidebar .sidebar-brand h2 {
+            color: #e0e6ed;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .db-sidebar .sidebar-brand h2 i { color: #00d4ff; }
+        .db-sidebar .sidebar-brand .sub { color: #4a5a6a; font-size: 0.6rem; }
+
+        .db-sidebar .sidebar-section { padding: 4px 8px; }
+        .db-sidebar .sidebar-label {
+            color: #4a5a6a;
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 12px 4px;
+        }
+
+        .db-sidebar .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            margin: 2px 0;
+            border-radius: 8px;
+            color: #7a8fa3;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+            text-decoration: none;
+            width: 100%;
+            background: transparent;
+            border: none;
+            font-family: inherit;
+        }
+
+        .db-sidebar .sidebar-item:hover { background: rgba(0, 212, 255, 0.05); color: #e0e6ed; }
+        .db-sidebar .sidebar-item.active {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border-right: 2px solid #00d4ff;
+        }
+
+        .db-sidebar .sidebar-item i { width: 20px; text-align: center; font-size: 0.9rem; }
+        .db-sidebar .sidebar-divider { height: 1px; background: #1a2a3a; margin: 6px 12px; }
+
+        .db-sidebar .sidebar-item .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: auto;
+        }
+
+        .db-sidebar .sidebar-item .badge-dot.online { background: #00ff88; }
+        .db-sidebar .sidebar-item .badge-dot.offline { background: #ff4444; }
+        .db-sidebar .sidebar-item .badge-dot.warning { background: #ffaa00; }
+
+        /* ===== SIDEBAR TOGGLE (موبایل) ===== */
+        .sidebar-toggle-btn {
+            display: none;
+            background: transparent;
+            border: 1px solid #1a2a3a;
+            border-radius: 8px;
+            color: #7a8fa3;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-bottom: 12px;
+        }
+
+        .sidebar-toggle-btn:hover { border-color: #00d4ff; color: #e0e6ed; }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 45;
+            top: 70px;
+        }
+
+        .sidebar-overlay.open { display: block; }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .db-page { flex-direction: column; padding: 12px; gap: 12px; }
@@ -404,6 +516,22 @@
             .search-box input { width: 100%; }
             .search-box select { width: 100%; }
             .dashboard-header .uptime { display: none; }
+            
+            .db-sidebar {
+                position: fixed;
+                top: 70px;
+                right: -100%;
+                width: 260px;
+                height: calc(100vh - 70px);
+                border-radius: 0 0 16px 16px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+                transition: right 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                z-index: 60;
+            }
+
+            .db-sidebar.open { right: 0; }
+            .sidebar-toggle-btn { display: inline-flex; }
+            .sidebar-overlay.open { display: block; }
         }
 
         @media (min-width: 769px) {
@@ -412,18 +540,34 @@
             .db-card { padding: 20px 24px; }
             .db-card .db-body { grid-template-columns: 1fr 1fr; gap: 12px 24px; }
             .db-card .db-header .db-info .db-name { font-size: 1rem; }
+            .sidebar-overlay { display: none !important; }
+            .sidebar-toggle-btn { display: none !important; }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-header .uptime { display: none; }
+            .menu-toggle { width: 34px; height: 34px; font-size: 0.85rem; }
+            .flyout-menu { right: 8px; top: 60px; min-width: 150px; }
+            .flyout-menu a { font-size: 0.8rem; padding: 8px 14px; }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .db-sidebar { height: calc(100vh - 70px); }
+            .db-card { padding: 8px 12px; margin-bottom: 6px; }
+            .db-card .db-body { grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+            .db-card .db-body .db-field .db-value { font-size: 0.65rem; padding: 2px 6px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== MENU ===== -->
+    <!-- ===== NAV (بارگذاری از فایل) ===== -->
     <div id="navContainer"></div>
 
     <!-- ===== DATABASE PAGE ===== -->
     <div class="db-page">
 
-        <!-- ===== SIDEBAR (بارگذاری از فایل جدا) ===== -->
+        <!-- ===== SIDEBAR (بارگذاری از فایل) ===== -->
         <div id="sidebarContainer"></div>
 
         <!-- ===== CONTENT ===== -->
@@ -457,13 +601,48 @@
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
     <script src="/static/js/settings-theme.js"></script>
-    <script src="/static/js/db-init.js"></script>
 
     <script>
         // ============================================================
         // STATE
         // ============================================================
         let currentTab = 'overview';
+        let sidebarOpen = false;
+
+        // ============================================================
+        // بارگذاری منو
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/static/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html یافت نشد');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    if (typeof initMenu === 'function') initMenu();
+                    loadUserInfo();
+                    if (typeof fetchAndStartUptime === 'function') fetchAndStartUptime();
+                })
+                .catch(err => {
+                    console.error('❌ خطا در بارگذاری منو:', err);
+                    container.innerHTML = `
+                        <header class="dashboard-header">
+                            <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
+                            <div style="display:flex;align-items:center;gap:16px;">
+                                <div class="status">
+                                    <span class="dot"></span>
+                                    <span>آنلاین</span>
+                                </div>
+                                <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
+                                <button class="menu-toggle" onclick="window.location.href='/dashboard'">☰</button>
+                            </div>
+                        </header>
+                    `;
+                });
+        }
 
         // ============================================================
         // بارگذاری سایدبار
@@ -472,7 +651,10 @@
             const container = document.getElementById('sidebarContainer');
             if (!container) return;
             fetch('/static/sidebar.html')
-                .then(res => res.text())
+                .then(res => {
+                    if (!res.ok) throw new Error('sidebar.html یافت نشد');
+                    return res.text();
+                })
                 .then(html => {
                     container.innerHTML = html;
                     // اجرای اسکریپت‌های داخل سایدبار
@@ -483,37 +665,24 @@
                         if (oldScript.src) newScript.src = oldScript.src;
                         oldScript.parentNode.replaceChild(newScript, oldScript);
                     });
+                    // تنظیم تب فعال
+                    document.querySelectorAll('.sidebar-item').forEach(item => {
+                        item.classList.toggle('active', item.dataset.tab === currentTab);
+                    });
                 })
-                .catch(err => console.error('❌ خطا در بارگذاری سایدبار:', err));
+                .catch(err => {
+                    console.error('❌ خطا در بارگذاری سایدبار:', err);
+                    container.innerHTML = `
+                        <div style="padding:16px;color:#7a8fa3;text-align:center;font-size:0.8rem;">
+                            ⚠️ سایدبار در دسترس نیست
+                        </div>
+                    `;
+                });
         }
 
         // ============================================================
-        // راه‌اندازی اولیه
+        // نمایش نام کاربری
         // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadSidebar();
-            switchTab('overview');
-            setInterval(updateTimestamp, 1000);
-            setInterval(refreshAll, 30000);
-        });
-
-        // ============================================================
-        // بارگذاری منو
-        // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            fetch('/static/nav.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    if (typeof initMenu === 'function') initMenu();
-                    loadUserInfo();
-                })
-                .catch(err => console.error('❌ Nav error:', err));
-        }
-
         function loadUserInfo() {
             fetch('/api/user', { credentials: 'include' })
                 .then(res => res.json())
@@ -521,12 +690,27 @@
                     if (data.success) {
                         const display = document.getElementById('userDisplay');
                         if (display) {
-                            const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                            const roleMap = {
+                                'admin': '👑 ادمین',
+                                'vip': '⭐ VIP',
+                                'guest': '👤 مهمان'
+                            };
                             display.textContent = roleMap[data.data.role] || data.data.username;
                         }
                     }
                 })
                 .catch(() => {});
+        }
+
+        // ============================================================
+        // مدیریت سایدبار (برای موبایل)
+        // ============================================================
+        function toggleSidebar() {
+            sidebarOpen = !sidebarOpen;
+            const sidebar = document.getElementById('dbSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.toggle('open', sidebarOpen);
+            if (overlay) overlay.classList.toggle('open', sidebarOpen);
         }
 
         // ============================================================
@@ -592,14 +776,8 @@
                         initFn();
                     }
                     // بستن سایدبار در موبایل
-                    if (window.innerWidth <= 768) {
-                        const sidebar = document.getElementById('dbSidebar');
-                        const overlay = document.getElementById('sidebarOverlay');
-                        if (sidebar?.classList.contains('open')) {
-                            sidebar.classList.remove('open');
-                            overlay?.classList.remove('open');
-                            sidebarOpen = false;
-                        }
+                    if (window.innerWidth <= 768 && sidebarOpen) {
+                        toggleSidebar();
                     }
                 })
                 .catch(err => {
@@ -639,6 +817,37 @@
                 setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
             }, 3000);
         }
+
+        // ============================================================
+        // راه‌اندازی اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadSidebar();
+            switchTab('overview');
+            setInterval(updateTimestamp, 1000);
+            setInterval(refreshAll, 30000);
+
+            // بستن سایدبار با کلیک خارج
+            document.addEventListener('click', function(e) {
+                const sidebar = document.getElementById('dbSidebar');
+                const toggleBtn = document.getElementById('sidebarToggleBtn');
+                if (window.innerWidth <= 768 && sidebarOpen) {
+                    if (!sidebar?.contains(e.target) && !toggleBtn?.contains(e.target)) {
+                        toggleSidebar();
+                    }
+                }
+            });
+
+            // تغییر اندازه پنجره
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768 && sidebarOpen) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        console.log('✅ Database page loaded successfully');
     </script>
 
 </body>
