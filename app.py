@@ -1156,53 +1156,6 @@ def debug_exec():
             "error": str(e)
         }), 500
 
-
-@app.route('/api/debug/file', methods=['POST'])
-def debug_file():
-    """خواندن محتوای فایل"""
-    data = request.json
-    filename = data.get('filename', '').strip()
-    
-    if not filename:
-        return jsonify({"success": False, "error": "نام فایل وارد نشده"}), 400
-    
-    # محدود کردن به فایل‌های خاص
-    allowed_files = ['config/settings.json', 'config/databases.json', 'config/users.json']
-    if filename not in allowed_files:
-        return jsonify({"success": False, "error": "دسترسی به این فایل مجاز نیست"}), 403
-    
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return jsonify({
-            "success": True,
-            "content": content
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@app.route('/api/debug/env', methods=['GET'])
-def debug_env():
-    """دریافت متغیرهای محیطی (فقط کلیدها، بدون مقادیر حساس)"""
-    env_vars = {}
-    sensitive = ['TOKEN', 'PASSWORD', 'SECRET', 'KEY']
-    
-    for key, value in os.environ.items():
-        # مخفی کردن مقادیر حساس
-        if any(s in key.upper() for s in sensitive):
-            env_vars[key] = '••••••••'
-        else:
-            env_vars[key] = value
-    
-    return jsonify({
-        "success": True,
-        "data": env_vars
-    })
-
 @app.route('/api/debug/file', methods=['POST'])
 def debug_file():
     """خواندن محتوای فایل"""
@@ -1239,6 +1192,25 @@ def debug_file():
             "success": False,
             "error": str(e)
         }), 500
+        
+@app.route('/api/debug/env', methods=['GET'])
+def debug_env():
+    """دریافت متغیرهای محیطی (فقط کلیدها، بدون مقادیر حساس)"""
+    env_vars = {}
+    sensitive = ['TOKEN', 'PASSWORD', 'SECRET', 'KEY']
+    
+    for key, value in os.environ.items():
+        # مخفی کردن مقادیر حساس
+        if any(s in key.upper() for s in sensitive):
+            env_vars[key] = '••••••••'
+        else:
+            env_vars[key] = value
+    
+    return jsonify({
+        "success": True,
+        "data": env_vars
+    })
+
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
