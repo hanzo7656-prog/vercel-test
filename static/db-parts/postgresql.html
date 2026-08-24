@@ -5,11 +5,129 @@
             <span class="db-name">PostgreSQL</span>
             <span class="db-description">داده‌های اصلی و ماندگار</span>
         </div>
-        <span class="db-status online">✅ متصل</span>
+        <span class="db-status" id="pgStatus">⏳ در حال بررسی...</span>
     </div>
-    <div style="padding:12px;text-align:center;color:#7a8fa3;">
-        <i class="fas fa-tools" style="font-size:2rem;opacity:0.3;"></i>
-        <p style="margin-top:8px;">در حال توسعه...</p>
-        <p style="font-size:0.7rem;">به زودی: جدول‌ها، رکوردها و مدیریت</p>
+
+    <div class="search-box">
+        <select id="pgTableSelect" onchange="loadTableData()">
+            <option value="">-- انتخاب جدول --</option>
+        </select>
+        <input type="text" id="pgSearchInput" placeholder="🔍 جستجو در رکوردها...">
+        <button class="btn-refresh" onclick="loadTables()"><i class="fas fa-sync-alt"></i></button>
+    </div>
+
+    <div id="pgTableInfo" style="font-size:0.7rem;color:#7a8fa3;margin-bottom:8px;"></div>
+
+    <div class="table-wrapper">
+        <table class="table" id="pgTable">
+            <thead id="pgTableHead"></thead>
+            <tbody id="pgTableBody">
+                <tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
+
+<script>
+    let pgTables = [];
+
+    function loadTables() {
+        const select = document.getElementById('pgTableSelect');
+        const status = document.getElementById('pgStatus');
+        select.innerHTML = '<option value="">در حال بارگذاری...</option>';
+
+        fetch('/api/db/postgresql/tables')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    pgTables = data.data;
+                    select.innerHTML = '<option value="">-- انتخاب جدول --</option>';
+                    pgTables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table.table_name;
+                        option.textContent = `${table.table_name} (${table.row_count || 0} رکورد)`;
+                        select.appendChild(option);
+                    });
+                    status.textContent = '✅ متصل';
+                    status.className = 'db-status online';
+                } else {
+                    status.textContent = '❌ خطا';
+                    status.className = 'db-status offline';
+                }
+            })
+            .catch(() => {
+                status.textContent = '❌ قطع';
+                status.className = 'db-status offline';
+            });
+    }
+
+    function loadTableData() {
+        const select = document.getElementById('pgTableSelect');
+        const tableName = select.value;
+        const tbody = document.getElementById('pgTableBody');
+        const thead = document.getElementById('pgTableHead');
+        const info = document.getElementById('pgTableInfo');
+
+        if (!tableName) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>';
+            thead.innerHTML = '';
+            info.textContent = '';
+            return;
+        }
+
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>';
+
+        fetch(`/api/db/postgresql/table/${tableName}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const columns = data.data.columns || [];
+                    const rows = data.data.rows || [];
+
+                    // هدر
+                    let headerHtml = '<tr>';
+                    columns.forEach(col => {
+                        headerHtml += `<th>${col.column_name}</th>`;
+                    });
+                    headerHtml += '</tr>';
+                    thead.innerHTML = headerHtml;
+
+                    // بدنه
+                    if (rows.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#4a5a6a;">هیچ رکوردی یافت نشد</td></tr>';
+                    } else {
+                        let bodyHtml = '';
+                        rows.forEach(row => {
+                            bodyHtml += '<tr>';
+                            columns.forEach(col => {
+                                const value = row[col.column_name];
+                                bodyHtml += `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
+                            });
+                            bodyHtml += '</tr>';
+                        });
+                        tbody.innerHTML = bodyHtml;
+                    }
+
+                    info.textContent = `${rows.length} رکورد از ${data.data.total || rows.length} نمایش داده شده`;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ' + data.error + '</td></tr>';
+                }
+            })
+            .catch(err => {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا: ' + err.message + '</td></tr>';
+            });
+    }
+
+    // اجرا
+    loadTables();
+
+    // جستجو
+    document.getElementById('pgSearchInput').addEventListener('keyup', function(e) {
+        const search = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#pgTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(search) ? '' : 'none';
+        });
+    });
+</script>
