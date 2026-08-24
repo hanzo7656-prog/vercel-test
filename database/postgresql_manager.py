@@ -21,7 +21,6 @@ class PostgreSQLManager(DatabaseBase):
         self._cursor = None
     
     def connect(self) -> bool:
-        """برقراری اتصال به PostgreSQL"""
         try:
             self._connection = psycopg2.connect(
                 host=self.config.get("host"),
@@ -29,9 +28,13 @@ class PostgreSQLManager(DatabaseBase):
                 user=self.config.get("user"),
                 password=self.config.get("password"),
                 dbname=self.config.get("database"),
-                sslmode="require" if self.config.get("ssl", True) else "disable"
+                sslmode="require" if self.config.get("ssl", True) else "disable",
+                connect_timeout=10
             )
-            self._cursor = self._connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            self._cursor = self._connection.cursor()
+            # تست اتصال با یک کوئری ساده
+            self._cursor.execute("SELECT 1")
+            self._cursor.fetchone()
             self._connected = True
             logger.info(f"✅ PostgreSQL ({self.name}) متصل شد")
             return True
