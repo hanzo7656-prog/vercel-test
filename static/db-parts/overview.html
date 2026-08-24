@@ -1,114 +1,100 @@
-<div class="summary-card" id="overviewSummary">
-    <div class="summary-grid">
-        <div class="summary-item">
-            <div class="summary-number" id="ovTotal">-</div>
-            <div class="summary-label">کل دیتابیس‌ها</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-number online" id="ovOnline">-</div>
-            <div class="summary-label">✅ متصل</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-number offline" id="ovOffline">-</div>
-            <div class="summary-label">❌ قطع</div>
-        </div>
+<!-- static/db-parts/overview.html -->
+<div class="stats-grid" id="overviewStats">
+    <!-- کارت‌های آماری -->
+</div>
+
+<div class="card-glow">
+    <div class="card-header">
+        <h3><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</h3>
+        <span class="badge-count" id="dbCount">۰ دیتابیس</span>
+    </div>
+    <div class="table-wrap">
+        <table class="table-modern" id="overviewTable">
+            <thead>
+                <tr>
+                    <th>نام</th>
+                    <th>نوع</th>
+                    <th>وضعیت</th>
+                    <th>ورژن</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody id="overviewTableBody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">در حال بارگذاری...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div id="overviewCards"></div>
-
 <script>
-    // بارگذاری نمای کلی
-    function loadOverview() {
-        const container = document.getElementById('overviewCards');
-        container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#7a8fa3;font-size:0.8rem;">در حال دریافت...</p></div>';
+function init_overview() {
+    const statsContainer = document.getElementById('overviewStats');
+    const tableBody = document.getElementById('overviewTableBody');
+    const countEl = document.getElementById('dbCount');
 
-        fetch('/health/database')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    renderOverview(data.data);
-                } else {
-                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ خطا در دریافت اطلاعات</p></div>`;
-                }
-            })
-            .catch(err => {
-                container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;">❌ خطا: ${err.message}</p></div>`;
-            });
-    }
+    fetch('/health/database')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const entries = Object.entries(data.data);
+                if (countEl) countEl.textContent = entries.length + ' دیتابیس';
 
-    function renderOverview(dbData) {
-        const dbNames = Object.keys(dbData);
-        let online = 0, offline = 0;
-
-        for (const name of dbNames) {
-            if (dbData[name].connected && dbData[name].ping) online++;
-            else offline++;
-        }
-
-        document.getElementById('ovTotal').textContent = dbNames.length;
-        document.getElementById('ovOnline').textContent = online;
-        document.getElementById('ovOffline').textContent = offline;
-
-        const container = document.getElementById('overviewCards');
-        const dbStyles = {
-            'redis': { icon: 'fa-bolt', class: 'redis', label: 'کش و داده‌های سریع' },
-            'postgresql': { icon: 'fa-database', class: 'postgresql', label: 'داده‌های اصلی و ماندگار' },
-            'sqlite': { icon: 'fa-file', class: 'sqlite', label: 'بک‌آپ و گزارش‌ها' }
-        };
-
-        let html = '';
-        for (const name of dbNames) {
-            const info = dbData[name];
-            const style = dbStyles[name] || dbStyles['postgresql'];
-            const isConnected = info.connected && info.ping;
-            const stats = info.stats || {};
-
-            html += `
-                <div class="db-card ${style.class}">
-                    <div class="db-header">
-                        <div class="db-info">
-                            <span class="db-icon"><i class="fas ${style.icon}"></i></span>
-                            <span class="db-name">${name}</span>
-                            <span class="db-description">${style.label}</span>
+                // کارت‌های آماری
+                let statsHtml = '';
+                let connected = 0;
+                entries.forEach(([name, info]) => {
+                    if (info.connected) connected++;
+                    const icon = info.type === 'redis' ? 'fa-bolt' :
+                                info.type === 'postgresql' ? 'fa-database' : 'fa-file';
+                    const color = info.connected ? 'green' : 'pink';
+                    statsHtml += `
+                        <div class="stat-item">
+                            <span class="stat-icon"><i class="fas ${icon}"></i></span>
+                            <div class="stat-value ${color}">${name}</div>
+                            <div class="stat-label">${info.type || 'unknown'}</div>
+                            <div class="stat-sub">
+                                <span class="chip ${info.connected ? 'online' : 'offline'}">
+                                    ${info.connected ? '✅ متصل' : '❌ قطع'}
+                                </span>
+                            </div>
                         </div>
-                        <span class="db-status ${isConnected ? 'online' : 'offline'}">
-                            ${isConnected ? '✅ متصل' : '❌ قطع'}
-                        </span>
-                    </div>
-                    <div class="db-body">
-                        <div class="db-field">
-                            <label>📡 آدرس</label>
-                            <div class="db-value">${info.host || info.url || 'تنظیم نشده'}</div>
-                        </div>
-                        <div class="db-field">
-                            <label>📊 وضعیت</label>
-                            <div class="db-value">${info.enabled ? '✅ فعال' : '⛔ غیرفعال'}</div>
-                        </div>
-                    </div>
-                    <div class="db-stats">
-                        ${Object.entries(stats).map(([key, value]) => `
-                            <span class="stat-item">
-                                <i class="fas fa-chart-simple"></i>
-                                ${key}: <span class="stat-value">${value}</span>
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
+                    `;
+                });
+                statsContainer.innerHTML = statsHtml;
 
-        html += `
-            <div style="text-align:center;margin-top:12px;">
-                <button class="btn-refresh" onclick="loadOverview()" style="padding:8px 20px;">
-                    <i class="fas fa-sync-alt"></i> بروزرسانی
-                </button>
-            </div>
-        `;
+                // جدول
+                let tableHtml = '';
+                entries.forEach(([name, info]) => {
+                    const status = info.connected ? 'online' : 'offline';
+                    tableHtml += `
+                        <tr>
+                            <td><strong>${name}</strong></td>
+                            <td>${info.type || '—'}</td>
+                            <td><span class="chip ${status}">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span></td>
+                            <td>${info.version || '—'}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button onclick="showToast('🔄 پینگ ${name}...', 'info')" title="پینگ">
+                                        <i class="fas fa-satellite-dish"></i>
+                                    </button>
+                                    <button onclick="showToast('📊 آمار ${name} در حال بارگذاری...', 'info')" title="آمار">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tableBody.innerHTML = tableHtml;
 
-        container.innerHTML = html;
-    }
-
-    // اجرا
-    loadOverview();
+            } else {
+                statsContainer.innerHTML = '<p style="color:#ff4444;">❌ خطا در دریافت اطلاعات</p>';
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا</td></tr>';
+            }
+        })
+        .catch(() => {
+            statsContainer.innerHTML = '<p style="color:#ff4444;">❌ خطا در ارتباط با سرور</p>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا</td></tr>';
+        });
+}
 </script>
