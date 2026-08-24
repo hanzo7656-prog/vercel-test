@@ -5,11 +5,127 @@
             <span class="db-name">SQLite</span>
             <span class="db-description">بک‌آپ و گزارش‌ها</span>
         </div>
-        <span class="db-status online">✅ متصل</span>
+        <span class="db-status" id="sqliteStatus">⏳ در حال بررسی...</span>
     </div>
-    <div style="padding:12px;text-align:center;color:#7a8fa3;">
-        <i class="fas fa-tools" style="font-size:2rem;opacity:0.3;"></i>
-        <p style="margin-top:8px;">در حال توسعه...</p>
-        <p style="font-size:0.7rem;">به زودی: جدول‌ها، بک‌آپ و گزارش‌ها</p>
+
+    <div class="search-box">
+        <select id="sqliteTableSelect" onchange="loadSqliteTableData()">
+            <option value="">-- انتخاب جدول --</option>
+        </select>
+        <input type="text" id="sqliteSearchInput" placeholder="🔍 جستجو در رکوردها...">
+        <button class="btn-refresh" onclick="loadSqliteTables()"><i class="fas fa-sync-alt"></i></button>
+    </div>
+
+    <div id="sqliteTableInfo" style="font-size:0.7rem;color:#7a8fa3;margin-bottom:8px;"></div>
+
+    <div class="table-wrapper">
+        <table class="table" id="sqliteTable">
+            <thead id="sqliteTableHead"></thead>
+            <tbody id="sqliteTableBody">
+                <tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
+
+<script>
+    let sqliteTables = [];
+
+    function loadSqliteTables() {
+        const select = document.getElementById('sqliteTableSelect');
+        const status = document.getElementById('sqliteStatus');
+        select.innerHTML = '<option value="">در حال بارگذاری...</option>';
+
+        fetch('/api/db/sqlite/tables')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    sqliteTables = data.data;
+                    select.innerHTML = '<option value="">-- انتخاب جدول --</option>';
+                    sqliteTables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table.table_name;
+                        option.textContent = `${table.table_name} (${table.row_count || 0} رکورد)`;
+                        select.appendChild(option);
+                    });
+                    status.textContent = '✅ متصل';
+                    status.className = 'db-status online';
+                } else {
+                    status.textContent = '❌ خطا';
+                    status.className = 'db-status offline';
+                }
+            })
+            .catch(() => {
+                status.textContent = '❌ قطع';
+                status.className = 'db-status offline';
+            });
+    }
+
+    function loadSqliteTableData() {
+        const select = document.getElementById('sqliteTableSelect');
+        const tableName = select.value;
+        const tbody = document.getElementById('sqliteTableBody');
+        const thead = document.getElementById('sqliteTableHead');
+        const info = document.getElementById('sqliteTableInfo');
+
+        if (!tableName) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>';
+            thead.innerHTML = '';
+            info.textContent = '';
+            return;
+        }
+
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>';
+
+        fetch(`/api/db/sqlite/table/${tableName}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const columns = data.data.columns || [];
+                    const rows = data.data.rows || [];
+
+                    let headerHtml = '<tr>';
+                    columns.forEach(col => {
+                        headerHtml += `<th>${col}</th>`;
+                    });
+                    headerHtml += '</tr>';
+                    thead.innerHTML = headerHtml;
+
+                    if (rows.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#4a5a6a;">هیچ رکوردی یافت نشد</td></tr>';
+                    } else {
+                        let bodyHtml = '';
+                        rows.forEach(row => {
+                            bodyHtml += '<tr>';
+                            columns.forEach(col => {
+                                const value = row[col];
+                                bodyHtml += `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
+                            });
+                            bodyHtml += '</tr>';
+                        });
+                        tbody.innerHTML = bodyHtml;
+                    }
+
+                    info.textContent = `${rows.length} رکورد نمایش داده شده`;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ' + data.error + '</td></tr>';
+                }
+            })
+            .catch(err => {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ خطا: ' + err.message + '</td></tr>';
+            });
+    }
+
+    // جستجو
+    document.getElementById('sqliteSearchInput').addEventListener('keyup', function(e) {
+        const search = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#sqliteTableBody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(search) ? '' : 'none';
+        });
+    });
+
+    // اجرا
+    loadSqliteTables();
+</script>
