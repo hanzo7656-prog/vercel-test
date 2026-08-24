@@ -5,18 +5,38 @@
             <span class="db-name">SQLite</span>
             <span class="db-description">بک‌آپ و گزارش‌ها</span>
         </div>
-        <span class="db-status" id="sqliteStatus">⏳ در حال بررسی...</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="db-status" id="sqliteStatus">⏳ در حال بررسی...</span>
+            <button class="btn-refresh" onclick="loadSqliteTables()" title="بروزرسانی">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:12px;background:#0a0e17;padding:10px;border-radius:8px;border:1px solid #1a2a3a;">
+        <div style="text-align:center;">
+            <div style="color:#7a8fa3;font-size:0.55rem;">جدول‌ها</div>
+            <div style="color:#00ff88;font-size:1rem;font-weight:700;" id="sqliteTableCount">-</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="color:#7a8fa3;font-size:0.55rem;">کل رکوردها</div>
+            <div style="color:#00d4ff;font-size:1rem;font-weight:700;" id="sqliteTotalRows">-</div>
+        </div>
     </div>
 
     <div class="search-box">
         <select id="sqliteTableSelect" onchange="loadSqliteTableData()">
             <option value="">-- انتخاب جدول --</option>
         </select>
-        <input type="text" id="sqliteSearchInput" placeholder="🔍 جستجو در رکوردها...">
+        <input type="text" id="sqliteSearchInput" placeholder="🔍 جستجو در رکوردها..." style="flex:2;">
         <button class="btn-refresh" onclick="loadSqliteTables()"><i class="fas fa-sync-alt"></i></button>
+        <button class="btn-refresh" onclick="exportSqliteCSV()" style="color:#00ff88;" title="خروجی CSV">📥</button>
     </div>
 
-    <div id="sqliteTableInfo" style="font-size:0.7rem;color:#7a8fa3;margin-bottom:8px;"></div>
+    <div id="sqliteTableInfo" style="font-size:0.65rem;color:#7a8fa3;margin-bottom:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+        <span id="sqliteRowInfo">یک جدول را انتخاب کنید</span>
+        <span id="sqliteUpdateTime"></span>
+    </div>
 
     <div class="table-wrapper">
         <table class="table" id="sqliteTable">
@@ -30,6 +50,20 @@
 
 <script>
     let sqliteTables = [];
+    let sqliteCurrentTable = '';
+
+    function init_sqlite() {
+        console.log('🔄 SQLite tab initialized');
+        loadSqliteTables();
+        document.getElementById('sqliteTableSelect').addEventListener('change', loadSqliteTableData);
+        document.getElementById('sqliteSearchInput').addEventListener('keyup', function(e) {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('#sqliteTableBody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+    }
 
     function loadSqliteTables() {
         const select = document.getElementById('sqliteTableSelect');
@@ -42,12 +76,17 @@
                 if (data.success) {
                     sqliteTables = data.data;
                     select.innerHTML = '<option value="">-- انتخاب جدول --</option>';
+                    let totalRows = 0;
                     sqliteTables.forEach(table => {
                         const option = document.createElement('option');
                         option.value = table.table_name;
-                        option.textContent = `${table.table_name} (${table.row_count || 0} رکورد)`;
+                        const rowCount = table.row_count || 0;
+                        totalRows += rowCount;
+                        option.textContent = `${table.table_name} (${rowCount.toLocaleString()} رکورد)`;
                         select.appendChild(option);
                     });
+                    document.getElementById('sqliteTableCount').textContent = sqliteTables.length;
+                    document.getElementById('sqliteTotalRows').textContent = totalRows.toLocaleString();
                     status.textContent = '✅ متصل';
                     status.className = 'db-status online';
                 } else {
@@ -66,15 +105,19 @@
         const tableName = select.value;
         const tbody = document.getElementById('sqliteTableBody');
         const thead = document.getElementById('sqliteTableHead');
-        const info = document.getElementById('sqliteTableInfo');
+        const info = document.getElementById('sqliteRowInfo');
+        const timeEl = document.getElementById('sqliteUpdateTime');
 
         if (!tableName) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">یک جدول را انتخاب کنید</td></tr>';
             thead.innerHTML = '';
-            info.textContent = '';
+            info.textContent = 'یک جدول را انتخاب کنید';
+            timeEl.textContent = '';
+            sqliteCurrentTable = '';
             return;
         }
 
+        sqliteCurrentTable = tableName;
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5a6a;">در حال بارگذاری...</td></tr>';
 
         fetch(`/api/db/sqlite/table/${tableName}`)
@@ -107,6 +150,7 @@
                     }
 
                     info.textContent = `${rows.length} رکورد نمایش داده شده`;
+                    timeEl.textContent = '🔄 ' + new Date().toLocaleTimeString('fa-IR');
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;">❌ ' + data.error + '</td></tr>';
                 }
@@ -116,16 +160,23 @@
             });
     }
 
-    // جستجو
-    document.getElementById('sqliteSearchInput').addEventListener('keyup', function(e) {
-        const search = this.value.toLowerCase();
+    function exportSqliteCSV() {
+        if (!sqliteCurrentTable) {
+            showToast('⚠️ لطفاً ابتدا یک جدول را انتخاب کنید', 'warning');
+            return;
+        }
         const rows = document.querySelectorAll('#sqliteTableBody tr');
+        let csv = '';
         rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(search) ? '' : 'none';
+            const cells = row.querySelectorAll('td');
+            const rowData = [];
+            cells.forEach(cell => rowData.push(cell.textContent.trim()));
+            csv += rowData.join(',') + '\n';
         });
-    });
-
-    // اجرا
-    loadSqliteTables();
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(csv).then(() => {
+                showToast('📋 CSV کپی شد!', 'success');
+            });
+        }
+    }
 </script>
