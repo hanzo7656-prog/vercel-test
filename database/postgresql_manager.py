@@ -111,7 +111,15 @@ class PostgreSQLManager(DatabaseBase):
             return True
         except:
             return False
-    
+    def get_stats(self) -> Dict[str, Any]:
+        """دریافت آمار PostgreSQL"""
+        try:
+            result = self.execute("SELECT version()")
+            return {
+                "version": result[0].get("version", "unknown") if result else "unknown"
+            }
+        except:
+            return {}
     def create_table(self, table_name: str, schema: Dict[str, str]) -> bool:
         """ایجاد جدول جدید"""
         try:
