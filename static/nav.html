@@ -1,5 +1,5 @@
 <!-- ============================================================
-     HEADER + MENU (بدون دکمه خروج)
+     HEADER + MENU
      ============================================================ -->
 <header class="dashboard-header">
     <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
@@ -28,10 +28,16 @@
     <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
     <a href="/database-page"><i class="fas fa-database"></i> دیتابیس</a>
     <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
-    <!-- ❌ دکمه خروج حذف شد -->
+    <div class="menu-divider"></div>
+    <a href="/debug-page" style="color:#ff6b00;">
+        <i class="fas fa-bug"></i> دیباگ
+    </a>
 </nav>
 
 <script>
+    // ============================================================
+    // بارگذاری اطلاعات کاربر
+    // ============================================================
     function loadUserInfo() {
         fetch('/api/user', { credentials: 'include' })
             .then(res => res.json())
@@ -39,7 +45,11 @@
                 if (data.success) {
                     const display = document.getElementById('userDisplay');
                     if (display) {
-                        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                        const roleMap = {
+                            'admin': '👑 ادمین',
+                            'vip': '⭐ VIP',
+                            'guest': '👤 مهمان'
+                        };
                         display.textContent = roleMap[data.data.role] || data.data.username;
                     }
                 }
@@ -47,5 +57,25 @@
             .catch(() => {});
     }
 
-    document.addEventListener('DOMContentLoaded', loadUserInfo);
+    // ============================================================
+    // تنظیم کلید Escape برای بستن منو
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUserInfo();
+
+        // تنظیم کلید Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('flyoutMenu');
+                const overlay = document.getElementById('flyoutOverlay');
+                const toggle = document.getElementById('menuToggle');
+                if (menu && menu.classList.contains('open')) {
+                    menu.classList.remove('open');
+                    overlay.classList.remove('open');
+                    toggle.classList.remove('open');
+                    toggle.innerHTML = '<i class="fas fa-bars"></i>';
+                }
+            }
+        });
+    });
 </script>
