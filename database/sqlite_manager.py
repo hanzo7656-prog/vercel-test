@@ -110,7 +110,17 @@ class SQLiteManager(DatabaseBase):
             return True
         except:
             return False
-    
+            
+    def get_stats(self) -> Dict[str, Any]:
+        """دریافت آمار SQLite"""
+        try:
+            result = self.execute("SELECT sqlite_version()")
+            return {
+                "version": result[0].get("sqlite_version", "unknown") if result else "unknown"
+            }
+        except:
+            return {}
+            
     def ping(self) -> bool:
         """بررسی سلامت اتصال"""
         try:
