@@ -17,7 +17,7 @@ import io
 from typing import Any
 from datetime import datetime, timedelta
 from queue import Queue
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect, send_from_directory
 from api_handler import CoinStatsAPI
 from auto_trainer import AutoTrainer
 from database import get_cache, health_check as db_health_check
