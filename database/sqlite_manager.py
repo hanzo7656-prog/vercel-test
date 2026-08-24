@@ -32,16 +32,20 @@ class SQLiteManager(DatabaseBase):
                 connect_timeout=10
             )
             self._cursor = self._connection.cursor()
-            # تست اتصال با یک کوئری ساده
+            # تست اتصال
             self._cursor.execute("SELECT 1")
             self._cursor.fetchone()
             self._connected = True
+            self._client = self._connection  # ← مهم!
             logger.info(f"✅ SQLite ({self.name}) متصل شد")
             return True
         except Exception as e:
             logger.error(f"❌ خطا در اتصال SQLite ({self.name}): {e}")
             self._connected = False
+            self._client = None
             return False
+
+
             
     def disconnect(self) -> bool:
         """قطع اتصال"""
@@ -56,7 +60,7 @@ class SQLiteManager(DatabaseBase):
         except Exception as e:
             logger.error(f"❌ خطا در قطع SQLite ({self.name}): {e}")
             return False
-    
+            
     def execute(self, query: str, params: tuple = None) -> List[Dict]:
         """اجرای کوئری و برگرداندن نتایج"""
         if not self.is_connected():
@@ -125,15 +129,14 @@ class SQLiteManager(DatabaseBase):
             return {}
             
     def ping(self) -> bool:
-        """بررسی سلامت اتصال با یک کوئری ساده"""
-        if not self._connected or not self._cursor:
+        """بررسی سلامت اتصال"""
+        if not self._connected or not self._client:
             return False
         try:
             self._cursor.execute("SELECT 1")
             self._cursor.fetchone()
             return True
-        except Exception as e:
-            logger.warning(f"⚠️ Ping failed for SQLite ({self.name}): {e}")
+        except Exception:
             return False
     
     def health_check(self) -> Dict[str, Any]:
