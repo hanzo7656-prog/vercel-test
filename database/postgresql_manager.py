@@ -119,14 +119,16 @@ class PostgreSQLManager(DatabaseBase):
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار PostgreSQL"""
         try:
-            result = self.execute("SELECT version()")
+            # تست ساده با کوئری
+            self._cursor.execute("SELECT version()")
+            result = self._cursor.fetchone()
             if result:
                 return {
-                    "version": result[0].get("version", "unknown")
+                    "version": result[0].split()[1] if result[0] else "unknown"
                 }
             return {"version": "unknown"}
         except Exception as e:
-            logger.warning(f"⚠️ Could not get stats for PostgreSQL: {e}")
+            print(f"⚠️ PostgreSQL stats error: {e}")  # برای دیباگ
             return {"version": "unknown"}
             
     def create_table(self, table_name: str, schema: Dict[str, str]) -> bool:
