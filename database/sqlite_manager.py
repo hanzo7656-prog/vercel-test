@@ -121,14 +121,15 @@ class SQLiteManager(DatabaseBase):
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار SQLite"""
         try:
-            result = self.execute("SELECT sqlite_version()")
+            self._cursor.execute("SELECT sqlite_version()")
+            result = self._cursor.fetchone()
             if result:
                 return {
-                    "version": result[0].get("sqlite_version", "unknown")
+                    "version": result[0] if result[0] else "unknown"
                 }
             return {"version": "unknown"}
         except Exception as e:
-            logger.warning(f"⚠️ Could not get stats for SQLite: {e}")
+            print(f"⚠️ SQLite stats error: {e}")  # برای دیباگ
             return {"version": "unknown"}
             
     def ping(self) -> bool:
