@@ -1,0 +1,261 @@
+<!-- ============================================================
+     SIDEBAR - نوار کناری دیتابیس
+     ============================================================ -->
+<nav class="db-sidebar" id="dbSidebar">
+    <div class="sidebar-brand">
+        <h2><i class="fas fa-database"></i> دیتابیس</h2>
+        <div class="sub">مدیریت و مانیتورینگ</div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">📊 نمای کلی</div>
+        <button class="sidebar-item active" data-tab="overview" onclick="switchTab('overview')">
+            <i class="fas fa-chart-pie"></i> نمای کلی
+            <span class="badge-dot" id="dotOverview"></span>
+        </button>
+        <button class="sidebar-item" data-tab="explorer" onclick="switchTab('explorer')">
+            <i class="fas fa-search"></i> کاوشگر
+        </button>
+        <button class="sidebar-item" data-tab="monitor" onclick="switchTab('monitor')">
+            <i class="fas fa-chart-line"></i> مانیتورینگ
+        </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">🗄️ دیتابیس‌ها</div>
+        <button class="sidebar-item" data-tab="postgresql" onclick="switchTab('postgresql')">
+            <i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL
+            <span class="badge-dot" id="dotPostgresql"></span>
+        </button>
+        <button class="sidebar-item" data-tab="redis" onclick="switchTab('redis')">
+            <i class="fas fa-bolt" style="color:#ff4444;"></i> Redis
+            <span class="badge-dot" id="dotRedis"></span>
+        </button>
+        <button class="sidebar-item" data-tab="sqlite" onclick="switchTab('sqlite')">
+            <i class="fas fa-file" style="color:#00ff88;"></i> SQLite
+            <span class="badge-dot" id="dotSqlite"></span>
+        </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+        <button class="sidebar-item" onclick="refreshAll()" style="color:#ffaa00;">
+            <i class="fas fa-sync-alt"></i> بروزرسانی همه
+        </button>
+    </div>
+</nav>
+
+<!-- ===== OVERLAY (موبایل) ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ===== دکمه باز کردن سایدبار (موبایل) ===== -->
+<button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i> منو
+</button>
+
+<style>
+    /* ============================================================
+       SIDEBAR STYLES
+       ============================================================ */
+    .db-sidebar {
+        width: 220px;
+        background: #0d1624;
+        border-left: 1px solid #1a2a3a;
+        padding: 12px 0;
+        flex-shrink: 0;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        overflow-y: auto;
+        position: sticky;
+        top: 70px;
+        height: calc(100vh - 70px);
+        z-index: 50;
+    }
+
+    .db-sidebar::-webkit-scrollbar { width: 3px; }
+    .db-sidebar::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+
+    .db-sidebar .sidebar-brand {
+        padding: 12px 16px 16px;
+        border-bottom: 1px solid #1a2a3a;
+        margin-bottom: 8px;
+    }
+
+    .db-sidebar .sidebar-brand h2 {
+        color: #e0e6ed;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .db-sidebar .sidebar-brand h2 i {
+        color: #00d4ff;
+    }
+
+    .db-sidebar .sidebar-brand .sub {
+        color: #4a5a6a;
+        font-size: 0.6rem;
+    }
+
+    .db-sidebar .sidebar-section {
+        padding: 4px 8px;
+    }
+
+    .db-sidebar .sidebar-label {
+        color: #4a5a6a;
+        font-size: 0.55rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 8px 12px 4px;
+    }
+
+    .db-sidebar .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        margin: 2px 0;
+        border-radius: 8px;
+        color: #7a8fa3;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.8rem;
+        text-decoration: none;
+        width: 100%;
+        background: transparent;
+        border: none;
+        font-family: inherit;
+    }
+
+    .db-sidebar .sidebar-item:hover {
+        background: rgba(0, 212, 255, 0.05);
+        color: #e0e6ed;
+    }
+
+    .db-sidebar .sidebar-item.active {
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+        border-right: 2px solid #00d4ff;
+    }
+
+    .db-sidebar .sidebar-item i {
+        width: 20px;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .db-sidebar .sidebar-divider {
+        height: 1px;
+        background: #1a2a3a;
+        margin: 6px 12px;
+    }
+
+    .db-sidebar .sidebar-item .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: auto;
+    }
+
+    .db-sidebar .sidebar-item .badge-dot.online { background: #00ff88; }
+    .db-sidebar .sidebar-item .badge-dot.offline { background: #ff4444; }
+    .db-sidebar .sidebar-item .badge-dot.warning { background: #ffaa00; }
+
+    /* ===== SIDEBAR TOGGLE (موبایل) ===== */
+    .sidebar-toggle-btn {
+        display: none;
+        background: transparent;
+        border: 1px solid #1a2a3a;
+        border-radius: 8px;
+        color: #7a8fa3;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        margin-bottom: 12px;
+    }
+
+    .sidebar-toggle-btn:hover {
+        border-color: #00d4ff;
+        color: #e0e6ed;
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 45;
+        top: 70px;
+    }
+
+    .sidebar-overlay.open { display: block; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .db-sidebar {
+            position: fixed;
+            top: 70px;
+            right: -100%;
+            width: 260px;
+            height: calc(100vh - 70px);
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            transition: right 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 60;
+        }
+
+        .db-sidebar.open {
+            right: 0;
+        }
+
+        .sidebar-toggle-btn {
+            display: inline-flex;
+        }
+
+        .sidebar-overlay.open { display: block; }
+    }
+
+    @media (min-width: 769px) {
+        .sidebar-overlay { display: none !important; }
+        .sidebar-toggle-btn { display: none !important; }
+    }
+</style>
+
+<script>
+    // ============================================================
+    // مدیریت سایدبار
+    // ============================================================
+    let sidebarOpen = false;
+
+    function toggleSidebar() {
+        sidebarOpen = !sidebarOpen;
+        const sidebar = document.getElementById('dbSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (sidebar) sidebar.classList.toggle('open', sidebarOpen);
+        if (overlay) overlay.classList.toggle('open', sidebarOpen);
+    }
+
+    // بستن سایدبار با کلیک خارج
+    document.addEventListener('click', function(e) {
+        const sidebar = document.getElementById('dbSidebar');
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        if (window.innerWidth <= 768 && sidebarOpen) {
+            if (!sidebar?.contains(e.target) && !toggleBtn?.contains(e.target)) {
+                toggleSidebar();
+            }
+        }
+    });
+
+    // تغییر اندازه پنجره
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768 && sidebarOpen) {
+            toggleSidebar();
+        }
+    });
+</script>
