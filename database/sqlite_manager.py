@@ -122,11 +122,15 @@ class SQLiteManager(DatabaseBase):
             return {}
             
     def ping(self) -> bool:
-        """بررسی سلامت اتصال"""
+        """بررسی سلامت اتصال با یک کوئری ساده"""
+        if not self._connected or not self._cursor:
+            return False
         try:
-            self.execute("SELECT 1")
+            self._cursor.execute("SELECT 1")
+            self._cursor.fetchone()
             return True
-        except:
+        except Exception as e:
+            logger.warning(f"⚠️ Ping failed for SQLite ({self.name}): {e}")
             return False
     
     def health_check(self) -> Dict[str, Any]:
