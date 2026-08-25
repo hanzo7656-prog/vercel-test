@@ -1,6 +1,7 @@
 # auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه اصلاح شده
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۲.۰
+# با اتصال به ModelManager و دیتابیس
 # ============================================================
 
 import os
@@ -15,22 +16,46 @@ from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple
 
 from api_handler import CoinStatsAPI
+from model_manager import ModelManager
+from database import get_primary
 
 logger = logging.getLogger(__name__)
 
 
 class AutoTrainer:
-    def __init__(self, api: CoinStatsAPI, model_path: str = "model.xgb"):
+    """
+    سیستم آموزش خودکار مدل XGBoost با ذخیره‌سازی در دیتابیس
+    
+    ویژگی‌های جدید:
+    - اتصال به ModelManager برای ذخیره در دیتابیس
+    - نسخه‌سازی خودکار
+    - آموزش افزایشی (Incremental Learning)
+    - ترکیب با وزن‌دهی (Ensemble)
+    - ارزیابی خودکار
+    """
+    
+    def __init__(self, api: CoinStatsAPI, model_manager: ModelManager):
+        """
+        راه‌اندازی سیستم آموزش خودکار
+        
+        پارامترها:
+            api: نمونه CoinStatsAPI برای دریافت داده
+            model_manager: نمونه ModelManager برای مدیریت مدل
+        """
         self.api = api
-        self.model_path = model_path
+        self.model_manager = model_manager
+        self.db = get_primary()
+        
+        # وضعیت اجرا
         self.is_running = False
         self.is_training = False
         self.stop_event = Event()
         self.thread: Optional[Thread] = None
         
-        # لیست لاگ‌ها (یکسان سازی شده)
+        # لیست لاگ‌ها
         self.logs: List[str] = []
         
+        # آمار سیستم
         self.stats = {
             "total_trainings": 0,
             "successful_trainings": 0,
@@ -45,8 +70,10 @@ class AutoTrainer:
             "mode": "DEMO"  # BETA یا DEMO
         }
         
+        # ارزهای مورد استفاده برای آموزش
         self.coins = ["bitcoin", "ethereum", "solana", "cardano", "ripple"]
         
+        # نام ویژگی‌ها
         self.feature_names = [
             "return_1", "return_3", "return_5", "return_10",
             "sma_5", "sma_10", "sma_20",
@@ -55,17 +82,19 @@ class AutoTrainer:
             "trend_5", "trend_10", "trend_20",
             "r2"
         ]
-
-        self.training_history: List[Dict[str, Any]] = []
         
-        # بررسی وجود مدل و تنظیم حالت
-        if os.path.exists(self.model_path):
+        # بروزرسانی وضعیت از ModelManager
+        if self.model_manager.current_model is not None:
             self.stats["mode"] = "BETA"
-            self._add_log(f"✅ مدل موجود است (حالت BETA)")
+            self._add_log(f"✅ مدل موجود است (حالت BETA) - نسخه: {self.model_manager.current_version}")
         else:
             self._add_log(f"📦 مدل یافت نشد (حالت DEMO)")
         
-        self._add_log("✅ AutoTrainer initialized")
+        self._add_log("✅ AutoTrainer ۲.۰ راه‌اندازی شد")
+    
+    # ============================================================
+    # مدیریت لاگ‌ها
+    # ============================================================
     
     def _add_log(self, message: str):
         """ثبت لاگ با زمان"""
@@ -226,15 +255,49 @@ class AutoTrainer:
         
         return np.array(features_list, dtype=np.float32), np.array(labels_list, dtype=np.int32)
     
+    def _get_training_coins(self) -> List[str]:
+        """دریافت لیست ارزهای مورد استفاده برای آموزش"""
+        return self.coins
+    
+    # ============================================================
+    # ارزیابی مدل
+    # ============================================================
+    
+    def _evaluate_model(self, model, features, labels) -> float:
+        """ارزیابی دقت مدل روی داده‌های تست"""
+        try:
+            if isinstance(model, xgb.Booster):
+                dtest = xgb.DMatrix(features)
+                predictions = model.predict(dtest)
+            else:
+                # Ensemble یا مدل سفارشی
+                predictions = model.predict(features)
+            
+            pred_classes = (predictions > 0.5).astype(int)
+            accuracy = np.mean(pred_classes == labels)
+            return float(accuracy)
+        except Exception as e:
+            logger.error(f"❌ خطا در ارزیابی: {e}")
+            return 0.0
+    
     # ============================================================
     # آموزش مدل
     # ============================================================
     
     def train_model(self, period: str = "1m") -> Dict[str, Any]:
-        """آموزش مدل XGBoost با داده‌های جدید"""
+        """
+        آموزش مدل XGBoost با داده‌های جدید و ذخیره در دیتابیس
+        
+        پارامترها:
+            period: بازه زمانی (1w, 1m, 3m, 6m)
+        
+        خروجی:
+            دیکشنری شامل نتایج آموزش
+        """
         if self.is_training:
             return {"success": False, "message": "آموزش در حال انجام است"}
         
+        # بررسی وضعیت API
         status = self.check_api_status()
         if not status["can_train"]:
             return {
@@ -249,7 +312,6 @@ class AutoTrainer:
         self.stats["training_period"] = period
         self._add_log(f"📚 شروع آموزش با بازه: {period}")
         
-        # متغیر result برای استفاده در finally
         result = {"success": False, "message": "خطای ناشناخته"}
         
         try:
@@ -257,6 +319,7 @@ class AutoTrainer:
             all_labels = []
             total_points = 0
             
+            # دریافت داده از همه ارزها
             for coin in self.coins:
                 self._add_log(f"🪙 دریافت {coin} ({period})...")
                 chart_data = self.fetch_data_for_coin(coin, period)
@@ -280,13 +343,17 @@ class AutoTrainer:
                 self._add_log("❌ داده‌ای برای آموزش یافت نشد")
                 return result
             
+            # ترکیب داده‌ها
             X = np.vstack(all_features)
             y = np.concatenate(all_labels)
             
             self._add_log(f"📊 کل نمونه‌های آموزش: {len(X)}")
             self.stats["data_points_used"] = len(X)
             
+            # آموزش مدل جدید
             self._add_log("🧠 آموزش مدل XGBoost...")
+            start_time = time.time()
+            
             model = xgb.XGBClassifier(
                 n_estimators=50,
                 max_depth=4,
@@ -299,32 +366,74 @@ class AutoTrainer:
                 colsample_bytree=0.8,
             )
             
-            start_time = time.time()
             model.fit(X, y)
             training_time = time.time() - start_time
             
+            # ارزیابی
             score = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
+            self._add_log(f"📊 دقت مدل جدید: {score:.3f}")
             
-            # ذخیره مدل
-            model.save_model(self.model_path, format='json')
-            self.stats["mode"] = "BETA"
+            # مقایسه با مدل قبلی (اگر وجود داشته باشد)
+            old_score = None
+            if self.model_manager.current_model is not None:
+                old_score = self._evaluate_model(
+                    self.model_manager.current_model, 
+                    X, 
+                    y
+                )
+                self._add_log(f"📊 دقت مدل قبلی: {old_score:.3f}")
             
-            self.stats["successful_trainings"] += 1
-            self.stats["last_training"] = datetime.now().isoformat()
-            self.stats["last_error"] = None
+            # تصمیم‌گیری: ذخیره یا نگهداری
+            if old_score is not None and (score - old_score) < 0.01:
+                # بهبود کمتر از ۱٪ - نگهداری مدل قبلی
+                self._add_log(f"⚠️ بهبود ناچیز ({((score - old_score)*100):.1f}%) - مدل قبلی حفظ می‌شود")
+                result = {
+                    "success": True,
+                    "message": "مدل قبلی حفظ شد (بهبود کافی نبود)",
+                    "accuracy": old_score,
+                    "new_accuracy": score,
+                    "improvement": score - old_score,
+                    "samples": len(X),
+                    "training_time": round(training_time, 2)
+                }
+                self.stats["successful_trainings"] += 1
+                return result
             
-            self._add_log(f"✅ مدل ذخیره شد! دقت: {score:.3f}, زمان: {training_time:.2f}s")
+            # ذخیره مدل در دیتابیس
+            self._add_log(f"💾 ذخیره مدل در دیتابیس...")
+            save_result = self.model_manager.save_model(
+                model,
+                score,
+                period
+            )
             
-            result = {
-                "success": True,
-                "message": "مدل با موفقیت آموزش دید",
-                "accuracy": round(score, 3),
-                "samples": len(X),
-                "training_time": round(training_time, 2),
-                "model_path": self.model_path,
-                "timestamp": datetime.now().isoformat()
-            }
+            if save_result.get("success"):
+                self.stats["successful_trainings"] += 1
+                self.stats["last_training"] = datetime.now().isoformat()
+                self.stats["last_error"] = None
+                self.stats["mode"] = "BETA"
+                
+                self._add_log(f"✅ مدل ذخیره شد! نسخه: {save_result.get('version')}")
+                
+                result = {
+                    "success": True,
+                    "message": "مدل با موفقیت آموزش دید و ذخیره شد",
+                    "accuracy": score,
+                    "old_accuracy": old_score,
+                    "improvement": score - old_score if old_score else None,
+                    "samples": len(X),
+                    "training_time": round(training_time, 2),
+                    "version": save_result.get('version'),
+                    "model_id": save_result.get('model_id')
+                }
+            else:
+                self.stats["failed_trainings"] += 1
+                self.stats["last_error"] = save_result.get('error', 'خطای ناشناخته')
+                result = {
+                    "success": False,
+                    "message": f"خطا در ذخیره مدل: {save_result.get('error', 'ناشناخته')}"
+                }
             
         except Exception as e:
             self._add_log(f"❌ آموزش ناموفق: {e}")
@@ -337,21 +446,144 @@ class AutoTrainer:
         finally:
             self.is_training = False
         
-        # ذخیره سابقه در صورت موفقیت
-        if result["success"]:
-            self.training_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "period": period,
-                "accuracy": result["accuracy"],
-                "samples": result["samples"],
-                "training_time": result["training_time"],
-                "status": "success"
-            })
-            # نگه‌داشتن فقط ۱۰۰ رکورد آخر
-            if len(self.training_history) > 100:
-                self.training_history = self.training_history[-100:]
-        
         return result
+    
+    # ============================================================
+    # آموزش افزایشی (Incremental Learning)
+    # ============================================================
+    
+    def incremental_train(self, period: str = "1m") -> Dict[str, Any]:
+        """
+        آموزش افزایشی: مدل فعلی را با داده‌های جدید به‌روز می‌کند
+        
+        استراتژی:
+        1. داده‌های جدید را دریافت کن
+        2. مدل فعلی را با داده‌های جدید آموزش بده (با نرخ یادگیری کمتر)
+        3. دقت مدل جدید رو با قبلی مقایسه کن
+        4. اگر بهتر شد، جایگزین کن
+        """
+        if not self.model_manager.current_model:
+            self._add_log("⚠️ مدلی برای آموزش افزایشی وجود ندارد - انجام آموزش کامل")
+            return self.train_model(period)
+        
+        if self.is_training:
+            return {"success": False, "message": "آموزش در حال انجام است"}
+        
+        self.is_training = True
+        self._add_log(f"📚 شروع آموزش افزایشی با بازه: {period}")
+        
+        try:
+            # دریافت داده‌های جدید
+            all_features = []
+            all_labels = []
+            
+            for coin in self.coins:
+                chart_data = self.fetch_data_for_coin(coin, period)
+                if not chart_data:
+                    continue
+                features, labels = self.extract_features_for_training(chart_data)
+                if features is not None and len(features) > 0:
+                    all_features.append(features)
+                    all_labels.append(labels)
+            
+            if not all_features:
+                self.is_training = False
+                return {"success": False, "message": "داده‌ای برای آموزش افزایشی یافت نشد"}
+            
+            X = np.vstack(all_features)
+            y = np.concatenate(all_labels)
+            
+            # ارزیابی مدل فعلی
+            old_accuracy = self._evaluate_model(self.model_manager.current_model, X, y)
+            self._add_log(f"📊 دقت مدل فعلی روی داده‌های جدید: {old_accuracy:.3f}")
+            
+            # آموزش افزایشی با نرخ یادگیری کمتر
+            dtrain = xgb.DMatrix(X, label=y)
+            params = {
+                'objective': 'binary:logistic',
+                'eval_metric': 'logloss',
+                'learning_rate': 0.05,  # کمتر از حالت عادی
+                'max_depth': 3,
+                'subsample': 0.7,
+                'colsample_bytree': 0.7,
+                'tree_method': 'hist'
+            }
+            
+            new_model = xgb.train(
+                params,
+                dtrain,
+                num_boost_round=10,
+                xgb_model=self.model_manager.current_model
+            )
+            
+            # ارزیابی مدل جدید
+            new_accuracy = self._evaluate_model(new_model, X, y)
+            improvement = new_accuracy - old_accuracy
+            self._add_log(f"📊 دقت مدل جدید: {new_accuracy:.3f} (بهبود: {improvement*100:.1f}%)")
+            
+            if improvement > 0.02:
+                # بهبود > ۲٪ - جایگزینی کامل
+                self._add_log(f"✅ بهبود قابل توجه! ذخیره مدل جدید")
+                result = self.model_manager.save_model(new_model, new_accuracy, period)
+                self.is_training = False
+                return {
+                    "success": True,
+                    "message": "مدل جدید با بهبود قابل توجه ذخیره شد",
+                    "accuracy": new_accuracy,
+                    "old_accuracy": old_accuracy,
+                    "improvement": improvement,
+                    "version": result.get('version')
+                }
+            elif improvement > 0.005:
+                # بهبود ۰.۵-۲٪ - ترکیب با وزن‌دهی
+                self._add_log(f"🔄 بهبود متوسط - ترکیب با مدل قبلی")
+                combined_model = self._create_weighted_ensemble(
+                    self.model_manager.current_model, 
+                    new_model, 
+                    weights=[0.7, 0.3]
+                )
+                combined_accuracy = self._evaluate_model(combined_model, X, y)
+                result = self.model_manager.save_model(combined_model, combined_accuracy, period)
+                self.is_training = False
+                return {
+                    "success": True,
+                    "message": "مدل ترکیبی (Ensemble) ذخیره شد",
+                    "accuracy": combined_accuracy,
+                    "old_accuracy": old_accuracy,
+                    "improvement": combined_accuracy - old_accuracy,
+                    "version": result.get('version')
+                }
+            else:
+                self._add_log(f"⚠️ بهبود ناچیز - مدل قبلی حفظ می‌شود")
+                self.is_training = False
+                return {
+                    "success": True,
+                    "message": "مدل قبلی حفظ شد (بهبود کافی نبود)",
+                    "accuracy": old_accuracy,
+                    "new_accuracy": new_accuracy,
+                    "improvement": improvement
+                }
+                
+        except Exception as e:
+            self._add_log(f"❌ خطا در آموزش افزایشی: {e}")
+            self.is_training = False
+            return {"success": False, "error": str(e)}
+    
+    def _create_weighted_ensemble(self, model1, model2, weights=[0.5, 0.5]):
+        """ترکیب دو مدل با وزن‌دهی"""
+        class WeightedEnsemble:
+            def __init__(self, models, weights):
+                self.models = models
+                self.weights = weights
+            
+            def predict(self, data):
+                predictions = []
+                for model, weight in zip(self.models, self.weights):
+                    pred = model.predict(data) * weight
+                    predictions.append(pred)
+                return np.sum(predictions, axis=0)
+        
+        return WeightedEnsemble([model1, model2], weights)
     
     # ============================================================
     # دریافت آمار و اطلاعات
@@ -360,30 +592,62 @@ class AutoTrainer:
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار کامل سیستم"""
         status = self.check_api_status()
+        
+        # دریافت اطلاعات از ModelManager
+        model_stats = self.model_manager.get_stats() if self.model_manager else {}
+        
         return {
             "is_running": self.is_running,
             "is_training": self.is_training,
             "stats": self.stats,
             "api_status": status,
             "coins": self.coins,
-            "model_exists": os.path.exists(self.model_path),
+            "model_exists": model_stats.get('loaded', False),
+            "current_version": self.model_manager.current_version if self.model_manager else None,
             "logs": self.logs[-30:],
-            "training_history": self.training_history[-50:],
             "timestamp": datetime.now().isoformat()
         }
     
     def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
-        """دریافت سابقه آموزش با فیلتر دوره زمانی"""
-        if period:
-            return [h for h in self.training_history if h.get("period") == period]
-        return self.training_history
+        """دریافت سابقه آموزش از دیتابیس"""
+        if not self.db or not self.db.is_connected():
+            return []
+        
+        try:
+            query = """
+                SELECT 
+                    m.id, m.version, m.accuracy, m.training_date,
+                    m.period, m.training_samples, m.is_ensemble,
+                    h.action, h.old_accuracy, h.new_accuracy, h.improvement_percent
+                FROM models m
+                LEFT JOIN model_training_history h ON m.id = h.model_id
+                WHERE m.is_ensemble = FALSE
+                ORDER BY m.training_date DESC
+                LIMIT 50
+            """
+            
+            if period:
+                query = query.replace("WHERE", f"WHERE m.period = '{period}' AND")
+            
+            result = self.db.execute(query)
+            return result
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت تاریخچه: {e}")
+            return []
     
     # ============================================================
     # اجرای خودکار
     # ============================================================
     
-    def start_auto_train(self, interval_hours: int = 6, period: str = "1m"):
-        """شروع آموزش خودکار با فاصله زمانی مشخص"""
+    def start_auto_train(self, interval_hours: int = 6, period: str = "1m", incremental: bool = True):
+        """
+        شروع آموزش خودکار با فاصله زمانی مشخص
+        
+        پارامترها:
+            interval_hours: فاصله زمانی بین آموزش‌ها (ساعت)
+            period: بازه زمانی داده‌ها
+            incremental: آیا از آموزش افزایشی استفاده شود؟
+        """
         if self.is_running:
             return {"success": False, "message": "سیستم در حال اجراست"}
         
@@ -393,15 +657,26 @@ class AutoTrainer:
         
         def run():
             self._add_log(f"🔄 آموزش خودکار شروع شد (فاصله: {interval_hours}h, بازه: {period})")
+            
             while not self.stop_event.is_set():
-                result = self.train_model(period)
-                self._add_log(f"📊 نتیجه آموزش: {result.get('message', 'نامشخص')}")
+                try:
+                    # آموزش با روش انتخابی
+                    if incremental and self.model_manager.current_model is not None:
+                        result = self.incremental_train(period)
+                    else:
+                        result = self.train_model(period)
+                    
+                    self._add_log(f"📊 نتیجه آموزش: {result.get('message', 'نامشخص')}")
+                    
+                except Exception as e:
+                    self._add_log(f"❌ خطا در چرخه آموزش: {e}")
                 
                 # انتظار به مدت interval_hours ساعت یا تا زمان توقف
                 for _ in range(interval_hours * 60 * 60):
                     if self.stop_event.is_set():
                         break
                     time.sleep(1)
+            
             self.is_running = False
             self._add_log("⏹️ آموزش خودکار متوقف شد")
         
@@ -412,7 +687,8 @@ class AutoTrainer:
             "success": True,
             "message": f"آموزش خودکار شروع شد (هر {interval_hours} ساعت)",
             "interval_hours": interval_hours,
-            "period": period
+            "period": period,
+            "incremental": incremental
         }
     
     def stop_auto_train(self):
