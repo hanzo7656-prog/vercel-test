@@ -80,6 +80,10 @@ class TradingSignalSystem:
         logger.info('AutoTrainer started')
 
         # دیتابیس‌ها
+
+        sel.db_healthy = False
+        self._ensure_database_health()
+        
         self.db = get_cache()
         if self.db and self.db.is_connected():
             print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
@@ -453,6 +457,31 @@ class TradingSignalSystem:
         
         return status
 
+    # 6. سلامت دیتابیس (اضافه کنید)
+        try:
+            from database import get_primary, get_cache, get_backup
+        
+            primary_ok = get_primary() is not None and get_primary().is_connected()
+            cache_ok = get_cache() is not None and get_cache().is_connected()
+            backup_ok = get_backup() is not None and get_backup().is_connected()
+        
+            status["components"]["databases"] = {
+                "status": "healthy" if (primary_ok and cache_ok and backup_ok) else "degraded",
+                "primary": primary_ok,
+                "cache": cache_ok,
+                "backup": backup_ok
+            }
+        
+            if not primary_ok:
+                status["status"] = "degraded"
+             
+        except Exception as e:
+            status["components"]["databases"] = {
+                "status": "unknown",
+                "message": str(e)
+            }
+     
+        return status
 
 # ============================================================
 # راه‌اندازی وب سرویس Flask
@@ -1575,6 +1604,54 @@ def search_databases():
         "data": results[:50]
     })
 
+@app.route('/admin/db/ensure', methods=['POST'])
+def admin_ensure_db():
+    """
+   强制执行 reconnect دیتابیس‌ها (Self-Healing)
+    """
+    try:
+        from database.database_factory import db_factory
+        result = db_factory.force_reconnect()
+        return jsonify({
+            "success": True,
+            "data": result,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/admin/db/status', methods=['GET'])
+def admin_db_status():
+    """
+    دریافت وضعیت دقیق دیتابیس‌ها
+    """
+    try:
+        from database import registry, get_primary, get_cache, get_backup
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "registry": {
+                    name: str(type(db)) for name, db in registry.get_all().items()
+                },
+                "primary": {
+                    "connected": get_primary() is not None and get_primary().is_connected(),
+                    "instance": str(type(get_primary()))
+                },
+                "cache": {
+                    "connected": get_cache() is not None and get_cache().is_connected(),
+                    "instance": str(type(get_cache()))
+                },
+                "backup": {
+                    "connected": get_backup() is not None and get_backup().is_connected(),
+                    "instance": str(type(get_backup()))
+                }
+            },
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ============================================================
 # ایمپورت روت‌های جدید
