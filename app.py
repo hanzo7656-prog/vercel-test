@@ -396,23 +396,19 @@ class TradingSignalSystem:
             }
             status["status"] = "unhealthy"
 
-        # 2. سلامت مدل (اصلاح شده)
-        model_exists = os.path.exists("model.xgb")
-        model_status = "healthy" if model_exists else "degraded"
-        model_mode = "BETA" if model_exists else "DEMO"
-      
+        # ۲. سلامت مدل (با ModelManager)
+        model_stats = self.model_manager.get_stats() if self.model_manager else {}
+        model_exists = model_stats.get('loaded', False)
+    
         status["components"]["model"] = {
-            "status": model_status,
+            "status": "healthy" if model_exists else "degraded",
             "message": "مدل بارگذاری شده است" if model_exists else "حالت DEMO (بدون مدل)",
-            "mode": model_mode,
+            "mode": "BETA" if model_exists else "DEMO",
+            "version": model_stats.get('version', 'unknown'),
             "file_exists": model_exists
         }
 
-        # اگر مدل وجود داشته باشه، وضعیت کلی رو ok نگه دار
-        if model_exists and status["status"] == "degraded":
-            status["status"] = "ok"
-
-        return status
+        
 
         # 3. اعتبار
         try:
@@ -1592,13 +1588,16 @@ from health_mother_system import *
 # ============================================================
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get(a"PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۵.۰ - با TaskManager)")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۶.۰ - با ModelManager)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
+    print(f"🧠 مدل: {'✅ بارگذاری شده' if system.model_manager.current_model else '❌ بارگذاری نشده'}")
+    print(f"📊 نسخه مدل: {system.model_manager.current_version or 'N/A'}")
+    print("=" * 60)
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
     print("=" * 60)
     print("📌 صفحات HTML:")
