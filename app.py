@@ -14,6 +14,11 @@ import numpy as np
 import logging
 import subprocess
 import io
+# ============================================================
+# اضافه کردن به بالای app.py
+# ============================================================
+
+from model_manager import ModelManager  # ← اضافه کنید
 from typing import Any
 from datetime import datetime, timedelta
 from queue import Queue
@@ -44,8 +49,9 @@ class TradingSignalSystem:
     def __init__(self, api_key=None):
         """راه‌اندازی سیستم با کلید API"""
         self.api = CoinStatsAPI(api_key)
-        self.model = None
-        self.model_loaded = False
+        self.model_manager = ModelManager(self.api)
+        #self.model = None
+        #self.model_loaded = False
         self.start_time = datetime.now()
 
         self.config = {
@@ -56,7 +62,7 @@ class TradingSignalSystem:
         }
 
         
-        self.load_model()
+        self.init_model()
         
         # کش برای داده‌های خودکار
         self._cached_coins = None
@@ -265,7 +271,16 @@ class TradingSignalSystem:
                 "period": period,
                 "data_points": len(chart_data) if chart_data else 0
             }
-
+         # ۳. پیش‌بینی با مدل جدید
+        if self.model_loaded and self.model_manager.current_model:
+            try:
+                # استفاده از ModelManager برای پیش‌بینی
+                prediction = self.model_manager.predict(features)
+            except Exception as e:
+                print(f"⚠️ خطا در پیش‌بینی با مدل: {e}")
+                prediction = self._demo_predict(features)
+        else:
+            prediction = self._demo_predict(features
         # 3. پیش‌بینی با مدل یا حالت DEMO
         if self.model_loaded and self.model:
             try:
@@ -1498,6 +1513,72 @@ def search_databases():
         "success": True,
         "data": results[:50]  # محدود به ۵۰ نتیجه
     })
+
+
+# ============================================================
+# روت‌های جدید برای مدیریت مدل 
+# ============================================================
+
+@app.route('/model/versions', methods=['GET'])
+def model_versions():
+    """دریافت تاریخچه نسخه‌های مدل"""
+    try:
+        history = system.model_manager.get_version_history(limit=20)
+        return jsonify({
+            "success": True,
+            "data": history,
+            "count": len(history)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/version/<version>', methods=['GET'])
+def model_version_detail(version):
+    """دریافت اطلاعات یک نسخه خاص"""
+    try:
+        model = system.model_manager.get_model_by_version(version)
+        if model:
+            return jsonify({
+                "success": True,
+                "version": version,
+                "loaded": True
+            })
+        return jsonify({"success": False, "message": "مدل یافت نشد"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/current', methods=['GET'])
+def model_current():
+    """دریافت وضعیت مدل جاری"""
+    try:
+        stats = system.model_manager.get_stats()
+        return jsonify({
+            "success": True,
+            "data": stats
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/model/save', methods=['POST'])
+def model_save():
+    """ذخیره مدل فعلی در دیتابیس"""
+    try:
+        data = request.json
+        period = data.get('period', '1m')
+        accuracy = data.get('accuracy', 0.0)
+        
+        result = system.model_manager.save_model(
+            system.model_manager.current_model,
+            accuracy,
+            period
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 #===============================
 #محل ایمپورت روت های جدید 
 #===============================
