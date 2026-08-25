@@ -2,6 +2,7 @@
 # ============================================================
 # هسته اصلی سیستم تشخیص الگوهای بازاری
 # شامل: سیستم، مدیریت تسک‌ها، روت‌های بازار
+# نسخه ۶.۰ - با ModelManager و دیتابیس جدید
 # ============================================================
 
 import os
@@ -14,11 +15,6 @@ import numpy as np
 import logging
 import subprocess
 import io
-# ============================================================
-# اضافه کردن به بالای app.py
-# ============================================================
-
-from model_manager import ModelManager  # ← اضافه کنید
 from typing import Any
 from datetime import datetime, timedelta
 from queue import Queue
@@ -33,6 +29,7 @@ from config import (
     get_thresholds
 )
 from auth_manager import get_auth, require_auth, get_current_user_from_request
+from model_manager import ModelManager
 import secrets
 
 
@@ -50,8 +47,6 @@ class TradingSignalSystem:
         """راه‌اندازی سیستم با کلید API"""
         self.api = CoinStatsAPI(api_key)
         self.model_manager = ModelManager(self.api)
-        #self.model = None
-        #self.model_loaded = False
         self.start_time = datetime.now()
 
         self.config = {
@@ -61,8 +56,8 @@ class TradingSignalSystem:
             "cache_ttl": get_config("cache.default_ttl", 3600)
         }
 
-        
-        self.init_model()
+        # بارگذاری مدل با ModelManager
+        self._init_model()
         
         # کش برای داده‌های خودکار
         self._cached_coins = None
@@ -70,7 +65,7 @@ class TradingSignalSystem:
         self._cached_fear_greed = None
         self._cached_market = None
 
-        #اموزش خودکار مدل XGboost
+        # آموزش خودکار مدل XGBoost
         self.trainer = AutoTrainer(
             self.api, 
             "model.xgb",
@@ -79,7 +74,7 @@ class TradingSignalSystem:
         interval = get_config("model.auto_train_interval", 6)
         self.trainer.start_auto_train(interval_hours=interval)
 
-        logger=logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
         logger.info('AutoTrainer started')
 
         # دیتابیس‌ها
@@ -89,6 +84,16 @@ class TradingSignalSystem:
         else:
             print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
 
+    def _init_model(self):
+        """راه‌اندازی مدل با ModelManager"""
+        try:
+            if self.model_manager.current_model is not None:
+                print("✅ مدل با موفقیت بارگذاری شد", file=sys.stderr)
+                print(f"📊 نسخه مدل: {self.model_manager.current_version}", file=sys.stderr)
+            else:
+                print("⚠️ مدلی یافت نشد - استفاده از حالت DEMO", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
 
     def cache_get(self, key: str):
         """دریافت از کش (با دیتابیس)"""
@@ -118,22 +123,6 @@ class TradingSignalSystem:
             pass
         return 0, 512
 
-    def load_model(self):
-        """بارگذاری مدل XGBoost از فایل"""
-        try:
-            if os.path.exists("model.xgb"):
-                import xgboost as xgb
-                self.model = xgb.Booster()
-                self.model.load_model("model.xgb")
-                self.model_loaded = True
-                print("✅ مدل XGBoost با موفقیت بارگذاری شد", file=sys.stderr)
-            else:
-                print("⚠️ فایل model.json یافت نشد - استفاده از حالت DEMO", file=sys.stderr)
-                self.model_loaded = False
-        except Exception as e:
-            print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
-            self.model_loaded = False
-            
     def extract_features(self, chart_data):
         """
         تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost
@@ -215,7 +204,6 @@ class TradingSignalSystem:
 
         return np.array(features, dtype=np.float32)
 
-
     def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
         نسخه همگام (Synchronous) پیش‌بینی
@@ -271,29 +259,16 @@ class TradingSignalSystem:
                 "period": period,
                 "data_points": len(chart_data) if chart_data else 0
             }
-         # ۳. پیش‌بینی با مدل جدید
-        if self.model_loaded and self.model_manager.current_model:
+
+        # 3. پیش‌بینی با مدل جدید (ModelManager)
+        if self.model_manager.current_model:
             try:
-                # استفاده از ModelManager برای پیش‌بینی
                 prediction = self.model_manager.predict(features)
-            except Exception as e:
-                print(f"⚠️ خطا در پیش‌بینی با مدل: {e}")
-                prediction = self._demo_predict(features)
-        else:
-            prediction = self._demo_predict(features
-        # 3. پیش‌بینی با مدل یا حالت DEMO
-        if self.model_loaded and self.model:
-            try:
-                # تبدیل ویژگی‌ها به فرمت DMatrix برای XGBoost
-                dmatrix = xgb.DMatrix(features.reshape(1, -1))
-                prediction = self.model.predict(dmatrix)[0]
                 prediction = float(prediction)
             except Exception as e:
                 print(f"⚠️ خطا در پیش‌بینی با مدل: {e}")
-                # Fallback به حالت DEMO
                 prediction = self._demo_predict(features)
         else:
-            # حالت DEMO (وقتی مدل وجود نداشته باشه)
             prediction = self._demo_predict(features)
 
         # 4. تفسیر نتیجه
@@ -332,9 +307,8 @@ class TradingSignalSystem:
             "timestamp": datetime.now().isoformat(),
             "processing_time_ms": round(processing_time, 2),
             "data_points": len(chart_data) if chart_data else 0,
-            "model_mode": "PRODUCTION" if self.model_loaded else "DEMO"
+            "model_mode": "PRODUCTION" if self.model_manager.current_model else "DEMO"
         }
-
 
     def _demo_predict(self, features):
         """
@@ -396,7 +370,7 @@ class TradingSignalSystem:
             }
             status["status"] = "unhealthy"
 
-        # ۲. سلامت مدل (با ModelManager)
+        # 2. سلامت مدل (با ModelManager)
         model_stats = self.model_manager.get_stats() if self.model_manager else {}
         model_exists = model_stats.get('loaded', False)
     
@@ -407,8 +381,6 @@ class TradingSignalSystem:
             "version": model_stats.get('version', 'unknown'),
             "file_exists": model_exists
         }
-
-        
 
         # 3. اعتبار
         try:
@@ -456,6 +428,7 @@ class TradingSignalSystem:
         status["components"]["api_stats"] = self.api.get_stats()
         
         return status
+
 
 # ============================================================
 # راه‌اندازی وب سرویس Flask
@@ -654,7 +627,6 @@ def model_status():
         return jsonify({"error": str(e)}), 500
 
 
-
 @app.route('/model/train', methods=['POST'])
 def model_train():
     """اجرای دستی آموزش"""
@@ -724,16 +696,12 @@ def model_clear_logs():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-#===================================================================
+# ============================================================
 # روت‌های دیتابیس
-#===================================================================
+# ============================================================
 
-# app.py - تغییرات
 from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
 
-# ============================================================
-# روت سلامت دیتابیس
-# ============================================================
 
 @app.route('/health/database', methods=['GET'])
 def health_database():
@@ -744,30 +712,7 @@ def health_database():
         "data": health_check(),
         "timestamp": datetime.now().isoformat()
     })
-# ============================================================
-# استفاده در سیستم
-# ============================================================
 
-# مثال: ذخیره سشن در Redis (کش)
-def save_session(session_id, data):
-    cache = get_cache()
-    if cache:
-        cache.set(f"session_{session_id}", data, 86400)
-
-# مثال: ذخیره کاربر در PostgreSQL (اصلی)
-def save_user(user_data):
-    primary = get_primary()
-    if primary:
-        primary.execute(
-            "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
-            (user_data["username"], user_data["password"], user_data["role"])
-        )
-
-# مثال: ذخیره بک‌آپ در SQLite
-def save_backup(data):
-    backup = get_backup()
-    if backup:
-        backup.execute("INSERT INTO backup (data) VALUES (%s)", (data,))
 
 # ============================================================
 # روت‌های تنظیمات (Settings API)
@@ -779,14 +724,11 @@ def get_settings():
     try:
         from config import config as config_manager
         
-        # دریافت تنظیمات
         settings = config_manager.get_all()
         
-        # حذف توکن‌ها از خروجی (برای امنیت)
         if 'databases' in settings:
             for db_name, db_config in settings['databases'].items():
                 if 'token' in db_config:
-                    # ماسک کردن توکن
                     token = db_config['token']
                     if token and len(token) > 10:
                         db_config['token'] = token[:6] + '...' + token[-4:]
@@ -819,7 +761,6 @@ def update_settings():
                 "error": "داده ارسال نشده"
             }), 400
         
-        # به‌روزرسانی هر بخش
         for section, values in data.items():
             if isinstance(values, dict):
                 for key, value in values.items():
@@ -840,13 +781,13 @@ def update_settings():
             "error": str(e)
         }), 500
 
+
 @app.route('/api/config/reset', methods=['POST'])
 def reset_settings():
     """بازنشانی تنظیمات به حالت پیش‌فرض"""
     try:
         from config import config as config_manager
         
-        # بارگذاری مجدد تنظیمات از فایل
         config_manager.reload()
         
         return jsonify({
@@ -864,7 +805,7 @@ def reset_settings():
 
 # ============================================================
 # روت‌های احراز هویت
-# ========================================================= 
+# ============================================================
 
 
 @app.route('/login', methods=['GET'])
@@ -1068,12 +1009,6 @@ def update_user(username):
     return jsonify({"success": False, "error": "کاربر یافت نشد"}), 404
 
 
-
-# ============================================================
-# روت برای به‌روزرسانی ایمیل
-# ============================================================
-
-
 @app.route('/api/user/email', methods=['PUT'])
 @require_auth()
 def update_user_email():
@@ -1101,418 +1036,10 @@ def update_user_email():
         return jsonify({"success": True, "message": "ایمیل با موفقیت به‌روزرسانی شد"})
     
     return jsonify({"success": False, "error": "خطا در به‌روزرسانی ایمیل"}), 500
-# ============================================================
-# صفحات خطا
-# ============================================================
-
-@app.errorhandler(404)
-def not_found(error):
-    """صفحه خطای ۴۰۴ - صفحه یافت نشد"""
-    return send_from_directory('static', '404.html'), 404
-
-
-@app.errorhandler(403)
-def forbidden(error):
-    """صفحه خطای ۴۰۳ - دسترسی غیرمجاز"""
-    return send_from_directory('static', '403.html'), 403
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    """صفحه خطای ۵۰۰ - خطای داخلی سرور"""
-    return send_from_directory('static', '500.html'), 500
-
-
-@app.errorhandler(Exception)
-def handle_exception(error):
-    """مدیریت تمام خطاهای پیش‌بینی‌نشده"""
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.error(f"Unhandled exception: {error}")
-    return send_from_directory('static', '500.html'), 500
 
 
 # ============================================================
-# روت‌های دیباگ (فقط برای توسعه)
-# ============================================================
-
-
-@app.route('/api/debug/exec', methods=['POST'])
-def debug_exec():
-    """اجرای دستور پایتون (فقط توسعه)"""
-    data = request.json
-    command = data.get('command', '').strip()
-    
-    if not command:
-        return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
-    
-    try:
-        # اجرای دستور در محیط امن
-        old_stdout = sys.stdout
-        sys.stdout = io.StringIO()
-        
-        # اجرا
-        exec(command, globals(), locals())
-        
-        result = sys.stdout.getvalue()
-        sys.stdout = old_stdout
-        
-        return jsonify({
-            "success": True,
-            "result": result or "✅ اجرا شد (بدون خروجی)"
-        })
-    except Exception as e:
-        sys.stdout = sys.__stdout__
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-@app.route('/api/debug/file', methods=['POST'])
-def debug_file():
-    """خواندن محتوای فایل"""
-    data = request.json
-    filename = data.get('filename', '').strip()
-    
-    if not filename:
-        return jsonify({"success": False, "error": "نام فایل وارد نشده"}), 400
-    
-    # ✅ اضافه کردن فایل‌های بیشتر
-    allowed_files = [
-        'config/settings.json', 
-        'config/databases.json', 
-        'config/users.json',
-        'app.py',
-        'routes.py',
-        'auth_manager.py',
-        'api_handler.py',
-        'requirements.txt'
-    ]
-    
-    if filename not in allowed_files:
-        return jsonify({"success": False, "error": "دسترسی به این فایل مجاز نیست"}), 403
-    
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return jsonify({
-            "success": True,
-            "content": content
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-        
-@app.route('/api/debug/env', methods=['GET'])
-def debug_env():
-    """دریافت متغیرهای محیطی (فقط کلیدها، بدون مقادیر حساس)"""
-    env_vars = {}
-    sensitive = ['TOKEN', 'PASSWORD', 'SECRET', 'KEY']
-    
-    for key, value in os.environ.items():
-        # مخفی کردن مقادیر حساس
-        if any(s in key.upper() for s in sensitive):
-            env_vars[key] = '••••••••'
-        else:
-            env_vars[key] = value
-    
-    return jsonify({
-        "success": True,
-        "data": env_vars
-    })
-
-#==============================================
-# روت دیتابیس
-#==============================================
-
-
-@app.route('/api/db/postgresql/tables', methods=['GET'])
-def get_postgresql_tables():
-    """دریافت لیست جدول‌های PostgreSQL با تعداد رکوردها"""
-    from database import get_primary
-    
-    db = get_primary()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
-    
-    try:
-        # دریافت لیست جدول‌ها
-        tables = db.execute("""
-            SELECT 
-                table_name,
-                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
-            FROM information_schema.tables t
-            WHERE table_schema = 'public'
-            ORDER BY table_name
-        """)
-        
-        # دریافت حجم هر جدول
-        for table in tables:
-            size_result = db.execute(f"""
-                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
-            """)
-            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
-            
-            # دریافت آخرین بروزرسانی
-            update_result = db.execute(f"""
-                SELECT last_analyze FROM pg_stat_user_tables 
-                WHERE relname = '{table['table_name']}'
-            """)
-            table['last_update'] = update_result[0]['last_analyze'] if update_result else None
-        
-        return jsonify({
-            "success": True,
-            "data": tables
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/db/postgresql/table/<table_name>', methods=['GET'])
-def get_postgresql_table_data(table_name):
-    """دریافت محتوای یک جدول خاص"""
-    from database import get_primary
-    
-    db = get_primary()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
-    
-    try:
-        # دریافت ستون‌ها
-        columns = db.execute(f"""
-            SELECT column_name, data_type 
-            FROM information_schema.columns 
-            WHERE table_name = '{table_name}'
-            ORDER BY ordinal_position
-        """)
-        
-        # دریافت داده‌ها (محدود به ۱۰۰ رکورد)
-        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
-        
-        return jsonify({
-            "success": True,
-            "data": {
-                "columns": columns,
-                "rows": data
-            }
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/db/redis/keys', methods=['GET'])
-def get_redis_keys():
-    """دریافت لیست کلیدهای Redis با نوع و حجم"""
-    from database import get_cache
-    
-    db = get_cache()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
-    
-    try:
-        # دریافت همه کلیدها
-        keys = db._client.keys('*')
-        result = []
-        for key in keys:
-            key_type = db._client.type(key)
-            ttl = db._client.ttl(key)
-            # دریافت حجم (برای stringها)
-            size = 0
-            if key_type == 'string':
-                size = len(db._client.get(key) or '')
-            elif key_type in ['hash', 'list', 'set', 'zset']:
-                size = db._client.dbsize()  # تقریبی
-            
-            result.append({
-                'key': key,
-                'type': key_type,
-                'ttl': ttl if ttl > 0 else '∞',
-                'size': size
-            })
-        
-        return jsonify({
-            "success": True,
-            "data": result,
-            "count": len(result)
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/db/redis/key/<path:key>', methods=['GET'])
-def get_redis_key_value(key):
-    """دریافت مقدار یک کلید خاص"""
-    from database import get_cache
-    import json
-    
-    db = get_cache()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
-    
-    try:
-        value = db.get(key)
-        key_type = db._client.type(key)
-        ttl = db._client.ttl(key)
-        
-        # تلاش برای JSON decode
-        display_value = value
-        try:
-            if isinstance(value, str):
-                json.loads(value)
-        except:
-            pass
-        
-        return jsonify({
-            "success": True,
-            "data": {
-                "key": key,
-                "value": value,
-                "type": key_type,
-                "ttl": ttl if ttl > 0 else '∞'
-            }
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/db/sqlite/tables', methods=['GET'])
-def get_sqlite_tables():
-    """دریافت لیست جدول‌های SQLite"""
-    from database import get_backup
-    
-    db = get_backup()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
-    
-    try:
-        # دریافت لیست جدول‌ها
-        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-        
-        result = []
-        for table in tables:
-            table_name = table['name']
-            # تعداد رکوردها
-            count_result = db.execute(f"SELECT COUNT(*) as count FROM {table_name}")
-            row_count = count_result[0]['count'] if count_result else 0
-            
-            result.append({
-                'table_name': table_name,
-                'row_count': row_count
-            })
-        
-        return jsonify({
-            "success": True,
-            "data": result
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/db/sqlite/table/<table_name>', methods=['GET'])
-def get_sqlite_table_data(table_name):
-    """دریافت محتوای یک جدول SQLite"""
-    from database import get_backup
-    
-    db = get_backup()
-    if not db or not db.is_connected():
-        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
-    
-    try:
-        # دریافت اطلاعات ستون‌ها (PRAGMA)
-        columns_info = db.execute(f"PRAGMA table_info({table_name})")
-        columns = [col['name'] for col in columns_info]
-        
-        # دریافت داده‌ها
-        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
-        
-        return jsonify({
-            "success": True,
-            "data": {
-                "columns": columns,
-                "rows": data
-            }
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/db/search', methods=['GET'])
-def search_databases():
-    """جستجوی یکپارچه در همه دیتابیس‌ها"""
-    from database import get_primary, get_cache, get_backup
-    
-    query = request.args.get('q', '').strip()
-    target = request.args.get('target', 'all')
-    
-    if not query or len(query) < 2:
-        return jsonify({"success": False, "error": "حداقل ۲ کاراکتر وارد کنید"}), 400
-    
-    results = []
-    
-    # جستجو در PostgreSQL
-    if target in ['all', 'postgresql']:
-        pg = get_primary()
-        if pg and pg.is_connected():
-            try:
-                tables = pg.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-                for table in tables:
-                    table_name = table['table_name']
-                    data = pg.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
-                    for row in data:
-                        results.append({
-                            'database': 'PostgreSQL',
-                            'type': 'table',
-                            'table': table_name,
-                            'content': str(row)
-                        })
-            except:
-                pass
-    
-    # جستجو در Redis
-    if target in ['all', 'redis']:
-        redis = get_cache()
-        if redis and redis.is_connected():
-            try:
-                keys = redis._client.keys(f'*{query}*')
-                for key in keys[:10]:
-                    value = redis.get(key)
-                    results.append({
-                        'database': 'Redis',
-                        'type': 'key',
-                        'key': key,
-                        'content': str(value)[:200]
-                    })
-            except:
-                pass
-    
-    # جستجو در SQLite
-    if target in ['all', 'sqlite']:
-        sqlite = get_backup()
-        if sqlite and sqlite.is_connected():
-            try:
-                tables = sqlite.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                for table in tables:
-                    table_name = table['name']
-                    data = sqlite.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
-                    for row in data:
-                        results.append({
-                            'database': 'SQLite',
-                            'type': 'table',
-                            'table': table_name,
-                            'content': str(row)
-                        })
-            except:
-                pass
-    
-    return jsonify({
-        "success": True,
-        "data": results[:50]  # محدود به ۵۰ نتیجه
-    })
-
-
-# ============================================================
-# روت‌های جدید برای مدیریت مدل 
+# روت‌های جدید برای مدیریت مدل (ModelManager)
 # ============================================================
 
 @app.route('/model/versions', methods=['GET'])
@@ -1575,9 +1102,402 @@ def model_save():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-#===============================
-#محل ایمپورت روت های جدید 
-#===============================
+
+# ============================================================
+# صفحات خطا
+# ============================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    """صفحه خطای ۴۰۴ - صفحه یافت نشد"""
+    return send_from_directory('static', '404.html'), 404
+
+
+@app.errorhandler(403)
+def forbidden(error):
+    """صفحه خطای ۴۰۳ - دسترسی غیرمجاز"""
+    return send_from_directory('static', '403.html'), 403
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """صفحه خطای ۵۰۰ - خطای داخلی سرور"""
+    return send_from_directory('static', '500.html'), 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """مدیریت تمام خطاهای پیش‌بینی‌نشده"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {error}")
+    return send_from_directory('static', '500.html'), 500
+
+
+# ============================================================
+# روت‌های دیباگ (فقط برای توسعه)
+# ============================================================
+
+@app.route('/api/debug/exec', methods=['POST'])
+def debug_exec():
+    """اجرای دستور پایتون (فقط توسعه)"""
+    data = request.json
+    command = data.get('command', '').strip()
+    
+    if not command:
+        return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
+    
+    try:
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        
+        exec(command, globals(), locals())
+        
+        result = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+        
+        return jsonify({
+            "success": True,
+            "result": result or "✅ اجرا شد (بدون خروجی)"
+        })
+    except Exception as e:
+        sys.stdout = sys.__stdout__
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/debug/file', methods=['POST'])
+def debug_file():
+    """خواندن محتوای فایل"""
+    data = request.json
+    filename = data.get('filename', '').strip()
+    
+    if not filename:
+        return jsonify({"success": False, "error": "نام فایل وارد نشده"}), 400
+    
+    allowed_files = [
+        'config/settings.json', 
+        'config/databases.json', 
+        'config/users.json',
+        'app.py',
+        'routes.py',
+        'auth_manager.py',
+        'api_handler.py',
+        'requirements.txt'
+    ]
+    
+    if filename not in allowed_files:
+        return jsonify({"success": False, "error": "دسترسی به این فایل مجاز نیست"}), 403
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({
+            "success": True,
+            "content": content
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/debug/env', methods=['GET'])
+def debug_env():
+    """دریافت متغیرهای محیطی (فقط کلیدها، بدون مقادیر حساس)"""
+    env_vars = {}
+    sensitive = ['TOKEN', 'PASSWORD', 'SECRET', 'KEY']
+    
+    for key, value in os.environ.items():
+        if any(s in key.upper() for s in sensitive):
+            env_vars[key] = '••••••••'
+        else:
+            env_vars[key] = value
+    
+    return jsonify({
+        "success": True,
+        "data": env_vars
+    })
+
+
+# ============================================================
+# روت‌های دیتابیس (مدیریت)
+# ============================================================
+
+@app.route('/api/db/postgresql/tables', methods=['GET'])
+def get_postgresql_tables():
+    """دریافت لیست جدول‌های PostgreSQL با تعداد رکوردها"""
+    from database import get_primary
+    
+    db = get_primary()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
+    
+    try:
+        tables = db.execute("""
+            SELECT 
+                table_name,
+                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
+            FROM information_schema.tables t
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        
+        for table in tables:
+            size_result = db.execute(f"""
+                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
+            """)
+            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
+            
+            update_result = db.execute(f"""
+                SELECT last_analyze FROM pg_stat_user_tables 
+                WHERE relname = '{table['table_name']}'
+            """)
+            table['last_update'] = update_result[0]['last_analyze'] if update_result else None
+        
+        return jsonify({
+            "success": True,
+            "data": tables
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/postgresql/table/<table_name>', methods=['GET'])
+def get_postgresql_table_data(table_name):
+    """دریافت محتوای یک جدول خاص"""
+    from database import get_primary
+    
+    db = get_primary()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "دیتابیس متصل نیست"}), 503
+    
+    try:
+        columns = db.execute(f"""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}'
+            ORDER BY ordinal_position
+        """)
+        
+        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "columns": columns,
+                "rows": data
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/redis/keys', methods=['GET'])
+def get_redis_keys():
+    """دریافت لیست کلیدهای Redis با نوع و حجم"""
+    from database import get_cache
+    
+    db = get_cache()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
+    
+    try:
+        keys = db._client.keys('*')
+        result = []
+        for key in keys:
+            key_type = db._client.type(key)
+            ttl = db._client.ttl(key)
+            size = 0
+            if key_type == 'string':
+                size = len(db._client.get(key) or '')
+            elif key_type in ['hash', 'list', 'set', 'zset']:
+                size = db._client.dbsize()
+            
+            result.append({
+                'key': key,
+                'type': key_type,
+                'ttl': ttl if ttl > 0 else '∞',
+                'size': size
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": result,
+            "count": len(result)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/redis/key/<path:key>', methods=['GET'])
+def get_redis_key_value(key):
+    """دریافت مقدار یک کلید خاص"""
+    from database import get_cache
+    import json
+    
+    db = get_cache()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "Redis متصل نیست"}), 503
+    
+    try:
+        value = db.get(key)
+        key_type = db._client.type(key)
+        ttl = db._client.ttl(key)
+        
+        try:
+            if isinstance(value, str):
+                json.loads(value)
+        except:
+            pass
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "key": key,
+                "value": value,
+                "type": key_type,
+                "ttl": ttl if ttl > 0 else '∞'
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/sqlite/tables', methods=['GET'])
+def get_sqlite_tables():
+    """دریافت لیست جدول‌های SQLite"""
+    from database import get_backup
+    
+    db = get_backup()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
+    
+    try:
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        
+        result = []
+        for table in tables:
+            table_name = table['name']
+            count_result = db.execute(f"SELECT COUNT(*) as count FROM {table_name}")
+            row_count = count_result[0]['count'] if count_result else 0
+            
+            result.append({
+                'table_name': table_name,
+                'row_count': row_count
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": result
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/sqlite/table/<table_name>', methods=['GET'])
+def get_sqlite_table_data(table_name):
+    """دریافت محتوای یک جدول SQLite"""
+    from database import get_backup
+    
+    db = get_backup()
+    if not db or not db.is_connected():
+        return jsonify({"success": False, "error": "SQLite متصل نیست"}), 503
+    
+    try:
+        columns_info = db.execute(f"PRAGMA table_info({table_name})")
+        columns = [col['name'] for col in columns_info]
+        
+        data = db.execute(f"SELECT * FROM {table_name} LIMIT 100")
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "columns": columns,
+                "rows": data
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/db/search', methods=['GET'])
+def search_databases():
+    """جستجوی یکپارچه در همه دیتابیس‌ها"""
+    from database import get_primary, get_cache, get_backup
+    
+    query = request.args.get('q', '').strip()
+    target = request.args.get('target', 'all')
+    
+    if not query or len(query) < 2:
+        return jsonify({"success": False, "error": "حداقل ۲ کاراکتر وارد کنید"}), 400
+    
+    results = []
+    
+    if target in ['all', 'postgresql']:
+        pg = get_primary()
+        if pg and pg.is_connected():
+            try:
+                tables = pg.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                for table in tables:
+                    table_name = table['table_name']
+                    data = pg.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
+                    for row in data:
+                        results.append({
+                            'database': 'PostgreSQL',
+                            'type': 'table',
+                            'table': table_name,
+                            'content': str(row)
+                        })
+            except:
+                pass
+    
+    if target in ['all', 'redis']:
+        redis = get_cache()
+        if redis and redis.is_connected():
+            try:
+                keys = redis._client.keys(f'*{query}*')
+                for key in keys[:10]:
+                    value = redis.get(key)
+                    results.append({
+                        'database': 'Redis',
+                        'type': 'key',
+                        'key': key,
+                        'content': str(value)[:200]
+                    })
+            except:
+                pass
+    
+    if target in ['all', 'sqlite']:
+        sqlite = get_backup()
+        if sqlite and sqlite.is_connected():
+            try:
+                tables = sqlite.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                for table in tables:
+                    table_name = table['name']
+                    data = sqlite.execute(f"SELECT * FROM {table_name} WHERE CAST(row_to_json(row) AS text) ILIKE '%{query}%' LIMIT 10")
+                    for row in data:
+                        results.append({
+                            'database': 'SQLite',
+                            'type': 'table',
+                            'table': table_name,
+                            'content': str(row)
+                        })
+            except:
+                pass
+    
+    return jsonify({
+        "success": True,
+        "data": results[:50]
+    })
+
+
+# ============================================================
+# ایمپورت روت‌های جدید
+# ============================================================
 
 from routes import *
 from health_mother_system import *
@@ -1588,7 +1508,7 @@ from health_mother_system import *
 # ============================================================
 
 if __name__ == "__main__":
-    port = int(os.environ.get(a"PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
@@ -1597,7 +1517,6 @@ if __name__ == "__main__":
     print(f"🐛 دیباگ: {debug}")
     print(f"🧠 مدل: {'✅ بارگذاری شده' if system.model_manager.current_model else '❌ بارگذاری نشده'}")
     print(f"📊 نسخه مدل: {system.model_manager.current_version or 'N/A'}")
-    print("=" * 60)
     print(f"📊 API Key: {'✅ تنظیم شده' if system.api.api_key else '❌ تنظیم نشده'}")
     print("=" * 60)
     print("📌 صفحات HTML:")
