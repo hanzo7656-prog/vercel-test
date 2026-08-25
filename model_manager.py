@@ -166,7 +166,7 @@ class ModelManager:
         """ذخیره محلی (در صورت عدم دسترسی به دیتابیس)"""
         version = f"local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         path = f"{self.models_dir}{version}.xgb"
-        model.save_model(path)
+        model.save_model(path, format='json')
         
         self.current_model = model
         self.current_version = version
