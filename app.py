@@ -31,7 +31,8 @@ from config import (
 from auth_manager import get_auth, require_auth, get_current_user_from_request
 from model_manager import ModelManager
 import secrets
-
+from numeric_analyzer import NumericAnalyzer
+from command_system import CommandSystem
 
 # ============================================================
 # هسته اصلی سیستم
@@ -436,7 +437,8 @@ class TradingSignalSystem:
 
 app = Flask(__name__)
 system = TradingSignalSystem()
-
+numeric_analyzer = NumericAnalyzer(system.api, system.model_manager)
+command_system = CommandSystem(numeric_analyzer)
 
 # ============================================================
 # روت‌های API (هسته اصلی)
@@ -1103,6 +1105,30 @@ def model_save():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/analyze/<coin>', methods=['GET'])
+def analyze_coin(coin):
+    """تحلیل عددی یک ارز با تمام شاخص‌ها"""
+    period = request.args.get('period', '24h')
+    try:
+        analysis = numeric_analyzer.analyze_coin(coin, period)
+        return jsonify({"success": True, "data": analysis})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/command', methods=['POST'])
+def process_command():
+    """پردازش دستور متنی کاربر"""
+    try:
+        data = request.json
+        command = data.get('command', '')
+        if not command:
+            return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
+        
+        response = command_system.process_command(command)
+        return jsonify({"success": True, "response": response})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 # ============================================================
 # صفحات خطا
 # ============================================================
