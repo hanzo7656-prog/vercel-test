@@ -34,6 +34,8 @@ import secrets
 from numeric_analyzer import NumericAnalyzer
 from command_system import CommandSystem
 from database.database_factory import ensure_databases_connected
+from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
+
 
 # ============================================================
 # هسته اصلی سیستم
@@ -753,8 +755,6 @@ def model_clear_logs():
 # ============================================================
 # روت‌های دیتابیس
 # ============================================================
-
-from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
 
 
 @app.route('/health/database', methods=['GET'])
