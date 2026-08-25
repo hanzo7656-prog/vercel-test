@@ -33,6 +33,7 @@ from model_manager import ModelManager
 import secrets
 from numeric_analyzer import NumericAnalyzer
 from command_system import CommandSystem
+from database.database_factory import ensure_databases_connected
 
 # ============================================================
 # هسته اصلی سیستم
@@ -96,6 +97,28 @@ class TradingSignalSystem:
         except Exception as e:
             print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
 
+
+    # در کلاس TradingSignalSystem، بعد از __init__ اضافه کنید
+    def _ensure_database_health(self):
+        """
+        بررسی و اطمینان از سلامت اتصال دیتابیس‌ها
+        این تابع در زمان راه‌اندازی و به صورت دوره‌ای صدا زده می‌شود
+        """
+        try:
+            result = ensure_databases_connected()
+        
+            # به‌روزرسانی وضعیت دیتابیس در سیستم
+            self.db_healthy = result.get("primary", False)
+        
+            if not self.db_healthy:
+                logger.warning("⚠️ دیتابیس اصلی در دسترس نیست، برخی قابلیت‌ها محدود خواهند شد")
+        
+            return result
+        except Exception as e:
+            logger.error(f"❌ خطا در بررسی سلامت دیتابیس: {e}")
+            self.db_healthy = False
+            return {"error": str(e)}
+            
     def cache_get(self, key: str):
         """دریافت از کش (با دیتابیس)"""
         if self.db and self.db.is_connected():
