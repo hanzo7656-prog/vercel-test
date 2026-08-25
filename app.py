@@ -1074,19 +1074,6 @@ def model_version_detail(version):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/model/current', methods=['GET'])
-def model_current():
-    """دریافت وضعیت مدل جاری"""
-    try:
-        stats = system.model_manager.get_stats()
-        return jsonify({
-            "success": True,
-            "data": stats
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
 @app.route('/model/save', methods=['POST'])
 def model_save():
     """ذخیره مدل فعلی در دیتابیس"""
@@ -1105,9 +1092,45 @@ def model_save():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ============================================================
+# روت‌های جدید برای صفحه تحلیلگر و چت
+# ============================================================
+@app.route('/api/command', methods=['POST'])
+def process_command():
+    """پردازش دستور متنی کاربر (API)"""
+    try:
+        data = request.json
+        command = data.get('command', '').strip()
+        
+        if not command:
+            return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
+        
+        # دریافت اطلاعات کاربر (برای تاریخچه)
+        user_id = None
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            auth_manager = get_auth()
+            session = auth_manager.verify_session(session_id)
+            if session:
+                user_id = session.get('username')
+        
+        # پردازش دستور
+        response = command_system.process_command(command, user_id)
+        
+        return jsonify({
+            "success": True,
+            "response": response,
+            "command": command,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error in process_command: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/api/analyze/<coin>', methods=['GET'])
 def analyze_coin(coin):
-    """تحلیل عددی یک ارز با تمام شاخص‌ها"""
+    """تحلیل عددی یک ارز با تمام شاخص‌ها (API)"""
     period = request.args.get('period', '24h')
     try:
         analysis = numeric_analyzer.analyze_coin(coin, period)
@@ -1115,20 +1138,29 @@ def analyze_coin(coin):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/command', methods=['POST'])
-def process_command():
-    """پردازش دستور متنی کاربر"""
+
+@app.route('/api/model/current', methods=['GET'])
+def model_current():
+    """دریافت وضعیت مدل جاری (API) - این روت قبلاً وجود داشت ولی با پاسخ جدیدتر"""
     try:
-        data = request.json
-        command = data.get('command', '')
-        if not command:
-            return jsonify({"success": False, "error": "دستور وارد نشده"}), 400
+        stats = system.model_manager.get_stats()
         
-        response = command_system.process_command(command)
-        return jsonify({"success": True, "response": response})
+        # افزودن اطلاعات بیشتر از trainer
+        trainer_stats = system.trainer.get_stats() if hasattr(system, 'trainer') else {}
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "loaded": stats.get('loaded', False),
+                "version": stats.get('version', 'N/A'),
+                "accuracy": trainer_stats.get('stats', {}).get('last_score'),
+                "total_trainings": trainer_stats.get('stats', {}).get('total_trainings', 0),
+                "data_points_used": trainer_stats.get('stats', {}).get('data_points_used', 0),
+                "mode": trainer_stats.get('stats', {}).get('mode', 'DEMO')
+            }
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-        
 # ============================================================
 # صفحات خطا
 # ============================================================
