@@ -68,7 +68,7 @@ class TradingSignalSystem:
         # آموزش خودکار مدل XGBoost
         self.trainer = AutoTrainer(
             self.api, 
-            "model.xgb",
+            self.model_manager
         )
 
         interval = get_config("model.auto_train_interval", 6)
