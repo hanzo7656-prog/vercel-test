@@ -29,7 +29,7 @@ class PostgreSQLManager(DatabaseBase):
                 password=self.config.get("password"),
                 dbname=self.config.get("database"),
                 sslmode="require" if self.config.get("ssl", True) else "disable",
-                connect_timeout=10
+                connect_timeout=30
             )
             self._cursor = self._connection.cursor()
             # تست اتصال
