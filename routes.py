@@ -28,8 +28,9 @@ def dashboard_page():
 @app.route('/predict-page')
 @require_auth()
 def predict_page():
-    """صفحه پیش‌بینی"""
+    """صفحه تحلیلگر - نسخه جدید با چت و وضعیت مدل"""
     return send_from_directory('static', 'predict.html')
+
 
 
 @app.route('/test-api-page')
