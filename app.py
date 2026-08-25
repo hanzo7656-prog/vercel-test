@@ -249,6 +249,7 @@ class TradingSignalSystem:
             دیکشنری شامل: سیگنال، اطمینان، قیمت فعلی و اطلاعات تکمیلی
         """
         import xgboost as xgb
+        xgb.set_config({"save_format": "json"})
         start_time = time.time()
 
         # اعتبارسنجی بازه زمانی
