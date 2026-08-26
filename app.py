@@ -486,6 +486,118 @@ class TradingSignalSystem:
      
         return status
 
+
+
+
+
+
+# ============================================================
+# ۲.  کلاس متریک کالکتور
+# ============================================================
+
+
+class MetricsCollector:
+    """جمع‌آوری کننده مرکزی متریک‌ها - پشت صحنه"""
+    
+    def __init__(self):
+        self.metrics = {
+            "cpu": 0,
+            "ram": 0,
+            "uptime": "0s",
+            "api_status": "unknown",
+            "model_loaded": False,
+            "model_version": "N/A",
+            "model_accuracy": None,
+            "databases": {},
+            "last_update": None
+        }
+        self._running = False
+        self._thread = None
+    
+    def start(self, interval=5):
+        """شروع جمع‌آوری خودکار متریک‌ها (هر X ثانیه)"""
+        if self._running:
+            return
+        
+        self._running = True
+        
+        def collect():
+            while self._running:
+                try:
+                    self._collect_all()
+                    # لاگ مختصر در دیباگ
+                    print(f"📊 Metrics updated: CPU={self.metrics['cpu']}%, RAM={self.metrics['ram']}%")
+                    time.sleep(interval)
+                except Exception as e:
+                    print(f"❌ Metrics error: {e}")
+                    time.sleep(interval)
+        
+        self._thread = threading.Thread(target=collect, daemon=True)
+        self._thread.start()
+        print("✅ MetricsCollector started (interval: 5s)")
+    
+    def stop(self):
+        """متوقف کردن جمع‌آوری"""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2)
+    
+    def _collect_all(self):
+        """جمع‌آوری همه متریک‌ها"""
+        # CPU
+        try:
+            import psutil
+            self.metrics["cpu"] = psutil.cpu_percent(interval=0.5)
+        except:
+            self.metrics["cpu"] = 0
+        
+        # RAM
+        try:
+            import psutil
+            self.metrics["ram"] = psutil.virtual_memory().percent
+        except:
+            self.metrics["ram"] = 0
+        
+        # Uptime
+        try:
+            import subprocess
+            uptime = subprocess.check_output("uptime -p", shell=True).decode().strip()
+            self.metrics["uptime"] = uptime.replace("up ", "")
+        except:
+            self.metrics["uptime"] = "N/A"
+        
+        # API Status
+        try:
+            status = system.api.get_status()
+            self.metrics["api_status"] = status.get("status", "unknown")
+        except:
+            self.metrics["api_status"] = "error"
+        
+        # Model Status
+        if system.model_manager:
+            self.metrics["model_loaded"] = system.model_manager.current_model is not None
+            self.metrics["model_version"] = system.model_manager.current_version or "N/A"
+            self.metrics["model_accuracy"] = system.trainer.stats.get("last_score") if hasattr(system, 'trainer') else None
+        
+        # Databases
+        try:
+            from database import get_primary, get_cache, get_backup
+            self.metrics["databases"] = {
+                "postgresql": get_primary() is not None and get_primary().is_connected(),
+                "redis": get_cache() is not None and get_cache().is_connected(),
+                "sqlite": get_backup() is not None and get_backup().is_connected()
+            }
+        except:
+            pass
+        
+        self.metrics["last_update"] = datetime.now().isoformat()
+    
+    def get_metrics(self):
+        """دریافت آخرین متریک‌ها"""
+        return self.metrics
+
+
+
 # ============================================================
 # راه‌اندازی وب سرویس Flask
 # ============================================================
@@ -494,10 +606,72 @@ app = Flask(__name__)
 system = TradingSignalSystem()
 numeric_analyzer = NumericAnalyzer(system.api, system.model_manager)
 command_system = CommandSystem(numeric_analyzer)
+metrics_collector = MetricsCollector()
+metrics_collector.start(interval=5)  # هر ۵ ثانیه
+
 
 # ============================================================
 # روت‌های API (هسته اصلی)
 # ============================================================
+
+
+# ============================================================
+# ✅ ۱. روت /api/metrics (اینجا اضافه کنید)
+# ============================================================
+
+@app.route('/api/metrics', methods=['GET'])
+def get_metrics():
+    """دریافت آخرین متریک‌ها از حلقه مرکزی"""
+    return jsonify({
+        "success": True,
+        "data": metrics_collector.get_metrics(),
+        "timestamp": datetime.now().isoformat()
+    })
+
+
+# ============================================================
+# ✅ ۲. ایمپورت Alerter و SelfHealer (اینجا اضافه کنید)
+# ============================================================
+
+from alerter import alerter
+from self_healer import SelfHealer
+
+
+# ============================================================
+# ✅ ۳. ایجاد SelfHealer (اینجا اضافه کنید)
+# ============================================================
+
+self_healer = SelfHealer(system.model_manager, system.trainer)
+
+
+# ============================================================
+# ✅ ۴. حلقه بررسی دوره‌ای (اینجا اضافه کنید)
+# ============================================================
+
+def alert_loop():
+    while True:
+        try:
+            # دریافت متریک‌ها
+            metrics = metrics_collector.get_metrics()
+            
+            # بررسی هشدارها
+            alerts = alerter.check_and_alert(metrics)
+            
+            # خودترمیمی (فقط اگر هشدار وجود داشت)
+            if alerts:
+                self_healer.check_and_heal(metrics)
+            
+            time.sleep(30)
+        except Exception as e:
+            logger.error(f"❌ Alert loop error: {e}")
+            time.sleep(30)
+
+# شروع حلقه در یک ترد جداگانه
+alert_thread = threading.Thread(target=alert_loop, daemon=True)
+alert_thread.start()
+logger.info("✅ Alert & Self-Healing loop started")
+
+#===========================================
 
 @app.route('/predict', methods=['GET'])
 def predict():
@@ -1211,6 +1385,50 @@ def model_current():
                 "data_points_used": trainer_stats.get('stats', {}).get('data_points_used', 0),
                 "mode": trainer_stats.get('stats', {}).get('mode', 'DEMO')
             }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ============================================================
+# روت‌های مدیریت هشدارها
+# ============================================================
+
+@app.route('/api/alerts', methods=['GET'])
+def get_alerts():
+    """دریافت هشدارهای اخیر"""
+    limit = request.args.get('limit', 20, type=int)
+    resolved = request.args.get('resolved')
+    if resolved is not None:
+        resolved = resolved.lower() == 'true'
+    
+    alerts = alerter.get_alerts(limit=limit, resolved=resolved)
+    return jsonify({
+        "success": True,
+        "data": alerts,
+        "count": len(alerts)
+    })
+
+
+@app.route('/api/alerts/<int:alert_id>/resolve', methods=['POST'])
+def resolve_alert(alert_id):
+    """علامت‌گذاری هشدار به عنوان رفع‌شده"""
+    success = alerter.resolve_alert(alert_id)
+    return jsonify({
+        "success": success,
+        "message": "Alert resolved" if success else "Alert not found"
+    })
+
+
+@app.route('/api/heal', methods=['POST'])
+def trigger_heal():
+    """اجرای دستی خودترمیمی"""
+    try:
+        metrics = metrics_collector.get_metrics()
+        actions = self_healer.check_and_heal(metrics)
+        return jsonify({
+            "success": True,
+            "actions": actions,
+            "timestamp": datetime.now().isoformat()
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
