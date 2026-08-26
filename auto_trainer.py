@@ -368,7 +368,8 @@ class AutoTrainer:
             
             model.fit(X, y)
             training_time = time.time() - start_time
-            
+            # در auto_trainer.py
+            model.save_model(self.model_path, format='json')
             # ارزیابی
             score = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
