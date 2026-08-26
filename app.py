@@ -673,7 +673,87 @@ command_system = CommandSystem(numeric_analyzer)
 metrics_collector = MetricsCollector()
 metrics_collector.start(interval=5)  # هر ۵ ثانیه
 
+# ============================================================
+# اضافه کردن به app.py (بعد از ایمپورت‌ها)
+# ============================================================
 
+from logger_config import get_logger, get_recent_logs
+from monitor import monitor
+from alerter import alerter
+w
+# دریافت لاگر
+logger = get_logger()
+
+# راه‌اندازی SystemMonitor
+monitor.start(interval=60)  # هر ۱ دقیقه
+logger.info("✅ SystemMonitor started")
+
+# ============================================================
+# روت‌های جدید برای مشاهده لاگ‌ها (در بخش روت‌ها)
+# ============================================================
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    """دریافت لاگ‌های اخیر"""
+    try:
+        log_type = request.args.get('type', 'system')
+        lines = request.args.get('lines', 100, type=int)
+        logs = get_recent_logs(log_type, lines)
+        return jsonify({
+            "success": True,
+            "data": logs,
+            "count": len(logs),
+            "type": log_type,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/monitor/summary', methods=['GET'])
+def monitor_summary():
+    """دریافت خلاصه وضعیت سیستم"""
+    try:
+        summary = monitor.get_summary()
+        return jsonify({
+            "success": True,
+            "data": summary,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/monitor/history', methods=['GET'])
+def monitor_history():
+    """دریافت تاریخچه متریک‌ها"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        history = monitor.get_metrics_history(limit)
+        return jsonify({
+            "success": True,
+            "data": history,
+            "count": len(history),
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/monitor/errors', methods=['POST'])
+def report_error():
+    """ثبت خطا در مانیتور"""
+    try:
+        data = request.json
+        error_type = data.get('type', 'system')
+        message = data.get('message', '')
+        
+        monitor.increment_error(error_type)
+        logger.error(f"[{error_type}] {message}")
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 # ============================================================
 # روت‌های API (هسته اصلی)
 # ============================================================
