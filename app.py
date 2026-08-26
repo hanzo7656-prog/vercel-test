@@ -496,9 +496,11 @@ class TradingSignalSystem:
 # ============================================================
 
 
+# ============================================================
+# MetricsCollector - نسخه بهینه‌شده
+# ============================================================
+
 class MetricsCollector:
-    """جمع‌آوری کننده مرکزی متریک‌ها - پشت صحنه"""
-    
     def __init__(self):
         self.metrics = {
             "cpu": 0,
@@ -513,20 +515,27 @@ class MetricsCollector:
         }
         self._running = False
         self._thread = None
+        self._cache = {}  # کش داخلی برای جلوگیری از درخواست‌های تکراری
+        self._cache_ttl = 10  # ثانیه
+        
+        # زمان‌های آخرین بروزرسانی برای هر بخش
+        self._last_update = {
+            "heavy": 0,  # داده‌های سنگین (دیتابیس)
+            "light": 0,  # داده‌های سبک (CPU, RAM)
+        }
     
-    def start(self, interval=5):
-        """شروع جمع‌آوری خودکار متریک‌ها (هر X ثانیه)"""
+    def start(self, interval=10):  # ← افزایش از ۵ به ۱۰
         if self._running:
             return
-        
         self._running = True
         
         def collect():
             while self._running:
                 try:
                     self._collect_all()
-                    # لاگ مختصر در دیباگ
-                    print(f"📊 Metrics updated: CPU={self.metrics['cpu']}%, RAM={self.metrics['ram']}%")
+                    # لاگ مختصر (با فاصله)
+                    if int(time.time()) % 30 == 0:
+                        print(f"📊 Metrics: CPU={self.metrics['cpu']}%, RAM={self.metrics['ram']}%")
                     time.sleep(interval)
                 except Exception as e:
                     print(f"❌ Metrics error: {e}")
@@ -534,20 +543,27 @@ class MetricsCollector:
         
         self._thread = threading.Thread(target=collect, daemon=True)
         self._thread.start()
-        print("✅ MetricsCollector started (interval: 5s)")
-    
-    def stop(self):
-        """متوقف کردن جمع‌آوری"""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2)
+        print("✅ MetricsCollector started (interval: 10s)")
     
     def _collect_all(self):
-        """جمع‌آوری همه متریک‌ها"""
+        now = time.time()
+        
+        # ۱. داده‌های سبک (هر بار)
+        self._collect_light_metrics()
+        
+        # ۲. داده‌های سنگین (هر ۳۰ ثانیه یکبار)
+        if now - self._last_update.get("heavy", 0) > 30:
+            self._collect_heavy_metrics()
+            self._last_update["heavy"] = now
+        
+        self.metrics["last_update"] = datetime.now().isoformat()
+    
+    def _collect_light_metrics(self):
+        """داده‌های سبک - هر بار جمع‌آوری میشن"""
         # CPU
         try:
             import psutil
-            self.metrics["cpu"] = psutil.cpu_percent(interval=0.5)
+            self.metrics["cpu"] = psutil.cpu_percent(interval=0.2)  # ← کاهش زمان نمونه‌برداری
         except:
             self.metrics["cpu"] = 0
         
@@ -565,36 +581,43 @@ class MetricsCollector:
             self.metrics["uptime"] = uptime.replace("up ", "")
         except:
             self.metrics["uptime"] = "N/A"
+    
+    def _collect_heavy_metrics(self):
+        """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
+        # API Status (با کش)
+        cache_key = "api_status"
+        if cache_key not in self._cache or time.time() - self._cache.get(f"{cache_key}_time", 0) > self._cache_ttl:
+            try:
+                status = system.api.get_status()
+                self.metrics["api_status"] = status.get("status", "unknown")
+                self._cache[cache_key] = self.metrics["api_status"]
+                self._cache[f"{cache_key}_time"] = time.time()
+            except:
+                self.metrics["api_status"] = "error"
+        else:
+            self.metrics["api_status"] = self._cache.get(cache_key, "unknown")
         
-        # API Status
-        try:
-            status = system.api.get_status()
-            self.metrics["api_status"] = status.get("status", "unknown")
-        except:
-            self.metrics["api_status"] = "error"
-        
-        # Model Status
+        # Model Status (با کش)
         if system.model_manager:
             self.metrics["model_loaded"] = system.model_manager.current_model is not None
             self.metrics["model_version"] = system.model_manager.current_version or "N/A"
             self.metrics["model_accuracy"] = system.trainer.stats.get("last_score") if hasattr(system, 'trainer') else None
         
-        # Databases
-        try:
-            from database import get_primary, get_cache, get_backup
-            self.metrics["databases"] = {
-                "postgresql": get_primary() is not None and get_primary().is_connected(),
-                "redis": get_cache() is not None and get_cache().is_connected(),
-                "sqlite": get_backup() is not None and get_backup().is_connected()
-            }
-        except:
-            pass
-        
-        self.metrics["last_update"] = datetime.now().isoformat()
+        # Databases (با کش - هر ۱ دقیقه)
+        if int(time.time()) % 60 < 5:  # فقط هر ۱ دقیقه
+            try:
+                from database import get_primary, get_cache, get_backup
+                self.metrics["databases"] = {
+                    "postgresql": get_primary() is not None and get_primary().is_connected(),
+                    "redis": get_cache() is not None and get_cache().is_connected(),
+                    "sqlite": get_backup() is not None and get_backup().is_connected()
+                }
+            except:
+                pass
     
     def get_metrics(self):
-        """دریافت آخرین متریک‌ها"""
-        return self.metrics
+        """دریافت آخرین متریک‌ها (با کش)"""
+        return self.metricsw
 
 
 
