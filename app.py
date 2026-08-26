@@ -624,7 +624,7 @@ class MetricsCollector:
             self.metrics["uptime"] = uptime.replace("up ", "")
         except:
             self.metrics["uptime"] = "N/A"
-    w
+    
     def _collect_heavy_metrics(self):
         """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
 
