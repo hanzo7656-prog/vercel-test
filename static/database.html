@@ -834,7 +834,6 @@
         <a href="/predict-page"><i class="fas fa-bullseye"></i> مدل</a>
         <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
         <div class="menu-divider"></div>
-        <a href="/health-page"><i class="fas fa-heartbeat"></i> سلامت</a>
         <a href="/database-page" class="active"><i class="fas fa-database"></i> دیتابیس</a>
         <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
         <div class="menu-divider"></div>
@@ -1000,6 +999,55 @@
             // بارگذاری تب اولیه
             switchTab('overview');
             setInterval(updateTimestamp, 1000);
+
+            // ============================================================
+            // ✅ اضافه کردن بروزرسانی متریک‌های سیستم از MetricsCollector
+            // ============================================================
+            function updateSystemMetrics() {
+                fetch('/api/metrics')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const m = data.data;
+                            // به‌روزرسانی نقاط آنلاین/آفلاین در سایدبار
+                            updateSidebarDots(m.databases);
+                        }
+                    })
+                    .catch(err => console.error('Metrics error:', err));
+            }
+
+            function updateSidebarDots(databases) {
+                if (!databases) return;
+
+                // PostgreSQL
+                const pgDot = document.getElementById('dotPostgresql');
+                if (pgDot) {
+                    pgDot.className = 'badge-dot ' + (databases.postgresql ? 'online' : 'offline');
+                }
+
+                // Redis
+                const redisDot = document.getElementById('dotRedis');
+                if (redisDot) {
+                    redisDot.className = 'badge-dot ' + (databases.redis ? 'online' : 'offline');
+                }
+
+                // SQLite
+                const sqliteDot = document.getElementById('dotSqlite');
+                if (sqliteDot) {
+                    sqliteDot.className = 'badge-dot ' + (databases.sqlite ? 'online' : 'offline');
+                }
+
+                // Overview
+                const overviewDot = document.getElementById('dotOverview');
+                if (overviewDot) {
+                    const allOnline = databases.postgresql && databases.redis && databases.sqlite;
+                    overviewDot.className = 'badge-dot ' + (allOnline ? 'online' : 'warning');
+                }
+            }
+
+            // بروزرسانی اولیه و هر ۱۰ ثانیه
+            updateSystemMetrics();
+            setInterval(updateSystemMetrics, 10000);
         });
 
         // ============================================================
@@ -1105,7 +1153,7 @@
             }, 3000);
         }
 
-        console.log('🚀 Database Management System v3.0 loaded');
+        console.log('🚀 Database Management System v4.0 (with MetricsCollector) loaded');
     </script>
 
 </body>
