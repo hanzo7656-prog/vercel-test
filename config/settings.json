@@ -1,13 +1,14 @@
 {
     "app": {
         "name": "Trading Signal System",
-        "version": "6.0",
+        "version": "7.0",
         "environment": "production",
         "debug": false,
         "timezone": "Asia/Tehran"
     },
     "cache": {
         "default_ttl": 3600,
+        "prediction_ttl": 300,
         "max_size": 1000,
         "cleanup_interval": 300
     },
@@ -19,13 +20,16 @@
         "rate_limit_period": 60
     },
     "model": {
-        "version": "1.0",
+        "version": "2.0",
         "mode": "BETA",
         "last_training": null,
         "accuracy": null,
         "default_period": "1m",
-        "auto_train_interval": 6,
+        "auto_train_interval": 8,
         "min_data_points": 30,
+        "n_estimators": 30,
+        "max_depth": 4,
+        "learning_rate": 0.1,
         "coins": ["bitcoin", "ethereum", "solana", "cardano", "ripple"],
         "features": [
             "return_1", "return_3", "return_5", "return_10",
@@ -51,6 +55,12 @@
             "auto_cleanup": true
         }
     },
+    "metrics": {
+        "collect_interval": 10,
+        "heavy_collect_interval": 30,
+        "cache_ttl": 10,
+        "max_history": 100
+    },
     "numeric_analyzer": {
         "rsi_period": 14,
         "sma_periods": [7, 30, 100],
@@ -65,8 +75,10 @@
         "response_language": "fa"
     },
     "system": {
-        "health_check_interval": 30,
-        "metrics_collection": true
+        "health_check_interval": 60,
+        "metrics_collection": true,
+        "self_healing": true,
+        "alerting": true
     },
     "thresholds": {
         "ram_warning": 70,
@@ -79,7 +91,8 @@
     "logging": {
         "level": "INFO",
         "max_logs": 500,
-        "log_rotation": true
+        "log_rotation": true,
+        "log_file": "logs/system.log"
     },
     "frontend": {
         "refresh_interval": 30000,
@@ -90,7 +103,7 @@
         "self_healing": true,
         "auto_optimization": true,
         "alerting": true,
-        "reporting": false,
+        "reporting": true,
         "circuit_breaker": true,
         "retry_backoff": true
     }
