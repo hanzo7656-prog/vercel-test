@@ -624,39 +624,51 @@ class MetricsCollector:
             self.metrics["uptime"] = uptime.replace("up ", "")
         except:
             self.metrics["uptime"] = "N/A"
-    
+    w
     def _collect_heavy_metrics(self):
         """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
-        # API Status (با کش)
-        cache_key = "api_status"
-        if cache_key not in self._cache or time.time() - self._cache.get(f"{cache_key}_time", 0) > self._cache_ttl:
-            try:
-                status = system.api.get_status()
-                self.metrics["api_status"] = status.get("status", "unknown")
-                self._cache[cache_key] = self.metrics["api_status"]
-                self._cache[f"{cache_key}_time"] = time.time()
-            except:
-                self.metrics["api_status"] = "error"
-        else:
-            self.metrics["api_status"] = self._cache.get(cache_key, "unknown")
-        
-        # Model Status (با کش)
-        if system.model_manager:
-            self.metrics["model_loaded"] = system.model_manager.current_model is not None
-            self.metrics["model_version"] = system.model_manager.current_version or "N/A"
-            self.metrics["model_accuracy"] = system.trainer.stats.get("last_score") if hasattr(system, 'trainer') else None
-        
-        # Databases (با کش - هر ۱ دقیقه)
-        if int(time.time()) % 60 < 5:  # فقط هر ۱ دقیقه
-            try:
-                from database import get_primary, get_cache, get_backup
-                self.metrics["databases"] = {
-                    "postgresql": get_primary() is not None and get_primary().is_connected(),
-                    "redis": get_cache() is not None and get_cache().is_connected(),
-                    "sqlite": get_backup() is not None and get_backup().is_connected()
-                }
-            except:
-                pass
+
+        # ============================================================
+        # ✅ API Status - با import داخل تابع
+        # ============================================================
+
+        try:
+            from app import system
+            status = system.api.get_status()
+            if status and status.get('status') == 'ok':
+                self.metrics["api_status"] = "ok"
+            else:
+                self.metrics["api_status"] = "degraded"
+        except Exception as e:
+            self.metrics["api_status"] = "error"
+            print(f"❌ API Status error: {e}")
+    
+        # ============================================================
+        # ✅ Model Status
+        # ============================================================
+        try:
+            from app import system
+            if system.model_manager:
+                self.metrics["model_loaded"] = system.model_manager.current_model is not None
+                self.metrics["model_version"] = system.model_manager.current_version or "N/A"
+                if hasattr(system, 'trainer'):
+                    self.metrics["model_accuracy"] = system.trainer.stats.get("last_score")
+        except Exception as e:
+            print(f"❌ Model Status error: {e}")
+    
+        # ============================================================
+        # ✅ Databases (با کش - هر ۱ دقیقه)
+        # ============================================================
+
+        try:
+            from database import get_primary, get_cache, get_backup
+            self.metrics["databases"] = {
+                "postgresql": get_primary() is not None and get_primary().is_connected(),
+                "redis": get_cache() is not None and get_cache().is_connected(),
+                "sqlite": get_backup() is not None and get_backup().is_connected()
+            }
+        except Exception as e:
+            print(f"❌ Databases error: {e}")
     
     def get_metrics(self):
         """دریافت آخرین متریک‌ها (با کش)"""
