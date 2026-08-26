@@ -222,7 +222,8 @@ def stats():
     - آپتایم
     - تعداد تسک‌های پس‌زمینه
     """
-    try:
+    try: 
+        model_stats = system.model_manager.grt_stats() if system.model_manager else {}
         return jsonify({
             "api_stats": system.api.get_stats(),
             "model_loaded": system.model_loaded,
