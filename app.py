@@ -660,7 +660,7 @@ class MetricsCollector:
     
     def get_metrics(self):
         """دریافت آخرین متریک‌ها (با کش)"""
-        return self.metricsw
+        return self.metrics
 
 
 
