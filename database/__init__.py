@@ -63,9 +63,25 @@ def get_backup():
 
 
 def health_check():
-    """بررسی سلامت همه دیتابیس‌ها"""
-    return registry.get_health()
-
+    """بررسی سلامت همه دیتابیس‌ها با reconnect خودکار"""
+    health = registry.get_health()
+    
+    # reconnect خودکار برای دیتابیس‌هایی که ورژن unknown دارند
+    for db_name, db_info in health.items():
+        if db_info.get('version') == 'unknown' or db_info.get('version') is None:
+            db = registry.get(db_name)
+            if db and not db.is_connected():
+                try:
+                    db.connect()
+                    # به‌روزرسانی اطلاعات
+                    if hasattr(db, 'get_stats'):
+                        stats = db.get_stats()
+                        if stats and stats.get('version'):
+                            db_info['version'] = stats.get('version')
+                except Exception as e:
+                    print(f"⚠️ Reconnect error for {db_name}: {e}")
+    
+    return health
 
 __all__ = [
     'registry',
