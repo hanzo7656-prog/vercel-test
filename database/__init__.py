@@ -30,8 +30,31 @@ def get_cache():
 
 
 def get_primary():
-    """دریافت دیتابیس اصلی (PostgreSQL)"""
-    return router.get_primary_db()
+    """دریافت دیتابیس اصلی (PostgreSQL) - با Fallback"""
+    db = router.get_primary_db()
+    
+    # اگر db None بود یا وصل نبود، از registry بگیر
+    if db is None or not db.is_connected():
+        db = registry.get("postgresql")
+    
+    # اگر باز هم None بود، یک نمونه جدید بساز
+    if db is None:
+        try:
+            from database.postgresql_manager import PostgreSQLManager
+            import json
+            from pathlib import Path
+            
+            with open("config/databases.json") as f:
+                config = json.load(f)
+            pg_config = config["databases"]["postgresql"]
+            db = PostgreSQLManager("postgresql", pg_config)
+            if db.connect():
+                registry.register("postgresql", db, ["primary", "users", "history", "logs"])
+                print("✅ PostgreSQL به صورت خودکار reconnect شد")
+        except Exception as e:
+            print(f"❌ خطا در reconnect PostgreSQL: {e}")
+    
+    return db
 
 
 def get_backup():
