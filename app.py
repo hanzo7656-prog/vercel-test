@@ -35,8 +35,10 @@ from numeric_analyzer import NumericAnalyzer
 from command_system import CommandSystem
 from database.database_factory import ensure_databases_connected
 from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
-
-
+from logger_config import get_logger, get_recent_logs
+from monitor import monitor
+from alerter import alerter
+from self_healer import SelfHealer
 
 
 prediction_cache = {}
@@ -672,19 +674,8 @@ numeric_analyzer = NumericAnalyzer(system.api, system.model_manager)
 command_system = CommandSystem(numeric_analyzer)
 metrics_collector = MetricsCollector()
 metrics_collector.start(interval=5)  # هر ۵ ثانیه
-
-# ============================================================
-# اضافه کردن به app.py (بعد از ایمپورت‌ها)
-# ============================================================
-
-from logger_config import get_logger, get_recent_logs
-from monitor import monitor
-from alerter import alerter
-w
-# دریافت لاگر
+self_healer = SelfHealer(system.model_manager, system.trainer)
 logger = get_logger()
-
-# راه‌اندازی SystemMonitor
 monitor.start(interval=60)  # هر ۱ دقیقه
 logger.info("✅ SystemMonitor started")
 
@@ -754,14 +745,11 @@ def report_error():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 # ============================================================
 # روت‌های API (هسته اصلی)
 # ============================================================
 
-
-# ============================================================
-# ✅ ۱. روت /api/metrics (اینجا اضافه کنید)
-# ============================================================
 
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
@@ -771,22 +759,6 @@ def get_metrics():
         "data": metrics_collector.get_metrics(),
         "timestamp": datetime.now().isoformat()
     })
-
-
-# ============================================================
-# ✅ ۲. ایمپورت Alerter و SelfHealer (اینجا اضافه کنید)
-# ============================================================
-
-from alerter import alerter
-from self_healer import SelfHealer
-
-
-# ============================================================
-# ✅ ۳. ایجاد SelfHealer (اینجا اضافه کنید)
-# ============================================================
-
-self_healer = SelfHealer(system.model_manager, system.trainer)
-
 
 # ============================================================
 # ✅ ۴. حلقه بررسی دوره‌ای (اینجا اضافه کنید)
