@@ -66,14 +66,18 @@ class SQLiteManager(DatabaseBase):
         if not self.is_connected():
             logger.warning(f"⚠️ SQLite ({self.name}) متصل نیست")
             return []
-        
+    
         try:
-            self._cursor.execute(query, params or ())
-            if query.strip().upper().startswith("SELECT"):
-                rows = self._cursor.fetchall()
-                return [dict(row) for row in rows]
-            self._connection.commit()
-            return []
+            with self._connection.cursor() as cursor:
+                cursor.execute(query, params or ())
+                if query.strip().upper().startswith("SELECT"):
+                    rows = cursor.fetchall()
+                    if rows:
+                        columns = [desc[0] for desc in cursor.description]
+                        return [dict(zip(columns, row)) for row in rows]
+                    return []
+                self._connection.commit()
+                return []
         except Exception as e:
             logger.error(f"❌ خطا در اجرای کوئری SQLite ({self.name}): {e}")
             self._connection.rollback()
