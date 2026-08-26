@@ -66,12 +66,15 @@ class PostgreSQLManager(DatabaseBase):
             return []
         
         try:
-            self._cursor.execute(query, params or ())
-            if query.strip().upper().startswith("SELECT"):
-                rows = self._cursor.fetchall()
-                return [dict(row) for row in rows]
-            self._connection.commit()
-            return []
+            with self._connection_cursor as() cursor:
+                cursor.execute(query, params or ())
+                if query.strip().upper().startswith("SELECT"):
+                    rows = cursor.fetchall()
+                    columns = [desc[0] for desc in cursor.description]
+                    
+                    return [dict(zip(columns, row)) for row in rows]
+                self._connection.commit()
+                return []
         except Exception as e:
             logger.error(f"❌ خطا در اجرای کوئری PostgreSQL ({self.name}): {e}")
             self._connection.rollback()
