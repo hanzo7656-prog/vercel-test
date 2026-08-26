@@ -1392,31 +1392,40 @@ def model_current():
 # ============================================================
 # روت‌های مدیریت هشدارها
 # ============================================================
-
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
     """دریافت هشدارهای اخیر"""
-    limit = request.args.get('limit', 20, type=int)
-    resolved = request.args.get('resolved')
-    if resolved is not None:
-        resolved = resolved.lower() == 'true'
-    
-    alerts = alerter.get_alerts(limit=limit, resolved=resolved)
-    return jsonify({
-        "success": True,
-        "data": alerts,
-        "count": len(alerts)
-    })
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        resolved = request.args.get('resolved')
+        if resolved is not None:
+            resolved = resolved.lower() == 'true'
+        
+        alerts = alerter.get_alerts(limit=limit, resolved=resolved)
+        return jsonify({
+            "success": True,
+            "data": alerts,
+            "count": len(alerts),
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error in get_alerts: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/api/alerts/<int:alert_id>/resolve', methods=['POST'])
 def resolve_alert(alert_id):
     """علامت‌گذاری هشدار به عنوان رفع‌شده"""
-    success = alerter.resolve_alert(alert_id)
-    return jsonify({
-        "success": success,
-        "message": "Alert resolved" if success else "Alert not found"
-    })
+    try:
+        success = alerter.resolve_alert(alert_id)
+        return jsonify({
+            "success": success,
+            "message": "✅ Alert resolved" if success else "❌ Alert not found",
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error in resolve_alert: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/api/heal', methods=['POST'])
@@ -1431,7 +1440,24 @@ def trigger_heal():
             "timestamp": datetime.now().isoformat()
         })
     except Exception as e:
+        logger.error(f"Error in trigger_heal: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/heal/status', methods=['GET'])
+def heal_status():
+    """دریافت وضعیت خودترمیمی"""
+    try:
+        status = self_healer.get_healing_status()
+        return jsonify({
+            "success": True,
+            "data": status,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error in heal_status: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 # ============================================================
 # صفحات خطا
 # ============================================================
