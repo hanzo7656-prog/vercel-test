@@ -90,7 +90,7 @@ class TradingSignalSystem:
 
         # دیتابیس‌ها
 
-        sel.db_healthy = False
+        self.db_healthy = False
         self._ensure_database_health()
         
         self.db = get_cache()
