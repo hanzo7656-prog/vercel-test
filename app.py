@@ -37,6 +37,11 @@ from database.database_factory import ensure_databases_connected
 from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
 
 
+
+
+prediction_cache = {}
+PREDICTION_CACHE_TTL = 300  # ۵ دقیقه
+
 # ============================================================
 # هسته اصلی سیستم
 # ============================================================
@@ -234,10 +239,11 @@ class TradingSignalSystem:
 
         return np.array(features, dtype=np.float32)
 
+    
     def predict_sync(self, coin_id="bitcoin", period="24h"):
         """
-        نسخه همگام (Synchronous) پیش‌بینی
-      
+        نسخه همگام (Synchronous) پیش‌بینی با کش و بهینه‌سازی
+    
         این تابع داده‌ها رو از API دریافت میکنه، ویژگی‌ها رو استخراج میکنه
         و با مدل XGBoost (یا حالت DEMO) پیش‌بینی رو انجام میده.
     
@@ -248,8 +254,10 @@ class TradingSignalSystem:
         خروجی:
             دیکشنری شامل: سیگنال، اطمینان، قیمت فعلی و اطلاعات تکمیلی
         """
+        import time
         import xgboost as xgb
-        xgb.set_config({"save_format": "json"})
+        from datetime import datetime
+    
         start_time = time.time()
 
         # اعتبارسنجی بازه زمانی
@@ -260,9 +268,23 @@ class TradingSignalSystem:
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
+        # ============================================================
+        # ✅ کش: چک کردن کش قبل از درخواست به API
+        # ============================================================
+        cache_key = f"{coin_id}_{period}"
+        if cache_key in prediction_cache:
+            cached_data, cached_time = prediction_cache[cache_key]
+            if time.time() - cached_time < PREDICTION_CACHE_TTL:
+                # داده‌های کش شده رو برگردون
+                cached_data["from_cache"] = True
+                cached_data["cache_age"] = round(time.time() - cached_time, 1)
+                return cached_data
+
+        # ============================================================
         # 1. دریافت داده‌های تاریخی
+        # ============================================================
         chart_data = self.api.get_chart(coin_id, period)
-  
+
         if not chart_data:
             return {
                 "error": "NoData",
@@ -279,7 +301,9 @@ class TradingSignalSystem:
                 "period": period
             }
 
+        # ============================================================
         # 2. استخراج ویژگی‌ها
+        # ============================================================
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -291,7 +315,9 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
+        # ============================================================
         # 3. پیش‌بینی با مدل جدید (ModelManager)
+        # ============================================================
         if self.model_manager.current_model:
             try:
                 prediction = self.model_manager.predict(features)
@@ -301,8 +327,11 @@ class TradingSignalSystem:
                 prediction = self._demo_predict(features)
         else:
             prediction = self._demo_predict(features)
-
+        
+        # ============================================================
         # 4. تفسیر نتیجه
+        # ============================================================
+   
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -315,17 +344,21 @@ class TradingSignalSystem:
             signal = "🟡 خنثی (بدون الگوی مشخص)"
             confidence = 50
             signal_type = "NEUTRAL"
- 
+
         confidence = min(100, max(0, confidence))
 
-        # 5. دریافت اطلاعات لحظه‌ای
+        # ============================================================
+        # 5. دریافت اطلاعات لحظه‌ای (با کش داخلی)
+        # ============================================================
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
-
+  
+        # ============================================================
         # 6. اطلاعات تکمیلی
+        # ============================================================
         processing_time = (time.time() - start_time) * 1000
 
-        return {
+        result = {
             "coin": coin_id,
             "coin_name": coin_info.get('name', coin_id) if coin_info else coin_id,
             "period": period,
@@ -338,8 +371,16 @@ class TradingSignalSystem:
             "timestamp": datetime.now().isoformat(),
             "processing_time_ms": round(processing_time, 2),
             "data_points": len(chart_data) if chart_data else 0,
-            "model_mode": "PRODUCTION" if self.model_manager.current_model else "DEMO"
+            "model_mode": "PRODUCTION" if self.model_manager.current_model else "DEMO",
+            "from_cache": False  # برای کش
         }
+
+        # ============================================================
+        # ✅ ذخیره در کش
+        # ============================================================
+        prediction_cache[cache_key] = (result.copy(), time.time())
+
+        return result
 
     def _demo_predict(self, features):
         """
