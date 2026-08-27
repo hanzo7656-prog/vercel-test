@@ -1,6 +1,6 @@
 # self_healer.py
 # ============================================================
-# سیستم خودترمیمی - نسخه ۱.۰ (عملیاتی)
+# سیستم خودترمیمی - نسخه ۲.۰ (با Scheduler جدید)
 # ============================================================
 
 import os
@@ -18,6 +18,8 @@ class SelfHealer:
     - بازگشت به نسخه قبلی مدل در صورت افت دقت
     - پاک‌سازی خودکار کش
     - ری‌استارت ماژول‌ها (با reconnect)
+    
+    ✅ نسخه ۲.۰: استفاده از Metrics Scheduler جدید
     """
     
     def __init__(self, model_manager, trainer):
@@ -27,12 +29,44 @@ class SelfHealer:
         self.max_attempts = 3
         self.cooldown_minutes = 30
         
-        logger.info("✅ SelfHealer initialized")
+        logger.info("✅ SelfHealer v2.0 initialized (with Metrics Scheduler)")
     
-    def check_and_heal(self, metrics: Dict) -> Dict:
+    def _get_metrics_from_scheduler(self) -> Dict:
+        """
+        ✅ جدید: دریافت متریک‌ها از Scheduler
+        """
+        try:
+            from core import metrics_scheduler
+            return metrics_scheduler.get_alert_metrics()
+        except ImportError:
+            logger.warning("⚠️ Metrics Scheduler not available, using fallback")
+            return self._get_fallback_metrics()
+        except Exception as e:
+            logger.error(f"❌ Error getting metrics from scheduler: {e}")
+            return self._get_fallback_metrics()
+    
+    def _get_fallback_metrics(self) -> Dict:
+        """Fallback در صورت عدم دسترسی به Scheduler"""
+        return {
+            "cpu": 0,
+            "ram": 0,
+            "api_status": "unknown",
+            "model_loaded": False,
+            "model_accuracy": None,
+            "databases": {"postgresql": False, "redis": False, "sqlite": False}
+        }
+    
+    def check_and_heal(self, metrics: Optional[Dict] = None) -> Dict:
         """
         بررسی و اجرای خودترمیمی در صورت نیاز
+        
+        پارامترها:
+            metrics: اگر None باشد، از Scheduler دریافت می‌شود
         """
+        # ✅ جدید: اگر metrics ارسال نشده، از Scheduler بگیر
+        if metrics is None:
+            metrics = self._get_metrics_from_scheduler()
+        
         actions = {
             "model_restored": False,
             "cache_cleared": False,
@@ -63,7 +97,7 @@ class SelfHealer:
         
         return actions
     
-    # ---------- ۱. بازگشت مدل ----------
+    # ---------- ۱. بازگشت مدل (بدون تغییر) ----------
     
     def _should_restore_model(self, metrics: Dict) -> bool:
         """بررسی نیاز به بازگشت مدل"""
@@ -72,7 +106,6 @@ class SelfHealer:
         if accuracy is None:
             return False
         
-        # اگر دقت زیر ۵۰٪ باشد
         if accuracy < 0.50:
             key = "model_restore"
             attempts = self.healing_attempts.get(key, {}).get("count", 0)
@@ -97,14 +130,12 @@ class SelfHealer:
         try:
             logger.warning("🔄 Attempting to restore previous model version...")
             
-            # دریافت تاریخچه نسخه‌ها از دیتابیس
             history = self.model_manager.get_version_history(limit=5)
             
             if len(history) < 2:
                 logger.warning("⚠️ No previous version found")
                 return False
             
-            # پیدا کردن نسخه قبلی (دومین نسخه فعال)
             previous_version = None
             for item in history[1:]:
                 if not item.get('is_ensemble', False):
@@ -115,13 +146,11 @@ class SelfHealer:
                 logger.warning("⚠️ No valid previous version found")
                 return False
             
-            # بارگذاری نسخه قبلی
             model = self.model_manager.get_model_by_version(previous_version)
             if model:
                 self.model_manager.current_model = model
                 self.model_manager.current_version = previous_version
                 
-                # به‌روزرسانی در دیتابیس
                 if self.model_manager.db and self.model_manager.db.is_connected():
                     self.model_manager.db.execute(
                         "UPDATE models SET is_active = TRUE WHERE version = %s",
@@ -132,7 +161,6 @@ class SelfHealer:
                         (previous_version,)
                     )
                     
-                    # ثبت در تاریخچه
                     self.model_manager.db.execute(
                         """INSERT INTO model_training_history 
                            (model_id, action, reason, created_at) 
@@ -142,7 +170,6 @@ class SelfHealer:
                 
                 logger.info(f"✅ Model restored to version: {previous_version}")
                 
-                # ثبت تلاش
                 key = "model_restore"
                 if key not in self.healing_attempts:
                     self.healing_attempts[key] = {"count": 0}
@@ -158,14 +185,13 @@ class SelfHealer:
             logger.error(f"❌ Error restoring model: {e}")
             return False
     
-    # ---------- ۲. آموزش مجدد ----------
+    # ---------- ۲. آموزش مجدد (بدون تغییر) ----------
     
     def _should_retrain(self, metrics: Dict) -> bool:
         """بررسی نیاز به آموزش مجدد"""
         accuracy = metrics.get("model_accuracy")
         loaded = metrics.get("model_loaded", False)
         
-        # اگر مدل بارگذاری نشده یا دقت خیلی پایینه
         if not loaded or (accuracy is not None and accuracy < 0.45):
             key = "model_retrain"
             last_attempt = self.healing_attempts.get(key, {}).get("last_attempt")
@@ -189,7 +215,6 @@ class SelfHealer:
                 if result.get("success"):
                     logger.info(f"✅ Model retrained successfully: {result.get('accuracy')}")
                     
-                    # ثبت تلاش
                     key = "model_retrain"
                     if key not in self.healing_attempts:
                         self.healing_attempts[key] = {}
@@ -207,7 +232,7 @@ class SelfHealer:
             logger.error(f"❌ Error retraining model: {e}")
             return False
     
-    # ---------- ۳. پاک‌سازی کش ----------
+    # ---------- ۳. پاک‌سازی کش (بدون تغییر) ----------
     
     def _should_clear_cache(self, metrics: Dict) -> bool:
         """بررسی نیاز به پاک‌سازی کش"""
@@ -234,13 +259,9 @@ class SelfHealer:
             from database import get_cache
             cache = get_cache()
             if cache and cache.is_connected():
-                # پاک کردن کش‌های قدیمی
-                # با احتیاط: فقط کلیدهای با TTL منقضی شده رو پاک کن
-                # یا فقط کلیدهای خاصی که مطمئنیم
                 cache._client.flushdb()
                 logger.info("✅ Cache cleared successfully")
                 
-                # ثبت تلاش
                 key = "cache_clear"
                 if key not in self.healing_attempts:
                     self.healing_attempts[key] = {}
@@ -255,7 +276,7 @@ class SelfHealer:
             logger.error(f"❌ Error clearing cache: {e}")
             return False
     
-    # ---------- ۴. ری‌استارت ماژول‌ها ----------
+    # ---------- ۴. ری‌استارت ماژول‌ها (بدون تغییر) ----------
     
     def _restart_modules(self, metrics: Dict) -> List[str]:
         """ری‌استارت ماژول‌های مشکل‌دار"""
@@ -264,7 +285,6 @@ class SelfHealer:
         # بررسی API
         if metrics.get("api_status") in ["error", "unhealthy"]:
             restarted.append("api_handler")
-            # در اینجا می‌تونید منطق reconnect API رو پیاده‌سازی کنید
             logger.info("🔄 Restarting API handler...")
         
         # بررسی دیتابیس
@@ -272,7 +292,6 @@ class SelfHealer:
         for name, status in databases.items():
             if not status:
                 restarted.append(f"database_{name}")
-                # تلاش برای reconnect
                 try:
                     from database import db_factory
                     result = db_factory.force_reconnect(name)
@@ -285,7 +304,7 @@ class SelfHealer:
         
         return restarted
     
-    # ---------- ۵. وضعیت ----------
+    # ---------- ۵. وضعیت (بدون تغییر) ----------
     
     def get_healing_status(self) -> Dict:
         """دریافت وضعیت خودترمیمی"""
@@ -295,6 +314,3 @@ class SelfHealer:
             "cooldown_minutes": self.cooldown_minutes,
             "timestamp": datetime.now().isoformat()
         }
-
-
-# نمونه (در app.py ساخته میشه)
