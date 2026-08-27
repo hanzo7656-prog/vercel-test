@@ -1,6 +1,6 @@
 # alerter.py
 # ============================================================
-# سیستم هشدار و اعلان - نسخه ۱.۰ (عملیاتی)
+# سیستم هشدار و اعلان - نسخه ۲.۰ (با Scheduler جدید)
 # ============================================================
 
 import os
@@ -18,6 +18,8 @@ class Alerter:
     """
     مدیریت هشدارها و اعلان‌ها
     پشتیبانی از: کنسول، لاگ، تلگرام
+    
+    ✅ نسخه ۲.۰: استفاده از Metrics Scheduler جدید
     """
     
     def __init__(self):
@@ -39,12 +41,16 @@ class Alerter:
             "database": None
         }
         
+        # ✅ جدید: استفاده از Scheduler برای دریافت متریک
+        self._metrics_cache = {}
+        self._last_metrics_update = None
+        
         if self.telegram_enabled:
             logger.info("✅ Telegram alerts enabled")
         else:
             logger.info("ℹ️ Telegram alerts disabled (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)")
         
-        logger.info("✅ Alerter initialized")
+        logger.info("✅ Alerter v2.0 initialized (with Metrics Scheduler)")
     
     def _load_rules(self) -> Dict:
         """بارگذاری قوانین هشدار از فایل یا پیش‌فرض"""
@@ -101,10 +107,47 @@ class Alerter:
         
         return default_rules
     
-    def check_and_alert(self, metrics: Dict) -> List[Dict]:
+    def _get_metrics_from_scheduler(self) -> Dict:
+        """
+        ✅ جدید: دریافت متریک‌ها از Scheduler
+        جایگزین دریافت مستقیم از metrics_collector
+        """
+        try:
+            from core import metrics_scheduler
+            return metrics_scheduler.get_alert_metrics()
+        except ImportError:
+            # Fallback برای زمانی که core ماژول موجود نیست
+            logger.warning("⚠️ Metrics Scheduler not available, using fallback")
+            return self._get_fallback_metrics()
+        except Exception as e:
+            logger.error(f"❌ Error getting metrics from scheduler: {e}")
+            return self._get_fallback_metrics()
+    
+    def _get_fallback_metrics(self) -> Dict:
+        """Fallback در صورت عدم دسترسی به Scheduler"""
+        return {
+            "cpu": 0,
+            "ram": 0,
+            "api_status": "unknown",
+            "api_credits": 0,
+            "model_loaded": False,
+            "model_accuracy": None,
+            "databases": {"postgresql": False, "redis": False, "sqlite": False},
+            "uptime": "0s",
+            "last_update": datetime.now().isoformat()
+        }
+    
+    def check_and_alert(self, metrics: Optional[Dict] = None) -> List[Dict]:
         """
         بررسی متریک‌ها و صدور هشدار در صورت نیاز
+        
+        پارامترها:
+            metrics: اگر None باشد، از Scheduler دریافت می‌شود
         """
+        # ✅ جدید: اگر metrics ارسال نشده، از Scheduler بگیر
+        if metrics is None:
+            metrics = self._get_metrics_from_scheduler()
+        
         new_alerts = []
         
         # ۱. بررسی CPU
@@ -143,13 +186,12 @@ class Alerter:
         
         return new_alerts
     
-    # ---------- بررسی‌های اختصاصی ----------
+    # ---------- بررسی‌های اختصاصی (بدون تغییر) ----------
     
     def _check_cpu(self, metrics: Dict) -> Optional[Dict]:
         cpu = metrics.get("cpu", 0)
         rules = self.alert_rules.get("cpu", {})
         
-        # جلوگیری از هشدار تکراری
         if self.last_status.get("cpu") == cpu and cpu < rules.get("warning", 70):
             return None
         
@@ -278,7 +320,7 @@ class Alerter:
                 )
         return None
     
-    # ---------- توابع کمکی ----------
+    # ---------- توابع کمکی (بدون تغییر) ----------
     
     def _create_alert(self, level: str, message: str, data: Dict, source: str) -> Dict:
         return {
