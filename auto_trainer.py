@@ -16,7 +16,7 @@ from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple
 
 from api_handler import CoinStatsAPI
-from model_manager import ModelManager
+from model.manager.model_manager import ModelManager
 from database import get_primary
 
 logger = logging.getLogger(__name__)
