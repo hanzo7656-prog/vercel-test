@@ -133,15 +133,18 @@ class MetricsScheduler:
     # کنترل Start/Stop
     # ============================================================
     
+    # در متد start()
     def start(self):
-        """شروع زمان‌بند"""
         if self._running:
             return
         self._running = True
         self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self._thread.start()
-        logger.info("✅ Metrics Scheduler started")
-    
+        logger.info(f"✅ Metrics Scheduler started (Thread: {self._thread.name})")
+        # ✅ اضافه کردن یک جمع‌آوری اولیه برای تست
+        self._collect_metric("cpu", self.configs["cpu"])
+        self._collect_metric("ram", self.configs["ram"])
+
     def stop(self):
         """متوقف کردن زمان‌بند"""
         self._running = False
