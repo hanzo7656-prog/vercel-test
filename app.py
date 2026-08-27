@@ -1,6 +1,6 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۷.۱ با واتچ‌داگ قوی برای Scheduler
+# ورودی اصلی سیستم - نسخه ۷.۱ (بدون واتچ‌داگ اضافی)
 # ============================================================
 
 import os
@@ -44,54 +44,11 @@ from routes import register_all_routes
 register_all_routes(app, system)
 
 # ============================================================
-# راه‌اندازی Scheduler جدید
+# راه‌اندازی Scheduler جدید (با واتچ‌داگ داخلی)
 # ============================================================
 
 metrics_scheduler.start()
-logger.info("✅ Metrics Scheduler started")
-
-# ============================================================
-# ✅ واتچ‌داگ قوی برای نگه‌داشتن ترد Scheduler
-# ============================================================
-
-scheduler_watchdog_thread = None
-scheduler_watchdog_running = False
-
-def scheduler_watchdog():
-    """هر ۱۰ ثانیه چک می‌کند اگر ترد Scheduler مرده بود دوباره روشنش کن."""
-    global scheduler_watchdog_running
-    scheduler_watchdog_running = True
-    logger.info("🛡️ Scheduler Watchdog started (checking every 10 seconds)")
-    
-    while scheduler_watchdog_running:
-        time.sleep(10)
-        try:
-            # 1. چک کن که آیا ترد واقعاً مرده؟
-            thread_is_dead = not metrics_scheduler._running or not metrics_scheduler._is_thread_alive()
-            
-            if thread_is_dead:
-                logger.warning("⚠️ Watchdog: Scheduler thread is dead! Restarting...")
-                try:
-                    # 2. کشتن کامل ترد قدیمی و ری‌استارت
-                    metrics_scheduler.stop()
-                    time.sleep(0.5)
-                    metrics_scheduler._running = False
-                    metrics_scheduler._thread = None
-                    metrics_scheduler.start()
-                    logger.info("✅ Watchdog: Scheduler successfully restarted.")
-                except Exception as e:
-                    logger.error(f"❌ Watchdog: Failed to restart scheduler: {e}")
-            
-            # 3. یک لاگ کوچک برای اینکه بفهمیم زنده است
-            elif int(time.time()) % 60 == 0:
-                logger.debug(f"🔹 Watchdog: Scheduler is alive. Collections: {metrics_scheduler.stats['collections']}")
-                
-        except Exception as e:
-            logger.error(f"❌ Watchdog loop error: {e}")
-
-# راه‌اندازی واتچ‌داگ
-scheduler_watchdog_thread = threading.Thread(target=scheduler_watchdog, daemon=True)
-scheduler_watchdog_thread.start()
+logger.info("✅ Metrics Scheduler started (with internal watchdog)")
 
 # ============================================================
 # راه‌اندازی حلقه Alert
@@ -128,7 +85,7 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
     print("=" * 60)
-    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۷.۱ - با واتچ‌داگ)")
+    print("🚀 سیستم تشخیص الگوهای بازاری (نسخه ۷.۱)")
     print(f"📡 پورت: {port}")
     print(f"🐛 دیباگ: {debug}")
     print(f"🧠 مدل: {'✅ بارگذاری شده' if system.model_manager.current_model else '❌ بارگذاری نشده'}")
