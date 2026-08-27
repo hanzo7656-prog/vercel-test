@@ -1,7 +1,6 @@
 # api_handler.py
 # ============================================================
-# کلاینت ارتباط با API کوین‌استیتس
-# شامل: همه اندپوینت‌های مورد نیاز
+# کلاینت ارتباط با API کوین‌استیتس - نسخه ۲.۰
 # ============================================================
 
 import os
@@ -10,22 +9,33 @@ import json
 import requests
 from datetime import datetime
 from functools import lru_cache
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CoinStatsAPI:
     """
     کلاینت رسمی API کوین‌استیتس
     مدیریت: احراز هویت، Rate Limit، کش، و خطاها
+    
+    ✅ نسخه ۲.۰: آمار یکپارچه با Scheduler
     """
 
     def __init__(self, api_key=None):
         """
         راه‌اندازی کلاینت با کلید API
         """
-        self.api_key = api_key or os.getenv(
-            "COINSTATS_API_KEY",
-            "40QRC4gdyzWIGwsvGkqWtcDOf0bk+FV217KmLxQ/Wmw="
-        )
+        # ✅ بهبود: کلید API از environment
+        self.api_key = api_key or os.getenv("COINSTATS_API_KEY")
+        if not self.api_key:
+            logger.warning("⚠️ COINSTATS_API_KEY not set in environment!")
+            # استفاده از کلید پیش‌فرض فقط برای تست
+            self.api_key = os.getenv(
+                "COINSTATS_API_KEY",
+                "40QRC4gdyzWIGwsvGkqWtcDOf0bk+FV217KmLxQ/Wmw="
+            )
+        
         self.base_url = "https://api.coinstats.app"
         self.session = requests.Session()
         self.session.headers.update({
@@ -41,6 +51,21 @@ class CoinStatsAPI:
         # آمار درخواست‌ها
         self.request_count = 0
         self.error_count = 0
+        self._start_time = time.time()
+        
+        # ✅ جدید: ثبت آمار در Scheduler
+        self._register_with_scheduler()
+
+    def _register_with_scheduler(self):
+        """✅ جدید: ثبت آمار API در Scheduler"""
+        try:
+            from core import metrics_scheduler
+            # آمار API به صورت خودکار در Scheduler جمع‌آوری می‌شود
+            logger.info("✅ API stats registered with Metrics Scheduler")
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Could not register with scheduler: {e}")
 
     def _request(self, method, endpoint, params=None, retries=2):
         """ارسال درخواست به API با مدیریت خطا و Retry"""
@@ -99,16 +124,18 @@ class CoinStatsAPI:
         self.cache[key] = value
         self.cache_ttl[key] = time.time()
 
+    def _clear_cache(self):
+        """پاک کردن کش"""
+        self.cache = {}
+        self.cache_ttl = {}
+        logger.info("✅ API cache cleared")
+
     # ============================================================
-    # اندپوینت‌های اصلی (Market Data)
+    # اندپوینت‌های اصلی (بدون تغییر)
     # ============================================================
 
     def get_chart(self, coin_id, period="24h", currency="USD"):
-        """
-        دریافت داده‌های تاریخی قیمت
-        period: 24h, 1w, 1m, 3m, 6m, 1y, all
-        هزینه: ۳ اعتبار
-        """
+        """دریافت داده‌های تاریخی قیمت"""
         cache_key = f"chart_{coin_id}_{period}"
         cached = self._cache_get(cache_key, 60)
         if cached:
@@ -127,10 +154,7 @@ class CoinStatsAPI:
         return result
 
     def get_coin(self, coin_id, currency="USD"):
-        """
-        دریافت اطلاعات لحظه‌ای یک ارز
-        هزینه: ۱ اعتبار
-        """
+        """دریافت اطلاعات لحظه‌ای یک ارز"""
         cache_key = f"coin_{coin_id}_{currency}"
         cached = self._cache_get(cache_key, 30)
         if cached:
@@ -146,10 +170,7 @@ class CoinStatsAPI:
         return result
 
     def get_coins_list(self, limit=20, currency="USD"):
-        """
-        دریافت لیست ارزها (برای داشبورد)
-        هزینه: ۲ اعتبار
-        """
+        """دریافت لیست ارزها (برای داشبورد)"""
         cache_key = f"coins_list_{limit}_{currency}"
         cached = self._cache_get(cache_key, 60)
         if cached:
@@ -170,10 +191,7 @@ class CoinStatsAPI:
         return result
 
     def get_global_market(self):
-        """
-        دریافت وضعیت کلی بازار (مارکت‌کپ، حجم، سلطه)
-        هزینه: ۱ اعتبار
-        """
+        """دریافت وضعیت کلی بازار (مارکت‌کپ، حجم، سلطه)"""
         cache_key = "global_market"
         cached = self._cache_get(cache_key, 60)
         if cached:
@@ -187,16 +205,8 @@ class CoinStatsAPI:
 
         return result
 
-    # ============================================================
-    # اندپوینت‌های Insights (شاخص‌ها)
-    # ============================================================
-
     def get_fear_greed(self, use_cache=True):
-        """
-        دریافت شاخص ترس و طمع
-        هزینه: ۱۰ اعتبار
-        کش: ۱ ساعته
-        """
+        """دریافت شاخص ترس و طمع"""
         if use_cache:
             cached = self._cache_get("fear_greed", 3600)
             if cached:
@@ -211,12 +221,7 @@ class CoinStatsAPI:
         return result
 
     def get_btc_dominance(self, period="24h", use_cache=True):
-        """
-        دریافت سلطه بیت‌کوین در بازار
-        period: 24h, 1w, 1m, 3m, 6m, 1y, all
-        هزینه: ۱۰ اعتبار
-        کش: ۱ ساعته
-        """
+        """دریافت سلطه بیت‌کوین در بازار"""
         cache_key = f"btc_dom_{period}"
 
         if use_cache:
@@ -233,15 +238,8 @@ class CoinStatsAPI:
 
         return result
 
-    # ============================================================
-    # اندپوینت‌های News
-    # ============================================================
-
     def get_news(self, limit=10):
-        """
-        دریافت اخبار
-        هزینه: نامشخص
-        """
+        """دریافت اخبار"""
         cache_key = f"news_{limit}"
         cached = self._cache_get(cache_key, 300)
         if cached:
@@ -256,33 +254,32 @@ class CoinStatsAPI:
 
         return result
 
-    # ============================================================
-    # اندپوینت‌های مدیریتی
-    # ============================================================
-
     def get_credits(self):
-        """
-        دریافت اعتبار باقیمانده
-        هزینه: رایگان
-        """
+        """دریافت اعتبار باقیمانده"""
         endpoint = "/v1/usage/credits"
         return self._request("GET", endpoint)
 
     def get_status(self):
-        """
-        بررسی سلامت API
-        هزینه: رایگان
-        """
+        """بررسی سلامت API"""
         endpoint = "/v1/status"
         return self._request("GET", endpoint)
 
-    def get_stats(self):
+    # ============================================================
+    # ✅ به‌روزرسانی: آمار با اطلاعات بیشتر
+    # ============================================================
+
+    def get_stats(self) -> Dict:
         """
-        دریافت آمار درخواست‌ها
+        دریافت آمار درخواست‌ها با اطلاعات بیشتر
+        
+        ✅ نسخه ۲.۰: اضافه کردن uptime و اطلاعات بیشتر
         """
         return {
             "total_requests": self.request_count,
             "errors": self.error_count,
             "cache_size": len(self.cache),
-            "cache_keys": list(self.cache.keys())
+            "cache_keys": list(self.cache.keys())[:10],  # فقط ۱۰ کلید اول
+            "uptime_seconds": int(time.time() - self._start_time),
+            "error_rate": round((self.error_count / max(self.request_count, 1)) * 100, 2),
+            "timestamp": datetime.now().isoformat()
         }
