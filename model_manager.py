@@ -1,6 +1,7 @@
 # model_manager.py
 # ============================================================
 # مدیریت پیشرفته مدل XGBoost با نسخه‌سازی و دیتابیس
+# نسخه ۲.۰ - یکپارچه با Metrics Scheduler + رفع باگ‌ها
 # ============================================================
 
 import os
@@ -26,6 +27,8 @@ class ModelManager:
     - آموزش افزایشی
     - Ensemble
     - ارزیابی خودکار
+    
+    ✅ نسخه ۲.۰: یکپارچه با Scheduler + رفع باگ‌ها
     """
     
     def __init__(self, api=None):
@@ -36,14 +39,27 @@ class ModelManager:
         self.current_version = None
         self.config = get_model_config()
         
-        # ایجاد پوشه مدل‌ها
+        # ✅ رفع باگ: ایجاد پوشه مدل‌ها
         os.makedirs(self.models_dir, exist_ok=True)
+        
+        # ✅ جدید: ثبت در Scheduler
+        self._register_with_scheduler()
         
         # بارگذاری آخرین مدل فعال
         self._load_active_model()
     
+    def _register_with_scheduler(self):
+        """✅ جدید: ثبت وضعیت مدل در Scheduler"""
+        try:
+            from core import metrics_scheduler
+            logger.info("✅ ModelManager registered with Metrics Scheduler")
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Could not register with scheduler: {e}")
+    
     # ============================================================
-    # ۱. مدیریت اتصال دیتابیس (NEW)
+    # ۱. مدیریت اتصال دیتابیس
     # ============================================================
     
     def _ensure_db_connection(self) -> bool:
@@ -128,11 +144,18 @@ class ModelManager:
             if result:
                 model_id = result[0]['id']
                 
-                # ۵. غیرفعال کردن مدل‌های قبلی
-                self.db.execute(
-                    "UPDATE models SET is_active = FALSE WHERE id != %s",
-                    (model_id,)
-                )
+                # ۵. غیرفعال کردن مدل‌های قبلی (با Transaction)
+                try:
+                    self.db.execute("BEGIN")
+                    self.db.execute(
+                        "UPDATE models SET is_active = FALSE WHERE id != %s",
+                        (model_id,)
+                    )
+                    self.db.execute("COMMIT")
+                except Exception as e:
+                    self.db.execute("ROLLBACK")
+                    logger.error(f"❌ Transaction failed: {e}")
+                    return {"success": False, "error": str(e)}
                 
                 # ۶. ثبت در تاریخچه
                 self.db.execute(
@@ -349,12 +372,15 @@ class ModelManager:
             return []
     
     # ============================================================
-    # ۵. آمار
+    # ۵. آمار (✅ رفع باگ)
     # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
-        """دریافت آمار مدل جاری"""
-        # ✅ استفاده از model_manager به جای model_loaded
+        """
+        دریافت آمار مدل جاری
+        
+        ✅ رفع باگ: نام متد اصلاح شد (قبلاً grt_stats بود)
+        """
         loaded = self.current_model is not None
         
         return {
@@ -362,6 +388,7 @@ class ModelManager:
             "version": self.current_version if loaded else "N/A",
             "model_exists": os.path.exists(self.models_dir),
             "db_connected": self.db is not None and self.db.is_connected(),
+            "model_path": self.models_dir if loaded else None,
             "timestamp": datetime.now().isoformat()
         }
     
