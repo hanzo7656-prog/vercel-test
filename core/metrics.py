@@ -2,6 +2,7 @@
 # ============================================================
 # سیستم زمان‌بندی هوشمند برای جمع‌آوری متریک
 # جایگزین کامل monitor.py و MetricsCollector
+# نسخه ۲.۱ - با رفع مشکل حلقه اصلی
 # ============================================================
 
 import time
@@ -73,6 +74,8 @@ class MetricsScheduler:
         # زمان آخرین گزارش دوره‌ای
         self._last_report_time = 0
         self._report_interval = 21600  # ۶ ساعت
+        
+        logger.info("✅ MetricsScheduler initialized")
     
     def _load_configs(self) -> Dict[str, MetricConfig]:
         """بارگذاری تنظیمات از فایل یا پیش‌فرض"""
@@ -133,18 +136,35 @@ class MetricsScheduler:
     # کنترل Start/Stop
     # ============================================================
     
-    # در متد start()
     def start(self):
+        """شروع زمان‌بند"""
         if self._running:
+            logger.warning("⏳ Scheduler already running")
             return
+        
         self._running = True
         self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self._thread.start()
-        logger.info(f"✅ Metrics Scheduler started (Thread: {self._thread.name})")
-        # ✅ اضافه کردن یک جمع‌آوری اولیه برای تست
-        self._collect_metric("cpu", self.configs["cpu"])
-        self._collect_metric("ram", self.configs["ram"])
-
+        logger.info("✅ Metrics Scheduler started")
+        
+        # ✅ جمع‌آوری اولیه برای اینکه cache خالی نباشد
+        self._collect_initial_metrics()
+    
+    def _collect_initial_metrics(self):
+        """جمع‌آوری اولیه متریک‌ها برای پر کردن cache"""
+        logger.info("🔄 Collecting initial metrics...")
+        for name, config in self.configs.items():
+            if config.enabled:
+                try:
+                    self._collect_metric(name, config)
+                    config.last_collected = time.time()
+                    self.stats["collections"] += 1
+                    self.stats["collections_by_level"][config.level.value] += 1
+                except Exception as e:
+                    logger.error(f"❌ Initial collection error for {name}: {e}")
+        self.stats["last_collection"] = datetime.now().isoformat()
+        logger.info(f"✅ Initial collection done. Metrics: {list(self.metrics_cache.keys())}")
+    
     def stop(self):
         """متوقف کردن زمان‌بند"""
         self._running = False
@@ -153,14 +173,22 @@ class MetricsScheduler:
         logger.info("⏹️ Metrics Scheduler stopped")
     
     # ============================================================
-    # حلقه اصلی زمان‌بندی
+    # حلقه اصلی زمان‌بندی (✅ اصلاح شده)
     # ============================================================
     
     def _scheduler_loop(self):
         """حلقه اصلی - هر ۱ ثانیه چک می‌کند"""
+        logger.info("🔄 Scheduler loop started")
+        loop_count = 0
+        
         while self._running:
             try:
                 now = time.time()
+                loop_count += 1
+                
+                # هر ۱۰ ثانیه یکبار لاگ بزن که زنده است
+                if loop_count % 10 == 0:
+                    logger.debug(f"🏃 Scheduler loop alive (cycle {loop_count})")
                 
                 # ۱. جمع‌آوری متریک‌ها
                 for name, config in self.configs.items():
@@ -174,19 +202,26 @@ class MetricsScheduler:
                         config.last_collected = now
                         self.stats["collections"] += 1
                         self.stats["collections_by_level"][config.level.value] += 1
+                        
+                        # لاگ برای متریک‌های مهم
+                        if name in ["cpu", "ram", "api_status"]:
+                            logger.info(f"📊 {name}: {config.last_value} ({config.level.value})")
+                
+                self.stats["last_collection"] = datetime.now().isoformat()
                 
                 # ۲. گزارش دوره‌ای (هر ۶ ساعت)
                 if now - self._last_report_time >= self._report_interval:
                     self._send_periodic_report()
                     self._last_report_time = now
                 
-                self.stats["last_collection"] = datetime.now().isoformat()
-                time.sleep(0.1)  # هر ۱۰۰ میلی‌ثانیه چک می‌کند
+                time.sleep(0.5)  # هر نیم ثانیه یکبار چک می‌کند
                 
             except Exception as e:
                 logger.error(f"❌ Scheduler error: {e}")
                 self.stats["errors"] += 1
                 time.sleep(1)
+        
+        logger.info("⏹️ Scheduler loop stopped")
     
     # ============================================================
     # جمع‌آوری متریک‌ها
@@ -224,6 +259,7 @@ class MetricsScheduler:
                     "timestamp": datetime.now().isoformat(),
                     "level": config.level.value
                 }
+                config.last_value = value
                 self._add_to_history(name, value)
                 
         except Exception as e:
@@ -272,7 +308,8 @@ class MetricsScheduler:
             from core.system import system
             status = system.api.get_status()
             return status.get("status", "unknown") if status else "unknown"
-        except:
+        except Exception as e:
+            logger.debug(f"API status error: {e}")
             return "error"
     
     def _collect_api_credits(self) -> int:
