@@ -119,12 +119,40 @@
         .spinner { width: 50px; height: 50px; border: 4px solid #1a2a3a; border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        pre {
-            background: #0d1624; padding: 15px; border-radius: 8px; overflow-x: auto;
-            font-size: 0.85rem; max-height: 500px; overflow-y: auto;
-            color: #c0d0e0; border: 1px solid #1a2a3a;
-            font-family: 'Courier New', monospace; direction: ltr; text-align: left;
+        /* ===== JSON Pretty ===== */
+        .json-output {
+            background: #0d1624;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #1a2a3a;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+            font-size: 0.8rem;
+            line-height: 1.6;
         }
+        .json-output .json-key { color: #00d4ff; }
+        .json-output .json-string { color: #00ff88; }
+        .json-output .json-number { color: #ffaa00; }
+        .json-output .json-boolean { color: #ff6b9d; }
+        .json-output .json-null { color: #ff4444; }
+        .json-output .json-brace { color: #7a8fa3; }
+
+        .copy-btn {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 6px;
+            color: #00d4ff;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        .copy-btn:hover { background: rgba(0, 212, 255, 0.2); }
 
         @media (max-width: 768px) {
             .row { grid-template-columns: 1fr; }
@@ -197,8 +225,11 @@
 
         <div id="testResult" class="hidden">
             <div class="card">
-                <div class="card-title">📊 نتیجه</div>
-                <div id="testContent"></div>
+                <div class="card-title" style="justify-content:space-between;">
+                    <span>📊 نتیجه</span>
+                    <button class="copy-btn" onclick="copyJson()">📋 کپی JSON</button>
+                </div>
+                <div id="testContent" class="json-output"></div>
             </div>
         </div>
     </div>
@@ -206,6 +237,8 @@
     <script src="/static/js/script.js"></script>
     <script src="/static/js/menu.js"></script>
     <script>
+        let lastJsonData = null;
+
         function loadNav() {
             const container = document.getElementById('navContainer');
             if (!container) return;
@@ -250,12 +283,51 @@
                 .then(data => {
                     document.getElementById('testLoading').classList.add('hidden');
                     document.getElementById('testResult').classList.remove('hidden');
-                    document.getElementById('testContent').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    lastJsonData = data;
+                    document.getElementById('testContent').innerHTML = syntaxHighlight(data);
                 })
                 .catch(err => {
                     document.getElementById('testLoading').classList.add('hidden');
                     alert('❌ خطا: ' + err.message);
                 });
+        }
+
+        // ===== JSON Syntax Highlighter =====
+        function syntaxHighlight(json) {
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, null, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(
+                /("(?:[^"\\]|\\.)*")(?=:)|("(?:[^"\\]|\\.)*")|(\b\d+\.?\d*\b)|(\btrue\b|\bfalse\b|\bnull\b)/g,
+                function(match, p1, p2, p3, p4) {
+                    if (p1) return '<span class="json-key">' + p1 + '</span>';
+                    if (p2) return '<span class="json-string">' + p2 + '</span>';
+                    if (p3) return '<span class="json-number">' + p3 + '</span>';
+                    if (p4) return '<span class="json-boolean">' + p4 + '</span>';
+                    return match;
+                }
+            );
+        }
+
+        function copyJson() {
+            if (!lastJsonData) {
+                alert('❌ داده‌ای برای کپی وجود ندارد');
+                return;
+            }
+            const text = JSON.stringify(lastJsonData, null, 2);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ JSON کپی شد!');
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); alert('✅ JSON کپی شد!'); } catch {}
+                document.body.removeChild(ta);
+            }
         }
 
         // اجرای خودکار اگر پارامترها در URL باشن
