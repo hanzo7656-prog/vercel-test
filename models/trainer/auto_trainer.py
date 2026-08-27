@@ -1,4 +1,4 @@
-# auto_trainer.py
+# models/trainer/auto_trainer.py
 # ============================================================
 # سیستم آموزش خودکار مدل XGBoost - نسخه ۲.۱
 # یکپارچه با Metrics Scheduler جدید
@@ -16,7 +16,7 @@ from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple
 
 from api_handler import CoinStatsAPI
-from model.manager.model_manager import ModelManager
+from models.manager.model_manager import ModelManager  # ✅ اصلاح شد
 from database import get_primary
 
 logger = logging.getLogger(__name__)
@@ -103,8 +103,7 @@ class AutoTrainer:
     def _register_with_scheduler(self):
         """✅ جدید: ثبت وضعیت مدل در Scheduler"""
         try:
-            from core import metrics_scheduler
-            # Scheduler به صورت خودکار model_status را جمع‌آوری می‌کند
+            from core.metrics import metrics_scheduler
             logger.info("✅ AutoTrainer registered with Metrics Scheduler")
         except ImportError:
             pass
@@ -694,7 +693,6 @@ class AutoTrainer:
                     self._add_log(f"❌ خطا در چرخه آموزش: {e}")
                 
                 # ✅ بهبود: استفاده از Event.wait به جای حلقه ۶ ساعته
-                # انتظار به مدت interval_hours ساعت یا تا زمان توقف
                 wait_seconds = interval_hours * 3600
                 self.stop_event.wait(wait_seconds)
             
