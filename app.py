@@ -530,12 +530,8 @@ class TradingSignalSystem:
         return status
 
 
-
-
-
-
 # ============================================================
-# ۲.  کلاس متریک کالکتور
+# MetricsCollector - نسخه بهینه‌شده با اصلاح تورفتگی
 # ============================================================
 
 class MetricsCollector:
@@ -555,18 +551,19 @@ class MetricsCollector:
         self._thread = None
         self._cache = {}  # کش داخلی برای جلوگیری از درخواست‌های تکراری
         self._cache_ttl = 10  # ثانیه
-        
+
         # زمان‌های آخرین بروزرسانی برای هر بخش
         self._last_update = {
             "heavy": 0,  # داده‌های سنگین (دیتابیس)
             "light": 0,  # داده‌های سبک (CPU, RAM)
         }
-    
-    def start(self, interval=10):  # ← افزایش از ۵ به ۱۰
+
+    def start(self, interval=10):
+        """شروع جمع‌آوری خودکار متریک‌ها"""
         if self._running:
             return
         self._running = True
-        
+
         def collect():
             while self._running:
                 try:
@@ -578,40 +575,47 @@ class MetricsCollector:
                 except Exception as e:
                     print(f"❌ Metrics error: {e}")
                     time.sleep(interval)
-        
+
         self._thread = threading.Thread(target=collect, daemon=True)
         self._thread.start()
         print("✅ MetricsCollector started (interval: 10s)")
-    
+
+    def stop(self):
+        """متوقف کردن جمع‌آوری"""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2)
+
     def _collect_all(self):
+        """جمع‌آوری همه متریک‌ها"""
         now = time.time()
-        
+
         # ۱. داده‌های سبک (هر بار)
         self._collect_light_metrics()
-        
+
         # ۲. داده‌های سنگین (هر ۳۰ ثانیه یکبار)
         if now - self._last_update.get("heavy", 0) > 30:
             self._collect_heavy_metrics()
             self._last_update["heavy"] = now
-        
+
         self.metrics["last_update"] = datetime.now().isoformat()
-    
+
     def _collect_light_metrics(self):
         """داده‌های سبک - هر بار جمع‌آوری میشن"""
         # CPU
         try:
             import psutil
-            self.metrics["cpu"] = psutil.cpu_percent(interval=0.2)  # ← کاهش زمان نمونه‌برداری
+            self.metrics["cpu"] = psutil.cpu_percent(interval=0.2)
         except:
             self.metrics["cpu"] = 0
-        
+
         # RAM
         try:
             import psutil
             self.metrics["ram"] = psutil.virtual_memory().percent
         except:
             self.metrics["ram"] = 0
-        
+
         # Uptime
         try:
             import subprocess
@@ -619,16 +623,14 @@ class MetricsCollector:
             self.metrics["uptime"] = uptime.replace("up ", "")
         except:
             self.metrics["uptime"] = "N/A"
-    
-    
-     def _collect_heavy_metrics(self):
+
+    def _collect_heavy_metrics(self):
         """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
-    
-    # ============================================================
-    # ✅ API Status - با import داخل تابع
-    # ============================================================
+        # ============================================================
+        # ✅ API Status - با import داخل تابع
+        # ============================================================
         try:
-            from app import system  # ← import داخل تابع
+            from app import system
             status = system.api.get_status()
             if status and status.get('status') == 'ok':
                 self.metrics["api_status"] = "ok"
@@ -637,10 +639,10 @@ class MetricsCollector:
         except Exception as e:
             self.metrics["api_status"] = "error"
             print(f"❌ API Status error: {e}")
-    
-    # ============================================================
-    # ✅ Model Status
-    # ============================================================
+
+        # ============================================================
+        # ✅ Model Status
+        # ============================================================
         try:
             from app import system
             if system.model_manager:
@@ -650,10 +652,10 @@ class MetricsCollector:
                     self.metrics["model_accuracy"] = system.trainer.stats.get("last_score")
         except Exception as e:
             print(f"❌ Model Status error: {e}")
-    
-    # ============================================================
-    # ✅ Databases
-    # ============================================================
+
+        # ============================================================
+        # ✅ Databases (با کش - هر ۱ دقیقه)
+        # ============================================================
         try:
             from database import get_primary, get_cache, get_backup
             self.metrics["databases"] = {
@@ -662,14 +664,12 @@ class MetricsCollector:
                 "sqlite": get_backup() is not None and get_backup().is_connected()
             }
         except Exception as e:
-            print(f"❌ Databases error: {e}")   
-          
+            print(f"❌ Databases error: {e}")
+
     def get_metrics(self):
         """دریافت آخرین متریک‌ها (با کش)"""
         return self.metrics
-
-
-
+        
 # ============================================================
 # راه‌اندازی وب سرویس Flask
 # ============================================================
