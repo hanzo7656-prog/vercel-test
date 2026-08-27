@@ -36,7 +36,6 @@ from command_system import CommandSystem
 from database.database_factory import ensure_databases_connected
 from database import get_db, get_db_for, get_cache, get_primary, get_backup, health_check
 from logger_config import get_logger, get_recent_logs
-from monitor import monitor
 from alerter import alerter
 from self_healer import SelfHealer
 
@@ -410,8 +409,6 @@ numeric_analyzer = NumericAnalyzer(system.api, system.model_manager)
 command_system = CommandSystem(numeric_analyzer)
 self_healer = SelfHealer(system.model_manager, system.trainer)
 logger = get_logger()
-monitor.start(interval=60)  # هر ۱ دقیقه
-logger.info("✅ SystemMonitor started")
 
 # ============================================================
 # روت‌های جدید برای مشاهده لاگ‌ها (در بخش روت‌ها)
