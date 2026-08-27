@@ -1,7 +1,7 @@
 # core/metrics.py
 # ============================================================
 # سیستم زمان‌بندی هوشمند برای جمع‌آوری متریک
-# نسخه ۲.۲ - نهایی با اینتروال ۳ ثانیه
+# نسخه ۲.۳ - با محافظت از ترد و ری‌استارت خودکار
 # ============================================================
 
 import time
@@ -37,6 +37,7 @@ class MetricConfig:
 class MetricsScheduler:
     """
     سیستم جامع جمع‌آوری متریک با زمان‌بندی هوشمند
+    نسخه ۲.۳ - با محافظت از ترد و ری‌استارت خودکار
     """
     
     def __init__(self):
@@ -44,6 +45,8 @@ class MetricsScheduler:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
         self._restart_count = 0
+        self._last_heartbeat = time.time()
+        self._heartbeat_timeout = 30  # ۳۰ ثانیه بدون ضربان = مرده
         
         # تنظیمات متریک‌ها
         self.configs = self._load_configs()
@@ -59,6 +62,7 @@ class MetricsScheduler:
         self.stats = {
             "collections": 0,
             "errors": 0,
+            "restarts": 0,
             "last_collection": None,
             "collections_by_level": {
                 "light": 0,
@@ -74,7 +78,52 @@ class MetricsScheduler:
         self._last_report_time = 0
         self._report_interval = 21600  # ۶ ساعت
         
-        logger.info("✅ MetricsScheduler v2.2 initialized")
+        # ✅ شروع واتچ‌داگ برای نظارت بر ترد
+        self._start_watchdog()
+        
+        logger.info("✅ MetricsScheduler v2.3 initialized with watchdog")
+    
+    def _start_watchdog(self):
+        """شروع واتچ‌داگ برای نظارت بر سلامت ترد"""
+        def watchdog():
+            while True:
+                time.sleep(10)  # هر ۱۰ ثانیه چک کن
+                if self._running:
+                    # اگر ترد مرده بود یا ضربان نداشت، ری‌استارت کن
+                    if not self._is_thread_alive():
+                        logger.warning("⚠️ Watchdog: Thread is dead! Restarting...")
+                        self._restart_scheduler()
+                    elif time.time() - self._last_heartbeat > self._heartbeat_timeout:
+                        logger.warning("⚠️ Watchdog: Heartbeat timeout! Restarting...")
+                        self._restart_scheduler()
+        
+        watch_thread = threading.Thread(target=watchdog, daemon=True)
+        watch_thread.start()
+        logger.info("✅ Watchdog started")
+    
+    def _is_thread_alive(self) -> bool:
+        """بررسی زنده بودن ترد"""
+        return self._thread is not None and self._thread.is_alive()
+    
+    def _restart_scheduler(self):
+        """ری‌استارت خودکار Scheduler"""
+        with self._lock:
+            self._restart_count += 1
+            self.stats["restarts"] = self._restart_count
+            logger.info(f"🔄 Restarting scheduler (attempt #{self._restart_count})")
+            
+            # توقف کامل
+            self._running = False
+            if self._thread:
+                self._thread.join(timeout=2)
+                self._thread = None
+            
+            # استارت مجدد
+            self._running = True
+            self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
+            self._thread.start()
+            self._last_heartbeat = time.time()
+            logger.info(f"✅ Scheduler restarted successfully (attempt #{self._restart_count})")
     
     def _load_configs(self) -> Dict[str, MetricConfig]:
         """بارگذاری تنظیمات از فایل یا پیش‌فرض"""
@@ -125,35 +174,46 @@ class MetricsScheduler:
     def _get_default_interval(self, level: MetricLevel) -> int:
         """فاصله زمانی پیش‌فرض بر اساس سطح"""
         if level == MetricLevel.LIGHT:
-            return 3  # ← ۳ ثانیه
+            return 3
         elif level == MetricLevel.MEDIUM:
             return 30
         else:
             return 300
     
     # ============================================================
-    # کنترل Start/Stop (با محافظت از ترد)
+    # کنترل Start/Stop
     # ============================================================
     
     def start(self):
-        """شروع زمان‌بند با محافظت از ترد"""
-        if self._running:
-            # اگر ترد مرده ولی flag true است، ری‌ست کن
-            if self._thread and not self._thread.is_alive():
+        """شروع زمان‌بند"""
+        if self._running and self._is_thread_alive():
+            logger.warning("⏳ Scheduler already running")
+            return
+        
+        with self._lock:
+            if self._running and not self._is_thread_alive():
                 logger.warning("⚠️ Thread is dead but _running is True. Resetting...")
                 self._running = False
-                self._thread = None
-            else:
-                logger.warning("⏳ Scheduler already running")
-                return
-        
-        self._running = True
-        self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
-        self._thread.start()
-        logger.info("✅ Metrics Scheduler started")
-        
-        # جمع‌آوری اولیه
-        self._collect_initial_metrics()
+                if self._thread:
+                    self._thread.join(timeout=1)
+                    self._thread = None
+            
+            self._running = True
+            self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
+            self._thread.start()
+            self._last_heartbeat = time.time()
+            logger.info("✅ Metrics Scheduler started")
+            
+            # جمع‌آوری اولیه
+            self._collect_initial_metrics()
+    
+    def stop(self):
+        """متوقف کردن زمان‌بند"""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2)
+            self._thread = None
+        logger.info("⏹️ Metrics Scheduler stopped")
     
     def _collect_initial_metrics(self):
         """جمع‌آوری اولیه متریک‌ها"""
@@ -170,16 +230,8 @@ class MetricsScheduler:
         self.stats["last_collection"] = datetime.now().isoformat()
         logger.info(f"✅ Initial collection done. Metrics: {list(self.metrics_cache.keys())}")
     
-    def stop(self):
-        """متوقف کردن زمان‌بند"""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2)
-            self._thread = None
-        logger.info("⏹️ Metrics Scheduler stopped")
-    
     # ============================================================
-    # حلقه اصلی زمان‌بندی (با محافظت از خطا)
+    # حلقه اصلی زمان‌بندی (با ضربان قلب)
     # ============================================================
     
     def _scheduler_loop(self):
@@ -192,8 +244,12 @@ class MetricsScheduler:
                 now = time.time()
                 loop_count += 1
                 
+                # ✅ به‌روزرسانی ضربان قلب
+                if loop_count % 2 == 0:  # هر ۲ سیکل (حدود ۱ ثانیه)
+                    self._last_heartbeat = now
+                
                 # هر ۱۰ ثانیه یکبار لاگ زنده بودن
-                if loop_count % 10 == 0:
+                if loop_count % 20 == 0:
                     logger.debug(f"🏃 Scheduler loop alive (cycle {loop_count})")
                 
                 # جمع‌آوری متریک‌ها
@@ -437,6 +493,7 @@ class MetricsScheduler:
 📊 *آمار جمع‌آوری*
 - کل جمع‌آوری‌ها: {self.stats['collections']}
 - خطاها: {self.stats['errors']}
+- ری‌استارت‌ها: {self.stats['restarts']}
 """
             
             try:
@@ -490,6 +547,7 @@ class MetricsScheduler:
             "status": "running" if self._running else "stopped",
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
+            "restarts": self.stats["restarts"],
             "metrics_count": len(self.metrics_cache),
             "history_size": len(self.history),
             "collections_by_level": self.stats["collections_by_level"],
