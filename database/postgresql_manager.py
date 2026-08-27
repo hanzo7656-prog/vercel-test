@@ -122,16 +122,21 @@ class PostgreSQLManager(DatabaseBase):
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار PostgreSQL"""
         try:
-            # تست ساده با کوئری
-            self._cursor.execute("SELECT version()")
-            result = self._cursor.fetchone()
-            if result:
-                return {
-                    "version": result[0].split()[1] if result[0] else "unknown"
-                }
+            if not self.is_connected():
+                return {"version": "unknown", "error": "not connected"}
+        
+            # دریافت ورژن PostgreSQL
+            result = self.execute("SELECT version()")
+            if result and len(result) > 0:
+                version_str = result[0].get('version', '')
+                # استخراج شماره ورژن (مثلاً "PostgreSQL 15.2" → "15.2")
+                import re
+                match = re.search(r'(\d+\.\d+)', version_str)
+                if match:
+                    return {"version": match.group(1)}
             return {"version": "unknown"}
         except Exception as e:
-            print(f"⚠️ PostgreSQL stats error: {e}")  # برای دیباگ
+            print(f"⚠️ PostgreSQL stats error: {e}")
             return {"version": "unknown"}
             
     def create_table(self, table_name: str, schema: Dict[str, str]) -> bool:
