@@ -10,7 +10,7 @@ import requests
 from datetime import datetime
 from functools import lru_cache
 import logging
-
+from typing import Dict, Any, Optional, List  # ✅ این خط را اضافه کنید
 logger = logging.getLogger(__name__)
 
 
