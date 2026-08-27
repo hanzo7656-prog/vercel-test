@@ -1,7 +1,7 @@
 # auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه ۲.۰
-# با اتصال به ModelManager و دیتابیس
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۲.۱
+# یکپارچه با Metrics Scheduler جدید
 # ============================================================
 
 import os
@@ -32,6 +32,7 @@ class AutoTrainer:
     - آموزش افزایشی (Incremental Learning)
     - ترکیب با وزن‌دهی (Ensemble)
     - ارزیابی خودکار
+    - ✅ یکپارچه با Metrics Scheduler
     """
     
     def __init__(self, api: CoinStatsAPI, model_manager: ModelManager):
@@ -54,6 +55,10 @@ class AutoTrainer:
         
         # لیست لاگ‌ها
         self.logs: List[str] = []
+        
+        # ✅ رفع باگ: مسیر مدل
+        self.model_path = "models/current_model.xgb"
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
         
         # آمار سیستم
         self.stats = {
@@ -83,6 +88,9 @@ class AutoTrainer:
             "r2"
         ]
         
+        # ✅ جدید: ثبت در Scheduler
+        self._register_with_scheduler()
+        
         # بروزرسانی وضعیت از ModelManager
         if self.model_manager.current_model is not None:
             self.stats["mode"] = "BETA"
@@ -90,7 +98,18 @@ class AutoTrainer:
         else:
             self._add_log(f"📦 مدل یافت نشد (حالت DEMO)")
         
-        self._add_log("✅ AutoTrainer ۲.۰ راه‌اندازی شد")
+        self._add_log("✅ AutoTrainer ۲.۱ راه‌اندازی شد")
+    
+    def _register_with_scheduler(self):
+        """✅ جدید: ثبت وضعیت مدل در Scheduler"""
+        try:
+            from core import metrics_scheduler
+            # Scheduler به صورت خودکار model_status را جمع‌آوری می‌کند
+            logger.info("✅ AutoTrainer registered with Metrics Scheduler")
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Could not register with scheduler: {e}")
     
     # ============================================================
     # مدیریت لاگ‌ها
@@ -368,8 +387,10 @@ class AutoTrainer:
             
             model.fit(X, y)
             training_time = time.time() - start_time
-            # در auto_trainer.py
+            
+            # ✅ رفع باگ: ذخیره مدل با مسیر صحیح
             model.save_model(self.model_path, format='json')
+            
             # ارزیابی
             score = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
@@ -672,11 +693,10 @@ class AutoTrainer:
                 except Exception as e:
                     self._add_log(f"❌ خطا در چرخه آموزش: {e}")
                 
+                # ✅ بهبود: استفاده از Event.wait به جای حلقه ۶ ساعته
                 # انتظار به مدت interval_hours ساعت یا تا زمان توقف
-                for _ in range(interval_hours * 60 * 60):
-                    if self.stop_event.is_set():
-                        break
-                    time.sleep(1)
+                wait_seconds = interval_hours * 3600
+                self.stop_event.wait(wait_seconds)
             
             self.is_running = False
             self._add_log("⏹️ آموزش خودکار متوقف شد")
