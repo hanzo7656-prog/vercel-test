@@ -1,11 +1,12 @@
 # database/sqlite_manager.py
 # ============================================================
-# مدیریت SQLite (از طریق پروتکل PostgreSQL)
+# مدیریت SQLite - نسخه ۲.۱ با کش ورژن
 # ============================================================
 
 import psycopg2
 import psycopg2.extras
 import logging
+import time
 from typing import Any, Optional, Dict, List
 from database.base import DatabaseBase
 
@@ -13,12 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class SQLiteManager(DatabaseBase):
-    """مدیریت SQLite از طریق پروتکل PostgreSQL"""
+    """مدیریت SQLite با کش ورژن"""
     
     def __init__(self, name: str, config: Dict[str, Any]):
         super().__init__(name, config)
         self._connection = None
         self._cursor = None
+        self._cached_version = None
+        self._version_cache_time = 0
+        self._version_cache_ttl = 300  # ۵ دقیقه
     
     def connect(self) -> bool:
         try:
@@ -31,12 +35,13 @@ class SQLiteManager(DatabaseBase):
                 sslmode="require" if self.config.get("ssl", True) else "disable",
                 connect_timeout=10
             )
+            self._connection.autocommit = True
             self._cursor = self._connection.cursor()
             # تست اتصال
             self._cursor.execute("SELECT 1")
             self._cursor.fetchone()
             self._connected = True
-            self._client = self._connection  # ← مهم!
+            self._client = self._connection
             logger.info(f"✅ SQLite ({self.name}) متصل شد")
             return True
         except Exception as e:
@@ -45,10 +50,7 @@ class SQLiteManager(DatabaseBase):
             self._client = None
             return False
 
-
-            
     def disconnect(self) -> bool:
-        """قطع اتصال"""
         try:
             if self._cursor:
                 self._cursor.close()
@@ -62,10 +64,12 @@ class SQLiteManager(DatabaseBase):
             return False
             
     def execute(self, query: str, params: tuple = None) -> List[Dict]:
-        """اجرای کوئری و برگرداندن نتایج"""
         if not self.is_connected():
-            logger.warning(f"⚠️ SQLite ({self.name}) متصل نیست")
-            return []
+            if self.connect():
+                logger.info(f"✅ SQLite ({self.name}) reconnect successful")
+            else:
+                logger.warning(f"⚠️ SQLite ({self.name}) متصل نیست")
+                return []
     
         try:
             with self._connection.cursor() as cursor:
@@ -84,14 +88,12 @@ class SQLiteManager(DatabaseBase):
             return []
     
     def get(self, key: str) -> Optional[Any]:
-        """دریافت مقدار"""
         result = self.execute("SELECT value FROM cache WHERE key = %s", (key,))
         if result:
             return result[0].get("value")
         return None
     
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
-        """ذخیره مقدار"""
         try:
             self.execute(
                 "INSERT OR REPLACE INTO cache (key, value) VALUES (%s, %s)",
@@ -102,7 +104,6 @@ class SQLiteManager(DatabaseBase):
             return False
     
     def delete(self, key: str) -> bool:
-        """حذف مقدار"""
         try:
             self.execute("DELETE FROM cache WHERE key = %s", (key,))
             return True
@@ -110,36 +111,55 @@ class SQLiteManager(DatabaseBase):
             return False
     
     def exists(self, key: str) -> bool:
-        """بررسی وجود کلید"""
         result = self.execute("SELECT 1 FROM cache WHERE key = %s", (key,))
         return len(result) > 0
     
     def flush(self) -> bool:
-        """پاک کردن همه داده‌ها"""
         try:
             self.execute("DELETE FROM cache")
             return True
         except:
             return False
-            
+    
+    # ============================================================
+    # ✅ متد get_stats با کش و Retry
+    # ============================================================
+    
     def get_stats(self) -> Dict[str, Any]:
-        """دریافت آمار SQLite"""
-        try:
-            if not self.is_connected():
-                return {"version": "unknown", "error": "not connected"}
+        """دریافت آمار SQLite با کش و Retry"""
+        # ۱. اگر کش معتبر است، برگردان
+        now = time.time()
+        if self._cached_version and (now - self._version_cache_time) < self._version_cache_ttl:
+            return {"version": self._cached_version}
         
-            # دریافت ورژن SQLite
-            result = self.execute("SELECT sqlite_version()")
-            if result and len(result) > 0:
-                version = result[0].get('sqlite_version', 'unknown')
-                return {"version": version}
-            return {"version": "unknown"}
-        except Exception as e:
-            print(f"⚠️ SQLite stats error: {e}")
-            return {"version": "unknown"}
-            
+        # ۲. اگر اتصال نداریم، reconnect کن
+        if not self.is_connected():
+            if not self.connect():
+                return {"version": self._cached_version or "unknown", "error": "not connected"}
+        
+        # ۳. تلاش برای دریافت ورژن با Retry
+        for attempt in range(3):
+            try:
+                result = self.execute("SELECT sqlite_version()")
+                if result and len(result) > 0:
+                    version = result[0].get('sqlite_version', 'unknown')
+                    if version and version != 'unknown':
+                        # ذخیره در کش
+                        self._cached_version = version
+                        self._version_cache_time = now
+                        return {"version": version}
+                break
+            except Exception as e:
+                logger.warning(f"⚠️ Attempt {attempt+1} to get SQLite version failed: {e}")
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+                else:
+                    logger.error(f"❌ Failed to get SQLite version after 3 attempts: {e}")
+        
+        # ۴. اگر همه تلاش‌ها ناموفق بود، کش قبلی را برگردان
+        return {"version": self._cached_version or "unknown"}
+    
     def ping(self) -> bool:
-        """بررسی سلامت اتصال"""
         if not self._connected or not self._client:
             return False
         try:
@@ -150,11 +170,10 @@ class SQLiteManager(DatabaseBase):
             return False
     
     def health_check(self) -> Dict[str, Any]:
-        """بررسی سلامت کامل"""
         base = super().health_check()
         try:
-            result = self.execute("SELECT sqlite_version()")
-            base["version"] = result[0].get("sqlite_version", "unknown") if result else "unknown"
+            stats = self.get_stats()
+            base["version"] = stats.get("version", "unknown")
         except:
-            base["version"] = "error"
+            base["version"] = "unknown"
         return base
