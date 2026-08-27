@@ -119,15 +119,19 @@ class RedisManager(DatabaseBase):
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار Redis"""
         try:
+            if not self.is_connected():
+                return {"version": "unknown"}
             info = self._client.info()
             return {
+                "version": info.get("redis_version", "unknown"),
                 "keys": info.get("db0", {}).get("keys", 0),
                 "memory": info.get("used_memory_human", "0"),
                 "clients": info.get("connected_clients", 0),
                 "uptime": info.get("uptime_in_seconds", 0)
             }
-        except:
-            return {}
+        except Exception as e:
+            print(f"⚠️ Redis stats error: {e}")
+            return {"version": "unknown"}
             
     def ping(self) -> bool:
         """بررسی سلامت"""
