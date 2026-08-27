@@ -1,11 +1,12 @@
+<!-- static/nav.html -->
 <!-- ============================================================
-     NAV - منوی اصلی (به‌روزرسانی شده با حذف لینک‌های اضافی)
+     NAV - منوی اصلی (نسخه ۲.۰ - بروزرسانی شده)
      ============================================================ -->
 <header class="dashboard-header">
     <a href="/dashboard" class="logo">📊 سیستم تشخیص الگو</a>
     <div style="display:flex;align-items:center;gap:16px;">
         <div class="status">
-            <span class="dot"></span>
+            <span class="dot" id="statusDot"></span>
             <span id="statusText">آنلاین</span>
         </div>
         <span class="uptime">⏱️ <span id="uptimeDisplay">۰ ثانیه</span></span>
@@ -30,3 +31,89 @@
     <div class="menu-divider"></div>
     <a href="/debug-page" style="color:#ff6b00;"><i class="fas fa-bug"></i> دیباگ</a>
 </nav>
+
+<script>
+// ============================================================
+// ✅ منوی یکپارچه - برای همه صفحات
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // ۱. منوی همبرگری
+    const menuToggle = document.getElementById('menuToggle');
+    const flyoutMenu = document.getElementById('flyoutMenu');
+    const flyoutOverlay = document.getElementById('flyoutOverlay');
+
+    if (menuToggle && flyoutMenu && flyoutOverlay) {
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const open = flyoutMenu.classList.toggle('open');
+            flyoutOverlay.classList.toggle('open');
+            menuToggle.innerHTML = open ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+        });
+
+        flyoutOverlay.addEventListener('click', function() {
+            flyoutMenu.classList.remove('open');
+            flyoutOverlay.classList.remove('open');
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        });
+
+        // بستن منو با کلیک روی لینک
+        flyoutMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                flyoutMenu.classList.remove('open');
+                flyoutOverlay.classList.remove('open');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+            });
+        });
+    }
+
+    // ۲. نمایش نام کاربری
+    fetch('/api/user', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const display = document.getElementById('userDisplay');
+                if (display) {
+                    const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                    display.textContent = roleMap[data.data.role] || data.data.username;
+                }
+            }
+        })
+        .catch(() => {});
+
+    // ۳. آپتایم
+    if (typeof fetchAndStartUptime === 'function') {
+        fetchAndStartUptime();
+    }
+
+    // ۴. وضعیت آنلاین/آفلاین
+    updateStatusDot();
+    setInterval(updateStatusDot, 10000);
+});
+
+function updateStatusDot() {
+    fetch('/api/metrics')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const metrics = data.data.metrics || {};
+                const api = metrics.api_status?.value || 'unknown';
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                
+                if (dot && text) {
+                    if (api === 'ok') {
+                        dot.style.background = '#00ff88';
+                        text.textContent = 'پایدار';
+                    } else if (api === 'degraded') {
+                        dot.style.background = '#ff8800';
+                        text.textContent = 'ضعیف';
+                    } else {
+                        dot.style.background = '#ff4444';
+                        text.textContent = 'قطع';
+                    }
+                }
+            }
+        })
+        .catch(() => {});
+}
+</script>
