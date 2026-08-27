@@ -125,15 +125,17 @@ class SQLiteManager(DatabaseBase):
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار SQLite"""
         try:
-            self._cursor.execute("SELECT sqlite_version()")
-            result = self._cursor.fetchone()
-            if result:
-                return {
-                    "version": result[0] if result[0] else "unknown"
-                }
+            if not self.is_connected():
+                return {"version": "unknown", "error": "not connected"}
+        
+            # دریافت ورژن SQLite
+            result = self.execute("SELECT sqlite_version()")
+            if result and len(result) > 0:
+                version = result[0].get('sqlite_version', 'unknown')
+                return {"version": version}
             return {"version": "unknown"}
         except Exception as e:
-            print(f"⚠️ SQLite stats error: {e}")  # برای دیباگ
+            print(f"⚠️ SQLite stats error: {e}")
             return {"version": "unknown"}
             
     def ping(self) -> bool:
