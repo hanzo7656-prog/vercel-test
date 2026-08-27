@@ -273,497 +273,497 @@
      JAVASCRIPT
      ============================================================ -->
 <script>
-    // ============================================================
-    // STATE
-    // ============================================================
-    let monitorRunning = true;
-    let monitorInterval = null;
-    let chartInterval = null;
-    let logCounter = 0;
+// ============================================================
+// STATE
+// ============================================================
+let monitorRunning = true;
+let monitorInterval = null;
+let chartInterval = null;
+let logCounter = 0;
 
-    // داده‌های نمودارها
-    const cpuData = [];
-    const ramData = [];
-    const apiData = [];
-    const timeLabels = [];
-    const MAX_DATA_POINTS = 30;
+// داده‌های نمودارها
+const cpuData = [];
+const ramData = [];
+const apiData = [];
+const timeLabels = [];
+const MAX_DATA_POINTS = 30;
 
-    // نمونه‌های Chart.js
-    let cpuRamChartInstance = null;
-    let apiRequestsChartInstance = null;
-    let dbStatusChartInstance = null;
+// نمونه‌های Chart.js
+let cpuRamChartInstance = null;
+let apiRequestsChartInstance = null;
+let dbStatusChartInstance = null;
 
-    // ============================================================
-    // INIT
-    // ============================================================
-    function init_monitor() {
-        console.log('📊 راه‌اندازی مانیتورینگ...');
-        initCharts();
+// ============================================================
+// INIT
+// ============================================================
+function init_monitor() {
+    console.log('📊 راه‌اندازی مانیتورینگ...');
+    initCharts();
+    updateStats();
+    addLog('🚀 مانیتورینگ شروع شد', 'success');
+
+    // بروزرسانی هر ۲ ثانیه
+    monitorInterval = setInterval(() => {
         updateStats();
-        addLog('🚀 مانیتورینگ شروع شد', 'success');
+        updateCharts();
+    }, 2000);
 
-        // بروزرسانی هر ۲ ثانیه
+    // بروزرسانی نمودار هر ۵ ثانیه
+    chartInterval = setInterval(() => {
+        if (cpuRamChartInstance) cpuRamChartInstance.update();
+        if (apiRequestsChartInstance) apiRequestsChartInstance.update();
+        if (dbStatusChartInstance) dbStatusChartInstance.update();
+    }, 5000);
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function initCharts() {
+    // 1. نمودار CPU / RAM
+    const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
+    if (ctx1) {
+        cpuRamChartInstance = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: 'CPU (%)',
+                        data: cpuData,
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0, 212, 255, 0.05)',
+                        borderWidth: 2,
+                        pointRadius: 1.5,
+                        pointBackgroundColor: '#00d4ff',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'RAM (%)',
+                        data: ramData,
+                        borderColor: '#ff8800',
+                        backgroundColor: 'rgba(255, 136, 0, 0.05)',
+                        borderWidth: 2,
+                        pointRadius: 1.5,
+                        pointBackgroundColor: '#ff8800',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: getChartOptions('CPU / RAM (%)')
+        });
+    }
+
+    // 2. نمودار درخواست‌های API
+    const ctx2 = document.getElementById('apiRequestsChart')?.getContext('2d');
+    if (ctx2) {
+        apiRequestsChartInstance = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'درخواست‌ها',
+                    data: apiData,
+                    backgroundColor: 'rgba(255, 107, 157, 0.5)',
+                    borderColor: '#ff6b9d',
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            },
+            options: getChartOptions('تعداد درخواست‌ها', true)
+        });
+    }
+
+    // 3. نمودار وضعیت دیتابیس‌ها
+    const ctx3 = document.getElementById('dbStatusChart')?.getContext('2d');
+    if (ctx3) {
+        dbStatusChartInstance = new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: ['PostgreSQL', 'Redis', 'SQLite'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#3366ff', '#ff4444', '#00ff88'],
+                    borderColor: 'transparent',
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#7a8fa8',
+                            font: { size: 9, family: 'Vazir' },
+                            padding: 8,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(8, 12, 24, 0.9)',
+                        borderColor: 'rgba(0, 212, 255, 0.15)',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percent = total > 0 ? (context.parsed / total * 100).toFixed(1) : 0;
+                                return context.label + ': ' + context.parsed + ' (' + percent + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+}
+
+function getChartOptions(label, isBar = false) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    color: '#7a8fa8',
+                    font: { size: 8, family: 'Vazir' },
+                    boxWidth: 10,
+                    padding: 4,
+                    usePointStyle: true,
+                    pointStyle: 'line'
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(8, 12, 24, 0.9)',
+                borderColor: 'rgba(0, 212, 255, 0.15)',
+                borderWidth: 1,
+                titleColor: '#e8eef7',
+                bodyColor: '#00d4ff',
+                bodyFont: { size: 10 }
+            }
+        },
+        scales: {
+            x: {
+                grid: { color: 'rgba(255,255,255,0.02)' },
+                ticks: { color: '#4a5a6a', font: { size: 6, family: 'Vazir' }, maxTicksLimit: 10 }
+            },
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255,255,255,0.02)' },
+                ticks: { 
+                    color: '#4a5a6a', 
+                    font: { size: 7 },
+                    callback: isBar ? function(v) { return v; } : function(v) { return v + '%'; }
+                }
+            }
+        },
+        animation: {
+            duration: 500,
+            easing: 'easeOutQuart'
+        }
+    };
+}
+
+// ============================================================
+// UPDATE STATS
+// ============================================================
+function updateStats() {
+    const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // 1. آپتایم
+    fetch('/stats')
+        .then(res => res.json())
+        .then(data => {
+            const el = document.getElementById('statUptime');
+            if (el && data.uptime) {
+                const parts = data.uptime.split(':').map(Number);
+                let totalSeconds = 0;
+                if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
+                else totalSeconds = parts[0] || 0;
+
+                if (totalSeconds < 60) el.textContent = totalSeconds + 's';
+                else if (totalSeconds < 3600) el.textContent = Math.floor(totalSeconds / 60) + 'm';
+                else el.textContent = Math.floor(totalSeconds / 3600) + 'h ' + Math.floor((totalSeconds % 3600) / 60) + 'm';
+            }
+        })
+        .catch(() => {});
+
+    // 2. CPU
+    fetch('/health/cpu')
+        .then(res => res.json())
+        .then(data => {
+            const el = document.getElementById('statCpu');
+            if (el) {
+                const cpu = data.cpu_percent || 0;
+                el.textContent = cpu.toFixed(1) + '%';
+                el.className = 'stat-value ' + (cpu > 80 ? 'pink' : cpu > 60 ? 'orange' : 'green');
+            }
+        })
+        .catch(() => {});
+
+    // 3. RAM
+    fetch('/stats/memory')
+        .then(res => res.json())
+        .then(data => {
+            const el = document.getElementById('statRam');
+            if (el && data.success) {
+                const ram = data.data.percent || 0;
+                el.textContent = ram.toFixed(1) + '%';
+                el.className = 'stat-value ' + (ram > 80 ? 'pink' : ram > 60 ? 'orange' : 'green');
+            }
+        })
+        .catch(() => {});
+
+    // 4. دیتابیس
+    fetch('/health/database')
+        .then(res => res.json())
+        .then(data => {
+            const el = document.getElementById('statDb');
+            if (el && data.success && data.data) {
+                const entries = Object.entries(data.data);
+                const connected = entries.filter(([_, info]) => info.connected).length;
+                el.textContent = connected + '/' + entries.length;
+                el.className = 'stat-value ' + (connected === entries.length ? 'green' : connected > 0 ? 'orange' : 'pink');
+            }
+        })
+        .catch(() => {});
+
+    // 5. اعتبار
+    fetch('/credits')
+        .then(res => res.json())
+        .then(data => {
+            const el = document.getElementById('statCredits');
+            if (el && data.success) {
+                const credits = data.data?.remaining || 0;
+                el.textContent = credits.toLocaleString();
+                el.className = 'stat-value ' + (credits > 500 ? 'green' : credits > 100 ? 'orange' : 'pink');
+            }
+        })
+        .catch(() => {});
+
+    // اضافه کردن لاگ دوره‌ای
+    if (monitorRunning && logCounter % 3 === 0) {
+        const statuses = [
+            '✅ سیستم پایدار',
+            '⚡ پردازش عادی',
+            '📊 داده‌ها بروزرسانی شدند',
+            '🔄 چرخه مانیتورینگ فعال'
+        ];
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        addLog(`${now} - ${randomStatus}`, 'info');
+    }
+    logCounter++;
+}
+
+// ============================================================
+// UPDATE CHARTS DATA
+// ============================================================
+function updateCharts() {
+    const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+    // CPU
+    fetch('/health/cpu')
+        .then(res => res.json())
+        .then(data => {
+            const cpu = data.cpu_percent || 0;
+            cpuData.push(cpu);
+            if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
+        })
+        .catch(() => {});
+
+    // RAM
+    fetch('/stats/memory')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const ram = data.data.percent || 0;
+                ramData.push(ram);
+                if (ramData.length > MAX_DATA_POINTS) ramData.shift();
+            }
+        })
+        .catch(() => {});
+
+    // API Requests (شبیه‌سازی)
+    const apiCount = Math.floor(Math.random() * 20) + 5;
+    apiData.push(apiCount);
+    if (apiData.length > MAX_DATA_POINTS) apiData.shift();
+
+    // بروزرسانی لیبل‌ها
+    timeLabels.push(now);
+    if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
+
+    // بروزرسانی نمودار دیتابیس‌ها (هر ۱۰ ثانیه یک بار)
+    if (logCounter % 5 === 0) {
+        updateDbStatusChart();
+    }
+}
+
+// ============================================================
+// UPDATE DB STATUS CHART
+// ============================================================
+function updateDbStatusChart() {
+    if (!dbStatusChartInstance) return;
+
+    fetch('/health/database')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const entries = Object.entries(data.data);
+                const statuses = entries.map(([_, info]) => info.connected ? 1 : 0);
+                
+                // به‌روزرسانی داده‌ها
+                dbStatusChartInstance.data.datasets[0].data = statuses;
+                dbStatusChartInstance.update();
+            }
+        })
+        .catch(() => {});
+}
+
+// ============================================================
+// LOGS
+// ============================================================
+function addLog(message, type = 'info') {
+    const container = document.getElementById('monitorLogs');
+    if (!container) return;
+
+    const time = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-msg ${type}">${message}</span>
+    `;
+
+    container.appendChild(entry);
+    
+    // محدود کردن تعداد لاگ‌ها
+    while (container.children.length > 50) {
+        container.removeChild(container.firstChild);
+    }
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function clearMonitorLogs() {
+    const container = document.getElementById('monitorLogs');
+    if (container) {
+        container.innerHTML = `
+            <div class="log-entry">
+                <span class="log-time">🧹</span>
+                <span class="log-msg info">لاگ‌ها پاک شدند</span>
+            </div>
+        `;
+    }
+    showToast('🧹 لاگ‌ها پاک شدند', 'info');
+}
+
+// ============================================================
+// CONTROL
+// ============================================================
+function toggleMonitor() {
+    const btn = document.getElementById('monitorToggleBtn');
+    const status = document.getElementById('monitorStatus');
+
+    if (monitorRunning) {
+        // توقف
+        monitorRunning = false;
+        if (monitorInterval) {
+            clearInterval(monitorInterval);
+            monitorInterval = null;
+        }
+        if (chartInterval) {
+            clearInterval(chartInterval);
+            chartInterval = null;
+        }
+        btn.innerHTML = '<i class="fas fa-play"></i> شروع';
+        btn.className = 'btn-action success';
+        status.innerHTML = '<i class="fas fa-circle" style="font-size:0.4rem;color:#ff4444;"></i> متوقف';
+        status.className = 'chip offline';
+        addLog('⏹️ مانیتورینگ متوقف شد', 'warning');
+        showToast('⏹️ مانیتورینگ متوقف شد', 'info');
+    } else {
+        // شروع
+        monitorRunning = true;
+        btn.innerHTML = '<i class="fas fa-pause"></i> توقف';
+        btn.className = 'btn-action primary';
+        status.innerHTML = '<i class="fas fa-circle" style="font-size:0.4rem;color:var(--accent-green);"></i> در حال اجرا';
+        status.className = 'chip online';
+        
         monitorInterval = setInterval(() => {
             updateStats();
             updateCharts();
         }, 2000);
 
-        // بروزرسانی نمودار هر ۵ ثانیه
         chartInterval = setInterval(() => {
             if (cpuRamChartInstance) cpuRamChartInstance.update();
             if (apiRequestsChartInstance) apiRequestsChartInstance.update();
             if (dbStatusChartInstance) dbStatusChartInstance.update();
         }, 5000);
+
+        addLog('▶️ مانیتورینگ شروع شد', 'success');
+        showToast('▶️ مانیتورینگ شروع شد', 'success');
     }
+}
 
-    // ============================================================
-    // CHARTS
-    // ============================================================
-    function initCharts() {
-        // 1. نمودار CPU / RAM
-        const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
-        if (ctx1) {
-            cpuRamChartInstance = new Chart(ctx1, {
-                type: 'line',
-                data: {
-                    labels: timeLabels,
-                    datasets: [
-                        {
-                            label: 'CPU (%)',
-                            data: cpuData,
-                            borderColor: '#00d4ff',
-                            backgroundColor: 'rgba(0, 212, 255, 0.05)',
-                            borderWidth: 2,
-                            pointRadius: 1.5,
-                            pointBackgroundColor: '#00d4ff',
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: 'RAM (%)',
-                            data: ramData,
-                            borderColor: '#ff8800',
-                            backgroundColor: 'rgba(255, 136, 0, 0.05)',
-                            borderWidth: 2,
-                            pointRadius: 1.5,
-                            pointBackgroundColor: '#ff8800',
-                            tension: 0.3,
-                            fill: true
-                        }
-                    ]
-                },
-                options: getChartOptions('CPU / RAM (%)')
-            });
-        }
+function refreshMonitor() {
+    if (cpuRamChartInstance) cpuRamChartInstance.update();
+    if (apiRequestsChartInstance) apiRequestsChartInstance.update();
+    if (dbStatusChartInstance) dbStatusChartInstance.update();
+    updateStats();
+    addLog('🔄 بروزرسانی دستی', 'info');
+    showToast('🔄 بروزرسانی شد', 'success');
+}
 
-        // 2. نمودار درخواست‌های API
-        const ctx2 = document.getElementById('apiRequestsChart')?.getContext('2d');
-        if (ctx2) {
-            apiRequestsChartInstance = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: timeLabels,
-                    datasets: [{
-                        label: 'درخواست‌ها',
-                        data: apiData,
-                        backgroundColor: 'rgba(255, 107, 157, 0.5)',
-                        borderColor: '#ff6b9d',
-                        borderWidth: 1,
-                        borderRadius: 3
-                    }]
-                },
-                options: getChartOptions('تعداد درخواست‌ها', true)
-            });
-        }
-
-        // 3. نمودار وضعیت دیتابیس‌ها
-        const ctx3 = document.getElementById('dbStatusChart')?.getContext('2d');
-        if (ctx3) {
-            dbStatusChartInstance = new Chart(ctx3, {
-                type: 'doughnut',
-                data: {
-                    labels: ['PostgreSQL', 'Redis', 'SQLite'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#3366ff', '#ff4444', '#00ff88'],
-                        borderColor: 'transparent',
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#7a8fa8',
-                                font: { size: 9, family: 'Vazir' },
-                                padding: 8,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(8, 12, 24, 0.9)',
-                            borderColor: 'rgba(0, 212, 255, 0.15)',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function(context) {
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percent = total > 0 ? (context.parsed / total * 100).toFixed(1) : 0;
-                                    return context.label + ': ' + context.parsed + ' (' + percent + '%)';
-                                }
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
-        }
-    }
-
-    function getChartOptions(label, isBar = false) {
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#7a8fa8',
-                        font: { size: 8, family: 'Vazir' },
-                        boxWidth: 10,
-                        padding: 4,
-                        usePointStyle: true,
-                        pointStyle: 'line'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(8, 12, 24, 0.9)',
-                    borderColor: 'rgba(0, 212, 255, 0.15)',
-                    borderWidth: 1,
-                    titleColor: '#e8eef7',
-                    bodyColor: '#00d4ff',
-                    bodyFont: { size: 10 }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.02)' },
-                    ticks: { color: '#4a5a6a', font: { size: 6, family: 'Vazir' }, maxTicksLimit: 10 }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.02)' },
-                    ticks: { 
-                        color: '#4a5a6a', 
-                        font: { size: 7 },
-                        callback: isBar ? function(v) { return v; } : function(v) { return v + '%'; }
-                    }
-                }
-            },
-            animation: {
-                duration: 500,
-                easing: 'easeOutQuart'
-            }
-        };
-    }
-
-    // ============================================================
-    // UPDATE STATS
-    // ============================================================
-    function updateStats() {
-        const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        // 1. آپتایم
-        fetch('/stats')
-            .then(res => res.json())
-            .then(data => {
-                const el = document.getElementById('statUptime');
-                if (el && data.uptime) {
-                    const parts = data.uptime.split(':').map(Number);
-                    let totalSeconds = 0;
-                    if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                    else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
-                    else totalSeconds = parts[0] || 0;
-
-                    if (totalSeconds < 60) el.textContent = totalSeconds + 's';
-                    else if (totalSeconds < 3600) el.textContent = Math.floor(totalSeconds / 60) + 'm';
-                    else el.textContent = Math.floor(totalSeconds / 3600) + 'h ' + Math.floor((totalSeconds % 3600) / 60) + 'm';
-                }
-            })
-            .catch(() => {});
-
-        // 2. CPU
-        fetch('/health/cpu')
-            .then(res => res.json())
-            .then(data => {
-                const el = document.getElementById('statCpu');
-                if (el) {
-                    const cpu = data.cpu_percent || 0;
-                    el.textContent = cpu.toFixed(1) + '%';
-                    el.className = 'stat-value ' + (cpu > 80 ? 'pink' : cpu > 60 ? 'orange' : 'green');
-                }
-            })
-            .catch(() => {});
-
-        // 3. RAM
-        fetch('/stats/memory')
-            .then(res => res.json())
-            .then(data => {
-                const el = document.getElementById('statRam');
-                if (el && data.success) {
-                    const ram = data.data.percent || 0;
-                    el.textContent = ram.toFixed(1) + '%';
-                    el.className = 'stat-value ' + (ram > 80 ? 'pink' : ram > 60 ? 'orange' : 'green');
-                }
-            })
-            .catch(() => {});
-
-        // 4. دیتابیس
-        fetch('/health/database')
-            .then(res => res.json())
-            .then(data => {
-                const el = document.getElementById('statDb');
-                if (el && data.success && data.data) {
-                    const entries = Object.entries(data.data);
-                    const connected = entries.filter(([_, info]) => info.connected).length;
-                    el.textContent = connected + '/' + entries.length;
-                    el.className = 'stat-value ' + (connected === entries.length ? 'green' : connected > 0 ? 'orange' : 'pink');
-                }
-            })
-            .catch(() => {});
-
-        // 5. اعتبار
-        fetch('/credits')
-            .then(res => res.json())
-            .then(data => {
-                const el = document.getElementById('statCredits');
-                if (el && data.success) {
-                    const credits = data.data?.remaining || 0;
-                    el.textContent = credits.toLocaleString();
-                    el.className = 'stat-value ' + (credits > 500 ? 'green' : credits > 100 ? 'orange' : 'pink');
-                }
-            })
-            .catch(() => {});
-
-        // اضافه کردن لاگ دوره‌ای
-        if (monitorRunning && logCounter % 3 === 0) {
-            const statuses = [
-                '✅ سیستم پایدار',
-                '⚡ پردازش عادی',
-                '📊 داده‌ها بروزرسانی شدند',
-                '🔄 چرخه مانیتورینگ فعال'
-            ];
-            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-            addLog(`${now} - ${randomStatus}`, 'info');
-        }
-        logCounter++;
-    }
-
-    // ============================================================
-    // UPDATE CHARTS DATA
-    // ============================================================
-    function updateCharts() {
-        const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-
-        // CPU
-        fetch('/health/cpu')
-            .then(res => res.json())
-            .then(data => {
-                const cpu = data.cpu_percent || 0;
-                cpuData.push(cpu);
-                if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
-            })
-            .catch(() => {});
-
-        // RAM
-        fetch('/stats/memory')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const ram = data.data.percent || 0;
-                    ramData.push(ram);
-                    if (ramData.length > MAX_DATA_POINTS) ramData.shift();
-                }
-            })
-            .catch(() => {});
-
-        // API Requests (شبیه‌سازی)
-        const apiCount = Math.floor(Math.random() * 20) + 5;
-        apiData.push(apiCount);
-        if (apiData.length > MAX_DATA_POINTS) apiData.shift();
-
-        // بروزرسانی لیبل‌ها
-        timeLabels.push(now);
-        if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
-
-        // بروزرسانی نمودار دیتابیس‌ها (هر ۱۰ ثانیه یک بار)
-        if (logCounter % 5 === 0) {
-            updateDbStatusChart();
-        }
-    }
-
-    // ============================================================
-    // UPDATE DB STATUS CHART
-    // ============================================================
-    function updateDbStatusChart() {
-        if (!dbStatusChartInstance) return;
-
-        fetch('/health/database')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.data) {
-                    const entries = Object.entries(data.data);
-                    const statuses = entries.map(([_, info]) => info.connected ? 1 : 0);
-                    
-                    // به‌روزرسانی داده‌ها
-                    dbStatusChartInstance.data.datasets[0].data = statuses;
-                    dbStatusChartInstance.update();
-                }
-            })
-            .catch(() => {});
-    }
-
-    // ============================================================
-    // LOGS
-    // ============================================================
-    function addLog(message, type = 'info') {
-        const container = document.getElementById('monitorLogs');
-        if (!container) return;
-
-        const time = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = `
-            <span class="log-time">${time}</span>
-            <span class="log-msg ${type}">${message}</span>
-        `;
-
-        container.appendChild(entry);
-        
-        // محدود کردن تعداد لاگ‌ها
-        while (container.children.length > 50) {
-            container.removeChild(container.firstChild);
-        }
-
-        container.scrollTop = container.scrollHeight;
-    }
-
-    function clearMonitorLogs() {
-        const container = document.getElementById('monitorLogs');
-        if (container) {
-            container.innerHTML = `
-                <div class="log-entry">
-                    <span class="log-time">🧹</span>
-                    <span class="log-msg info">لاگ‌ها پاک شدند</span>
-                </div>
-            `;
-        }
-        showToast('🧹 لاگ‌ها پاک شدند', 'info');
-    }
-
-    // ============================================================
-    // CONTROL
-    // ============================================================
-    function toggleMonitor() {
-        const btn = document.getElementById('monitorToggleBtn');
-        const status = document.getElementById('monitorStatus');
-
-        if (monitorRunning) {
-            // توقف
-            monitorRunning = false;
-            if (monitorInterval) {
-                clearInterval(monitorInterval);
-                monitorInterval = null;
-            }
-            if (chartInterval) {
-                clearInterval(chartInterval);
-                chartInterval = null;
-            }
-            btn.innerHTML = '<i class="fas fa-play"></i> شروع';
-            btn.className = 'btn-action success';
-            status.innerHTML = '<i class="fas fa-circle" style="font-size:0.4rem;color:#ff4444;"></i> متوقف';
-            status.className = 'chip offline';
-            addLog('⏹️ مانیتورینگ متوقف شد', 'warning');
-            showToast('⏹️ مانیتورینگ متوقف شد', 'info');
-        } else {
-            // شروع
-            monitorRunning = true;
-            btn.innerHTML = '<i class="fas fa-pause"></i> توقف';
-            btn.className = 'btn-action primary';
-            status.innerHTML = '<i class="fas fa-circle" style="font-size:0.4rem;color:var(--accent-green);"></i> در حال اجرا';
-            status.className = 'chip online';
-            
-            monitorInterval = setInterval(() => {
-                updateStats();
-                updateCharts();
-            }, 2000);
-
-            chartInterval = setInterval(() => {
-                if (cpuRamChartInstance) cpuRamChartInstance.update();
-                if (apiRequestsChartInstance) apiRequestsChartInstance.update();
-                if (dbStatusChartInstance) dbStatusChartInstance.update();
-            }, 5000);
-
-            addLog('▶️ مانیتورینگ شروع شد', 'success');
-            showToast('▶️ مانیتورینگ شروع شد', 'success');
-        }
-    }
-
-    function refreshMonitor() {
-        if (cpuRamChartInstance) cpuRamChartInstance.update();
-        if (apiRequestsChartInstance) apiRequestsChartInstance.update();
-        if (dbStatusChartInstance) dbStatusChartInstance.update();
-        updateStats();
-        addLog('🔄 بروزرسانی دستی', 'info');
-        showToast('🔄 بروزرسانی شد', 'success');
-    }
-
-    // ============================================================
-    // TOAST
-    // ============================================================
-    function showToast(message, type = 'info') {
-        const colors = {
-            info: '#00d4ff',
-            success: '#00ff88',
-            error: '#ff4444',
-            warning: '#ff8800'
-        };
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        Object.assign(toast.style, {
-            position: 'fixed',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '10px 24px',
-            background: 'rgba(8,12,24,0.95)',
-            backdropFilter: 'blur(20px)',
-            border: `2px solid ${colors[type] || colors.info}`,
-            borderRadius: '10px',
-            color: '#e8eef7',
-            fontSize: '0.85rem',
-            zIndex: '9999',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-            transition: 'all 0.3s ease',
-            maxWidth: '90%'
-        });
-        document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => document.body.removeChild(toast), 300);
-        }, 3000);
-    }
-
-    // ============================================================
-    // AUTO START
-    // ============================================================
-    // راه‌اندازی خودکار وقتی تب باز میشه
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(message, type = 'info') {
+    const colors = {
+        info: '#00d4ff',
+        success: '#00ff88',
+        error: '#ff4444',
+        warning: '#ff8800'
+    };
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    Object.assign(toast.style, {
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '10px 24px',
+        background: 'rgba(8,12,24,0.95)',
+        backdropFilter: 'blur(20px)',
+        border: `2px solid ${colors[type] || colors.info}`,
+        borderRadius: '10px',
+        color: '#e8eef7',
+        fontSize: '0.85rem',
+        zIndex: '9999',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+        transition: 'all 0.3s ease',
+        maxWidth: '90%'
+    });
+    document.body.appendChild(toast);
     setTimeout(() => {
-        if (document.getElementById('monitorStatsBar')) {
-            init_monitor();
-        }
-    }, 100);
+        toast.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+
+// ============================================================
+// AUTO START
+// ============================================================
+// راه‌اندازی خودکار وقتی تب باز میشه
+setTimeout(() => {
+    if (document.getElementById('monitorStatsBar')) {
+        init_monitor();
+    }
+}, 100);
 </script>
