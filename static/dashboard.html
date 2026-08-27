@@ -22,7 +22,7 @@
         }
 
         /* ============================================================
-           HEADER (همون منوی اصلی)
+           HEADER
            ============================================================ */
         .header {
             background: rgba(8, 12, 24, 0.9);
@@ -161,7 +161,7 @@
         }
 
         /* ============================================================
-           TOP STATS CARDS (4 cards)
+           TOP STATS CARDS (4 cards - بدون CPU/RAM تکراری)
            ============================================================ */
         .stats-grid {
             display: grid;
@@ -512,7 +512,7 @@
     ============================================================ -->
     <div class="main-container">
 
-        <!-- ===== TOP STATS ===== -->
+        <!-- ===== TOP STATS (4 cards - بدون CPU/RAM تکراری) ===== -->
         <div class="stats-grid" id="statsGrid">
             <!-- Bitcoin -->
             <div class="stat-card">
@@ -535,16 +535,16 @@
                 <div class="stat-label">شاخص ترس و طمع</div>
                 <div class="stat-sub" id="fearGreedLabel">در حال بارگذاری...</div>
             </div>
-            <!-- System Status -->
+            <!-- اعتبار API -->
             <div class="stat-card">
-                <span class="stat-icon">⚙️</span>
-                <div class="stat-value green" id="systemStatus">✅</div>
-                <div class="stat-label">وضعیت سیستم</div>
-                <div class="stat-sub" id="systemSub">CPU: — | RAM: —</div>
+                <span class="stat-icon">💰</span>
+                <div class="stat-value green" id="apiCredits">—</div>
+                <div class="stat-label">اعتبار API</div>
+                <div class="stat-sub" id="apiStatusText">وضعیت: در حال بارگذاری...</div>
             </div>
         </div>
 
-        <!-- ===== MIDDLE: Model + System ===== -->
+        <!-- ===== MIDDLE: Model + System (با CPU و RAM در اینجا) ===== -->
         <div class="middle-grid">
 
             <!-- Model Status -->
@@ -560,7 +560,7 @@
                 </div>
             </div>
 
-            <!-- System Status Detailed -->
+            <!-- System Status Detailed (CPU و RAM اینجا هستند) -->
             <div class="info-card">
                 <div class="card-title"><i class="fas fa-server"></i> وضعیت سیستم</div>
                 <div class="info-grid" id="systemInfo">
@@ -692,7 +692,7 @@
         }
 
         function updateStats(m) {
-            // BTC (از API مستقیم - برای داشبورد)
+            // BTC (از API مستقیم)
             fetch('/test-api?type=coin&coin=bitcoin')
                 .then(res => res.json())
                 .then(data => {
@@ -736,34 +736,15 @@
                 })
                 .catch(() => {});
 
-            // System Status
-            const cpu = m.cpu || 0;
-            const ram = m.ram || 0;
-            const uptime = m.uptime || '0s';
-            const api = m.api_status || 'unknown';
-
-            document.getElementById('systemSub').textContent = `CPU: ${cpu}% | RAM: ${ram}%`;
-            document.getElementById('uptimeValue').textContent = uptime;
-
-            const statusEl = document.getElementById('systemStatus');
-            if (cpu > 80 || ram > 80 || api === 'error') {
-                statusEl.textContent = '⚠️';
-                statusEl.className = 'stat-value orange';
-            } else if (cpu > 60 || ram > 60 || api === 'degraded') {
-                statusEl.textContent = '🟡';
-                statusEl.className = 'stat-value orange';
-            } else {
-                statusEl.textContent = '✅';
-                statusEl.className = 'stat-value green';
-            }
+            // API Credits
+            const credits = m.api_credits || 0;
+            document.getElementById('apiCredits').textContent = credits.toLocaleString();
         }
 
         function updateModelInfo(m) {
             const loaded = m.model_loaded || false;
             const version = m.model_version || '—';
             const accuracy = m.model_accuracy;
-            const trainings = m.total_trainings || '—';
-            const samples = m.data_points_used || '—';
 
             const loadedEl = document.getElementById('modelLoaded');
             loadedEl.textContent = loaded ? '✅ فعال' : '📦 دمو';
@@ -771,8 +752,8 @@
 
             document.getElementById('modelVersion').textContent = version;
             document.getElementById('modelAccuracy').textContent = accuracy !== null ? (accuracy * 100).toFixed(1) + '%' : '—';
-            document.getElementById('modelTrainings').textContent = trainings;
-            document.getElementById('modelSamples').textContent = samples !== '—' ? samples.toLocaleString() : '—';
+            document.getElementById('modelTrainings').textContent = m.total_trainings || '—';
+            document.getElementById('modelSamples').textContent = m.data_points_used || '—';
             document.getElementById('modelLastTrain').textContent = m.last_update ? new Date(m.last_update).toLocaleString('fa-IR') : '—';
         }
 
@@ -790,16 +771,25 @@
             ramEl.textContent = ram + '%';
             ramEl.className = 'value ' + (ram > 80 ? 'red' : ram > 60 ? 'orange' : 'green');
 
+            document.getElementById('uptimeValue').textContent = m.uptime || '0s';
+
             const apiEl = document.getElementById('apiStatus');
+            const apiTextEl = document.getElementById('apiStatusText');
             if (api === 'ok') {
                 apiEl.textContent = '✅ سالم';
                 apiEl.className = 'value green';
+                apiTextEl.textContent = '✅ API متصل';
+                apiTextEl.style.color = '#00ff88';
             } else if (api === 'degraded') {
                 apiEl.textContent = '⚠️ ضعیف';
                 apiEl.className = 'value orange';
+                apiTextEl.textContent = '⚠️ API ضعیف';
+                apiTextEl.style.color = '#ff8800';
             } else {
                 apiEl.textContent = '❌ قطع';
                 apiEl.className = 'value red';
+                apiTextEl.textContent = '❌ API قطع';
+                apiTextEl.style.color = '#ff4444';
             }
 
             // Databases
@@ -817,7 +807,6 @@
         // 2. LOAD CHARTS
         // ============================================================
         function loadCharts() {
-            // دریافت داده از API
             Promise.all([
                 fetch('/model/status').then(r => r.json()),
                 fetch('/model/history').then(r => r.json())
@@ -1066,7 +1055,7 @@
             setInterval(loadCharts, 30000);
         });
 
-        console.log('🚀 Unified Dashboard v2.0 loaded');
+        console.log('🚀 Unified Dashboard v3.0 loaded');
     </script>
 
 </body>
