@@ -538,11 +538,6 @@ class TradingSignalSystem:
 # ۲.  کلاس متریک کالکتور
 # ============================================================
 
-
-# ============================================================
-# MetricsCollector - نسخه بهینه‌شده
-# ============================================================
-
 class MetricsCollector:
     def __init__(self):
         self.metrics = {
@@ -625,15 +620,15 @@ class MetricsCollector:
         except:
             self.metrics["uptime"] = "N/A"
     
-    def _collect_heavy_metrics(self):
+    
+     def _collect_heavy_metrics(self):
         """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
-
-        # ============================================================
-        # ✅ API Status - با import داخل تابع
-        # ============================================================
-
+    
+    # ============================================================
+    # ✅ API Status - با import داخل تابع
+    # ============================================================
         try:
-            from app import system
+            from app import system  # ← import داخل تابع
             status = system.api.get_status()
             if status and status.get('status') == 'ok':
                 self.metrics["api_status"] = "ok"
@@ -643,9 +638,9 @@ class MetricsCollector:
             self.metrics["api_status"] = "error"
             print(f"❌ API Status error: {e}")
     
-        # ============================================================
-        # ✅ Model Status
-        # ============================================================
+    # ============================================================
+    # ✅ Model Status
+    # ============================================================
         try:
             from app import system
             if system.model_manager:
@@ -656,10 +651,9 @@ class MetricsCollector:
         except Exception as e:
             print(f"❌ Model Status error: {e}")
     
-        # ============================================================
-        # ✅ Databases (با کش - هر ۱ دقیقه)
-        # ============================================================
-
+    # ============================================================
+    # ✅ Databases
+    # ============================================================
         try:
             from database import get_primary, get_cache, get_backup
             self.metrics["databases"] = {
@@ -668,8 +662,8 @@ class MetricsCollector:
                 "sqlite": get_backup() is not None and get_backup().is_connected()
             }
         except Exception as e:
-            print(f"❌ Databases error: {e}")
-    
+            print(f"❌ Databases error: {e}")   
+          
     def get_metrics(self):
         """دریافت آخرین متریک‌ها (با کش)"""
         return self.metrics
