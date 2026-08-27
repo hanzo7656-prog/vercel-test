@@ -531,7 +531,7 @@ class TradingSignalSystem:
 
 
 # ============================================================
-# MetricsCollector - نسخه بهینه‌شده با اصلاح تورفتگی
+# MetricsCollector - نسخه بهینه‌شده با فاصله جمع‌آوری هوشمند
 # ============================================================
 
 class MetricsCollector:
@@ -541,6 +541,7 @@ class MetricsCollector:
             "ram": 0,
             "uptime": "0s",
             "api_status": "unknown",
+            "api_credits": 0,
             "model_loaded": False,
             "model_version": "N/A",
             "model_accuracy": None,
@@ -549,13 +550,23 @@ class MetricsCollector:
         }
         self._running = False
         self._thread = None
-        self._cache = {}  # کش داخلی برای جلوگیری از درخواست‌های تکراری
-        self._cache_ttl = 10  # ثانیه
-
+        self._cache = {}
+        self._cache_ttl = 10
+        
         # زمان‌های آخرین بروزرسانی برای هر بخش
         self._last_update = {
-            "heavy": 0,  # داده‌های سنگین (دیتابیس)
-            "light": 0,  # داده‌های سبک (CPU, RAM)
+            "heavy": 0,      # داده‌های سنگین (دیتابیس) - هر ۶۰ ثانیه
+            "medium": 0,     # داده‌های متوسط (API) - هر ۳۰ ثانیه
+            "light": 0,      # داده‌های سبک (CPU, RAM) - هر ۱۰ ثانیه
+            "model": 0,      # داده‌های مدل - هر ۶۰ ثانیه (یا فقط در صورت آموزش)
+        }
+        
+        # تنظیمات فاصله زمانی (بر حسب ثانیه)
+        self.intervals = {
+            "light": 10,     # CPU, RAM, Uptime
+            "medium": 30,    # API Status, Credits
+            "heavy": 60,     # Databases
+            "model": 60,     # Model Status (فقط در صورت تغییر)
         }
 
     def start(self, interval=10):
@@ -569,9 +580,9 @@ class MetricsCollector:
                 try:
                     self._collect_all()
                     # لاگ مختصر (با فاصله)
-                    if int(time.time()) % 30 == 0:
-                        print(f"📊 Metrics: CPU={self.metrics['cpu']}%, RAM={self.metrics['ram']}%")
-                    time.sleep(interval)
+                    if int(time.time()) % 60 == 0:
+                        print(f"📊 Metrics: CPU={self.metrics['cpu']}%, RAM={self.metrics['ram']}%, API={self.metrics['api_status']}")
+                    time.sleep(interval)  # چرخه اصلی هر ۱۰ ثانیه
                 except Exception as e:
                     print(f"❌ Metrics error: {e}")
                     time.sleep(interval)
@@ -580,28 +591,34 @@ class MetricsCollector:
         self._thread.start()
         print("✅ MetricsCollector started (interval: 10s)")
 
-    def stop(self):
-        """متوقف کردن جمع‌آوری"""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2)
-
     def _collect_all(self):
-        """جمع‌آوری همه متریک‌ها"""
+        """جمع‌آوری همه متریک‌ها با اولویت‌بندی"""
         now = time.time()
 
-        # ۱. داده‌های سبک (هر بار)
-        self._collect_light_metrics()
+        # ۱. داده‌های سبک (هر ۱۰ ثانیه - اولویت بالا)
+        if now - self._last_update.get("light", 0) >= self.intervals["light"]:
+            self._collect_light_metrics()
+            self._last_update["light"] = now
 
-        # ۲. داده‌های سنگین (هر ۳۰ ثانیه یکبار)
-        if now - self._last_update.get("heavy", 0) > 30:
+        # ۲. داده‌های متوسط (هر ۳۰ ثانیه)
+        if now - self._last_update.get("medium", 0) >= self.intervals["medium"]:
+            self._collect_medium_metrics()
+            self._last_update["medium"] = now
+
+        # ۳. داده‌های سنگین (هر ۶۰ ثانیه)
+        if now - self._last_update.get("heavy", 0) >= self.intervals["heavy"]:
             self._collect_heavy_metrics()
             self._last_update["heavy"] = now
+
+        # ۴. داده‌های مدل (فقط در صورت تغییر یا هر ۶۰ ثانیه)
+        if now - self._last_update.get("model", 0) >= self.intervals["model"]:
+            self._collect_model_metrics()
+            self._last_update["model"] = now
 
         self.metrics["last_update"] = datetime.now().isoformat()
 
     def _collect_light_metrics(self):
-        """داده‌های سبک - هر بار جمع‌آوری میشن"""
+        """داده‌های سبک - هر ۱۰ ثانیه"""
         # CPU
         try:
             import psutil
@@ -624,38 +641,28 @@ class MetricsCollector:
         except:
             self.metrics["uptime"] = "N/A"
 
-    def _collect_heavy_metrics(self):
-        """داده‌های سنگین - هر ۳۰ ثانیه یکبار"""
-        # ============================================================
-        # ✅ API Status - با import داخل تابع
-        # ============================================================
+    def _collect_medium_metrics(self):
+        """داده‌های متوسط - هر ۳۰ ثانیه"""
+        # API Status
         try:
             from app import system
             status = system.api.get_status()
-            if status and status.get('status') == 'ok':
-                self.metrics["api_status"] = "ok"
-            else:
-                self.metrics["api_status"] = "degraded"
+            self.metrics["api_status"] = status.get("status", "unknown") if status else "unknown"
         except Exception as e:
             self.metrics["api_status"] = "error"
-            print(f"❌ API Status error: {e}")
 
-        # ============================================================
-        # ✅ Model Status
-        # ============================================================
+        # API Credits (با کش)
         try:
             from app import system
-            if system.model_manager:
-                self.metrics["model_loaded"] = system.model_manager.current_model is not None
-                self.metrics["model_version"] = system.model_manager.current_version or "N/A"
-                if hasattr(system, 'trainer'):
-                    self.metrics["model_accuracy"] = system.trainer.stats.get("last_score")
-        except Exception as e:
-            print(f"❌ Model Status error: {e}")
+            credits = system.api.get_credits()
+            if credits:
+                self.metrics["api_credits"] = credits.get("remainingCredits", 0)
+        except:
+            pass
 
-        # ============================================================
-        # ✅ Databases (با کش - هر ۱ دقیقه)
-        # ============================================================
+    def _collect_heavy_metrics(self):
+        """داده‌های سنگین - هر ۶۰ ثانیه"""
+        # Databases
         try:
             from database import get_primary, get_cache, get_backup
             self.metrics["databases"] = {
@@ -666,10 +673,28 @@ class MetricsCollector:
         except Exception as e:
             print(f"❌ Databases error: {e}")
 
+    def _collect_model_metrics(self):
+        """داده‌های مدل - فقط در صورت آموزش یا هر ۶۰ ثانیه"""
+        try:
+            from app import system
+            if system.model_manager:
+                loaded = system.model_manager.current_model is not None
+                if loaded != self.metrics["model_loaded"]:  # فقط در صورت تغییر
+                    self.metrics["model_loaded"] = loaded
+                    self.metrics["model_version"] = system.model_manager.current_version or "N/A"
+                    if hasattr(system, 'trainer'):
+                        self.metrics["model_accuracy"] = system.trainer.stats.get("last_score")
+        except Exception as e:
+            print(f"❌ Model Status error: {e}")
+
+    def force_update_model(self):
+        """强制执行 بروزرسانی مدل (بعد از آموزش)"""
+        self._collect_model_metrics()
+        self._last_update["model"] = time.time()
+
     def get_metrics(self):
-        """دریافت آخرین متریک‌ها (با کش)"""
+        """دریافت آخرین متریک‌ها"""
         return self.metrics
-        
 # ============================================================
 # راه‌اندازی وب سرویس Flask
 # ============================================================
