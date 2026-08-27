@@ -66,7 +66,7 @@ class PostgreSQLManager(DatabaseBase):
             return []
         
         try:
-            with self._connection_cursor as() cursor:
+            with self._connection.cursor as() cursor:
                 cursor.execute(query, params or ())
                 if query.strip().upper().startswith("SELECT"):
                     rows = cursor.fetchall()
