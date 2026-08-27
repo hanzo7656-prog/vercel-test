@@ -1,8 +1,7 @@
 # core/metrics.py
 # ============================================================
 # سیستم زمان‌بندی هوشمند برای جمع‌آوری متریک
-# جایگزین کامل monitor.py و MetricsCollector
-# نسخه ۲.۱ - با رفع مشکل حلقه اصلی
+# نسخه ۲.۲ - نهایی با اینتروال ۳ ثانیه
 # ============================================================
 
 import time
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class MetricLevel(Enum):
     """سطح اهمیت متریک"""
-    LIGHT = "light"      # هر ۵ ثانیه
+    LIGHT = "light"      # هر ۳ ثانیه
     MEDIUM = "medium"    # هر ۳۰ ثانیه
     HEAVY = "heavy"      # هر ۵ دقیقه
 
@@ -38,13 +37,13 @@ class MetricConfig:
 class MetricsScheduler:
     """
     سیستم جامع جمع‌آوری متریک با زمان‌بندی هوشمند
-    جایگزین MetricsCollector و SystemMonitor
     """
     
     def __init__(self):
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        self._restart_count = 0
         
         # تنظیمات متریک‌ها
         self.configs = self._load_configs()
@@ -75,7 +74,7 @@ class MetricsScheduler:
         self._last_report_time = 0
         self._report_interval = 21600  # ۶ ساعت
         
-        logger.info("✅ MetricsScheduler initialized")
+        logger.info("✅ MetricsScheduler v2.2 initialized")
     
     def _load_configs(self) -> Dict[str, MetricConfig]:
         """بارگذاری تنظیمات از فایل یا پیش‌فرض"""
@@ -100,19 +99,19 @@ class MetricsScheduler:
         return self._get_default_configs()
     
     def _get_default_configs(self) -> Dict[str, MetricConfig]:
-        """تنظیمات پیش‌فرض"""
+        """تنظیمات پیش‌فرض با اینتروال ۳ ثانیه برای CPU/RAM"""
         return {
-            # ===== سبک (هر ۵ ثانیه) =====
-            "cpu": MetricConfig("cpu", MetricLevel.LIGHT, 5),
-            "ram": MetricConfig("ram", MetricLevel.LIGHT, 5),
+            # ===== سبک (هر ۳ ثانیه) =====
+            "cpu": MetricConfig("cpu", MetricLevel.LIGHT, 3),
+            "ram": MetricConfig("ram", MetricLevel.LIGHT, 3),
             "uptime": MetricConfig("uptime", MetricLevel.LIGHT, 5),
-            "process_count": MetricConfig("process_count", MetricLevel.LIGHT, 5),
+            "process_count": MetricConfig("process_count", MetricLevel.LIGHT, 10),
             
             # ===== متوسط (هر ۳۰ ثانیه) =====
             "api_status": MetricConfig("api_status", MetricLevel.MEDIUM, 30),
-            "api_credits": MetricConfig("api_credits", MetricLevel.MEDIUM, 30),
+            "api_credits": MetricConfig("api_credits", MetricLevel.MEDIUM, 60),
             "model_status": MetricConfig("model_status", MetricLevel.MEDIUM, 30),
-            "active_users": MetricConfig("active_users", MetricLevel.MEDIUM, 30),
+            "active_users": MetricConfig("active_users", MetricLevel.MEDIUM, 60),
             
             # ===== سنگین (هر ۵ دقیقه) =====
             "database_size": MetricConfig("database_size", MetricLevel.HEAVY, 300),
@@ -126,32 +125,38 @@ class MetricsScheduler:
     def _get_default_interval(self, level: MetricLevel) -> int:
         """فاصله زمانی پیش‌فرض بر اساس سطح"""
         if level == MetricLevel.LIGHT:
-            return 5
+            return 3  # ← ۳ ثانیه
         elif level == MetricLevel.MEDIUM:
             return 30
-        else:  # HEAVY
+        else:
             return 300
     
     # ============================================================
-    # کنترل Start/Stop
+    # کنترل Start/Stop (با محافظت از ترد)
     # ============================================================
     
     def start(self):
-        """شروع زمان‌بند"""
+        """شروع زمان‌بند با محافظت از ترد"""
         if self._running:
-            logger.warning("⏳ Scheduler already running")
-            return
+            # اگر ترد مرده ولی flag true است، ری‌ست کن
+            if self._thread and not self._thread.is_alive():
+                logger.warning("⚠️ Thread is dead but _running is True. Resetting...")
+                self._running = False
+                self._thread = None
+            else:
+                logger.warning("⏳ Scheduler already running")
+                return
         
         self._running = True
         self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self._thread.start()
         logger.info("✅ Metrics Scheduler started")
         
-        # ✅ جمع‌آوری اولیه برای اینکه cache خالی نباشد
+        # جمع‌آوری اولیه
         self._collect_initial_metrics()
     
     def _collect_initial_metrics(self):
-        """جمع‌آوری اولیه متریک‌ها برای پر کردن cache"""
+        """جمع‌آوری اولیه متریک‌ها"""
         logger.info("🔄 Collecting initial metrics...")
         for name, config in self.configs.items():
             if config.enabled:
@@ -170,10 +175,11 @@ class MetricsScheduler:
         self._running = False
         if self._thread:
             self._thread.join(timeout=2)
+            self._thread = None
         logger.info("⏹️ Metrics Scheduler stopped")
     
     # ============================================================
-    # حلقه اصلی زمان‌بندی (✅ اصلاح شده)
+    # حلقه اصلی زمان‌بندی (با محافظت از خطا)
     # ============================================================
     
     def _scheduler_loop(self):
@@ -186,11 +192,11 @@ class MetricsScheduler:
                 now = time.time()
                 loop_count += 1
                 
-                # هر ۱۰ ثانیه یکبار لاگ بزن که زنده است
+                # هر ۱۰ ثانیه یکبار لاگ زنده بودن
                 if loop_count % 10 == 0:
                     logger.debug(f"🏃 Scheduler loop alive (cycle {loop_count})")
                 
-                # ۱. جمع‌آوری متریک‌ها
+                # جمع‌آوری متریک‌ها
                 for name, config in self.configs.items():
                     if not config.enabled:
                         continue
@@ -204,17 +210,19 @@ class MetricsScheduler:
                         self.stats["collections_by_level"][config.level.value] += 1
                         
                         # لاگ برای متریک‌های مهم
-                        if name in ["cpu", "ram", "api_status"]:
-                            logger.info(f"📊 {name}: {config.last_value} ({config.level.value})")
+                        if name in ["cpu", "ram"]:
+                            logger.info(f"📊 {name}: {config.last_value}% ({config.level.value})")
+                        elif name == "api_status":
+                            logger.info(f"📊 {name}: {config.last_value}")
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 
-                # ۲. گزارش دوره‌ای (هر ۶ ساعت)
+                # گزارش دوره‌ای
                 if now - self._last_report_time >= self._report_interval:
                     self._send_periodic_report()
                     self._last_report_time = now
                 
-                time.sleep(0.5)  # هر نیم ثانیه یکبار چک می‌کند
+                time.sleep(0.5)
                 
             except Exception as e:
                 logger.error(f"❌ Scheduler error: {e}")
@@ -232,7 +240,6 @@ class MetricsScheduler:
         try:
             value = None
             
-            # تابع جمع‌آوری مناسب
             collectors = {
                 "cpu": self._collect_cpu,
                 "ram": self._collect_ram,
@@ -270,8 +277,6 @@ class MetricsScheduler:
     # توابع جمع‌آوری اختصاصی
     # ============================================================
     
-    # ----- سبک (Light) -----
-    
     def _collect_cpu(self) -> float:
         try:
             return psutil.cpu_percent(interval=0.2)
@@ -301,15 +306,12 @@ class MetricsScheduler:
         except:
             return 0
     
-    # ----- متوسط (Medium) -----
-    
     def _collect_api_status(self) -> str:
         try:
             from core.system import system
             status = system.api.get_status()
             return status.get("status", "unknown") if status else "unknown"
-        except Exception as e:
-            logger.debug(f"API status error: {e}")
+        except:
             return "error"
     
     def _collect_api_credits(self) -> int:
@@ -339,8 +341,6 @@ class MetricsScheduler:
             return len(auth._sessions) if hasattr(auth, '_sessions') else 0
         except:
             return 0
-    
-    # ----- سنگین (Heavy) -----
     
     def _collect_database_size(self) -> float:
         try:
@@ -398,7 +398,6 @@ class MetricsScheduler:
         return 0
     
     def _collect_databases(self) -> Dict:
-        """وضعیت اتصال دیتابیس‌ها"""
         try:
             from database import health_check
             health = health_check()
@@ -419,9 +418,8 @@ class MetricsScheduler:
     # ============================================================
     
     def _send_periodic_report(self):
-        """ارسال گزارش دوره‌ای (جایگزین SystemMonitor)"""
+        """ارسال گزارش دوره‌ای"""
         try:
-            summary = self.get_summary()
             cache = self.metrics_cache
             
             report = f"""
@@ -431,19 +429,16 @@ class MetricsScheduler:
 ⚙️ *مصرف منابع*
 - CPU: {cache.get('cpu', {}).get('value', 0)}%
 - RAM: {cache.get('ram', {}).get('value', 0)}%
-- Disk: {cache.get('disk_space', {}).get('value', {}).get('percent', 0)}%
 
 🔌 *وضعیت سرویس‌ها*
 - API: {cache.get('api_status', {}).get('value', 'unknown')}
 - مدل: {'فعال' if cache.get('model_status', {}).get('value', {}).get('loaded') else 'غیرفعال'}
 
 📊 *آمار جمع‌آوری*
-- کل جمع‌آوری‌ها: {summary['total_collections']}
-- خطاها: {summary['errors']}
-- حجم تاریخچه: {summary['history_size']}
+- کل جمع‌آوری‌ها: {self.stats['collections']}
+- خطاها: {self.stats['errors']}
 """
             
-            # ارسال به تلگرام
             try:
                 from alerter import alerter
                 if alerter.telegram_enabled:
@@ -466,7 +461,6 @@ class MetricsScheduler:
     # ============================================================
     
     def _add_to_history(self, name: str, value: Any):
-        """افزودن به تاریخچه"""
         self.history.append({
             "name": name,
             "value": value,
@@ -480,7 +474,6 @@ class MetricsScheduler:
     # ============================================================
     
     def get_metrics(self) -> Dict[str, Any]:
-        """دریافت آخرین متریک‌ها"""
         return {
             "metrics": self.metrics_cache,
             "stats": self.stats,
@@ -488,13 +481,11 @@ class MetricsScheduler:
         }
     
     def get_history(self, name: Optional[str] = None, limit: int = 100) -> List:
-        """دریافت تاریخچه"""
         if name:
             return [h for h in self.history[-limit:] if h["name"] == name]
         return self.history[-limit:]
     
     def get_summary(self) -> Dict:
-        """خلاصه وضعیت"""
         return {
             "status": "running" if self._running else "stopped",
             "total_collections": self.stats["collections"],
@@ -507,9 +498,7 @@ class MetricsScheduler:
         }
     
     def get_alert_metrics(self) -> Dict:
-        """متریک‌های مورد نیاز برای Alerter و SelfHealer"""
         cache = self.metrics_cache
-        
         return {
             "cpu": cache.get("cpu", {}).get("value", 0),
             "ram": cache.get("ram", {}).get("value", 0),
@@ -523,9 +512,7 @@ class MetricsScheduler:
         }
     
     def get_dashboard_metrics(self) -> Dict:
-        """داده‌های خلاصه برای داشبورد"""
         cache = self.metrics_cache
-        
         model_status = cache.get("model_status", {}).get("value", {})
         model_accuracy = cache.get("model_accuracy", {}).get("value", 0)
         
@@ -554,105 +541,48 @@ class MetricsScheduler:
         }
     
     def get_health(self) -> Dict:
-        """بررسی کامل سلامت (جایگزین health_check قدیمی)"""
         cache = self.metrics_cache
         
-        # CPU
         cpu = cache.get("cpu", {}).get("value", 0)
-        cpu_status = "healthy"
-        if cpu > 90:
-            cpu_status = "critical"
-        elif cpu > 70:
-            cpu_status = "warning"
+        cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
         
-        # RAM
         ram = cache.get("ram", {}).get("value", 0)
-        ram_status = "healthy"
-        if ram > 90:
-            ram_status = "critical"
-        elif ram > 70:
-            ram_status = "warning"
+        ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
         
-        # API
         api = cache.get("api_status", {}).get("value", "unknown")
-        if api == "ok":
-            api_status = "healthy"
-        elif api == "degraded":
-            api_status = "degraded"
-        else:
-            api_status = "unhealthy"
+        api_status = "healthy" if api == "ok" else "degraded" if api == "degraded" else "unhealthy"
         
-        # مدل
         model_loaded = cache.get("model_status", {}).get("value", {}).get("loaded", False)
         model_status = "healthy" if model_loaded else "degraded"
         
-        # دیتابیس
         db_status = cache.get("databases", {}).get("value", {})
         all_connected = all(db_status.values())
         db_health = "healthy" if all_connected else "degraded"
         
-        # دیسک
-        disk = cache.get("disk_space", {}).get("value", {})
-        disk_percent = disk.get("percent", 0)
-        disk_status = "healthy"
-        if disk_percent > 90:
-            disk_status = "critical"
-        elif disk_percent > 80:
-            disk_status = "warning"
-        
-        # وضعیت کلی
         overall = "ok"
-        if any(s == "critical" for s in [cpu_status, ram_status, disk_status]):
+        if cpu_status == "critical" or ram_status == "critical":
             overall = "critical"
-        elif any(s in ["degraded", "warning", "unhealthy"] for s in [cpu_status, ram_status, api_status, model_status, db_health, disk_status]):
+        elif any(s in ["degraded", "warning", "unhealthy"] for s in [cpu_status, ram_status, api_status, model_status, db_health]):
             overall = "degraded"
         
         return {
             "status": overall,
             "timestamp": datetime.now().isoformat(),
             "components": {
-                "cpu": {
-                    "status": cpu_status,
-                    "value": round(cpu, 1),
-                    "message": f"مصرف CPU: {cpu}%"
-                },
-                "ram": {
-                    "status": ram_status,
-                    "value": round(ram, 1),
-                    "message": f"مصرف RAM: {ram}%"
-                },
-                "api": {
-                    "status": api_status,
-                    "message": f"وضعیت API: {api}"
-                },
-                "model": {
-                    "status": model_status,
-                    "loaded": model_loaded,
-                    "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
-                    "message": "مدل بارگذاری شده" if model_loaded else "حالت DEMO"
-                },
-                "database": {
-                    "status": db_health,
-                    "databases": db_status,
-                    "message": "همه دیتابیس‌ها متصل هستند" if all_connected else "برخی دیتابیس‌ها قطع هستند"
-                },
-                "disk": {
-                    "status": disk_status,
-                    "free_gb": disk.get("free_gb", 0),
-                    "percent": disk_percent,
-                    "message": f"فضای خالی: {disk.get('free_gb', 0)}GB"
-                }
+                "cpu": {"status": cpu_status, "value": round(cpu, 1)},
+                "ram": {"status": ram_status, "value": round(ram, 1)},
+                "api": {"status": api_status},
+                "model": {"status": model_status, "loaded": model_loaded},
+                "database": {"status": db_health, "databases": db_status},
             }
         }
     
     def update_interval(self, metric_name: str, interval: int):
-        """به‌روزرسانی فاصله زمانی یک متریک"""
         if metric_name in self.configs:
             self.configs[metric_name].interval = interval
             logger.info(f"✅ {metric_name} interval updated to {interval}s")
     
     def enable_metric(self, metric_name: str, enabled: bool):
-        """فعال/غیرفعال کردن یک متریک"""
         if metric_name in self.configs:
             self.configs[metric_name].enabled = enabled
             logger.info(f"✅ {metric_name} {'enabled' if enabled else 'disabled'}")
