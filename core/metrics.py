@@ -1,7 +1,7 @@
 # core/metrics.py
 # ============================================================
 # سیستم زمان‌بندی هوشمند برای جمع‌آوری متریک
-# نسخه ۲.۳ - با محافظت از ترد و ری‌استارت خودکار
+# نسخه ۲.۴ - با واتچ‌داگ داخلی و ری‌استارت خودکار
 # ============================================================
 
 import time
@@ -37,16 +37,18 @@ class MetricConfig:
 class MetricsScheduler:
     """
     سیستم جامع جمع‌آوری متریک با زمان‌بندی هوشمند
-    نسخه ۲.۳ - با محافظت از ترد و ری‌استارت خودکار
+    نسخه ۲.۴ - با واتچ‌داگ داخلی
     """
     
     def __init__(self):
         self._running = False
         self._thread: Optional[threading.Thread] = None
+        self._watchdog_thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
         self._restart_count = 0
         self._last_heartbeat = time.time()
         self._heartbeat_timeout = 30  # ۳۰ ثانیه بدون ضربان = مرده
+        self._stop_watchdog = False
         
         # تنظیمات متریک‌ها
         self.configs = self._load_configs()
@@ -63,6 +65,7 @@ class MetricsScheduler:
             "collections": 0,
             "errors": 0,
             "restarts": 0,
+            "watchdog_restarts": 0,
             "last_collection": None,
             "collections_by_level": {
                 "light": 0,
@@ -78,31 +81,56 @@ class MetricsScheduler:
         self._last_report_time = 0
         self._report_interval = 21600  # ۶ ساعت
         
-        # ✅ شروع واتچ‌داگ برای نظارت بر ترد
-        self._start_watchdog()
+        logger.info("✅ MetricsScheduler v2.4 initialized")
         
-        logger.info("✅ MetricsScheduler v2.3 initialized with watchdog")
+        # ✅ شروع خودکار واتچ‌داگ
+        self._start_watchdog()
+    
+    # ============================================================
+    # واتچ‌داگ داخلی (قوی و مستقل)
+    # ============================================================
     
     def _start_watchdog(self):
-        """شروع واتچ‌داگ برای نظارت بر سلامت ترد"""
-        def watchdog():
-            while True:
-                time.sleep(10)  # هر ۱۰ ثانیه چک کن
-                if self._running:
-                    # اگر ترد مرده بود یا ضربان نداشت، ری‌استارت کن
-                    if not self._is_thread_alive():
-                        logger.warning("⚠️ Watchdog: Thread is dead! Restarting...")
-                        self._restart_scheduler()
-                    elif time.time() - self._last_heartbeat > self._heartbeat_timeout:
-                        logger.warning("⚠️ Watchdog: Heartbeat timeout! Restarting...")
-                        self._restart_scheduler()
+        """شروع واتچ‌داگ داخلی برای نظارت بر سلامت ترد"""
+        if self._watchdog_thread and self._watchdog_thread.is_alive():
+            return
         
-        watch_thread = threading.Thread(target=watchdog, daemon=True)
-        watch_thread.start()
-        logger.info("✅ Watchdog started")
+        self._stop_watchdog = False
+        self._watchdog_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
+        self._watchdog_thread.start()
+        logger.info("✅ Internal Watchdog started")
+    
+    def _watchdog_loop(self):
+        """حلقه واتچ‌داگ - هر ۵ ثانیه چک می‌کند"""
+        logger.info("🔄 Watchdog loop started")
+        
+        while not self._stop_watchdog:
+            try:
+                time.sleep(5)  # هر ۵ ثانیه چک کن
+                
+                # اگر Scheduler متوقف شده بود، کاری نکن
+                if not self._running:
+                    continue
+                
+                # ۱. بررسی اینکه ترد اصلی زنده است؟
+                thread_is_dead = not self._is_thread_alive()
+                
+                # ۲. بررسی ضربان قلب
+                heartbeat_timeout = (time.time() - self._last_heartbeat) > self._heartbeat_timeout
+                
+                if thread_is_dead or heartbeat_timeout:
+                    reason = "thread dead" if thread_is_dead else "heartbeat timeout"
+                    logger.warning(f"⚠️ Watchdog detected: {reason}. Restarting...")
+                    self._restart_scheduler()
+                    
+            except Exception as e:
+                logger.error(f"❌ Watchdog error: {e}")
+                time.sleep(1)
+        
+        logger.info("⏹️ Watchdog loop stopped")
     
     def _is_thread_alive(self) -> bool:
-        """بررسی زنده بودن ترد"""
+        """بررسی زنده بودن ترد اصلی"""
         return self._thread is not None and self._thread.is_alive()
     
     def _restart_scheduler(self):
@@ -110,10 +138,13 @@ class MetricsScheduler:
         with self._lock:
             self._restart_count += 1
             self.stats["restarts"] = self._restart_count
+            self.stats["watchdog_restarts"] = self.stats.get("watchdog_restarts", 0) + 1
             logger.info(f"🔄 Restarting scheduler (attempt #{self._restart_count})")
             
             # توقف کامل
+            old_running = self._running
             self._running = False
+            
             if self._thread:
                 self._thread.join(timeout=2)
                 self._thread = None
@@ -123,62 +154,8 @@ class MetricsScheduler:
             self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
             self._thread.start()
             self._last_heartbeat = time.time()
-            logger.info(f"✅ Scheduler restarted successfully (attempt #{self._restart_count})")
-    
-    def _load_configs(self) -> Dict[str, MetricConfig]:
-        """بارگذاری تنظیمات از فایل یا پیش‌فرض"""
-        try:
-            from config import get_config
-            metrics_config = get_config("metrics", {})
             
-            if metrics_config:
-                configs = {}
-                for name, cfg in metrics_config.items():
-                    level = MetricLevel(cfg.get("level", "light"))
-                    configs[name] = MetricConfig(
-                        name=name,
-                        level=level,
-                        interval=cfg.get("interval", self._get_default_interval(level)),
-                        enabled=cfg.get("enabled", True)
-                    )
-                return configs
-        except:
-            pass
-        
-        return self._get_default_configs()
-    
-    def _get_default_configs(self) -> Dict[str, MetricConfig]:
-        """تنظیمات پیش‌فرض با اینتروال ۳ ثانیه برای CPU/RAM"""
-        return {
-            # ===== سبک (هر ۳ ثانیه) =====
-            "cpu": MetricConfig("cpu", MetricLevel.LIGHT, 3),
-            "ram": MetricConfig("ram", MetricLevel.LIGHT, 3),
-            "uptime": MetricConfig("uptime", MetricLevel.LIGHT, 5),
-            "process_count": MetricConfig("process_count", MetricLevel.LIGHT, 10),
-            
-            # ===== متوسط (هر ۳۰ ثانیه) =====
-            "api_status": MetricConfig("api_status", MetricLevel.MEDIUM, 30),
-            "api_credits": MetricConfig("api_credits", MetricLevel.MEDIUM, 60),
-            "model_status": MetricConfig("model_status", MetricLevel.MEDIUM, 30),
-            "active_users": MetricConfig("active_users", MetricLevel.MEDIUM, 60),
-            
-            # ===== سنگین (هر ۵ دقیقه) =====
-            "database_size": MetricConfig("database_size", MetricLevel.HEAVY, 300),
-            "disk_space": MetricConfig("disk_space", MetricLevel.HEAVY, 300),
-            "error_logs": MetricConfig("error_logs", MetricLevel.HEAVY, 300),
-            "full_health": MetricConfig("full_health", MetricLevel.HEAVY, 300),
-            "model_accuracy": MetricConfig("model_accuracy", MetricLevel.HEAVY, 300),
-            "databases": MetricConfig("databases", MetricLevel.HEAVY, 300),
-        }
-    
-    def _get_default_interval(self, level: MetricLevel) -> int:
-        """فاصله زمانی پیش‌فرض بر اساس سطح"""
-        if level == MetricLevel.LIGHT:
-            return 3
-        elif level == MetricLevel.MEDIUM:
-            return 30
-        else:
-            return 300
+            logger.info(f"✅ Scheduler restarted successfully (restart #{self._restart_count})")
     
     # ============================================================
     # کنترل Start/Stop
@@ -187,7 +164,7 @@ class MetricsScheduler:
     def start(self):
         """شروع زمان‌بند"""
         if self._running and self._is_thread_alive():
-            logger.warning("⏳ Scheduler already running")
+            logger.info("⏳ Scheduler already running")
             return
         
         with self._lock:
@@ -215,6 +192,15 @@ class MetricsScheduler:
             self._thread = None
         logger.info("⏹️ Metrics Scheduler stopped")
     
+    def shutdown(self):
+        """توقف کامل (شامل واتچ‌داگ)"""
+        self._stop_watchdog = True
+        self.stop()
+        if self._watchdog_thread:
+            self._watchdog_thread.join(timeout=2)
+            self._watchdog_thread = None
+        logger.info("⏹️ Metrics Scheduler fully shutdown")
+    
     def _collect_initial_metrics(self):
         """جمع‌آوری اولیه متریک‌ها"""
         logger.info("🔄 Collecting initial metrics...")
@@ -231,7 +217,7 @@ class MetricsScheduler:
         logger.info(f"✅ Initial collection done. Metrics: {list(self.metrics_cache.keys())}")
     
     # ============================================================
-    # حلقه اصلی زمان‌بندی (با ضربان قلب)
+    # حلقه اصلی زمان‌بندی
     # ============================================================
     
     def _scheduler_loop(self):
@@ -244,13 +230,9 @@ class MetricsScheduler:
                 now = time.time()
                 loop_count += 1
                 
-                # ✅ به‌روزرسانی ضربان قلب
-                if loop_count % 2 == 0:  # هر ۲ سیکل (حدود ۱ ثانیه)
+                # به‌روزرسانی ضربان قلب (هر ۲ سیکل)
+                if loop_count % 2 == 0:
                     self._last_heartbeat = now
-                
-                # هر ۱۰ ثانیه یکبار لاگ زنده بودن
-                if loop_count % 20 == 0:
-                    logger.debug(f"🏃 Scheduler loop alive (cycle {loop_count})")
                 
                 # جمع‌آوری متریک‌ها
                 for name, config in self.configs.items():
@@ -267,7 +249,7 @@ class MetricsScheduler:
                         
                         # لاگ برای متریک‌های مهم
                         if name in ["cpu", "ram"]:
-                            logger.info(f"📊 {name}: {config.last_value}% ({config.level.value})")
+                            logger.info(f"📊 {name}: {config.last_value}%")
                         elif name == "api_status":
                             logger.info(f"📊 {name}: {config.last_value}")
                 
@@ -494,6 +476,7 @@ class MetricsScheduler:
 - کل جمع‌آوری‌ها: {self.stats['collections']}
 - خطاها: {self.stats['errors']}
 - ری‌استارت‌ها: {self.stats['restarts']}
+- ری‌استارت توسط واتچ‌داگ: {self.stats.get('watchdog_restarts', 0)}
 """
             
             try:
@@ -548,6 +531,7 @@ class MetricsScheduler:
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
             "restarts": self.stats["restarts"],
+            "watchdog_restarts": self.stats.get("watchdog_restarts", 0),
             "metrics_count": len(self.metrics_cache),
             "history_size": len(self.history),
             "collections_by_level": self.stats["collections_by_level"],
