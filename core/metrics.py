@@ -1,7 +1,7 @@
 # core/metrics.py
 # ============================================================
 # سیستم جمع‌آوری متریک با threading ساده (بدون APScheduler)
-# نسخه ۵.۰ - نهایی و پایدار
+# نسخه ۵.۰ - با زمان‌بندی هوشمند از Config
 # ============================================================
 
 import time
@@ -10,6 +10,8 @@ import psutil
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
+
+from config import get_scheduler_config
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ class MetricsScheduler:
     - بدون APScheduler
     - بدون وابستگی
     - ۱۰۰٪ پایدار در Gunicorn
+    - ✅ زمان‌بندی از Config
     """
     
     def __init__(self):
@@ -36,7 +39,14 @@ class MetricsScheduler:
         }
         self.start_time = time.time()
         
-        logger.info("✅ MetricsScheduler v5.0 initialized (threading)")
+        # ✅ دریافت تنظیمات از Config
+        scheduler_config = get_scheduler_config()
+        self.light_interval = scheduler_config.get("light_interval", 3)
+        self.medium_interval = scheduler_config.get("medium_interval", 30)
+        self.heavy_interval = scheduler_config.get("heavy_interval", 300)
+        
+        logger.info(f"✅ MetricsScheduler v5.0 initialized (threading)")
+        logger.info(f"⏱️ Intervals: Light={self.light_interval}s, Medium={self.medium_interval}s, Heavy={self.heavy_interval}s")
     
     # ============================================================
     # حلقه اصلی
@@ -54,25 +64,25 @@ class MetricsScheduler:
             try:
                 now = time.time()
                 
-                # هر ۳ ثانیه (Light: CPU, RAM, uptime)
-                if now - last_light >= 3:
+                # هر light_interval ثانیه (Light: CPU, RAM, uptime)
+                if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
-                    logger.debug(f"🔄 Light metrics collected (CPU: {self.metrics_cache.get('cpu', {}).get('value')}%)")
+                    logger.debug(f"🔄 Light metrics collected")
                 
-                # هر ۳۰ ثانیه (Medium: API, Model)
-                if now - last_medium >= 30:
+                # هر medium_interval ثانیه (Medium: API, Model)
+                if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
                     logger.debug(f"🔄 Medium metrics collected")
                 
-                # هر ۵ دقیقه (Heavy: Database, Disk)
-                if now - last_heavy >= 300:
+                # هر heavy_interval ثانیه (Heavy: Database, Disk)
+                if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     logger.debug(f"🔄 Heavy metrics collected")
                 
-                # هر ۱ ثانیه چک کن (نه sleep طولانی)
+                # هر ۱ ثانیه چک کن
                 time.sleep(1)
                 
             except Exception as e:
@@ -254,7 +264,6 @@ class MetricsScheduler:
     # ============================================================
     
     def start(self):
-        """شروع Scheduler"""
         if self._running:
             logger.info("⏳ Scheduler already running")
             return
@@ -272,7 +281,6 @@ class MetricsScheduler:
         self._collect_heavy_metrics()
     
     def stop(self):
-        """متوقف کردن Scheduler"""
         self._running = False
         self._stop_event.set()
         if self._thread:
