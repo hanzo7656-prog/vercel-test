@@ -674,7 +674,7 @@
         }
 
         // ============================================================
-        // ✅ LIVE CHART UPDATES - مستقیماً از API
+        // ✅ LIVE CHART UPDATES
         // ============================================================
         function updateLiveCharts() {
             const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
@@ -686,12 +686,10 @@
                         const metrics = data.data.metrics || {};
                         const stats = data.data.stats || {};
                         
-                        // گرفتن مقادیر واقعی از API
                         const cpu = metrics.cpu?.value || 0;
                         const ram = metrics.ram?.value || 0;
                         const apiCount = stats.collections || 0;
                         
-                        // اضافه کردن به داده‌های نمودار
                         cpuData.push(cpu);
                         if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
                         
@@ -704,7 +702,6 @@
                         timeLabels.push(now);
                         if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
                         
-                        // بروزرسانی نمودار CPU/RAM
                         if (cpuRamChartInstance) {
                             cpuRamChartInstance.data.labels = timeLabels;
                             cpuRamChartInstance.data.datasets[0].data = cpuData;
@@ -712,25 +709,18 @@
                             cpuRamChartInstance.update('none');
                         }
                         
-                        // بروزرسانی نمودار API
                         if (apiRequestsChartInstance) {
                             apiRequestsChartInstance.data.labels = timeLabels;
                             apiRequestsChartInstance.data.datasets[0].data = apiData;
                             apiRequestsChartInstance.update('none');
                         }
-                        
-                        // بروزرسانی کارت‌های وضعیت (اگر وجود دارند)
-                        const cpuEl = document.getElementById('cpuValue');
-                        const ramEl = document.getElementById('ramValue');
-                        if (cpuEl) cpuEl.textContent = cpu + '%';
-                        if (ramEl) ramEl.textContent = ram + '%';
                     }
                 })
                 .catch(err => console.error('Live chart error:', err));
         }
 
         // ============================================================
-        // UPDATE ALL STATS
+        // ✅ UPDATE ALL STATS (بهینه شده)
         // ============================================================
         let isUpdating = false;
 
@@ -738,39 +728,28 @@
             if (isUpdating) return;
             isUpdating = true;
 
+            // ✅ فقط ۳ درخواست ضروری (قبلاً ۶ درخواست)
             Promise.all([
-                fetch('/api/metrics').then(r => r.json()).catch(() => ({ success: false })),
-                fetch('/test-api?type=coin&coin=bitcoin').then(r => r.json()).catch(() => ({ success: false })),
-                fetch('/test-api?type=coin&coin=ethereum').then(r => r.json()).catch(() => ({ success: false })),
-                fetch('/test-api?type=fear_greed').then(r => r.json()).catch(() => ({ success: false })),
-                fetch('/model/history').then(r => r.json()).catch(() => ({ success: false, data: [] })),
-                fetch('/api/alerts?limit=5').then(r => r.json()).catch(() => ({ success: false, data: [] }))
+                fetch('/api/metrics'),           // ✅ بدون هزینه (از Scheduler)
+                fetch('/model/history'),         // ✅ بدون هزینه (از دیتابیس)
+                fetch('/api/alerts?limit=5')     // ✅ بدون هزینه (از دیتابیس)
             ])
-            .then(([metricsData, btcData, ethData, fgData, historyData, alertsData]) => {
-                if (metricsData.success) updateMetricsUI(metricsData.data);
-                if (btcData.success) {
-                    const btc = btcData.data;
-                    document.getElementById('btcPrice').textContent = '$' + (btc.price || 0).toLocaleString();
-                    const change = btc.priceChange1d || 0;
-                    const el = document.getElementById('btcChange');
-                    el.textContent = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
-                    el.style.color = change >= 0 ? '#00ff88' : '#ff4444';
+            .then(([metricsData, historyData, alertsData]) => {
+                // ۱. بروزرسانی متریک‌ها
+                if (metricsData.success) {
+                    updateMetricsUI(metricsData.data);
                 }
-                if (ethData.success) {
-                    const eth = ethData.data;
-                    document.getElementById('ethPrice').textContent = '$' + (eth.price || 0).toLocaleString();
-                    const change = eth.priceChange1d || 0;
-                    const el = document.getElementById('ethChange');
-                    el.textContent = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
-                    el.style.color = change >= 0 ? '#00ff88' : '#ff4444';
+                
+                // ۲. بروزرسانی نمودارها
+                if (historyData.success) {
+                    updateTrainingCharts(historyData.data || []);
                 }
-                if (fgData.success) {
-                    const fg = fgData.data.now || fgData.data;
-                    document.getElementById('fearGreedValue').textContent = fg.value || 50;
-                    document.getElementById('fearGreedLabel').textContent = fg.value_classification || 'Neutral';
+                
+                // ۳. بروزرسانی هشدارها
+                if (alertsData.success) {
+                    updateAlertsUI(alertsData.data || []);
                 }
-                if (historyData.success) updateTrainingCharts(historyData.data || []);
-                if (alertsData.success) updateAlertsUI(alertsData.data || []);
+                
                 updateStatusDot();
                 isUpdating = false;
             })
@@ -924,20 +903,20 @@
         }
 
         // ============================================================
-        // ✅ INIT - با بروزرسانی هر ۳ ثانیه
+        // ✅ INIT - با زمان‌بندی بهینه
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
             updateAllStats();
             
-            // ✅ بروزرسانی هر ۳ ثانیه
+            // ✅ نمودارها هر ۳ ثانیه
             setInterval(updateLiveCharts, 3000);
             
-            // بروزرسانی کامل هر ۱۵ ثانیه
-            setInterval(updateAllStats, 15000);
+            // ✅ داده‌های کامل هر ۶۰ ثانیه (کاهش ۷۵٪ درخواست‌ها)
+            setInterval(updateAllStats, 60000);
             
             startUptimeFromServer();
-            console.log('🚀 Dashboard v4.0 loaded (Live updates every 3s)');
+            console.log('🚀 Dashboard v5.0 loaded (Optimized: 60s full update)');
         });
     </script>
 
