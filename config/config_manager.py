@@ -1,23 +1,34 @@
 # config/config_manager.py
 # ============================================================
-# مدیریت تنظیمات - یکپارچه
+# مدیریت تنظیمات سیستم - نسخه ۲.۰ (یکپارچه با دیتابیس)
 # ============================================================
 
 import os
 import json
 import logging
-from typing import Any, Dict, Optional
 from pathlib import Path
-from functools import lru_cache
+from typing import Dict, Any, Optional, List
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
-    """مدیریت یکپارچه تنظیمات سیستم"""
+    """
+    مدیریت یکپارچه تنظیمات سیستم
+    
+    ویژگی‌ها:
+    - بارگذاری از فایل JSON
+    - ذخیره خودکار تغییرات
+    - دسترسی به تنظیمات با مسیر (مثل 'auto_trainer.interval_hours')
+    - پشتیبانی از پیش‌فرض
+    - قابلیت reload
+    """
     
     _instance = None
-    _settings: Dict[str, Any] = {}
+    _config: Dict[str, Any] = {}
+    _config_path: Path = Path("config/metrics_config.json")
+    _last_loaded: Optional[datetime] = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -27,112 +38,160 @@ class ConfigManager:
     def __init__(self):
         if not hasattr(self, '_initialized'):
             self._initialized = True
-            self._load_settings()
-            self._override_from_env()
+            self._load_config()
+            logger.info("✅ ConfigManager initialized")
     
-    def _load_settings(self):
+    # ============================================================
+    # بارگذاری و ذخیره
+    # ============================================================
+    
+    def _load_config(self):
         """بارگذاری تنظیمات از فایل"""
-        settings_path = Path("config/settings.json")
-        
-        if not settings_path.exists():
-            logger.warning("⚠️ config/settings.json یافت نشد، استفاده از تنظیمات پیش‌فرض")
-            self._settings = self._get_default_settings()
-            return
-        
         try:
-            with open(settings_path, 'r', encoding='utf-8') as f:
-                self._settings = json.load(f)
-            logger.info("✅ تنظیمات عمومی بارگذاری شد")
+            # ایجاد پوشه config اگر وجود ندارد
+            self._config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if self._config_path.exists():
+                with open(self._config_path, 'r', encoding='utf-8') as f:
+                    self._config = json.load(f)
+                self._last_loaded = datetime.now()
+                logger.info(f"✅ تنظیمات از {self._config_path} بارگذاری شد")
+            else:
+                logger.warning(f"⚠️ فایل {self._config_path} یافت نشد، استفاده از پیش‌فرض")
+                self._config = self._get_default_config()
+                self._save_config()
+                
         except Exception as e:
             logger.error(f"❌ خطا در بارگذاری تنظیمات: {e}")
-            self._settings = self._get_default_settings()
-
-    def _get_default_settings(self) -> Dict:
-        """تنظیمات پیش‌فرض"""
+            self._config = self._get_default_config()
+    
+    def _save_config(self):
+        """ذخیره تنظیمات در فایل"""
+        try:
+            self._config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._config_path, 'w', encoding='utf-8') as f:
+                json.dump(self._config, f, indent=4, ensure_ascii=False)
+            logger.info(f"✅ تنظیمات در {self._config_path} ذخیره شد")
+        except Exception as e:
+            logger.error(f"❌ خطا در ذخیره تنظیمات: {e}")
+            raise
+    
+    def _get_default_config(self) -> Dict[str, Any]:
+        """تنظیمات پیش‌فرض کامل"""
         return {
-            "app": {
-                "name": "Trading Signal System",
-                "version": "5.0",
-                "environment": "production",
-                "debug": False,
-                "timezone": "Asia/Tehran"
+            # ============================================================
+            # AutoTrainer
+            # ============================================================
+            "auto_trainer": {
+                "enabled": True,
+                "interval_hours": 6,
+                "start_hours": [2, 8, 14, 20],
+                "coins": ["bitcoin", "ethereum", "solana"],
+                "period": "1m",
+                "incremental": True,
+                "min_credits": 100
             },
-            "model": {
-                "version": "1.0",
-                "mode": "DEMO",
-                "last_training": None,
-                "accuracy": None,
-                "default_period": "1m",
-                "auto_train_interval": 6,
-                "min_data_points": 30,
-                "coins": ["bitcoin", "ethereum", "solana", "cardano", "ripple"],
-                "features": [
-                    "return_1", "return_3", "return_5", "return_10",
-                    "sma_5", "sma_10", "sma_20",
-                    "volatility", "fear_greed",
-                    "trend_5", "trend_10", "trend_20", "r2"
-                ]
+            
+            # ============================================================
+            # تعداد نقاط تاریخی
+            # ============================================================
+            "historical_points": {
+                "fear_greed": 5,
+                "btc_dominance": 5,
+                "global_market": 3,
+                "chart": 31
             },
-            "thresholds": {
-                "ram_warning": 70,
-                "ram_critical": 85,
-                "credit_warning": 15,
-                "credit_critical": 5,
-                "cpu_warning": 70,
-                "cpu_critical": 90
+            
+            # ============================================================
+            # Dashboard (زمان‌بندی درخواست‌ها)
+            # ============================================================
+            "dashboard": {
+                "price_interval": 15,          # ثانیه
+                "credits_interval": 300,        # ثانیه (۵ دقیقه)
+                "status_interval": 180,         # ثانیه (۳ دقیقه)
+                "fear_greed_interval": 300,     # ثانیه (۵ دقیقه)
+                "btc_dominance_interval": 300,  # ثانیه (۵ دقیقه)
+                "news_interval": 600,           # ثانیه (۱۰ دقیقه)
+                "alerts_interval": 60           # ثانیه (۱ دقیقه)
             },
+            
+            # ============================================================
+            # کش (TTL)
+            # ============================================================
             "cache": {
-                "default_ttl": 3600,
-                "max_size": 1000,
-                "cleanup_interval": 300
+                "price_ttl": 15,                # ثانیه
+                "fear_greed_ttl": 300,          # ثانیه (۵ دقیقه)
+                "btc_dominance_ttl": 300,       # ثانیه (۵ دقیقه)
+                "news_ttl": 600,                # ثانیه (۱۰ دقیقه)
+                "credits_ttl": 300,             # ثانیه (۵ دقیقه)
+                "status_ttl": 180,              # ثانیه (۳ دقیقه)
+                "chart_ttl": 3600               # ثانیه (۱ ساعت)
             },
-            "api": {
-                "timeout": 15,
-                "retry_attempts": 3,
-                "retry_delay": 1
+            
+            # ============================================================
+            # دیتابیس
+            # ============================================================
+            "database": {
+                "history_retention_days": 30,   # نگهداری تاریخچه به روز
+                "cleanup_interval_hours": 24,   # پاکسازی هر ۲۴ ساعت
+                "max_history_records": 10000    # حداکثر رکوردهای تاریخچه
             },
-            "system": {
-                "health_check_interval": 30,
-                "metrics_collection": True
-            },
+            
+            # ============================================================
+            # لاگینگ
+            # ============================================================
             "logging": {
                 "level": "INFO",
-                "max_logs": 500
+                "max_logs": 500,
+                "log_interval_seconds": 60
+            },
+            
+            # ============================================================
+            # Scheduler
+            # ============================================================
+            "scheduler": {
+                "check_interval": 1,            # ثانیه
+                "light_interval": 3,            # ثانیه (CPU, RAM)
+                "medium_interval": 30,          # ثانیه (API, Model)
+                "heavy_interval": 300           # ثانیه (Database, Disk)
             }
         }
     
-    def _override_from_env(self):
-        """جایگزینی با متغیرهای محیطی"""
-        env_mappings = {
-            "APP_ENVIRONMENT": "app.environment",
-            "APP_DEBUG": "app.debug",
-            "CACHE_TTL": "cache.default_ttl",
-            "API_TIMEOUT": "api.timeout",
-            "API_RETRY_ATTEMPTS": "api.retry_attempts",
-            "MODEL_AUTO_TRAIN_INTERVAL": "model.auto_train_interval",
-            "LOG_LEVEL": "logging.level"
-        }
-        
-        for env_var, config_path in env_mappings.items():
-            value = os.getenv(env_var)
-            if value is not None:
-                # تبدیل نوع
-                if value.lower() == 'true':
-                    value = True
-                elif value.lower() == 'false':
-                    value = False
-                elif value.isdigit():
-                    value = int(value)
-                elif value.replace('.', '').isdigit():
-                    value = float(value)
-                
-                self._set_nested(config_path, value)
-                logger.debug(f"✅ {env_var} → {config_path} = {value}")
+    # ============================================================
+    # دسترسی به تنظیمات
+    # ============================================================
     
-    def _set_nested(self, path: str, value: Any):
-        """تنظیم مقدار در مسیر تو در تو (مثل 'app.environment')"""
+    def get(self, path: str, default: Any = None) -> Any:
+        """
+        دریافت مقدار با مسیر (مثل 'auto_trainer.interval_hours')
+        
+        مثال:
+            config.get('auto_trainer.interval_hours')  # 6
+            config.get('dashboard.price_interval')     # 15
+        """
         keys = path.split('.')
-        target = self._settings
+        value = self._config
+        
+        for key in keys:
+            if isinstance(value, dict):
+                value = value.get(key)
+                if value is None:
+                    return default
+            else:
+                return default
+        
+        return value
+    
+    def set(self, path: str, value: Any):
+        """
+        تنظیم مقدار با مسیر و ذخیره خودکار
+        
+        مثال:
+            config.set('auto_trainer.interval_hours', 12)
+            config.set('historical_points.fear_greed', 10)
+        """
+        keys = path.split('.')
+        target = self._config
         
         for key in keys[:-1]:
             if key not in target:
@@ -140,97 +199,157 @@ class ConfigManager:
             target = target[key]
         
         target[keys[-1]] = value
-    
-    @lru_cache(maxsize=128)
-    def get(self, path: str, default: Any = None) -> Any:
-        """دریافت مقدار با مسیر (مثل 'app.environment')"""
-        if not isinstance(path, str):
-            return default
-        
-        keys = path.split('.')
-        target = self._settings
-        
-        try:
-            for key in keys:
-                target = target[key]
-            return target
-        except (KeyError, TypeError):
-            return default
-    
-    def get_all(self) -> Dict[str, Any]:
-        """دریافت همه تنظیمات"""
-        return self._settings.copy()
-    
-    def reload(self):
-        """بارگذاری مجدد تنظیمات"""
-        self._settings = {}
-        self._load_settings()
-        self._override_from_env()
-        # پاک کردن کش
-        self.get.cache_clear()
-        logger.info("🔄 تنظیمات بارگذاری مجدد شد")
+        self._save_config()
     
     def get_section(self, section: str) -> Dict[str, Any]:
         """دریافت یک بخش کامل"""
-        return self._settings.get(section, {})
+        return self._config.get(section, {})
+    
+    def get_all(self) -> Dict[str, Any]:
+        """دریافت همه تنظیمات"""
+        return self._config.copy()
+    
+    def reload(self):
+        """بارگذاری مجدد تنظیمات از فایل"""
+        self._load_config()
+        logger.info("🔄 تنظیمات بارگذاری مجدد شد")
+    
+    # ============================================================
+    # توابع کمکی برای بخش‌های خاص
+    # ============================================================
+    
+    def get_historical_points(self, name: str) -> int:
+        """دریافت تعداد نقاط تاریخی برای یک اندپوینت"""
+        return self.get(f"historical_points.{name}", 5)
+    
+    def set_historical_points(self, name: str, count: int):
+        """تنظیم تعداد نقاط تاریخی برای یک اندپوینت"""
+        valid_names = ["fear_greed", "btc_dominance", "global_market", "chart"]
+        if name not in valid_names:
+            raise ValueError(f"name باید یکی از {valid_names} باشد")
+        if count < 1 or count > 50:
+            raise ValueError("count باید بین ۱ تا ۵۰ باشد")
+        self.set(f"historical_points.{name}", count)
+    
+    def get_auto_trainer_config(self) -> Dict[str, Any]:
+        """دریافت تنظیمات AutoTrainer"""
+        return self.get_section("auto_trainer")
+    
+    def get_dashboard_config(self) -> Dict[str, Any]:
+        """دریافت تنظیمات Dashboard"""
+        return self.get_section("dashboard")
+    
+    def get_cache_config(self) -> Dict[str, Any]:
+        """دریافت تنظیمات کش"""
+        return self.get_section("cache")
+    
+    def get_database_config(self) -> Dict[str, Any]:
+        """دریافت تنظیمات دیتابیس"""
+        return self.get_section("database")
+    
+    def get_scheduler_config(self) -> Dict[str, Any]:
+        """دریافت تنظیمات Scheduler"""
+        return self.get_section("scheduler")
+    
+    # ============================================================
+    # مدیریت تنظیمات از طریق API
+    # ============================================================
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تبدیل به دیکشنری برای پاسخ API"""
+        return {
+            "auto_trainer": self.get_auto_trainer_config(),
+            "historical_points": self.get_section("historical_points"),
+            "dashboard": self.get_dashboard_config(),
+            "cache": self.get_cache_config(),
+            "database": self.get_database_config(),
+            "scheduler": self.get_scheduler_config(),
+            "last_loaded": self._last_loaded.isoformat() if self._last_loaded else None
+        }
+    
+    def update_from_dict(self, updates: Dict[str, Any]):
+        """به‌روزرسانی از دیکشنری"""
+        for key, value in updates.items():
+            if isinstance(value, dict):
+                for sub_key, sub_value in value.items():
+                    self.set(f"{key}.{sub_key}", sub_value)
+            else:
+                self.set(key, value)
 
-    def update(self, path: str, value: Any):
-        """به‌روزرسانی یک مقدار (و ذخیره در فایل)"""
-        self._set_nested(path, value)
-        self._save_to_file()
-        self.get.cache_clear()
-        logger.info(f"✅ تنظیمات {path} = {value} ذخیره شد")
 
-    def _save_to_file(self):
-        """ذخیره تنظیمات در فایل"""
-        try:
-            settings_path = Path("config/settings.json")
-            settings_path.parent.mkdir(parents=True, exist_ok=True)
-        
-            with open(settings_path, 'w', encoding='utf-8') as f:
-                json.dump(self._settings, f, indent=4, ensure_ascii=False)
-            logger.info("✅ تنظیمات در فایل ذخیره شد")
-        except Exception as e:
-            logger.error(f"❌ خطا در ذخیره تنظیمات: {e}")
-            raise
-            
 # ============================================================
-# نمونه Singleton و راهنماها
+# نمونه Singleton
 # ============================================================
 
 config = ConfigManager()
 
 
+# ============================================================
+# توابع کمکی برای دسترسی آسان
+# ============================================================
+
 def get_config(path: str, default: Any = None) -> Any:
-    """راهنمای سریع برای دریافت تنظیمات"""
+    """دریافت تنظیمات با مسیر"""
     return config.get(path, default)
 
 
-def get_app_config() -> Dict:
-    """دریافت تنظیمات اپلیکیشن"""
-    return config.get_section("app")
+def set_config(path: str, value: Any):
+    """تنظیم مقدار و ذخیره"""
+    config.set(path, value)
 
 
-def get_cache_config() -> Dict:
+def get_historical_points(name: str) -> int:
+    """دریافت تعداد نقاط تاریخی"""
+    return config.get_historical_points(name)
+
+
+def set_historical_points(name: str, count: int):
+    """تنظیم تعداد نقاط تاریخی"""
+    config.set_historical_points(name, count)
+
+
+def get_auto_trainer_config() -> Dict[str, Any]:
+    """دریافت تنظیمات AutoTrainer"""
+    return config.get_auto_trainer_config()
+
+
+def get_dashboard_config() -> Dict[str, Any]:
+    """دریافت تنظیمات Dashboard"""
+    return config.get_dashboard_config()
+
+
+def get_cache_config() -> Dict[str, Any]:
     """دریافت تنظیمات کش"""
-    return config.get_section("cache")
+    return config.get_cache_config()
 
 
-def get_api_config() -> Dict:
-    """دریافت تنظیمات API"""
-    return config.get_section("api")
+def get_scheduler_config() -> Dict[str, Any]:
+    """دریافت تنظیمات Scheduler"""
+    return config.get_scheduler_config()
 
 
-def get_model_config() -> Dict:
-    """دریافت تنظیمات مدل"""
-    return config.get_section("model")
+def reload_config():
+    """بارگذاری مجدد تنظیمات"""
+    config.reload()
 
 
-def get_system_config() -> Dict:
-    """دریافت تنظیمات سیستم"""
-    return config.get_section("system")
+def get_all_config() -> Dict[str, Any]:
+    """دریافت همه تنظیمات"""
+    return config.get_all()
 
 
-def get_thresholds() -> Dict:
-    """دریافت آستانه‌ها"""
-    return config.get_section("thresholds")
+# ============================================================
+# راه‌اندازی اولیه (ایجاد فایل تنظیمات اگر وجود نداشته باشد)
+# ============================================================
+
+if __name__ == "__main__":
+    # تست
+    print("📋 تنظیمات فعلی:")
+    print(json.dumps(config.get_all(), indent=2, ensure_ascii=False))
+    
+    print("\n📊 تعداد نقاط ترس و طمع:", get_historical_points("fear_greed"))
+    print("📊 تعداد نقاط سلطه بیت‌کوین:", get_historical_points("btc_dominance"))
+    print("📊 تعداد نقاط بازار جهانی:", get_historical_points("global_market"))
+    
+    print("\n⏱️ فاصله آموزش AutoTrainer:", get_config("auto_trainer.interval_hours"), "ساعت")
+    print("⏱️ فاصله قیمت در Dashboard:", get_config("dashboard.price_interval"), "ثانیه")
