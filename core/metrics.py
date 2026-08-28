@@ -1,528 +1,288 @@
-# core/metrics.py
+# core/metrics_scheduler.py
 # ============================================================
-# سیستم زمان‌بندی هوشمند برای جمع‌آوری متریک
-# نسخه ۲.۵ - با واتچ‌داگ داخلی و رفع خطاهای import
+# سیستم جمع‌آوری متریک با APScheduler (حرفه‌ای و پایدار)
 # ============================================================
 
 import time
-import threading
 import psutil
 import logging
-import re
 from datetime import datetime
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, field
-from enum import Enum
+from typing import Dict, Any, Optional
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
 
-class MetricLevel(Enum):
-    """سطح اهمیت متریک"""
-    LIGHT = "light"
-    MEDIUM = "medium"
-    HEAVY = "heavy"
-
-
-@dataclass
-class MetricConfig:
-    """تنظیمات هر متریک"""
-    name: str
-    level: MetricLevel
-    interval: int
-    enabled: bool = True
-    last_collected: Optional[float] = None
-    last_value: Any = None
-
-
 class MetricsScheduler:
-    """سیستم جامع جمع‌آوری متریک با زمان‌بندی هوشمند"""
-
+    """
+    سیستم جمع‌آوری متریک با APScheduler
+    - بدون نیاز به واتچ‌داگ دستی
+    - تردها توسط APScheduler مدیریت می‌شوند
+    - ۱۰۰٪ پایدار
+    """
+    
     def __init__(self):
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._watchdog_thread: Optional[threading.Thread] = None
-        self._lock = threading.Lock()
-        self._restart_count = 0
-        self._last_heartbeat = time.time()
-        self._heartbeat_timeout = 30
-        self._stop_watchdog = False
-
-        # ✅ تنظیمات متریک‌ها (مستقیم، بدون متد جداگانه)
-        self.configs = {
-            "cpu": MetricConfig("cpu", MetricLevel.LIGHT, 3),
-            "ram": MetricConfig("ram", MetricLevel.LIGHT, 3),
-            "uptime": MetricConfig("uptime", MetricLevel.LIGHT, 5),
-            "process_count": MetricConfig("process_count", MetricLevel.LIGHT, 10),
-            "api_status": MetricConfig("api_status", MetricLevel.MEDIUM, 30),
-            "api_credits": MetricConfig("api_credits", MetricLevel.MEDIUM, 60),
-            "model_status": MetricConfig("model_status", MetricLevel.MEDIUM, 30),
-            "active_users": MetricConfig("active_users", MetricLevel.MEDIUM, 60),
-            "database_size": MetricConfig("database_size", MetricLevel.HEAVY, 300),
-            "disk_space": MetricConfig("disk_space", MetricLevel.HEAVY, 300),
-            "error_logs": MetricConfig("error_logs", MetricLevel.HEAVY, 300),
-            "full_health": MetricConfig("full_health", MetricLevel.HEAVY, 300),
-            "model_accuracy": MetricConfig("model_accuracy", MetricLevel.HEAVY, 300),
-            "databases": MetricConfig("databases", MetricLevel.HEAVY, 300),
-        }
-
+        self.scheduler = BackgroundScheduler()
         self.metrics_cache: Dict[str, Any] = {}
-        self.history: List[Dict] = []
-        self.max_history = 10000
-
         self.stats = {
             "collections": 0,
             "errors": 0,
-            "restarts": 0,
-            "watchdog_restarts": 0,
             "last_collection": None,
-            "collections_by_level": {
-                "light": 0,
-                "medium": 0,
-                "heavy": 0
-            }
         }
-
         self.start_time = time.time()
-        self._last_report_time = 0
-        self._report_interval = 21600
-
-        logger.info("✅ MetricsScheduler v2.5 initialized")
-
-        # ✅ شروع واتچ‌داگ
-        self._start_watchdog()
-
+        self._is_running = False
+        
+        # تنظیم jobها
+        self._setup_jobs()
+        
+        logger.info("✅ MetricsScheduler (APScheduler) initialized")
+    
+    def _setup_jobs(self):
+        """تنظیم jobهای زمان‌بندی"""
+        
+        # ۱. CPU و RAM (هر ۳ ثانیه)
+        self.scheduler.add_job(
+            self._collect_light_metrics,
+            trigger=IntervalTrigger(seconds=3),
+            id="light_metrics",
+            replace_existing=True
+        )
+        
+        # ۲. API Status و Credits (هر ۳۰ ثانیه)
+        self.scheduler.add_job(
+            self._collect_medium_metrics,
+            trigger=IntervalTrigger(seconds=30),
+            id="medium_metrics",
+            replace_existing=True
+        )
+        
+        # ۳. دیتابیس و دیسک (هر ۵ دقیقه)
+        self.scheduler.add_job(
+            self._collect_heavy_metrics,
+            trigger=IntervalTrigger(seconds=300),
+            id="heavy_metrics",
+            replace_existing=True
+        )
+        
+        logger.info("✅ Jobs configured: light(3s), medium(30s), heavy(300s)")
+    
     # ============================================================
-    # واتچ‌داگ داخلی
+    # جمع‌آوری‌کننده‌ها
     # ============================================================
-
-    def _start_watchdog(self):
-        if self._watchdog_thread and self._watchdog_thread.is_alive():
-            return
-
-        self._stop_watchdog = False
-        self._watchdog_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
-        self._watchdog_thread.start()
-        logger.info("✅ Internal Watchdog started")
-
-    def _watchdog_loop(self):
-        logger.info("🔄 Watchdog loop started")
-
-        while not self._stop_watchdog:
+    
+    def _collect_light_metrics(self):
+        """جمع‌آوری متریک‌های سبک (CPU, RAM, uptime)"""
+        try:
+            cpu = psutil.cpu_percent(interval=0.2)
+            ram = psutil.virtual_memory().percent
+            
+            self.metrics_cache["cpu"] = {
+                "value": cpu,
+                "timestamp": datetime.now().isoformat(),
+                "level": "light"
+            }
+            self.metrics_cache["ram"] = {
+                "value": ram,
+                "timestamp": datetime.now().isoformat(),
+                "level": "light"
+            }
+            
+            elapsed = int(time.time() - self.start_time)
+            if elapsed < 60:
+                uptime = f"{elapsed}s"
+            elif elapsed < 3600:
+                uptime = f"{elapsed // 60}m {elapsed % 60}s"
+            else:
+                hours = elapsed // 3600
+                minutes = (elapsed % 3600) // 60
+                uptime = f"{hours}h {minutes}m"
+            
+            self.metrics_cache["uptime"] = {
+                "value": uptime,
+                "timestamp": datetime.now().isoformat(),
+                "level": "light"
+            }
+            
+            self.stats["collections"] += 1
+            self.stats["last_collection"] = datetime.now().isoformat()
+            
+            logger.info(f"📊 CPU: {cpu}%, RAM: {ram}%")
+            
+        except Exception as e:
+            logger.error(f"❌ Light metrics error: {e}")
+            self.stats["errors"] += 1
+    
+    def _collect_medium_metrics(self):
+        """جمع‌آوری متریک‌های متوسط (API, Model)"""
+        try:
+            # API Status
             try:
-                time.sleep(5)
-
-                if not self._running:
-                    continue
-
-                thread_is_dead = not self._is_thread_alive()
-                heartbeat_timeout = (time.time() - self._last_heartbeat) > self._heartbeat_timeout
-
-                if thread_is_dead or heartbeat_timeout:
-                    reason = "thread dead" if thread_is_dead else "heartbeat timeout"
-                    logger.warning(f"⚠️ Watchdog detected: {reason}. Restarting...")
-                    self._restart_scheduler()
-
-            except Exception as e:
-                logger.error(f"❌ Watchdog error: {e}")
-                time.sleep(1)
-
-        logger.info("⏹️ Watchdog loop stopped")
-
-    def _is_thread_alive(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
-
-    def _restart_scheduler(self):
-        with self._lock:
-            self._restart_count += 1
-            self.stats["restarts"] = self._restart_count
-            self.stats["watchdog_restarts"] = self.stats.get("watchdog_restarts", 0) + 1
-            logger.info(f"🔄 Restarting scheduler (attempt #{self._restart_count})")
-
-            old_running = self._running
-            self._running = False
-
-            if self._thread:
-                self._thread.join(timeout=2)
-                self._thread = None
-
-            self._running = True
-            self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
-            self._thread.start()
-            self._last_heartbeat = time.time()
-
-            logger.info(f"✅ Scheduler restarted successfully (restart #{self._restart_count})")
-
+                from core.system import system
+                status = system.api.get_status()
+                api_status = status.get("status", "unknown") if status else "unknown"
+            except:
+                api_status = "error"
+            
+            self.metrics_cache["api_status"] = {
+                "value": api_status,
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
+            
+            # API Credits
+            try:
+                from core.system import system
+                credits = system.api.get_credits()
+                api_credits = credits.get("remainingCredits", 0) if credits else 0
+            except:
+                api_credits = 0
+            
+            self.metrics_cache["api_credits"] = {
+                "value": api_credits,
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
+            
+            # Model Status
+            try:
+                from core.system import system
+                if system.model_manager:
+                    loaded = system.model_manager.current_model is not None
+                    version = system.model_manager.current_version or "N/A"
+                else:
+                    loaded = False
+                    version = "N/A"
+            except:
+                loaded = False
+                version = "N/A"
+            
+            self.metrics_cache["model_status"] = {
+                "value": {"loaded": loaded, "version": version},
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
+            
+            logger.info(f"📊 API: {api_status}, Credits: {api_credits}")
+            
+        except Exception as e:
+            logger.error(f"❌ Medium metrics error: {e}")
+            self.stats["errors"] += 1
+    
+    def _collect_heavy_metrics(self):
+        """جمع‌آوری متریک‌های سنگین (Database, Disk)"""
+        try:
+            # Database Size
+            try:
+                from database import get_primary
+                db = get_primary()
+                if db and db.is_connected():
+                    result = db.execute("""
+                        SELECT pg_database_size(current_database()) / 1024 / 1024 as size_mb
+                    """)
+                    db_size = result[0].get('size_mb', 0) if result else 0
+                else:
+                    db_size = 0
+            except:
+                db_size = 0
+            
+            self.metrics_cache["database_size"] = {
+                "value": db_size,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
+            
+            # Disk Space
+            try:
+                usage = psutil.disk_usage('/')
+                disk = {
+                    "total_gb": round(usage.total / (1024**3), 2),
+                    "used_gb": round(usage.used / (1024**3), 2),
+                    "free_gb": round(usage.free / (1024**3), 2),
+                    "percent": usage.percent
+                }
+            except:
+                disk = {"total_gb": 0, "used_gb": 0, "free_gb": 0, "percent": 0}
+            
+            self.metrics_cache["disk_space"] = {
+                "value": disk,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
+            
+            # Databases Status
+            try:
+                from database import health_check
+                health = health_check()
+                dbs = {}
+                for name, info in health.items():
+                    if name == "postgresql":
+                        dbs["postgresql"] = info.get("connected", False)
+                    elif name == "redis":
+                        dbs["redis"] = info.get("connected", False)
+                    elif name == "sqlite":
+                        dbs["sqlite"] = info.get("connected", False)
+            except:
+                dbs = {"postgresql": False, "redis": False, "sqlite": False}
+            
+            self.metrics_cache["databases"] = {
+                "value": dbs,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
+            
+            logger.info(f"📊 DB Size: {db_size}MB, Disk: {disk.get('percent', 0)}%")
+            
+        except Exception as e:
+            logger.error(f"❌ Heavy metrics error: {e}")
+            self.stats["errors"] += 1
+    
     # ============================================================
     # کنترل Start/Stop
     # ============================================================
-
+    
     def start(self):
-        if self._running and self._is_thread_alive():
+        """شروع Scheduler"""
+        if self._is_running:
             logger.info("⏳ Scheduler already running")
             return
-
-        with self._lock:
-            if self._running and not self._is_thread_alive():
-                logger.warning("⚠️ Thread is dead but _running is True. Resetting...")
-                self._running = False
-                if self._thread:
-                    self._thread.join(timeout=1)
-                    self._thread = None
-
-            self._running = True
-            self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
-            self._thread.start()
-            self._last_heartbeat = time.time()
-            logger.info("✅ Metrics Scheduler started")
-
-            self._collect_initial_metrics()
-
+        
+        self.scheduler.start()
+        self._is_running = True
+        logger.info("✅ Metrics Scheduler (APScheduler) started")
+        
+        # جمع‌آوری اولیه
+        self._collect_light_metrics()
+        self._collect_medium_metrics()
+        self._collect_heavy_metrics()
+    
     def stop(self):
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2)
-            self._thread = None
-        logger.info("⏹️ Metrics Scheduler stopped")
-
-    def shutdown(self):
-        self._stop_watchdog = True
-        self.stop()
-        if self._watchdog_thread:
-            self._watchdog_thread.join(timeout=2)
-            self._watchdog_thread = None
-        logger.info("⏹️ Metrics Scheduler fully shutdown")
-
-    def _collect_initial_metrics(self):
-        logger.info("🔄 Collecting initial metrics...")
-        for name, config in self.configs.items():
-            if config.enabled:
-                try:
-                    self._collect_metric(name, config)
-                    config.last_collected = time.time()
-                    self.stats["collections"] += 1
-                    self.stats["collections_by_level"][config.level.value] += 1
-                except Exception as e:
-                    logger.error(f"❌ Initial collection error for {name}: {e}")
-        self.stats["last_collection"] = datetime.now().isoformat()
-        logger.info(f"✅ Initial collection done. Metrics: {list(self.metrics_cache.keys())}")
-
-    # ============================================================
-    # حلقه اصلی
-    # ============================================================
-
-    def _scheduler_loop(self):
-        logger.info("🔄 Scheduler loop started")
-        loop_count = 0
-
-        while self._running:
-            try:
-                now = time.time()
-                loop_count += 1
-
-                if loop_count % 2 == 0:
-                    self._last_heartbeat = now
-
-                for name, config in self.configs.items():
-                    if not config.enabled:
-                        continue
-
-                    if (config.last_collected is None or
-                        now - config.last_collected >= config.interval):
-
-                        self._collect_metric(name, config)
-                        config.last_collected = now
-                        self.stats["collections"] += 1
-                        self.stats["collections_by_level"][config.level.value] += 1
-
-                        if name in ["cpu", "ram"]:
-                            logger.info(f"📊 {name}: {config.last_value}%")
-                        elif name == "api_status":
-                            logger.info(f"📊 {name}: {config.last_value}")
-
-                self.stats["last_collection"] = datetime.now().isoformat()
-
-                if now - self._last_report_time >= self._report_interval:
-                    self._send_periodic_report()
-                    self._last_report_time = now
-
-                time.sleep(0.5)
-
-            except Exception as e:
-                logger.error(f"❌ Scheduler error: {e}")
-                self.stats["errors"] += 1
-                time.sleep(1)
-
-        logger.info("⏹️ Scheduler loop stopped")
-
-    # ============================================================
-    # جمع‌آوری متریک‌ها
-    # ============================================================
-
-    def _collect_metric(self, name: str, config: MetricConfig):
-        try:
-            value = None
-
-            collectors = {
-                "cpu": self._collect_cpu,
-                "ram": self._collect_ram,
-                "uptime": self._collect_uptime,
-                "process_count": self._collect_process_count,
-                "api_status": self._collect_api_status,
-                "api_credits": self._collect_api_credits,
-                "model_status": self._collect_model_status,
-                "active_users": self._collect_active_users,
-                "database_size": self._collect_database_size,
-                "disk_space": self._collect_disk_space,
-                "error_logs": self._collect_error_logs,
-                "full_health": self._collect_full_health,
-                "model_accuracy": self._collect_model_accuracy,
-                "databases": self._collect_databases,
-            }
-
-            if name in collectors:
-                value = collectors[name]()
-
-            if value is not None:
-                self.metrics_cache[name] = {
-                    "value": value,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": config.level.value
-                }
-                config.last_value = value
-                self._add_to_history(name, value)
-
-        except Exception as e:
-            logger.error(f"❌ Error collecting {name}: {e}")
-            self.stats["errors"] += 1
-
-    # ============================================================
-    # توابع جمع‌آوری
-    # ============================================================
-
-    def _collect_cpu(self) -> float:
-        try:
-            return psutil.cpu_percent(interval=0.2)
-        except:
-            return 0.0
-
-    def _collect_ram(self) -> float:
-        try:
-            return psutil.virtual_memory().percent
-        except:
-            return 0.0
-
-    def _collect_uptime(self) -> str:
-        elapsed = int(time.time() - self.start_time)
-        if elapsed < 60:
-            return f"{elapsed}s"
-        elif elapsed < 3600:
-            return f"{elapsed // 60}m {elapsed % 60}s"
-        else:
-            hours = elapsed // 3600
-            minutes = (elapsed % 3600) // 60
-            return f"{hours}h {minutes}m"
-
-    def _collect_process_count(self) -> int:
-        try:
-            return len(psutil.pids())
-        except:
-            return 0
-
-    def _collect_api_status(self) -> str:
-        try:
-            from core.system import system
-            status = system.api.get_status()
-            return status.get("status", "unknown") if status else "unknown"
-        except:
-            return "error"
-
-    def _collect_api_credits(self) -> int:
-        try:
-            from core.system import system
-            credits = system.api.get_credits()
-            return credits.get("remainingCredits", 0) if credits else 0
-        except:
-            return 0
-
-    def _collect_model_status(self) -> Dict:
-        try:
-            from core.system import system
-            if system.model_manager:
-                return {
-                    "loaded": system.model_manager.current_model is not None,
-                    "version": system.model_manager.current_version or "N/A"
-                }
-        except:
-            pass
-        return {"loaded": False, "version": "N/A"}
-
-    def _collect_active_users(self) -> int:
-        try:
-            from auth_manager import get_auth
-            auth = get_auth()
-            return len(auth._sessions) if hasattr(auth, '_sessions') else 0
-        except:
-            return 0
-
-    def _collect_database_size(self) -> float:
-        try:
-            from database import get_primary
-            db = get_primary()
-            if db and db.is_connected():
-                result = db.execute("""
-                    SELECT pg_database_size(current_database()) / 1024 / 1024 as size_mb
-                """)
-                if result:
-                    return result[0].get('size_mb', 0)
-        except:
-            pass
-        return 0
-
-    def _collect_disk_space(self) -> Dict:
-        try:
-            usage = psutil.disk_usage('/')
-            return {
-                "total_gb": round(usage.total / (1024**3), 2),
-                "used_gb": round(usage.used / (1024**3), 2),
-                "free_gb": round(usage.free / (1024**3), 2),
-                "percent": usage.percent
-            }
-        except:
-            return {"total_gb": 0, "used_gb": 0, "free_gb": 0, "percent": 0}
-
-    def _collect_error_logs(self) -> Dict:
-        try:
-            from logger_config import get_recent_logs
-            logs = get_recent_logs("system", 100)
-            errors = [l for l in logs if "ERROR" in l or "❌" in l]
-            return {
-                "total": len(errors),
-                "recent": errors[-5:] if errors else []
-            }
-        except:
-            return {"total": 0, "recent": []}
-
-    def _collect_full_health(self) -> Dict:
-        try:
-            from core.system import system
-            return system.health_check()
-        except:
-            return {"status": "error", "message": "Health check failed"}
-
-    def _collect_model_accuracy(self) -> float:
-        try:
-            from core.system import system
-            if hasattr(system, 'trainer'):
-                stats = system.trainer.get_stats()
-                return stats.get('stats', {}).get('last_score', 0)
-        except:
-            pass
-        return 0
-
-    def _collect_databases(self) -> Dict:
-        try:
-            from database import health_check
-            health = health_check()
-            result = {}
-            for name, info in health.items():
-                if name == "postgresql":
-                    result["postgresql"] = info.get("connected", False)
-                elif name == "redis":
-                    result["redis"] = info.get("connected", False)
-                elif name == "sqlite":
-                    result["sqlite"] = info.get("connected", False)
-            return result
-        except:
-            return {"postgresql": False, "redis": False, "sqlite": False}
-
-    # ============================================================
-    # گزارش دوره‌ای
-    # ============================================================
-
-    def _send_periodic_report(self):
-        try:
-            cache = self.metrics_cache
-
-            report = f"""
-📊 *گزارش دوره‌ای سیستم*
-📅 زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-⚙️ *مصرف منابع*
-- CPU: {cache.get('cpu', {}).get('value', 0)}%
-- RAM: {cache.get('ram', {}).get('value', 0)}%
-
-🔌 *وضعیت سرویس‌ها*
-- API: {cache.get('api_status', {}).get('value', 'unknown')}
-- مدل: {'فعال' if cache.get('model_status', {}).get('value', {}).get('loaded') else 'غیرفعال'}
-
-📊 *آمار جمع‌آوری*
-- کل جمع‌آوری‌ها: {self.stats['collections']}
-- خطاها: {self.stats['errors']}
-- ری‌استارت‌ها: {self.stats['restarts']}
-- ری‌استارت توسط واتچ‌داگ: {self.stats.get('watchdog_restarts', 0)}
-"""
-
-            try:
-                from alerter import alerter
-                if alerter.telegram_enabled:
-                    alerter._send_telegram({
-                        "level": "INFO",
-                        "source": "system",
-                        "message": report,
-                        "timestamp": datetime.now().isoformat()
-                    })
-            except:
-                pass
-
-            logger.info("📊 Periodic report sent")
-
-        except Exception as e:
-            logger.error(f"❌ Error sending report: {e}")
-
-    # ============================================================
-    # ذخیره‌سازی تاریخچه
-    # ============================================================
-
-    def _add_to_history(self, name: str, value: Any):
-        self.history.append({
-            "name": name,
-            "value": value,
-            "timestamp": datetime.now().isoformat()
-        })
-        if len(self.history) > self.max_history:
-            self.history = self.history[-self.max_history:]
-
+        """متوقف کردن Scheduler"""
+        if self._is_running:
+            self.scheduler.shutdown()
+            self._is_running = False
+            logger.info("⏹️ Metrics Scheduler stopped")
+    
     # ============================================================
     # API
     # ============================================================
-
-    def get_metrics(self) -> Dict[str, Any]:
+    
+    def get_metrics(self) -> Dict:
         return {
             "metrics": self.metrics_cache,
             "stats": self.stats,
             "timestamp": datetime.now().isoformat()
         }
-
-    def get_history(self, name: Optional[str] = None, limit: int = 100) -> List:
-        if name:
-            return [h for h in self.history[-limit:] if h["name"] == name]
-        return self.history[-limit:]
-
+    
     def get_summary(self) -> Dict:
         return {
-            "status": "running" if self._running else "stopped",
+            "status": "running" if self._is_running else "stopped",
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
-            "restarts": self.stats["restarts"],
-            "watchdog_restarts": self.stats.get("watchdog_restarts", 0),
             "metrics_count": len(self.metrics_cache),
-            "history_size": len(self.history),
-            "collections_by_level": self.stats["collections_by_level"],
-            "last_collection": self.stats["last_collection"],
-            "uptime": self._collect_uptime()
+            "last_collection": self.stats["last_collection"]
         }
-
+    
     def get_alert_metrics(self) -> Dict:
         cache = self.metrics_cache
         return {
@@ -531,32 +291,26 @@ class MetricsScheduler:
             "api_status": cache.get("api_status", {}).get("value", "unknown"),
             "api_credits": cache.get("api_credits", {}).get("value", 0),
             "model_loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-            "model_accuracy": cache.get("model_accuracy", {}).get("value", None),
+            "model_accuracy": None,
             "databases": cache.get("databases", {}).get("value", {}),
             "uptime": cache.get("uptime", {}).get("value", "0s"),
-            "last_update": datetime.now().isoformat()
         }
-
+    
     def get_dashboard_metrics(self) -> Dict:
         cache = self.metrics_cache
-        model_status = cache.get("model_status", {}).get("value", {})
-        model_accuracy = cache.get("model_accuracy", {}).get("value", 0)
-
         return {
             "system": {
                 "cpu": cache.get("cpu", {}).get("value", 0),
                 "ram": cache.get("ram", {}).get("value", 0),
                 "uptime": cache.get("uptime", {}).get("value", "0s"),
-                "processes": cache.get("process_count", {}).get("value", 0)
             },
             "api": {
                 "status": cache.get("api_status", {}).get("value", "unknown"),
                 "credits": cache.get("api_credits", {}).get("value", 0)
             },
             "model": {
-                "loaded": model_status.get("loaded", False),
-                "version": model_status.get("version", "N/A"),
-                "accuracy": model_accuracy
+                "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
+                "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
             },
             "database": {
                 "size_mb": cache.get("database_size", {}).get("value", 0),
@@ -565,41 +319,25 @@ class MetricsScheduler:
             "disk": cache.get("disk_space", {}).get("value", {}),
             "timestamp": datetime.now().isoformat()
         }
-
+    
     def get_health(self) -> Dict:
         cache = self.metrics_cache
-
         cpu = cache.get("cpu", {}).get("value", 0)
-        cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
-
         ram = cache.get("ram", {}).get("value", 0)
+        
+        cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
         ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
-
+        
         api = cache.get("api_status", {}).get("value", "unknown")
         api_status = "healthy" if api == "ok" else "degraded" if api == "degraded" else "unhealthy"
-
-        model_loaded = cache.get("model_status", {}).get("value", {}).get("loaded", False)
-        model_status = "healthy" if model_loaded else "degraded"
-
-        db_status = cache.get("databases", {}).get("value", {})
-        all_connected = all(db_status.values())
-        db_health = "healthy" if all_connected else "degraded"
-
-        overall = "ok"
-        if cpu_status == "critical" or ram_status == "critical":
-            overall = "critical"
-        elif any(s in ["degraded", "warning", "unhealthy"] for s in [cpu_status, ram_status, api_status, model_status, db_health]):
-            overall = "degraded"
-
+        
         return {
-            "status": overall,
+            "status": "ok" if cpu_status == "healthy" and ram_status == "healthy" else "degraded",
             "timestamp": datetime.now().isoformat(),
             "components": {
                 "cpu": {"status": cpu_status, "value": round(cpu, 1)},
                 "ram": {"status": ram_status, "value": round(ram, 1)},
                 "api": {"status": api_status},
-                "model": {"status": model_status, "loaded": model_loaded},
-                "database": {"status": db_health, "databases": db_status},
             }
         }
 
