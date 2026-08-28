@@ -671,40 +671,39 @@
             };
         }
 
-        function updateLiveCharts() {
-            const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-            fetch('/api/metrics')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data) {
-                        const metrics = data.data.metrics || {};
-                        const cpu = metrics.cpu?.value || 0;
-                        const ram = metrics.ram?.value || 0;
-                        cpuData.push(cpu);
-                        if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
-                        ramData.push(ram);
-                        if (ramData.length > MAX_DATA_POINTS) ramData.shift();
-                        const stats = data.data.stats || {};
-                        const apiCount = stats.collections || Math.floor(Math.random() * 15) + 5;
-                        apiData.push(apiCount);
-                        if (apiData.length > MAX_DATA_POINTS) apiData.shift();
-                        timeLabels.push(now);
-                        if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
-                        if (cpuRamChartInstance) {
-                            cpuRamChartInstance.data.labels = timeLabels;
-                            cpuRamChartInstance.data.datasets[0].data = cpuData;
-                            cpuRamChartInstance.data.datasets[1].data = ramData;
-                            cpuRamChartInstance.update('none');
-                        }
-                        if (apiRequestsChartInstance) {
-                            apiRequestsChartInstance.data.labels = timeLabels;
-                            apiRequestsChartInstance.data.datasets[0].data = apiData;
-                            apiRequestsChartInstance.update('none');
-                        }
+    function updateLiveCharts() {
+        const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    
+        // ✅ گرفتن مستقیم از API
+        fetch('/api/metrics')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const metrics = data.data.metrics || {};
+                    const cpu = metrics.cpu?.value || 0;
+                    const ram = metrics.ram?.value || 0;
+                
+                    // اضافه کردن به داده‌های نمودار
+                    cpuData.push(cpu);
+                    if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
+                
+                    ramData.push(ram);
+                    if (ramData.length > MAX_DATA_POINTS) ramData.shift();
+                
+                    timeLabels.push(now);
+                    if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
+                
+                    // بروزرسانی نمودار
+                    if (cpuRamChartInstance) {
+                        cpuRamChartInstance.data.labels = timeLabels;
+                        cpuRamChartInstance.data.datasets[0].data = cpuData;
+                        cpuRamChartInstance.data.datasets[1].data = ramData;
+                        cpuRamChartInstance.update('none');
                     }
-                })
-                .catch(() => {});
-        }
+                }
+            })
+            .catch(err => console.error('Live chart error:', err));
+    }
 
         // ============================================================
         // UPDATE ALL STATS
@@ -906,7 +905,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
             updateAllStats();
-            setInterval(updateLiveCharts, 5000);
+            setInterval(updateLiveCharts, 3000);
             setInterval(updateAllStats, 15000);
             startUptimeFromServer();
             console.log('🚀 Dashboard v3.0 loaded');
