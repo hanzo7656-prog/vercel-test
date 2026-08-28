@@ -1,7 +1,7 @@
 # models/trainer/auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه ۲.۱
-# یکپارچه با Metrics Scheduler جدید
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰ (نهایی)
+# با قابلیت تنظیم تعداد نقاط تاریخی
 # ============================================================
 
 import os
@@ -16,8 +16,9 @@ from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple
 
 from api_handler import CoinStatsAPI
-from models.manager.model_manager import ModelManager  # ✅ اصلاح شد
+from models.manager.model_manager import ModelManager
 from database import get_primary
+from config.config_manager import get_historical_points, get_auto_trainer_config
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,13 @@ class AutoTrainer:
     """
     سیستم آموزش خودکار مدل XGBoost با ذخیره‌سازی در دیتابیس
     
-    ویژگی‌های جدید:
+    ویژگی‌ها:
     - اتصال به ModelManager برای ذخیره در دیتابیس
     - نسخه‌سازی خودکار
     - آموزش افزایشی (Incremental Learning)
     - ترکیب با وزن‌دهی (Ensemble)
     - ارزیابی خودکار
+    - ✅ قابلیت تنظیم تعداد نقاط تاریخی
     - ✅ یکپارچه با Metrics Scheduler
     """
     
@@ -47,6 +49,17 @@ class AutoTrainer:
         self.model_manager = model_manager
         self.db = get_primary()
         
+        # ============================================================
+        # ✅ بارگذاری تنظیمات از ConfigManager
+        # ============================================================
+        self.auto_trainer_config = get_auto_trainer_config()
+        self.historical_points_config = {
+            "fear_greed": get_historical_points("fear_greed"),
+            "btc_dominance": get_historical_points("btc_dominance"),
+            "global_market": get_historical_points("global_market"),
+            "chart": get_historical_points("chart")
+        }
+        
         # وضعیت اجرا
         self.is_running = False
         self.is_training = False
@@ -56,7 +69,7 @@ class AutoTrainer:
         # لیست لاگ‌ها
         self.logs: List[str] = []
         
-        # ✅ رفع باگ: مسیر مدل
+        # مسیر مدل
         self.model_path = "models/current_model.xgb"
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
         
@@ -71,12 +84,18 @@ class AutoTrainer:
             "data_points_used": 0,
             "api_status": "unknown",
             "credits_remaining": 0,
-            "training_period": "1m",
-            "mode": "DEMO"  # BETA یا DEMO
+            "training_period": self.auto_trainer_config.get("period", "1m"),
+            "mode": "DEMO",
+            "points_used": {
+                "fear_greed": self.historical_points_config["fear_greed"],
+                "btc_dominance": self.historical_points_config["btc_dominance"],
+                "global_market": self.historical_points_config["global_market"],
+                "chart": self.historical_points_config["chart"]
+            }
         }
         
         # ارزهای مورد استفاده برای آموزش
-        self.coins = ["bitcoin", "ethereum", "solana", "cardano", "ripple"]
+        self.coins = self.auto_trainer_config.get("coins", ["bitcoin", "ethereum", "solana"])
         
         # نام ویژگی‌ها
         self.feature_names = [
@@ -85,10 +104,13 @@ class AutoTrainer:
             "volatility",
             "fear_greed",
             "trend_5", "trend_10", "trend_20",
-            "r2"
+            "r2",
+            "btc_dominance",
+            "market_cap",
+            "total_volume"
         ]
         
-        # ✅ جدید: ثبت در Scheduler
+        # ✅ ثبت در Scheduler
         self._register_with_scheduler()
         
         # بروزرسانی وضعیت از ModelManager
@@ -98,10 +120,13 @@ class AutoTrainer:
         else:
             self._add_log(f"📦 مدل یافت نشد (حالت DEMO)")
         
-        self._add_log("✅ AutoTrainer ۲.۱ راه‌اندازی شد")
+        self._add_log(f"✅ AutoTrainer ۳.۰ راه‌اندازی شد")
+        self._add_log(f"📊 تعداد نقاط: ترس و طمع={self.historical_points_config['fear_greed']}, "
+                      f"سلطه={self.historical_points_config['btc_dominance']}, "
+                      f"بازار={self.historical_points_config['global_market']}")
     
     def _register_with_scheduler(self):
-        """✅ جدید: ثبت وضعیت مدل در Scheduler"""
+        """✅ ثبت وضعیت مدل در Scheduler"""
         try:
             from core.metrics import metrics_scheduler
             logger.info("✅ AutoTrainer registered with Metrics Scheduler")
@@ -170,8 +195,126 @@ class AutoTrainer:
             }
     
     # ============================================================
-    # دریافت و پردازش داده
+    # دریافت داده‌های تاریخی
     # ============================================================
+    
+    def _get_fear_greed_history(self, points: int) -> List[Dict]:
+        """دریافت N نقطه آخر ترس و طمع از دیتابیس"""
+        if not self.db or not self.db.is_connected():
+            return []
+        
+        try:
+            result = self.db.execute("""
+                SELECT value, classification, timestamp
+                FROM fear_greed_history
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """, (points,))
+            
+            # اگر داده کافی نبود، از API بگیر
+            if len(result) < points:
+                self._add_log(f"🔄 دریافت ترس و طمع از API (نیاز به {points} نقطه)")
+                current = self.api.get_fear_greed()
+                if current and 'now' in current:
+                    now = current['now']
+                    self.db.execute("""
+                        INSERT INTO fear_greed_history (value, classification, timestamp)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (timestamp) DO UPDATE SET value = EXCLUDED.value
+                    """, (
+                        now.get('value'),
+                        now.get('value_classification'),
+                        datetime.now().isoformat()
+                    ))
+                    # دوباره بخوان
+                    result = self.db.execute("""
+                        SELECT value, classification, timestamp
+                        FROM fear_greed_history
+                        ORDER BY timestamp DESC
+                        LIMIT %s
+                    """, (points,))
+            
+            return result
+        except Exception as e:
+            self._add_log(f"❌ خطا در دریافت ترس و طمع: {e}")
+            return []
+    
+    def _get_btc_dominance_history(self, points: int) -> List[Dict]:
+        """دریافت N نقطه آخر سلطه بیت‌کوین از دیتابیس"""
+        if not self.db or not self.db.is_connected():
+            return []
+        
+        try:
+            result = self.db.execute("""
+                SELECT value, timestamp
+                FROM btc_dominance_history
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """, (points,))
+            
+            if len(result) < points:
+                self._add_log(f"🔄 دریافت سلطه بیت‌کوین از API (نیاز به {points} نقطه)")
+                current = self.api.get_btc_dominance(use_cache=False)
+                if current:
+                    self.db.execute("""
+                        INSERT INTO btc_dominance_history (value, timestamp)
+                        VALUES (%s, %s)
+                        ON CONFLICT (timestamp) DO UPDATE SET value = EXCLUDED.value
+                    """, (
+                        current.get('dominance'),
+                        datetime.now().isoformat()
+                    ))
+                    result = self.db.execute("""
+                        SELECT value, timestamp
+                        FROM btc_dominance_history
+                        ORDER BY timestamp DESC
+                        LIMIT %s
+                    """, (points,))
+            
+            return result
+        except Exception as e:
+            self._add_log(f"❌ خطا در دریافت سلطه بیت‌کوین: {e}")
+            return []
+    
+    def _get_global_market_history(self, points: int) -> List[Dict]:
+        """دریافت N نقطه آخر وضعیت بازار از دیتابیس"""
+        if not self.db or not self.db.is_connected():
+            return []
+        
+        try:
+            result = self.db.execute("""
+                SELECT market_cap, volume, timestamp
+                FROM global_market_history
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """, (points,))
+            
+            if len(result) < points:
+                self._add_log(f"🔄 دریافت وضعیت بازار از API (نیاز به {points} نقطه)")
+                current = self.api.get_global_market()
+                if current:
+                    self.db.execute("""
+                        INSERT INTO global_market_history (market_cap, volume, timestamp)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (timestamp) DO UPDATE SET 
+                            market_cap = EXCLUDED.market_cap,
+                            volume = EXCLUDED.volume
+                    """, (
+                        current.get('totalMarketCap'),
+                        current.get('totalVolume'),
+                        datetime.now().isoformat()
+                    ))
+                    result = self.db.execute("""
+                        SELECT market_cap, volume, timestamp
+                        FROM global_market_history
+                        ORDER BY timestamp DESC
+                        LIMIT %s
+                    """, (points,))
+            
+            return result
+        except Exception as e:
+            self._add_log(f"❌ خطا در دریافت وضعیت بازار: {e}")
+            return []
     
     def fetch_data_for_coin(self, coin_id: str, period: str = "1m") -> List[List]:
         """دریافت داده‌های تاریخی برای یک ارز"""
@@ -235,12 +378,11 @@ class AutoTrainer:
             else:
                 features.append(0.0)
             
-            # 4. شاخص ترس و طمع
+            # 4. شاخص ترس و طمع (از دیتابیس)
             try:
-                fg = self.api.get_fear_greed(use_cache=True)
-                if fg and 'now' in fg:
-                    fear_value = fg['now'].get('value', 50)
-                    features.append(fear_value / 100.0)
+                fear_data = self._get_fear_greed_history(1)
+                if fear_data:
+                    features.append(fear_data[0].get('value', 50) / 100.0)
                 else:
                     features.append(0.5)
             except:
@@ -268,6 +410,16 @@ class AutoTrainer:
             else:
                 features.append(0.0)
             
+            # 7. سلطه بیت‌کوین (از دیتابیس)
+            try:
+                dominance_data = self._get_btc_dominance_history(1)
+                if dominance_data:
+                    features.append(dominance_data[0].get('value', 50) / 100.0)
+                else:
+                    features.append(0.5)
+            except:
+                features.append(0.5)
+            
             features_list.append(features)
             labels_list.append(label)
         
@@ -288,7 +440,6 @@ class AutoTrainer:
                 dtest = xgb.DMatrix(features)
                 predictions = model.predict(dtest)
             else:
-                # Ensemble یا مدل سفارشی
                 predictions = model.predict(features)
             
             pred_classes = (predictions > 0.5).astype(int)
@@ -387,7 +538,7 @@ class AutoTrainer:
             model.fit(X, y)
             training_time = time.time() - start_time
             
-            # ✅ رفع باگ: ذخیره مدل با مسیر صحیح
+            # ذخیره مدل
             model.save_model(self.model_path, format='json')
             
             # ارزیابی
@@ -395,7 +546,7 @@ class AutoTrainer:
             self.stats["last_score"] = round(score, 3)
             self._add_log(f"📊 دقت مدل جدید: {score:.3f}")
             
-            # مقایسه با مدل قبلی (اگر وجود داشته باشد)
+            # مقایسه با مدل قبلی
             old_score = None
             if self.model_manager.current_model is not None:
                 old_score = self._evaluate_model(
@@ -407,7 +558,6 @@ class AutoTrainer:
             
             # تصمیم‌گیری: ذخیره یا نگهداری
             if old_score is not None and (score - old_score) < 0.01:
-                # بهبود کمتر از ۱٪ - نگهداری مدل قبلی
                 self._add_log(f"⚠️ بهبود ناچیز ({((score - old_score)*100):.1f}%) - مدل قبلی حفظ می‌شود")
                 result = {
                     "success": True,
@@ -476,12 +626,6 @@ class AutoTrainer:
     def incremental_train(self, period: str = "1m") -> Dict[str, Any]:
         """
         آموزش افزایشی: مدل فعلی را با داده‌های جدید به‌روز می‌کند
-        
-        استراتژی:
-        1. داده‌های جدید را دریافت کن
-        2. مدل فعلی را با داده‌های جدید آموزش بده (با نرخ یادگیری کمتر)
-        3. دقت مدل جدید رو با قبلی مقایسه کن
-        4. اگر بهتر شد، جایگزین کن
         """
         if not self.model_manager.current_model:
             self._add_log("⚠️ مدلی برای آموزش افزایشی وجود ندارد - انجام آموزش کامل")
@@ -494,7 +638,6 @@ class AutoTrainer:
         self._add_log(f"📚 شروع آموزش افزایشی با بازه: {period}")
         
         try:
-            # دریافت داده‌های جدید
             all_features = []
             all_labels = []
             
@@ -514,16 +657,14 @@ class AutoTrainer:
             X = np.vstack(all_features)
             y = np.concatenate(all_labels)
             
-            # ارزیابی مدل فعلی
             old_accuracy = self._evaluate_model(self.model_manager.current_model, X, y)
             self._add_log(f"📊 دقت مدل فعلی روی داده‌های جدید: {old_accuracy:.3f}")
             
-            # آموزش افزایشی با نرخ یادگیری کمتر
             dtrain = xgb.DMatrix(X, label=y)
             params = {
                 'objective': 'binary:logistic',
                 'eval_metric': 'logloss',
-                'learning_rate': 0.05,  # کمتر از حالت عادی
+                'learning_rate': 0.05,
                 'max_depth': 3,
                 'subsample': 0.7,
                 'colsample_bytree': 0.7,
@@ -537,13 +678,11 @@ class AutoTrainer:
                 xgb_model=self.model_manager.current_model
             )
             
-            # ارزیابی مدل جدید
             new_accuracy = self._evaluate_model(new_model, X, y)
             improvement = new_accuracy - old_accuracy
             self._add_log(f"📊 دقت مدل جدید: {new_accuracy:.3f} (بهبود: {improvement*100:.1f}%)")
             
             if improvement > 0.02:
-                # بهبود > ۲٪ - جایگزینی کامل
                 self._add_log(f"✅ بهبود قابل توجه! ذخیره مدل جدید")
                 result = self.model_manager.save_model(new_model, new_accuracy, period)
                 self.is_training = False
@@ -556,7 +695,6 @@ class AutoTrainer:
                     "version": result.get('version')
                 }
             elif improvement > 0.005:
-                # بهبود ۰.۵-۲٪ - ترکیب با وزن‌دهی
                 self._add_log(f"🔄 بهبود متوسط - ترکیب با مدل قبلی")
                 combined_model = self._create_weighted_ensemble(
                     self.model_manager.current_model, 
@@ -613,8 +751,6 @@ class AutoTrainer:
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار کامل سیستم"""
         status = self.check_api_status()
-        
-        # دریافت اطلاعات از ModelManager
         model_stats = self.model_manager.get_stats() if self.model_manager else {}
         
         return {
@@ -626,7 +762,8 @@ class AutoTrainer:
             "model_exists": model_stats.get('loaded', False),
             "current_version": self.model_manager.current_version if self.model_manager else None,
             "logs": self.logs[-30:],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "points_config": self.historical_points_config
         }
     
     def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
@@ -660,17 +797,23 @@ class AutoTrainer:
     # اجرای خودکار
     # ============================================================
     
-    def start_auto_train(self, interval_hours: int = 6, period: str = "1m", incremental: bool = True):
+    def start_auto_train(self, interval_hours: int = None, period: str = None, incremental: bool = True):
         """
         شروع آموزش خودکار با فاصله زمانی مشخص
         
         پارامترها:
-            interval_hours: فاصله زمانی بین آموزش‌ها (ساعت)
-            period: بازه زمانی داده‌ها
+            interval_hours: فاصله زمانی بین آموزش‌ها (ساعت) - اگر None باشد از config می‌خواند
+            period: بازه زمانی داده‌ها - اگر None باشد از config می‌خواند
             incremental: آیا از آموزش افزایشی استفاده شود؟
         """
         if self.is_running:
             return {"success": False, "message": "سیستم در حال اجراست"}
+        
+        # استفاده از تنظیمات config
+        if interval_hours is None:
+            interval_hours = self.auto_trainer_config.get("interval_hours", 6)
+        if period is None:
+            period = self.auto_trainer_config.get("period", "1m")
         
         self.is_running = True
         self.stop_event.clear()
@@ -681,7 +824,6 @@ class AutoTrainer:
             
             while not self.stop_event.is_set():
                 try:
-                    # آموزش با روش انتخابی
                     if incremental and self.model_manager.current_model is not None:
                         result = self.incremental_train(period)
                     else:
@@ -692,7 +834,6 @@ class AutoTrainer:
                 except Exception as e:
                     self._add_log(f"❌ خطا در چرخه آموزش: {e}")
                 
-                # ✅ بهبود: استفاده از Event.wait به جای حلقه ۶ ساعته
                 wait_seconds = interval_hours * 3600
                 self.stop_event.wait(wait_seconds)
             
