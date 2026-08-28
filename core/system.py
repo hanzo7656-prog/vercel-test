@@ -1,7 +1,7 @@
 # core/system.py
 # ============================================================
-# هسته اصلی سیستم تشخیص الگوهای بازاری
-# نسخه ۷.۰ - بدون وابستگی دایره‌ای
+# هسته اصلی سیستم تشخیص الگوهای بازاری - نسخه ۷.۰
+# با AutoTrainer غیرفعال در Startup
 # ============================================================
 
 import os
@@ -19,24 +19,22 @@ from models.trainer.auto_trainer import AutoTrainer
 from models.manager.model_manager import ModelManager
 from database import get_cache, health_check as db_health_check
 from database.database_factory import ensure_databases_connected
-from config import get_config, get_model_config, get_system_config, get_thresholds
+from config import get_config, get_model_config, get_system_config, get_thresholds, get_auto_trainer_config
 
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# ✅ کش پیش‌بینی (انتقال از app.py - رفع وابستگی دایره‌ای)
+# کش پیش‌بینی
 # ============================================================
 
 prediction_cache = {}
-PREDICTION_CACHE_TTL = 300  # ۵ دقیقه
+PREDICTION_CACHE_TTL = 300
 
 
 class TradingSignalSystem:
     """
     سیستم تشخیص الگوی بازاری
     شامل: دریافت داده → مهندسی ویژگی‌ها → پیش‌بینی با XGBoost
-    
-    ✅ نسخه ۷.۰: بدون وابستگی دایره‌ای به app.py
     """
     
     def __init__(self, api_key: Optional[str] = None):
@@ -61,16 +59,26 @@ class TradingSignalSystem:
         self._cached_fear_greed = None
         self._cached_market = None
 
-        # آموزش خودکار مدل XGBoost
-        self.trainer = AutoTrainer(
-            self.api, 
-            self.model_manager
-        )
-
-        interval = get_config("model.auto_train_interval", 6)
-        self.trainer.start_auto_train(interval_hours=interval)
-
-        logger.info('AutoTrainer started')
+        # ============================================================
+        # ✅ AutoTrainer - غیرفعال در Startup (برای کاهش مصرف API)
+        # ============================================================
+        self.trainer = AutoTrainer(self.api, self.model_manager)
+        
+        # ❌ دیگر در Startup اجرا نمی‌شود
+        # interval = get_config("model.auto_train_interval", 6)
+        # self.trainer.start_auto_train(interval_hours=interval)
+        
+        # ✅ فقط تنظیمات را اعمال کن
+        auto_config = get_auto_trainer_config()
+        if auto_config.get("enabled", False):
+            interval = auto_config.get("interval_hours", 6)
+            period = auto_config.get("period", "1m")
+            self.trainer.start_auto_train(interval_hours=interval, period=period)
+            logger.info(f"✅ AutoTrainer started: every {interval}h, period: {period}")
+        else:
+            logger.info("🛑 AutoTrainer is DISABLED on startup to save API credits.")
+            logger.info("📌 Use POST /model/train to train manually.")
+            logger.info("📌 Use POST /model/start to enable auto-train.")
 
         # دیتابیس‌ها
         self.db_healthy = False
@@ -82,11 +90,11 @@ class TradingSignalSystem:
         else:
             print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
         
-        # ✅ جدید: ثبت در Scheduler
+        # ثبت در Scheduler
         self._register_with_scheduler()
 
     def _register_with_scheduler(self):
-        """✅ جدید: ثبت در Scheduler"""
+        """ثبت در Scheduler"""
         try:
             from core.metrics import metrics_scheduler
             logger.info("✅ TradingSignalSystem registered with Metrics Scheduler")
@@ -107,19 +115,12 @@ class TradingSignalSystem:
             print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
 
     def _ensure_database_health(self):
-        """
-        بررسی و اطمینان از سلامت اتصال دیتابیس‌ها
-        این تابع در زمان راه‌اندازی و به صورت دوره‌ای صدا زده می‌شود
-        """
+        """بررسی و اطمینان از سلامت اتصال دیتابیس‌ها"""
         try:
             result = ensure_databases_connected()
-        
-            # به‌روزرسانی وضعیت دیتابیس در سیستم
             self.db_healthy = result.get("primary", False)
-        
             if not self.db_healthy:
                 logger.warning("⚠️ دیتابیس اصلی در دسترس نیست، برخی قابلیت‌ها محدود خواهند شد")
-        
             return result
         except Exception as e:
             logger.error(f"❌ خطا در بررسی سلامت دیتابیس: {e}")
@@ -139,12 +140,7 @@ class TradingSignalSystem:
         return False
 
     def extract_features(self, chart_data: List[List]) -> Optional[np.ndarray]:
-        """
-        تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost
-        
-        ورودی: لیست [[timestamp, priceUSD, priceBTC, priceETH], ...]
-        خروجی: آرایه numpy از ویژگی‌ها
-        """
+        """تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost"""
         if not chart_data or len(chart_data) < 30:
             return None
 
@@ -220,51 +216,31 @@ class TradingSignalSystem:
         return np.array(features, dtype=np.float32)
 
     def _demo_predict(self, features: np.ndarray) -> float:
-        """
-        شبیه‌سازی پیش‌بینی در حالت DEMO (بدون مدل واقعی)
-        """
+        """شبیه‌سازی پیش‌بینی در حالت DEMO (بدون مدل واقعی)"""
         base_score = 0.5
     
-        # تأثیر بازده‌ها
         if len(features) >= 4:
             returns_avg = np.mean(features[:4])
             base_score += returns_avg * 1.5
     
-        # تأثیر روند
         if len(features) >= 10:
-            trend_strength = features[9]  # شیب ۲۰ قدمی
+            trend_strength = features[9]
             base_score += trend_strength * 0.3
     
-        # تأثیر ترس و طمع
         if len(features) >= 8:
-            fear = features[7]  # 0-1
-            if fear < 0.3:  # ترس شدید → احتمال برگشت
+            fear = features[7]
+            if fear < 0.3:
                 base_score += 0.15
-            elif fear > 0.7:  # طمع شدید → احتمال ریزش
+            elif fear > 0.7:
                 base_score -= 0.15
     
-        # اضافه کردن نویز تصادفی برای شبیه‌سازی
         prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
-    
         return float(prediction)
 
     def predict_sync(self, coin_id: str = "bitcoin", period: str = "24h") -> Dict[str, Any]:
-        """
-        نسخه همگام (Synchronous) پیش‌بینی با کش و بهینه‌سازی
-    
-        این تابع داده‌ها رو از API دریافت میکنه، ویژگی‌ها رو استخراج میکنه
-        و با مدل XGBoost (یا حالت DEMO) پیش‌بینی رو انجام میده.
-    
-        پارامترها:
-            coin_id: شناسه ارز (مثال: bitcoin, ethereum)
-            period: بازه زمانی (24h, 1w, 1m, 3m, 6m)
-    
-        خروجی:
-            دیکشنری شامل: سیگنال، اطمینان، قیمت فعلی و اطلاعات تکمیلی
-        """
+        """نسخه همگام (Synchronous) پیش‌بینی با کش و بهینه‌سازی"""
         start_time = time.time()
 
-        # اعتبارسنجی بازه زمانی
         valid_periods = ["24h", "1w", "1m", "3m", "6m"]
         if period not in valid_periods:
             return {
@@ -272,21 +248,16 @@ class TradingSignalSystem:
                 "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
             }
 
-        # ============================================================
-        # ✅ کش: چک کردن کش قبل از درخواست به API
-        # ============================================================
+        # کش
         cache_key = f"{coin_id}_{period}"
         if cache_key in prediction_cache:
             cached_data, cached_time = prediction_cache[cache_key]
             if time.time() - cached_time < PREDICTION_CACHE_TTL:
-                # داده‌های کش شده رو برگردون
                 cached_data["from_cache"] = True
                 cached_data["cache_age"] = round(time.time() - cached_time, 1)
                 return cached_data
 
-        # ============================================================
-        # 1. دریافت داده‌های تاریخی
-        # ============================================================
+        # دریافت داده
         chart_data = self.api.get_chart(coin_id, period)
 
         if not chart_data:
@@ -305,9 +276,7 @@ class TradingSignalSystem:
                 "period": period
             }
 
-        # ============================================================
-        # 2. استخراج ویژگی‌ها
-        # ============================================================
+        # استخراج ویژگی‌ها
         features = self.extract_features(chart_data)
 
         if features is None:
@@ -319,9 +288,7 @@ class TradingSignalSystem:
                 "data_points": len(chart_data) if chart_data else 0
             }
 
-        # ============================================================
-        # 3. پیش‌بینی با مدل جدید (ModelManager)
-        # ============================================================
+        # پیش‌بینی
         if self.model_manager.current_model:
             try:
                 prediction = self.model_manager.predict(features)
@@ -332,10 +299,7 @@ class TradingSignalSystem:
         else:
             prediction = self._demo_predict(features)
         
-        # ============================================================
-        # 4. تفسیر نتیجه
-        # ============================================================
-   
+        # تفسیر نتیجه
         if prediction >= 0.65:
             signal = "🟢 صعودی (الگوی خرید)"
             confidence = int(((prediction - 0.5) / 0.5) * 100)
@@ -351,15 +315,10 @@ class TradingSignalSystem:
 
         confidence = min(100, max(0, confidence))
 
-        # ============================================================
-        # 5. دریافت اطلاعات لحظه‌ای (با کش داخلی)
-        # ============================================================
+        # اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
-  
-        # ============================================================
-        # 6. اطلاعات تکمیلی
-        # ============================================================
+
         processing_time = (time.time() - start_time) * 1000
 
         result = {
@@ -376,14 +335,10 @@ class TradingSignalSystem:
             "processing_time_ms": round(processing_time, 2),
             "data_points": len(chart_data) if chart_data else 0,
             "model_mode": "PRODUCTION" if self.model_manager.current_model else "DEMO",
-            "from_cache": False  # برای کش
+            "from_cache": False
         }
 
-        # ============================================================
-        # ✅ ذخیره در کش
-        # ============================================================
         prediction_cache[cache_key] = (result.copy(), time.time())
-
         return result
 
     def health_check(self) -> Dict[str, Any]:
@@ -471,7 +426,7 @@ class TradingSignalSystem:
 
 
 # ============================================================
-# ✅ ایجاد نمونه Singleton
+# ایجاد نمونه Singleton
 # ============================================================
 
 system = TradingSignalSystem()
