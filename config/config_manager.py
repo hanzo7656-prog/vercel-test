@@ -1,6 +1,6 @@
 # config/config_manager.py
 # ============================================================
-# مدیریت تنظیمات سیستم - نسخه ۲.۱ (با توابع سازگاری)
+# مدیریت تنظیمات سیستم - نسخه ۲.۱ (با همه توابع)
 # ============================================================
 
 import os
@@ -77,17 +77,17 @@ class ConfigManager:
                 "timezone": "Asia/Tehran"
             },
             "auto_trainer": {
-                "enabled": True,
+                "enabled": False,
                 "interval_hours": 6,
                 "start_hours": [2, 8, 14, 20],
-                "coins": ["bitcoin", "ethereum", "solana"],
+                "coins": ["bitcoin", "ethereum"],
                 "period": "1m",
                 "incremental": True,
                 "min_credits": 100
             },
             "historical_points": {
-                "fear_greed": 5,
-                "btc_dominance": 5,
+                "fear_greed": 3,
+                "btc_dominance": 3,
                 "global_market": 3,
                 "chart": 31
             },
@@ -98,10 +98,11 @@ class ConfigManager:
                 "fear_greed_interval": 300,
                 "btc_dominance_interval": 300,
                 "news_interval": 600,
-                "alerts_interval": 60
+                "alerts_interval": 60,
+                "full_update_interval": 60
             },
             "cache": {
-                "price_ttl": 15,
+                "price_ttl": 60,
                 "fear_greed_ttl": 300,
                 "btc_dominance_ttl": 300,
                 "news_ttl": 600,
@@ -204,7 +205,7 @@ class ConfigManager:
     # ============================================================
     
     def get_historical_points(self, name: str) -> int:
-        return self.get(f"historical_points.{name}", 5)
+        return self.get(f"historical_points.{name}", 3)
     
     def set_historical_points(self, name: str, count: int):
         valid_names = ["fear_greed", "btc_dominance", "global_market", "chart"]
@@ -338,12 +339,3 @@ def reload_config():
 
 def get_all_config() -> Dict[str, Any]:
     return config.get_all()
-
-
-# ============================================================
-# راه‌اندازی اولیه
-# ============================================================
-
-if __name__ == "__main__":
-    print("📋 تنظیمات فعلی:")
-    print(json.dumps(config.get_all(), indent=2, ensure_ascii=False))
