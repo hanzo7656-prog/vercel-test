@@ -784,3 +784,49 @@ def register_api_routes(app, system):
             })
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
+
+    # routes/api_routes.py
+    # ============================================================
+    # اندپوینت برای تغییر تعداد نقاط
+    # ============================================================
+
+    from config.config_manager import set_historical_points, get_historical_points
+
+    @app.route('/api/config/historical-points', methods=['GET'])
+    def get_historical_points_config():
+        """دریافت تعداد نقاط تاریخی فعلی"""
+        return jsonify({
+            "success": True,
+            "data": {
+                "fear_greed": get_historical_points("fear_greed"),
+                "btc_dominance": get_historical_points("btc_dominance"),
+                "global_market": get_historical_points("global_market"),
+                "chart": get_historical_points("chart")
+            }
+        })
+
+    @app.route('/api/config/historical-points', methods=['POST'])
+    def set_historical_points_config():
+        """تغییر تعداد نقاط تاریخی"""
+        data = request.json
+        name = data.get('name')
+        count = data.get('count')
+    
+        if not name or not count:
+            return jsonify({"success": False, "error": "name و count الزامی است"}), 400
+    
+        if count < 1 or count > 50:
+            return jsonify({"success": False, "error": "count باید بین ۱ تا ۵۰ باشد"}), 400
+    
+        valid_names = ["fear_greed", "btc_dominance", "global_market", "chart"]
+        if name not in valid_names:
+            return jsonify({"success": False, "error": f"name باید یکی از {valid_names} باشد"}), 400
+    
+        set_historical_points(name, count)
+    
+        return jsonify({
+            "success": True,
+            "message": f"✅ تعداد نقاط {name} به {count} تغییر کرد",
+            "data": {name: count}
+        })
+    
