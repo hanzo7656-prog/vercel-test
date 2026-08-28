@@ -4,7 +4,7 @@
 # ============================================================
 
 from core.system import TradingSignalSystem, system
-from core.metrics_scheduler import MetricsScheduler, metrics_scheduler
+from core.metrics import MetricsScheduler, metrics_scheduler
 
 __all__ = [
     'TradingSignalSystem',
