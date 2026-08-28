@@ -1,6 +1,7 @@
-# core/metrics_scheduler.py
+# core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک با APScheduler (حرفه‌ای و پایدار)
+# سیستم جمع‌آوری متریک با APScheduler (تنظیم شده برای Gunicorn)
+# نسخه ۳.۰ - پایدار در محیط Gunicorn
 # ============================================================
 
 import time
@@ -8,7 +9,10 @@ import psutil
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
+
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
@@ -17,13 +21,32 @@ logger = logging.getLogger(__name__)
 class MetricsScheduler:
     """
     سیستم جمع‌آوری متریک با APScheduler
-    - بدون نیاز به واتچ‌داگ دستی
-    - تردها توسط APScheduler مدیریت می‌شوند
-    - ۱۰۰٪ پایدار
+    تنظیم شده برای اجرا در محیط Gunicorn
     """
     
     def __init__(self):
-        self.scheduler = BackgroundScheduler()
+        # ============================================================
+        # تنظیمات APScheduler برای Gunicorn
+        # ============================================================
+        jobstores = {
+            'default': MemoryJobStore()
+        }
+        executors = {
+            'default': ThreadPoolExecutor(2)  # ✅ ۲ ترد برای اجرای همزمان
+        }
+        job_defaults = {
+            'coalesce': False,           # اگر چندین اجرا همزمان شده باشند، همه اجرا شوند
+            'max_instances': 1,          # حداکثر یک نمونه از هر job
+            'misfire_grace_time': 15,    # ۱۵ ثانیه مهلت برای اجرای دیرهنگام
+        }
+        
+        self.scheduler = BackgroundScheduler(
+            jobstores=jobstores,
+            executors=executors,
+            job_defaults=job_defaults,
+            timezone='UTC'
+        )
+        
         self.metrics_cache: Dict[str, Any] = {}
         self.stats = {
             "collections": 0,
@@ -36,7 +59,7 @@ class MetricsScheduler:
         # تنظیم jobها
         self._setup_jobs()
         
-        logger.info("✅ MetricsScheduler (APScheduler) initialized")
+        logger.info("✅ MetricsScheduler v3.0 initialized (APScheduler + Gunicorn compatible)")
     
     def _setup_jobs(self):
         """تنظیم jobهای زمان‌بندی"""
@@ -107,7 +130,7 @@ class MetricsScheduler:
             self.stats["collections"] += 1
             self.stats["last_collection"] = datetime.now().isoformat()
             
-            logger.info(f"📊 CPU: {cpu}%, RAM: {ram}%")
+            logger.debug(f"📊 CPU: {cpu}%, RAM: {ram}%")
             
         except Exception as e:
             logger.error(f"❌ Light metrics error: {e}")
@@ -121,7 +144,8 @@ class MetricsScheduler:
                 from core.system import system
                 status = system.api.get_status()
                 api_status = status.get("status", "unknown") if status else "unknown"
-            except:
+            except Exception as e:
+                logger.debug(f"API status error: {e}")
                 api_status = "error"
             
             self.metrics_cache["api_status"] = {
@@ -163,7 +187,7 @@ class MetricsScheduler:
                 "level": "medium"
             }
             
-            logger.info(f"📊 API: {api_status}, Credits: {api_credits}")
+            logger.debug(f"📊 API: {api_status}, Credits: {api_credits}")
             
         except Exception as e:
             logger.error(f"❌ Medium metrics error: {e}")
@@ -231,7 +255,7 @@ class MetricsScheduler:
                 "level": "heavy"
             }
             
-            logger.info(f"📊 DB Size: {db_size}MB, Disk: {disk.get('percent', 0)}%")
+            logger.debug(f"📊 DB Size: {db_size}MB, Disk: {disk.get('percent', 0)}%")
             
         except Exception as e:
             logger.error(f"❌ Heavy metrics error: {e}")
@@ -246,6 +270,9 @@ class MetricsScheduler:
         if self._is_running:
             logger.info("⏳ Scheduler already running")
             return
+        
+        # ✅ اطمینان از اینکه jobها ثبت شده‌اند
+        self._setup_jobs()
         
         self.scheduler.start()
         self._is_running = True
