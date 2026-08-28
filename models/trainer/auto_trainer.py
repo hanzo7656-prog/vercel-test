@@ -1,7 +1,7 @@
 # models/trainer/auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰ (نهایی)
-# با قابلیت تنظیم تعداد نقاط تاریخی
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰
+# با قابلیت تنظیم تعداد نقاط تاریخی و کاهش ارزها
 # ============================================================
 
 import os
@@ -34,17 +34,11 @@ class AutoTrainer:
     - ترکیب با وزن‌دهی (Ensemble)
     - ارزیابی خودکار
     - ✅ قابلیت تنظیم تعداد نقاط تاریخی
+    - ✅ کاهش ارزها به ۲ عدد (برای کاهش مصرف API)
     - ✅ یکپارچه با Metrics Scheduler
     """
     
     def __init__(self, api: CoinStatsAPI, model_manager: ModelManager):
-        """
-        راه‌اندازی سیستم آموزش خودکار
-        
-        پارامترها:
-            api: نمونه CoinStatsAPI برای دریافت داده
-            model_manager: نمونه ModelManager برای مدیریت مدل
-        """
         self.api = api
         self.model_manager = model_manager
         self.db = get_primary()
@@ -94,8 +88,8 @@ class AutoTrainer:
             }
         }
         
-        # ارزهای مورد استفاده برای آموزش
-        self.coins = self.auto_trainer_config.get("coins", ["bitcoin", "ethereum", "solana"])
+        # ✅ فقط ۲ ارز اصلی (کاهش مصرف API)
+        self.coins = self.auto_trainer_config.get("coins", ["bitcoin", "ethereum"])
         
         # نام ویژگی‌ها
         self.feature_names = [
@@ -110,7 +104,7 @@ class AutoTrainer:
             "total_volume"
         ]
         
-        # ✅ ثبت در Scheduler
+        # ثبت در Scheduler
         self._register_with_scheduler()
         
         # بروزرسانی وضعیت از ModelManager
@@ -124,9 +118,9 @@ class AutoTrainer:
         self._add_log(f"📊 تعداد نقاط: ترس و طمع={self.historical_points_config['fear_greed']}, "
                       f"سلطه={self.historical_points_config['btc_dominance']}, "
                       f"بازار={self.historical_points_config['global_market']}")
-    
+        self._add_log(f"🪙 ارزهای فعال: {self.coins}")
+
     def _register_with_scheduler(self):
-        """✅ ثبت وضعیت مدل در Scheduler"""
         try:
             from core.metrics import metrics_scheduler
             logger.info("✅ AutoTrainer registered with Metrics Scheduler")
@@ -140,7 +134,6 @@ class AutoTrainer:
     # ============================================================
     
     def _add_log(self, message: str):
-        """ثبت لاگ با زمان"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
         self.logs.append(log_entry)
@@ -149,12 +142,10 @@ class AutoTrainer:
         logger.info(message)
     
     def clear_logs(self):
-        """پاک کردن لاگ‌ها"""
         self.logs = []
         self._add_log("🗑️ لاگ‌ها پاک شدند")
     
     def get_logs(self) -> List[str]:
-        """دریافت لاگ‌ها"""
         return self.logs
     
     # ============================================================
@@ -162,7 +153,6 @@ class AutoTrainer:
     # ============================================================
     
     def check_api_status(self) -> Dict[str, Any]:
-        """بررسی وضعیت API و اعتبار باقیمانده"""
         try:
             status = self.api.get_status()
             api_ok = status and status.get('status') == 'ok'
@@ -199,7 +189,6 @@ class AutoTrainer:
     # ============================================================
     
     def _get_fear_greed_history(self, points: int) -> List[Dict]:
-        """دریافت N نقطه آخر ترس و طمع از دیتابیس"""
         if not self.db or not self.db.is_connected():
             return []
         
@@ -211,7 +200,6 @@ class AutoTrainer:
                 LIMIT %s
             """, (points,))
             
-            # اگر داده کافی نبود، از API بگیر
             if len(result) < points:
                 self._add_log(f"🔄 دریافت ترس و طمع از API (نیاز به {points} نقطه)")
                 current = self.api.get_fear_greed()
@@ -226,7 +214,6 @@ class AutoTrainer:
                         now.get('value_classification'),
                         datetime.now().isoformat()
                     ))
-                    # دوباره بخوان
                     result = self.db.execute("""
                         SELECT value, classification, timestamp
                         FROM fear_greed_history
@@ -240,7 +227,6 @@ class AutoTrainer:
             return []
     
     def _get_btc_dominance_history(self, points: int) -> List[Dict]:
-        """دریافت N نقطه آخر سلطه بیت‌کوین از دیتابیس"""
         if not self.db or not self.db.is_connected():
             return []
         
@@ -277,7 +263,6 @@ class AutoTrainer:
             return []
     
     def _get_global_market_history(self, points: int) -> List[Dict]:
-        """دریافت N نقطه آخر وضعیت بازار از دیتابیس"""
         if not self.db or not self.db.is_connected():
             return []
         
@@ -317,7 +302,6 @@ class AutoTrainer:
             return []
     
     def fetch_data_for_coin(self, coin_id: str, period: str = "1m") -> List[List]:
-        """دریافت داده‌های تاریخی برای یک ارز"""
         try:
             data = self.api.get_chart(coin_id, period)
             if data and isinstance(data, list) and len(data) > 0:
@@ -329,7 +313,6 @@ class AutoTrainer:
             return []
     
     def extract_features_for_training(self, chart_data: List[List]) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-        """استخراج ویژگی‌ها و لیبل‌ها از داده‌های قیمت"""
         if not chart_data or len(chart_data) < 30:
             return None, None
         
@@ -426,7 +409,6 @@ class AutoTrainer:
         return np.array(features_list, dtype=np.float32), np.array(labels_list, dtype=np.int32)
     
     def _get_training_coins(self) -> List[str]:
-        """دریافت لیست ارزهای مورد استفاده برای آموزش"""
         return self.coins
     
     # ============================================================
@@ -434,7 +416,6 @@ class AutoTrainer:
     # ============================================================
     
     def _evaluate_model(self, model, features, labels) -> float:
-        """ارزیابی دقت مدل روی داده‌های تست"""
         try:
             if isinstance(model, xgb.Booster):
                 dtest = xgb.DMatrix(features)
@@ -454,19 +435,9 @@ class AutoTrainer:
     # ============================================================
     
     def train_model(self, period: str = "1m") -> Dict[str, Any]:
-        """
-        آموزش مدل XGBoost با داده‌های جدید و ذخیره در دیتابیس
-        
-        پارامترها:
-            period: بازه زمانی (1w, 1m, 3m, 6m)
-        
-        خروجی:
-            دیکشنری شامل نتایج آموزش
-        """
         if self.is_training:
             return {"success": False, "message": "آموزش در حال انجام است"}
         
-        # بررسی وضعیت API
         status = self.check_api_status()
         if not status["can_train"]:
             return {
@@ -488,7 +459,6 @@ class AutoTrainer:
             all_labels = []
             total_points = 0
             
-            # دریافت داده از همه ارزها
             for coin in self.coins:
                 self._add_log(f"🪙 دریافت {coin} ({period})...")
                 chart_data = self.fetch_data_for_coin(coin, period)
@@ -512,14 +482,12 @@ class AutoTrainer:
                 self._add_log("❌ داده‌ای برای آموزش یافت نشد")
                 return result
             
-            # ترکیب داده‌ها
             X = np.vstack(all_features)
             y = np.concatenate(all_labels)
             
             self._add_log(f"📊 کل نمونه‌های آموزش: {len(X)}")
             self.stats["data_points_used"] = len(X)
             
-            # آموزش مدل جدید
             self._add_log("🧠 آموزش مدل XGBoost...")
             start_time = time.time()
             
@@ -538,15 +506,12 @@ class AutoTrainer:
             model.fit(X, y)
             training_time = time.time() - start_time
             
-            # ذخیره مدل
             model.save_model(self.model_path, format='json')
             
-            # ارزیابی
             score = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
             self._add_log(f"📊 دقت مدل جدید: {score:.3f}")
             
-            # مقایسه با مدل قبلی
             old_score = None
             if self.model_manager.current_model is not None:
                 old_score = self._evaluate_model(
@@ -556,7 +521,6 @@ class AutoTrainer:
                 )
                 self._add_log(f"📊 دقت مدل قبلی: {old_score:.3f}")
             
-            # تصمیم‌گیری: ذخیره یا نگهداری
             if old_score is not None and (score - old_score) < 0.01:
                 self._add_log(f"⚠️ بهبود ناچیز ({((score - old_score)*100):.1f}%) - مدل قبلی حفظ می‌شود")
                 result = {
@@ -571,7 +535,6 @@ class AutoTrainer:
                 self.stats["successful_trainings"] += 1
                 return result
             
-            # ذخیره مدل در دیتابیس
             self._add_log(f"💾 ذخیره مدل در دیتابیس...")
             save_result = self.model_manager.save_model(
                 model,
@@ -620,13 +583,10 @@ class AutoTrainer:
         return result
     
     # ============================================================
-    # آموزش افزایشی (Incremental Learning)
+    # آموزش افزایشی
     # ============================================================
     
     def incremental_train(self, period: str = "1m") -> Dict[str, Any]:
-        """
-        آموزش افزایشی: مدل فعلی را با داده‌های جدید به‌روز می‌کند
-        """
         if not self.model_manager.current_model:
             self._add_log("⚠️ مدلی برای آموزش افزایشی وجود ندارد - انجام آموزش کامل")
             return self.train_model(period)
@@ -729,7 +689,6 @@ class AutoTrainer:
             return {"success": False, "error": str(e)}
     
     def _create_weighted_ensemble(self, model1, model2, weights=[0.5, 0.5]):
-        """ترکیب دو مدل با وزن‌دهی"""
         class WeightedEnsemble:
             def __init__(self, models, weights):
                 self.models = models
@@ -749,7 +708,6 @@ class AutoTrainer:
     # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
-        """دریافت آمار کامل سیستم"""
         status = self.check_api_status()
         model_stats = self.model_manager.get_stats() if self.model_manager else {}
         
@@ -767,7 +725,6 @@ class AutoTrainer:
         }
     
     def get_training_history(self, period: str = None) -> List[Dict[str, Any]]:
-        """دریافت سابقه آموزش از دیتابیس"""
         if not self.db or not self.db.is_connected():
             return []
         
@@ -798,18 +755,9 @@ class AutoTrainer:
     # ============================================================
     
     def start_auto_train(self, interval_hours: int = None, period: str = None, incremental: bool = True):
-        """
-        شروع آموزش خودکار با فاصله زمانی مشخص
-        
-        پارامترها:
-            interval_hours: فاصله زمانی بین آموزش‌ها (ساعت) - اگر None باشد از config می‌خواند
-            period: بازه زمانی داده‌ها - اگر None باشد از config می‌خواند
-            incremental: آیا از آموزش افزایشی استفاده شود؟
-        """
         if self.is_running:
             return {"success": False, "message": "سیستم در حال اجراست"}
         
-        # استفاده از تنظیمات config
         if interval_hours is None:
             interval_hours = self.auto_trainer_config.get("interval_hours", 6)
         if period is None:
@@ -852,7 +800,6 @@ class AutoTrainer:
         }
     
     def stop_auto_train(self):
-        """متوقف کردن آموزش خودکار"""
         if not self.is_running:
             return {"success": False, "message": "سیستم در حال اجرا نیست"}
         
