@@ -11,6 +11,9 @@ from infrastructure.database.postgresql_manager import PostgreSQLManager
 from infrastructure.database.sqlite_manager import SQLiteManager
 from infrastructure.database.database_factory import db_factory, ensure_databases_connected
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def get_db(name: str = None):
     """دریافت دیتابیس با نام"""
@@ -76,10 +79,6 @@ def health_check():
     
     return health
 
-
-# ایمپورت‌های لازم برای logger
-import logging
-logger = logging.getLogger(__name__)
 
 __all__ = [
     'registry',
