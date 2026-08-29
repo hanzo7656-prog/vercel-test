@@ -1,6 +1,6 @@
 # domain/services/numeric_analyzer.py
 # ============================================================
-# موتور تحلیل عددی - نسخه ۴.۰ (انتقال به Domain)
+# موتور تحلیل عددی - نسخه ۴.۱ (رفع Circular Import)
 # ============================================================
 
 import numpy as np
@@ -9,7 +9,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
 from domain.interfaces.api_client import APIClient
-from core.feature_engineering import FeatureEngineer
+# ❌ حذف import مستقیم FeatureEngineer
+# from core.feature_engineering import FeatureEngineer
 from models.manager.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
@@ -17,30 +18,30 @@ logger = logging.getLogger(__name__)
 
 class NumericAnalyzer:
     """
-    موتور تحلیل عددی و تکنیکال - نسخه ۴.۰
+    موتور تحلیل عددی و تکنیکال - نسخه ۴.۱
     
-    ✅ انتقال به لایه Domain
-    ✅ استفاده از FeatureEngineer یکپارچه
-    ✅ Type Hints کامل
+    ✅ رفع وابستگی Circular Import
+    ✅ استفاده از Lazy Loading برای FeatureEngineer
     """
     
     def __init__(self, api_client: APIClient, model_manager: ModelManager) -> None:
         self.api_client: APIClient = api_client
         self.model_manager: ModelManager = model_manager
-        self.feature_engineer: FeatureEngineer = FeatureEngineer(api_client)
+        self._feature_engineer = None  # Lazy Loading
         
-        logger.info("✅ NumericAnalyzer v4.0 initialized")
+        logger.info("✅ NumericAnalyzer v4.1 initialized")
+    
+    @property
+    def feature_engineer(self):
+        """Lazy Loading برای FeatureEngineer (جلوگیری از Circular Import)"""
+        if self._feature_engineer is None:
+            from core.feature_engineering import FeatureEngineer
+            self._feature_engineer = FeatureEngineer(self.api_client)
+        return self._feature_engineer
 
     def analyze_coin(self, coin_id: str, period: str = "24h") -> Dict[str, Any]:
         """
         تحلیل کامل یک ارز و بازگرداندن همه شاخص‌ها و سیگنال‌ها
-        
-        پارامترها:
-            coin_id: شناسه ارز
-            period: بازه زمانی (24h, 1w, 1m)
-        
-        خروجی:
-            دیکشنری شامل همه شاخص‌ها
         """
         try:
             # ۱. دریافت داده‌های قیمت
@@ -76,7 +77,7 @@ class NumericAnalyzer:
                 "timestamp": datetime.now().isoformat()
             }
 
-            # ۳. دریافت سیگنال از مدل XGBoost
+            # ۳. دریافت سیگنال از مدل XGBoost (با FeatureEngineer)
             try:
                 features = self.feature_engineer.extract_features(chart_data)
                 if features is not None and self.model_manager.current_model:
@@ -107,7 +108,7 @@ class NumericAnalyzer:
             return {"error": str(e), "coin": coin_id}
 
     # ============================================================
-    # توابع محاسبه شاخص‌ها
+    # توابع محاسبه شاخص‌ها (بدون تغییر)
     # ============================================================
     
     def _calculate_sma(self, prices: List[float], window: int) -> Optional[float]:
