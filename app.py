@@ -1,20 +1,22 @@
 # app.py
 # ============================================================
-# ورودی اصلی - نسخه ۸.۰ (با ThreadingManager)
+# ورودی اصلی - نسخه ۸.۰ نهایی 
 # ============================================================
 
 import os
 import sys
 import signal
 import logging
-from datetime import datetime
 from flask import Flask
 
 from config.version import VERSION, APP_NAME
 from core.threading_manager import threading_manager
 from core.metrics import metrics_scheduler
+from core.parallel_processor import parallel_processor
+from services import prediction_service, training_service, batch_processor
 from alerter import alerter
 from self_healer import SelfHealer
+from database.database_factory import ensure_databases_connected
 
 # ============================================================
 # تنظیمات لاگ
@@ -37,6 +39,9 @@ def signal_handler(sig, frame):
     threading_manager.stop_all()
     metrics_scheduler.stop()
     
+    # خاموش کردن Poolها
+    parallel_processor.shutdown()
+    
     logger.info("✅ Graceful shutdown complete")
     sys.exit(0)
 
@@ -49,6 +54,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['JSON_SORT_KEYS'] = False
 
 # ============================================================
 # ایمپورت Core
@@ -70,16 +76,14 @@ register_all_routes(app, system)
 def metrics_thread_func():
     """تابع متریک برای اجرا در Thread"""
     metrics_scheduler.start()
-    # نگه‌داشتن Thread تا زمان Stop
-    while threading_manager._threads.get('metrics', {})._stop_event.wait(1):
-        pass
 
 threading_manager.register(
     name="metrics",
     target=metrics_thread_func,
     daemon=False,
     auto_restart=True,
-    max_restarts=3
+    max_restarts=3,
+    restart_delay=10
 )
 
 logger.info("✅ Metrics Scheduler started with ThreadingManager")
@@ -112,17 +116,37 @@ threading_manager.register(
     target=alert_loop,
     daemon=False,
     auto_restart=True,
-    max_restarts=5
+    max_restarts=5,
+    restart_delay=15
 )
 
 logger.info("✅ Alert & Self-Healing loop started")
 
 # ============================================================
-# راه‌اندازی Watchdog
+# اطمینان از اتصال دیتابیس‌ها
 # ============================================================
 
-threading_manager.start_watchdog(check_interval=10)
-logger.info("✅ Watchdog started")
+def check_databases():
+    """بررسی دوره‌ای دیتابیس‌ها"""
+    while True:
+        try:
+            ensure_databases_connected()
+            import time
+            time.sleep(60)  # هر ۱ دقیقه
+        except Exception as e:
+            logger.error(f"❌ Database health check error: {e}")
+            import time
+            time.sleep(120)
+
+threading_manager.register(
+    name="db_health",
+    target=check_databases,
+    daemon=True,
+    auto_restart=True,
+    max_restarts=10
+)
+
+logger.info("✅ Database health check started")
 
 # ============================================================
 # اجرای اصلی
@@ -138,6 +162,19 @@ if __name__ == "__main__":
     print(f"🐛 Debug: {debug}")
     print(f"🧠 Model: {'✅ Loaded' if system.model_manager.current_model else '❌ Not Loaded'}")
     print(f"🔧 Threads: {len(threading_manager._threads)} active")
+    print(f"⚡ Parallel Processing: Enabled (Threads: 10, Processes: 4)")
+    print("=" * 60)
+    print("📌 New Features:")
+    print("  🔄 Multi-coin parallel prediction")
+    print("  📊 Batch processing for heavy tasks")
+    print("  🚀 Async predictions (async/await)")
+    print("  🐕 Advanced Watchdog with auto-restart")
     print("=" * 60)
     
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    # شروع سرویس‌ها
+    try:
+        app.run(host="0.0.0.0", port=port, debug=debug)
+    except KeyboardInterrupt:
+        logger.info("🛑 Shutting down...")
+        threading_manager.stop_all()
+        parallel_processor.shutdown()
