@@ -83,74 +83,7 @@
         }
 
         /* ============================================================
-           FLYOUT MENU
-           ============================================================ */
-        .flyout-menu {
-            position: fixed;
-            top: 68px;
-            right: 16px;
-            background: rgba(8, 12, 24, 0.95);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(0, 212, 255, 0.1);
-            border-radius: 16px;
-            padding: 8px 0;
-            min-width: 200px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-            transform: scale(0.9);
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            z-index: 150;
-            transform-origin: top right;
-        }
-        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
-        .flyout-menu a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 20px;
-            color: #7a8fa8;
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
-            border-right: 2px solid transparent;
-        }
-        .flyout-menu a:hover {
-            background: rgba(0, 212, 255, 0.05);
-            color: #e8eef7;
-            border-right-color: #00d4ff;
-        }
-        .flyout-menu a.active {
-            color: #00d4ff;
-            border-right-color: #00d4ff;
-            background: rgba(0, 212, 255, 0.05);
-        }
-        .flyout-menu .menu-divider {
-            height: 1px;
-            background: rgba(0, 212, 255, 0.08);
-            margin: 6px 16px;
-        }
-        .flyout-menu .menu-label {
-            padding: 8px 20px 4px;
-            font-size: 0.6rem;
-            color: #7a8fa8;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            opacity: 0.5;
-        }
-        .flyout-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 140;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .flyout-overlay.open { opacity: 1; pointer-events: all; }
-
-        /* ============================================================
-           MAIN LAYOUT - بزرگ‌تر و ریسپانسیو
+           MAIN LAYOUT
            ============================================================ */
         .main-container {
             max-width: 1100px;
@@ -207,9 +140,14 @@
             color: #ff4444;
             border-color: rgba(255, 68, 68, 0.15);
         }
+        .chip.warning {
+            background: rgba(255, 136, 0, 0.08);
+            color: #ff8800;
+            border-color: rgba(255, 136, 0, 0.15);
+        }
 
         /* ============================================================
-           CHAT SECTION - بزرگ‌تر
+           CHAT SECTION
            ============================================================ */
         .chat-section {
             background: rgba(13, 22, 40, 0.5);
@@ -280,6 +218,9 @@
             font-family: 'Courier New', monospace;
             font-size: 0.8rem;
         }
+        .message.bot .fa {
+            margin-left: 4px;
+        }
         .typing-indicator {
             color: #7a8fa8;
             font-style: italic;
@@ -326,6 +267,11 @@
         .input-row .btn-send:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 30px rgba(0, 212, 255, 0.15);
+        }
+        .input-row .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .quick-buttons {
@@ -475,6 +421,8 @@
                 <span class="value cyan" id="modelVersion">—</span>
                 <span class="label">دقت:</span>
                 <span class="value green" id="modelAccuracy">—</span>
+                <span class="label">آموزش:</span>
+                <span class="value" id="modelTrainings">—</span>
             </div>
             <div class="right">
                 <span class="chip online" id="apiStatus">🟢 API متصل</span>
@@ -489,7 +437,18 @@
             </div>
 
             <div class="chat-box" id="chatBox">
-                <div class="message bot">سلام! 👋<br>من تحلیلگر بازار هستم.<br><br>💰 /price bitcoin<br>📊 /analyze ethereum<br>🧠 /signal solana<br>📈 /trend cardano<br>📊 /metrics<br>🏥 /health<br><br>برای راهنما: /help</div>
+                <div class="message bot">
+                    سلام! 👋<br>
+                    من تحلیلگر بازار هستم.<br><br>
+                    💰 /price bitcoin<br>
+                    📊 /analyze ethereum<br>
+                    🧠 /signal solana<br>
+                    📈 /trend cardano<br>
+                    📊 /metrics<br>
+                    🏥 /health<br>
+                    📋 /history<br><br>
+                    برای راهنما: /help
+                </div>
             </div>
 
             <div class="quick-buttons">
@@ -499,12 +458,13 @@
                 <button onclick="sendQuickCommand('/trend')">📈 روند</button>
                 <button onclick="sendQuickCommand('/metrics')">📊 متریک</button>
                 <button onclick="sendQuickCommand('/health')">🏥 سلامت</button>
+                <button onclick="sendQuickCommand('/history')">📋 تاریخچه</button>
                 <button onclick="sendQuickCommand('/help')">❓ راهنما</button>
             </div>
 
             <div class="input-row">
                 <input type="text" id="cmdInput" placeholder="مثلاً: /price bitcoin" onkeypress="if(event.key==='Enter') sendCommand()">
-                <button class="btn-send" onclick="sendCommand()">📤 ارسال</button>
+                <button class="btn-send" id="sendBtn" onclick="sendCommand()">📤 ارسال</button>
             </div>
         </div>
 
@@ -557,15 +517,26 @@
         // ============================================================
         // UPTIME
         // ============================================================
-        if (typeof fetchAndStartUptime === 'function') {
-            fetchAndStartUptime();
+        function fetchUptime() {
+            fetch('/stats')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.uptime) {
+                        const el = document.getElementById('uptimeDisplay');
+                        if (el) el.textContent = '⏱️ ' + data.uptime;
+                    }
+                })
+                .catch(() => {});
         }
+        fetchUptime();
+        setInterval(fetchUptime, 30000);
 
         // ============================================================
         // CHAT
         // ============================================================
         const chatBox = document.getElementById('chatBox');
         const cmdInput = document.getElementById('cmdInput');
+        const sendBtn = document.getElementById('sendBtn');
         let currentCoin = 'bitcoin';
 
         function addMessage(text, sender) {
@@ -595,12 +566,15 @@
             if (!command) return;
 
             const cmdOnly = command.split(' ')[0];
-            if (['/price', '/analyze', '/signal', '/trend', '/rsi', '/support', '/resistance', '/macd', '/volatility'].includes(cmdOnly) && command.split(' ').length === 1) {
+            const noCoinCmds = ['/help', '/history', '/metrics', '/health', '/status'];
+            
+            if (!noCoinCmds.includes(cmdOnly) && command.split(' ').length === 1) {
                 command += ` ${currentCoin}`;
             }
 
             addMessage(command, 'user');
             cmdInput.value = '';
+            sendBtn.disabled = true;
             addTypingIndicator();
 
             try {
@@ -613,14 +587,21 @@
 
                 const data = await response.json();
                 removeTypingIndicator();
+                sendBtn.disabled = false;
 
                 if (data.success) {
+                    // بررسی آیا دستور شامل کوین جدید است
+                    const parts = command.split(' ');
+                    if (parts.length > 1 && !noCoinCmds.includes(parts[0])) {
+                        currentCoin = parts[1];
+                    }
                     addMessage(data.response, 'bot');
                 } else {
                     addMessage(`❌ ${data.error || 'خطا در پردازش'}`, 'bot');
                 }
             } catch (error) {
                 removeTypingIndicator();
+                sendBtn.disabled = false;
                 addMessage(`❌ خطا در ارتباط با سرور: ${error.message}`, 'bot');
             }
         }
@@ -643,11 +624,13 @@
                         const version = metrics.model_status?.value?.version || '—';
                         const accuracy = metrics.model_accuracy?.value || null;
                         const api = metrics.api_status?.value || 'unknown';
+                        const trainings = data.data.stats?.collections || '—';
 
                         document.getElementById('modelStatus').textContent = loaded ? '✅ فعال' : '📦 دمو';
                         document.getElementById('modelStatus').className = 'value ' + (loaded ? 'green' : 'orange');
                         document.getElementById('modelVersion').textContent = version;
                         document.getElementById('modelAccuracy').textContent = accuracy !== null ? (accuracy * 100).toFixed(1) + '%' : '—';
+                        document.getElementById('modelTrainings').textContent = trainings;
 
                         const apiEl = document.getElementById('apiStatus');
                         if (api === 'ok') {
@@ -655,7 +638,7 @@
                             apiEl.className = 'chip online';
                         } else if (api === 'degraded') {
                             apiEl.textContent = '🟡 API ضعیف';
-                            apiEl.className = 'chip offline';
+                            apiEl.className = 'chip warning';
                         } else {
                             apiEl.textContent = '🔴 API قطع';
                             apiEl.className = 'chip offline';
@@ -666,31 +649,24 @@
         }
 
         // ============================================================
-        // TOAST
-        // ============================================================
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            if (!container) return;
-            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ff8800' };
-            const toast = document.createElement('div');
-            toast.className = 'toast ' + type;
-            toast.textContent = message;
-            toast.style.borderColor = colors[type] || colors.info;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
-            }, 3000);
-        }
-
-        // ============================================================
         // AUTO REFRESH
         // ============================================================
         updateModelStatus();
         setInterval(updateModelStatus, 10000);
 
-        console.log('🚀 Predict page v2.0 loaded (Responsive & Larger)');
+        // ============================================================
+        // TOAST (در صورت عدم وجود)
+        // ============================================================
+        function showToast(message, type) {
+            // اگر toast موجود نبود، از alert استفاده کن
+            if (typeof window.showToast === 'function') {
+                window.showToast(message, type);
+            } else {
+                console.log(message);
+            }
+        }
+
+        console.log('🚀 Predict page v3.0 loaded');
     </script>
 
 </body>
