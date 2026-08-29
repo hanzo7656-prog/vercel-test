@@ -1,7 +1,7 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک با threading ساده (بدون APScheduler)
-# نسخه ۵.۰ - با زمان‌بندی هوشمند از Config
+# سیستم جمع‌آوری متریک با threading ساده
+# نسخه ۶.۰ - با همه داده‌های مورد نیاز Dashboard
 # ============================================================
 
 import time
@@ -22,7 +22,7 @@ class MetricsScheduler:
     - بدون APScheduler
     - بدون وابستگی
     - ۱۰۰٪ پایدار در Gunicorn
-    - ✅ زمان‌بندی از Config
+    - ✅ جمع‌آوری همه داده‌های مورد نیاز Dashboard
     """
     
     def __init__(self):
@@ -39,14 +39,14 @@ class MetricsScheduler:
         }
         self.start_time = time.time()
         
-        # ✅ دریافت تنظیمات از Config
+        # دریافت تنظیمات از Config
         scheduler_config = get_scheduler_config()
         self.light_interval = scheduler_config.get("light_interval", 3)
         self.medium_interval = scheduler_config.get("medium_interval", 30)
         self.heavy_interval = scheduler_config.get("heavy_interval", 300)
         
-        logger.info(f"✅ MetricsScheduler v5.0 initialized (threading)")
-        logger.info(f"⏱️ Intervals: Light={self.light_interval}s, Medium={self.medium_interval}s, Heavy={self.heavy_interval}s")
+        logger.info(f"✅ MetricsScheduler v6.0 initialized")
+        logger.info(f"⏱️ Light={self.light_interval}s, Medium={self.medium_interval}s, Heavy={self.heavy_interval}s")
     
     # ============================================================
     # حلقه اصلی
@@ -64,25 +64,21 @@ class MetricsScheduler:
             try:
                 now = time.time()
                 
-                # هر light_interval ثانیه (Light: CPU, RAM, uptime)
+                # Light: CPU, RAM, uptime (هر ۳ ثانیه)
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
-                    logger.debug(f"🔄 Light metrics collected")
                 
-                # هر medium_interval ثانیه (Medium: API, Model)
+                # Medium: قیمت, مدل, API (هر ۳۰ ثانیه)
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
-                    logger.debug(f"🔄 Medium metrics collected")
                 
-                # هر heavy_interval ثانیه (Heavy: Database, Disk)
+                # Heavy: دیتابیس, دیسک, ترس و طمع, سلطه, اخبار (هر ۵ دقیقه)
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
-                    logger.debug(f"🔄 Heavy metrics collected")
                 
-                # هر ۱ ثانیه چک کن
                 time.sleep(1)
                 
             except Exception as e:
@@ -93,11 +89,11 @@ class MetricsScheduler:
         logger.info("⏹️ Scheduler loop stopped")
     
     # ============================================================
-    # جمع‌آوری‌کننده‌ها
+    # ۱. جمع‌آوری سبک (Light) - هر ۳ ثانیه
     # ============================================================
     
     def _collect_light_metrics(self):
-        """جمع‌آوری متریک‌های سبک (CPU, RAM, uptime)"""
+        """CPU, RAM, Uptime"""
         try:
             cpu = psutil.cpu_percent(interval=0.2)
             ram = psutil.virtual_memory().percent
@@ -137,10 +133,47 @@ class MetricsScheduler:
             logger.error(f"❌ Light metrics error: {e}")
             self.stats["errors"] += 1
     
+    # ============================================================
+    # ۲. جمع‌آوری متوسط (Medium) - هر ۳۰ ثانیه
+    # ============================================================
+    
     def _collect_medium_metrics(self):
-        """جمع‌آوری متریک‌های متوسط (API, Model)"""
+        """
+        قیمت لحظه‌ای ارزها, وضعیت مدل, وضعیت API, اعتبار API
+        """
         try:
-            # API Status
+            # ============================================================
+            # ۱. قیمت لحظه‌ای ارزها (get_coin)
+            # ============================================================
+            try:
+                from core.system import system
+                
+                # بیت‌کوین
+                btc = system.api.get_coin("bitcoin")
+                if btc and "error" not in btc:
+                    self.metrics_cache["btc_price"] = {
+                        "value": btc.get("price", 0),
+                        "change_24h": btc.get("priceChange1d", 0),
+                        "timestamp": datetime.now().isoformat(),
+                        "level": "medium"
+                    }
+                
+                # اتریوم
+                eth = system.api.get_coin("ethereum")
+                if eth and "error" not in eth:
+                    self.metrics_cache["eth_price"] = {
+                        "value": eth.get("price", 0),
+                        "change_24h": eth.get("priceChange1d", 0),
+                        "timestamp": datetime.now().isoformat(),
+                        "level": "medium"
+                    }
+                    
+            except Exception as e:
+                logger.debug(f"Price collection error: {e}")
+            
+            # ============================================================
+            # ۲. وضعیت API (get_status)
+            # ============================================================
             try:
                 from core.system import system
                 status = system.api.get_status()
@@ -148,7 +181,15 @@ class MetricsScheduler:
             except:
                 api_status = "error"
             
-            # API Credits
+            self.metrics_cache["api_status"] = {
+                "value": api_status,
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
+            
+            # ============================================================
+            # ۳. اعتبار API (get_credits)
+            # ============================================================
             try:
                 from core.system import system
                 credits = system.api.get_credits()
@@ -156,7 +197,15 @@ class MetricsScheduler:
             except:
                 api_credits = 0
             
-            # Model Status
+            self.metrics_cache["api_credits"] = {
+                "value": api_credits,
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
+            
+            # ============================================================
+            # ۴. وضعیت مدل (ModelManager)
+            # ============================================================
             try:
                 from core.system import system
                 if system.model_manager:
@@ -169,33 +218,77 @@ class MetricsScheduler:
                 loaded = False
                 version = "N/A"
             
-            with self._lock:
-                self.metrics_cache["api_status"] = {
-                    "value": api_status,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "medium"
-                }
-                self.metrics_cache["api_credits"] = {
-                    "value": api_credits,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "medium"
-                }
-                self.metrics_cache["model_status"] = {
-                    "value": {"loaded": loaded, "version": version},
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "medium"
-                }
+            self.metrics_cache["model_status"] = {
+                "value": {"loaded": loaded, "version": version},
+                "timestamp": datetime.now().isoformat(),
+                "level": "medium"
+            }
             
-            logger.info(f"📊 API: {api_status}, Credits: {api_credits}")
+            logger.info(f"📊 BTC: ${self.metrics_cache.get('btc_price', {}).get('value', 0):.2f}, "
+                        f"ETH: ${self.metrics_cache.get('eth_price', {}).get('value', 0):.2f}")
             
         except Exception as e:
             logger.error(f"❌ Medium metrics error: {e}")
             self.stats["errors"] += 1
     
+    # ============================================================
+    # ۳. جمع‌آوری سنگین (Heavy) - هر ۵ دقیقه
+    # ============================================================
+    
     def _collect_heavy_metrics(self):
-        """جمع‌آوری متریک‌های سنگین (Database, Disk)"""
+        """
+        ترس و طمع, سلطه بیت‌کوین, اخبار, دیتابیس, دیسک
+        """
         try:
-            # Database Size
+            # ============================================================
+            # ۱. شاخص ترس و طمع (get_fear_greed)
+            # ============================================================
+            try:
+                from core.system import system
+                fg = system.api.get_fear_greed(use_cache=True)
+                if fg and "now" in fg:
+                    self.metrics_cache["fear_greed"] = {
+                        "value": fg["now"].get("value", 50),
+                        "classification": fg["now"].get("value_classification", "Neutral"),
+                        "timestamp": datetime.now().isoformat(),
+                        "level": "heavy"
+                    }
+            except Exception as e:
+                logger.debug(f"Fear & Greed collection error: {e}")
+            
+            # ============================================================
+            # ۲. سلطه بیت‌کوین (get_btc_dominance)
+            # ============================================================
+            try:
+                from core.system import system
+                dominance = system.api.get_btc_dominance(use_cache=True)
+                if dominance:
+                    self.metrics_cache["btc_dominance"] = {
+                        "value": dominance.get("dominance", 50),
+                        "timestamp": datetime.now().isoformat(),
+                        "level": "heavy"
+                    }
+            except Exception as e:
+                logger.debug(f"BTC Dominance collection error: {e}")
+            
+            # ============================================================
+            # ۳. اخبار (get_news)
+            # ============================================================
+            try:
+                from core.system import system
+                news = system.api.get_news(limit=5)
+                if news and "error" not in news:
+                    self.metrics_cache["news"] = {
+                        "value": news,
+                        "timestamp": datetime.now().isoformat(),
+                        "level": "heavy"
+                    }
+            except Exception as e:
+                logger.debug(f"News collection error: {e}")
+            
+            # ============================================================
+            # ۴. حجم دیتابیس
+            # ============================================================
             try:
                 from database import get_primary
                 db = get_primary()
@@ -209,7 +302,15 @@ class MetricsScheduler:
             except:
                 db_size = 0
             
-            # Disk Space
+            self.metrics_cache["database_size"] = {
+                "value": db_size,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
+            
+            # ============================================================
+            # ۵. فضای دیسک
+            # ============================================================
             try:
                 usage = psutil.disk_usage('/')
                 disk = {
@@ -221,7 +322,15 @@ class MetricsScheduler:
             except:
                 disk = {"total_gb": 0, "used_gb": 0, "free_gb": 0, "percent": 0}
             
-            # Databases Status
+            self.metrics_cache["disk_space"] = {
+                "value": disk,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
+            
+            # ============================================================
+            # ۶. وضعیت دیتابیس‌ها
+            # ============================================================
             try:
                 from database import health_check
                 health = health_check()
@@ -236,24 +345,14 @@ class MetricsScheduler:
             except:
                 dbs = {"postgresql": False, "redis": False, "sqlite": False}
             
-            with self._lock:
-                self.metrics_cache["database_size"] = {
-                    "value": db_size,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "heavy"
-                }
-                self.metrics_cache["disk_space"] = {
-                    "value": disk,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "heavy"
-                }
-                self.metrics_cache["databases"] = {
-                    "value": dbs,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "heavy"
-                }
+            self.metrics_cache["databases"] = {
+                "value": dbs,
+                "timestamp": datetime.now().isoformat(),
+                "level": "heavy"
+            }
             
-            logger.info(f"📊 DB Size: {db_size}MB, Disk: {disk.get('percent', 0)}%")
+            logger.info(f"📊 Fear: {self.metrics_cache.get('fear_greed', {}).get('value', 50)}, "
+                        f"Dominance: {self.metrics_cache.get('btc_dominance', {}).get('value', 50)}%")
             
         except Exception as e:
             logger.error(f"❌ Heavy metrics error: {e}")
@@ -272,7 +371,7 @@ class MetricsScheduler:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self._thread.start()
-        logger.info("✅ Metrics Scheduler (threading) started")
+        logger.info("✅ Metrics Scheduler v6.0 started")
         
         # جمع‌آوری اولیه
         time.sleep(0.5)
@@ -333,9 +432,18 @@ class MetricsScheduler:
                     "ram": cache.get("ram", {}).get("value", 0),
                     "uptime": cache.get("uptime", {}).get("value", "0s"),
                 },
+                "prices": {
+                    "btc": cache.get("btc_price", {}).get("value", 0),
+                    "eth": cache.get("eth_price", {}).get("value", 0),
+                },
                 "api": {
                     "status": cache.get("api_status", {}).get("value", "unknown"),
                     "credits": cache.get("api_credits", {}).get("value", 0)
+                },
+                "market": {
+                    "fear_greed": cache.get("fear_greed", {}).get("value", 50),
+                    "fear_greed_label": cache.get("fear_greed", {}).get("classification", "Neutral"),
+                    "btc_dominance": cache.get("btc_dominance", {}).get("value", 50),
                 },
                 "model": {
                     "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
@@ -346,6 +454,7 @@ class MetricsScheduler:
                     "status": cache.get("databases", {}).get("value", {})
                 },
                 "disk": cache.get("disk_space", {}).get("value", {}),
+                "news": cache.get("news", {}).get("value", []),
                 "timestamp": datetime.now().isoformat()
             }
     
