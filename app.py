@@ -1,10 +1,6 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۹.۰ (با معماری جدید)
-# ============================================================
-# 
-# این فایل با استفاده از لایه‌های جدید (Domain, Application, Infrastructure, Presentation)
-# بازنویسی شده است. همه وابستگی‌ها از طریق Container مدیریت می‌شوند.
+# ورودی اصلی سیستم - نسخه ۹.۱ (رفع Circular Import)
 # ============================================================
 
 import os
@@ -18,15 +14,8 @@ from config.version import VERSION, APP_NAME
 from container import container
 from providers import init_container
 
-# ============================================================
-# تنظیمات لاگ
-# ============================================================
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
+
 
 # ============================================================
 # Signal Handler برای Stop Graceful
@@ -37,7 +26,6 @@ def signal_handler(sig, frame) -> None:
     logger.info(f"🛑 Received signal {sig}, shutting down gracefully...")
     
     try:
-        # توقف Scheduler
         metrics_scheduler = container.get('metrics_scheduler')
         if metrics_scheduler:
             metrics_scheduler.stop()
@@ -46,7 +34,6 @@ def signal_handler(sig, frame) -> None:
         logger.error(f"❌ Error stopping metrics scheduler: {e}")
     
     try:
-        # توقف Threadها
         threading_manager = container.get('threading_manager')
         if threading_manager:
             threading_manager.stop_all()
@@ -55,7 +42,6 @@ def signal_handler(sig, frame) -> None:
         logger.error(f"❌ Error stopping threads: {e}")
     
     try:
-        # خاموش کردن Parallel Processor
         from core.parallel_processor import parallel_processor
         parallel_processor.shutdown()
         logger.info("✅ Parallel processor shutdown")
@@ -68,6 +54,7 @@ def signal_handler(sig, frame) -> None:
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
+
 # ============================================================
 # ایجاد Flask App
 # ============================================================
@@ -77,12 +64,14 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-pro
 app.config['JSON_SORT_KEYS'] = False
 app.config['JSON_AS_ASCII'] = False
 
+
 # ============================================================
 # راه‌اندازی Container
 # ============================================================
 
 init_container(app)
 logger.info("✅ Container initialized")
+
 
 # ============================================================
 # ثبت Blueprintها
@@ -98,6 +87,7 @@ app.register_blueprint(metrics_bp)
 
 logger.info("✅ Blueprints registered")
 
+
 # ============================================================
 # راه‌اندازی Scheduler
 # ============================================================
@@ -107,10 +97,8 @@ def start_metrics_scheduler() -> None:
     try:
         metrics_scheduler = container.get('metrics_scheduler')
         if metrics_scheduler:
-            # تنظیم stop event از ThreadingManager
             threading_manager = container.get('threading_manager')
             if threading_manager:
-                # ایجاد Thread برای Scheduler
                 threading_manager.register(
                     name="metrics_scheduler",
                     target=metrics_scheduler.start,
@@ -126,6 +114,7 @@ def start_metrics_scheduler() -> None:
     except Exception as e:
         logger.error(f"❌ Failed to start metrics scheduler: {e}")
 
+
 # ============================================================
 # راه‌اندازی Alert و Self-Healing
 # ============================================================
@@ -136,14 +125,11 @@ def start_alert_system() -> None:
         from alerter import alerter
         from self_healer import SelfHealer
         
-        # دریافت سرویس‌ها از Container
         model_manager = container.get('model_manager')
         trainer = container.get('trainer')
-        
         self_healer = SelfHealer(model_manager, trainer)
         
         def alert_loop() -> None:
-            """حلقه بررسی هشدارها"""
             import time
             while True:
                 try:
@@ -158,7 +144,6 @@ def start_alert_system() -> None:
                     logger.error(f"❌ Alert loop error: {e}")
                     time.sleep(30)
         
-        # اجرا در Thread
         threading_manager = container.get('threading_manager')
         if threading_manager:
             threading_manager.register(
@@ -179,6 +164,7 @@ def start_alert_system() -> None:
     except Exception as e:
         logger.error(f"❌ Failed to start alert system: {e}")
 
+
 # ============================================================
 # راه‌اندازی Database Health Check
 # ============================================================
@@ -189,12 +175,11 @@ def start_db_health_check() -> None:
         from infrastructure.database.database_factory import ensure_databases_connected
         
         def db_health_loop() -> None:
-            """حلقه بررسی دیتابیس"""
             import time
             while True:
                 try:
                     ensure_databases_connected()
-                    time.sleep(60)  # هر ۱ دقیقه
+                    time.sleep(60)
                 except Exception as e:
                     logger.error(f"❌ DB health check error: {e}")
                     time.sleep(120)
@@ -213,18 +198,15 @@ def start_db_health_check() -> None:
     except Exception as e:
         logger.error(f"❌ Failed to start DB health check: {e}")
 
+
 # ============================================================
 # اجرای راه‌اندازی‌ها
 # ============================================================
 
-# راه‌اندازی Scheduler
 start_metrics_scheduler()
-
-# راه‌اندازی Alert System
 start_alert_system()
-
-# راه‌اندازی Database Health Check
 start_db_health_check()
+
 
 # ============================================================
 # Error Handlers
@@ -240,6 +222,7 @@ def not_found(error):
         'timestamp': datetime.now().isoformat()
     }), 404
 
+
 @app.errorhandler(405)
 def method_not_allowed(error):
     """مدیریت خطای 405"""
@@ -249,6 +232,7 @@ def method_not_allowed(error):
         'message': 'Method not allowed',
         'timestamp': datetime.now().isoformat()
     }), 405
+
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -261,6 +245,7 @@ def internal_error(error):
         'timestamp': datetime.now().isoformat()
     }), 500
 
+
 # ============================================================
 # قبل از هر درخواست
 # ============================================================
@@ -268,9 +253,10 @@ def internal_error(error):
 @app.before_request
 def before_request():
     """قبل از هر درخواست - تنظیمات اولیه"""
-    # تنظیم timezone
     import time
-    g.start_time = time.time()
+    import flask
+    flask.g.start_time = time.time()
+
 
 # ============================================================
 # بعد از هر درخواست
@@ -281,11 +267,13 @@ def after_request(response):
     """بعد از هر درخواست - آمار و لاگ"""
     try:
         import time
-        elapsed = time.time() - g.start_time
+        import flask
+        elapsed = time.time() - flask.g.start_time
         logger.debug(f"Response time: {elapsed*1000:.2f}ms")
     except Exception:
         pass
     return response
+
 
 # ============================================================
 # راه‌اندازی Watchdog
@@ -299,6 +287,7 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to start watchdog: {e}")
 
+
 # ============================================================
 # اجرای اصلی
 # ============================================================
@@ -307,7 +296,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
     
-    # دریافت وضعیت Container
     container_status = container.get_status()
     
     print("=" * 70)
@@ -323,7 +311,7 @@ if __name__ == "__main__":
     print(f"   ✅ DI Container: {container_status['total']} services")
     print("=" * 70)
     
-    # دریافت وضعیت مدل
+    # دریافت وضعیت مدل با Lazy Loading
     try:
         model_manager = container.get('model_manager')
         if model_manager and model_manager.current_model:
