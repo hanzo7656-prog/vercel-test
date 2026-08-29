@@ -4,11 +4,11 @@
 # ============================================================
 
 import logging
-from typing import Dict, Any, Optional, Type, Callable
+from typing import Dict, Any, Optional
 
 from domain.interfaces.api_client import APIClient
-from domain.interfaces.repository import Repository
 
+# ✅ Import مستقیم از مسیرهای درست (بدون Circular Import)
 from infrastructure.api.coinstats_client import coinstats_client, CoinStatsClient
 from infrastructure.api.cache_manager import cache_manager, CacheManager
 from infrastructure.database import get_primary, get_cache, get_backup
@@ -33,14 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class Container:
-    """
-    Container اصلی برای مدیریت وابستگی‌ها (Dependency Injection)
-    
-    ویژگی‌ها:
-        - Singleton Pattern برای دسترسی یکپارچه
-        - Lazy Loading برای ایجاد سرویس‌ها در زمان نیاز
-        - قابلیت Mock کردن برای تست
-    """
+    """Container اصلی برای مدیریت وابستگی‌ها (Dependency Injection)"""
     
     _instance = None
     _services: Dict[str, Any] = {}
@@ -58,19 +51,8 @@ class Container:
             self._singletons = {}
             logger.info("✅ Container initialized")
     
-    # ============================================================
-    # ثبت و دریافت سرویس‌ها
-    # ============================================================
-    
     def register(self, name: str, service: Any, singleton: bool = True) -> None:
-        """
-        ثبت یک سرویس در Container
-        
-        پارامترها:
-            name: نام سرویس
-            service: نمونه سرویس یا Callable برای ساخت
-            singleton: آیا به صورت Singleton باشد؟
-        """
+        """ثبت یک سرویس در Container"""
         if singleton:
             self._singletons[name] = service
         else:
@@ -78,28 +60,14 @@ class Container:
         logger.debug(f"✅ Service registered: {name} (singleton: {singleton})")
     
     def get(self, name: str) -> Any:
-        """
-        دریافت یک سرویس از Container
-        
-        پارامترها:
-            name: نام سرویس
-        
-        خروجی:
-            نمونه سرویس
-        
-        استثناها:
-            KeyError: اگر سرویس ثبت نشده باشد
-        """
-        # بررسی Singleton
+        """دریافت یک سرویس از Container"""
         if name in self._singletons:
             service = self._singletons[name]
-            # اگر Callable باشد، اجرا کن
             if callable(service) and not isinstance(service, type):
                 service = service()
                 self._singletons[name] = service
             return service
         
-        # بررسی سرویس عادی
         if name in self._services:
             service = self._services[name]
             if callable(service):
@@ -123,23 +91,18 @@ class Container:
     # ============================================================
     
     def api_client(self) -> APIClient:
-        """دریافت کلاینت API"""
         return self.get('api_client')
     
     def cache_manager(self) -> CacheManager:
-        """دریافت مدیریت کش"""
         return self.get('cache_manager')
     
     def model_repository(self) -> ModelRepository:
-        """دریافت Repository مدل"""
         return self.get('model_repository')
     
     def prediction_repository(self) -> PredictionRepository:
-        """دریافت Repository پیش‌بینی"""
         return self.get('prediction_repository')
     
     def auth_manager(self) -> AuthManager:
-        """دریافت مدیریت احراز هویت"""
         return self.get('auth_manager')
     
     # ============================================================
@@ -147,43 +110,31 @@ class Container:
     # ============================================================
     
     def feature_engineer(self) -> FeatureEngineer:
-        """دریافت مهندس ویژگی"""
         return self.get('feature_engineer')
     
     def model_manager(self) -> ModelManager:
-        """دریافت مدیریت مدل"""
         return self.get('model_manager')
     
     def trainer(self) -> AutoTrainer:
-        """دریافت آموزش‌دهنده خودکار"""
         return self.get('trainer')
     
     # ============================================================
-    # سرویس‌های لایه Application (Use Cases)
+    # سرویس‌های لایه Application
     # ============================================================
     
     def predict_use_case(self) -> PredictCoinUseCase:
-        """دریافت Use Case پیش‌بینی"""
         return self.get('predict_use_case')
     
     def train_use_case(self) -> TrainModelUseCase:
-        """دریافت Use Case آموزش"""
         return self.get('train_use_case')
     
     def health_use_case(self) -> GetHealthUseCase:
-        """دریافت Use Case سلامت"""
         return self.get('health_use_case')
     
-    # ============================================================
-    # سرویس‌های لایه Application (Services)
-    # ============================================================
-    
     def prediction_service(self) -> PredictionService:
-        """دریافت سرویس پیش‌بینی"""
         return self.get('prediction_service')
     
     def monitoring_service(self) -> MonitoringService:
-        """دریافت سرویس مانیتورینگ"""
         return self.get('monitoring_service')
     
     # ============================================================
@@ -191,19 +142,14 @@ class Container:
     # ============================================================
     
     def metrics_scheduler(self):
-        """دریافت Scheduler متریک"""
         return self.get('metrics_scheduler')
     
     def threading_manager(self):
-        """دریافت مدیریت Threadها"""
         return self.get('threading_manager')
-    
-    # ============================================================
-    # گزارش وضعیت
-    # ============================================================
     
     def get_status(self) -> Dict[str, Any]:
         """دریافت وضعیت Container"""
+        from datetime import datetime
         return {
             'singletons': list(self._singletons.keys()),
             'services': list(self._services.keys()),
@@ -216,60 +162,40 @@ class Container:
 # ایجاد نمونه و ثبت سرویس‌ها
 # ============================================================
 
-from datetime import datetime
-
 container = Container()
 
 
 def register_services() -> None:
-    """
-    ثبت همه سرویس‌ها در Container
-    این تابع باید در زمان راه‌اندازی برنامه اجرا شود
-    """
-    
+    """ثبت همه سرویس‌ها در Container"""
     logger.info("🔄 Registering services...")
     
     # ============================================================
     # ۱. سرویس‌های Infrastructure
     # ============================================================
-    
-    # API Client (Singleton)
     container.register('api_client', coinstats_client, singleton=True)
-    
-    # Cache Manager (Singleton)
     container.register('cache_manager', cache_manager, singleton=True)
-    
-    # Repositories (Singleton)
     container.register('model_repository', ModelRepository, singleton=True)
     container.register('prediction_repository', PredictionRepository, singleton=True)
-    
-    # Auth Manager (Singleton)
     container.register('auth_manager', auth_manager, singleton=True)
     
     # ============================================================
-    # ۲. سرویس‌های Core
+    # ۲. سرویس‌های Core (با Lazy Loading)
     # ============================================================
-    
-    # Feature Engineer (با وابستگی به API Client)
     def create_feature_engineer():
         return FeatureEngineer(container.api_client())
     container.register('feature_engineer', create_feature_engineer, singleton=True)
     
-    # Model Manager (با وابستگی به API Client)
     def create_model_manager():
         return ModelManager(container.api_client())
     container.register('model_manager', create_model_manager, singleton=True)
     
-    # Auto Trainer (با وابستگی به API Client و Model Manager)
     def create_trainer():
         return AutoTrainer(container.api_client(), container.model_manager())
     container.register('trainer', create_trainer, singleton=True)
     
     # ============================================================
-    # ۳. سرویس‌های Application (Use Cases)
+    # ۳. سرویس‌های Application
     # ============================================================
-    
-    # Predict Coin Use Case
     def create_predict_use_case():
         return PredictCoinUseCase(
             api_client=container.api_client(),
@@ -278,7 +204,6 @@ def register_services() -> None:
         )
     container.register('predict_use_case', create_predict_use_case, singleton=True)
     
-    # Train Model Use Case
     def create_train_use_case():
         return TrainModelUseCase(
             api_client=container.api_client(),
@@ -287,7 +212,6 @@ def register_services() -> None:
         )
     container.register('train_use_case', create_train_use_case, singleton=True)
     
-    # Get Health Use Case
     def create_health_use_case():
         return GetHealthUseCase(
             api_client=container.api_client(),
@@ -295,28 +219,18 @@ def register_services() -> None:
         )
     container.register('health_use_case', create_health_use_case, singleton=True)
     
-    # ============================================================
-    # ۴. سرویس‌های Application (Services)
-    # ============================================================
-    
-    # Prediction Service
     def create_prediction_service():
         return PredictionService(container.predict_use_case())
     container.register('prediction_service', create_prediction_service, singleton=True)
     
-    # Monitoring Service
     def create_monitoring_service():
         return MonitoringService(container.health_use_case())
     container.register('monitoring_service', create_monitoring_service, singleton=True)
     
     # ============================================================
-    # ۵. سرویس‌های سیستم
+    # ۴. سرویس‌های سیستم
     # ============================================================
-    
-    # Metrics Scheduler
     container.register('metrics_scheduler', metrics_scheduler, singleton=True)
-    
-    # Threading Manager
     container.register('threading_manager', threading_manager, singleton=True)
     
     logger.info(f"✅ {len(container._singletons) + len(container._services)} services registered")
