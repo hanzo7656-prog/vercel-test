@@ -1,13 +1,13 @@
 # self_healer.py
 # ============================================================
-# سیستم خودترمیمی - نسخه ۲.۰ (با Scheduler جدید)
+# سیستم خودترمیمی - نسخه ۳.۰ (با Type Hints)
 # ============================================================
 
 import os
 import time
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -19,22 +19,20 @@ class SelfHealer:
     - پاک‌سازی خودکار کش
     - ری‌استارت ماژول‌ها (با reconnect)
     
-    ✅ نسخه ۲.۰: استفاده از Metrics Scheduler جدید
+    ✅ نسخه ۳.۰: اضافه شدن Type Hints کامل
     """
     
-    def __init__(self, model_manager, trainer):
+    def __init__(self, model_manager: Any, trainer: Any) -> None:
         self.model_manager = model_manager
         self.trainer = trainer
-        self.healing_attempts = {}
-        self.max_attempts = 3
-        self.cooldown_minutes = 30
+        self.healing_attempts: Dict[str, Dict[str, Union[int, str]]] = {}
+        self.max_attempts: int = 3
+        self.cooldown_minutes: int = 30
         
-        logger.info("✅ SelfHealer v2.0 initialized (with Metrics Scheduler)")
+        logger.info("✅ SelfHealer v3.0 initialized (with Type Hints)")
     
-    def _get_metrics_from_scheduler(self) -> Dict:
-        """
-        ✅ جدید: دریافت متریک‌ها از Scheduler
-        """
+    def _get_metrics_from_scheduler(self) -> Dict[str, Any]:
+        """دریافت متریک‌ها از Scheduler"""
         try:
             from core import metrics_scheduler
             return metrics_scheduler.get_alert_metrics()
@@ -45,7 +43,7 @@ class SelfHealer:
             logger.error(f"❌ Error getting metrics from scheduler: {e}")
             return self._get_fallback_metrics()
     
-    def _get_fallback_metrics(self) -> Dict:
+    def _get_fallback_metrics(self) -> Dict[str, Any]:
         """Fallback در صورت عدم دسترسی به Scheduler"""
         return {
             "cpu": 0,
@@ -56,18 +54,20 @@ class SelfHealer:
             "databases": {"postgresql": False, "redis": False, "sqlite": False}
         }
     
-    def check_and_heal(self, metrics: Optional[Dict] = None) -> Dict:
+    def check_and_heal(self, metrics: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         بررسی و اجرای خودترمیمی در صورت نیاز
         
         پارامترها:
             metrics: اگر None باشد، از Scheduler دریافت می‌شود
+        
+        خروجی:
+            دیکشنری از اقدامات انجام شده
         """
-        # ✅ جدید: اگر metrics ارسال نشده، از Scheduler بگیر
         if metrics is None:
             metrics = self._get_metrics_from_scheduler()
         
-        actions = {
+        actions: Dict[str, Any] = {
             "model_restored": False,
             "cache_cleared": False,
             "modules_restarted": [],
@@ -87,7 +87,7 @@ class SelfHealer:
             actions["cache_cleared"] = self._clear_cache()
         
         # ۴. بررسی ماژول‌ها
-        restarted = self._restart_modules(metrics)
+        restarted: List[str] = self._restart_modules(metrics)
         if restarted:
             actions["modules_restarted"] = restarted
         
@@ -97,26 +97,26 @@ class SelfHealer:
         
         return actions
     
-    # ---------- ۱. بازگشت مدل (بدون تغییر) ----------
+    # ---------- ۱. بازگشت مدل ----------
     
-    def _should_restore_model(self, metrics: Dict) -> bool:
+    def _should_restore_model(self, metrics: Dict[str, Any]) -> bool:
         """بررسی نیاز به بازگشت مدل"""
-        accuracy = metrics.get("model_accuracy")
+        accuracy: Optional[float] = metrics.get("model_accuracy")
         
         if accuracy is None:
             return False
         
         if accuracy < 0.50:
-            key = "model_restore"
-            attempts = self.healing_attempts.get(key, {}).get("count", 0)
-            last_attempt = self.healing_attempts.get(key, {}).get("last_attempt")
+            key: str = "model_restore"
+            attempts: int = self.healing_attempts.get(key, {}).get("count", 0)
+            last_attempt: Optional[str] = self.healing_attempts.get(key, {}).get("last_attempt")
             
             if attempts >= self.max_attempts:
                 logger.warning(f"⚠️ Maximum restore attempts reached ({self.max_attempts})")
                 return False
             
             if last_attempt:
-                cooldown = datetime.fromisoformat(last_attempt) + timedelta(minutes=self.cooldown_minutes)
+                cooldown: datetime = datetime.fromisoformat(last_attempt) + timedelta(minutes=self.cooldown_minutes)
                 if datetime.now() < cooldown:
                     logger.info(f"⏳ Restore cooldown active (until {cooldown})")
                     return False
@@ -130,13 +130,13 @@ class SelfHealer:
         try:
             logger.warning("🔄 Attempting to restore previous model version...")
             
-            history = self.model_manager.get_version_history(limit=5)
+            history: List[Dict[str, Any]] = self.model_manager.get_version_history(limit=5)
             
             if len(history) < 2:
                 logger.warning("⚠️ No previous version found")
                 return False
             
-            previous_version = None
+            previous_version: Optional[str] = None
             for item in history[1:]:
                 if not item.get('is_ensemble', False):
                     previous_version = item.get('version')
@@ -146,7 +146,7 @@ class SelfHealer:
                 logger.warning("⚠️ No valid previous version found")
                 return False
             
-            model = self.model_manager.get_model_by_version(previous_version)
+            model: Any = self.model_manager.get_model_by_version(previous_version)
             if model:
                 self.model_manager.current_model = model
                 self.model_manager.current_version = previous_version
@@ -170,10 +170,10 @@ class SelfHealer:
                 
                 logger.info(f"✅ Model restored to version: {previous_version}")
                 
-                key = "model_restore"
+                key: str = "model_restore"
                 if key not in self.healing_attempts:
                     self.healing_attempts[key] = {"count": 0}
-                self.healing_attempts[key]["count"] += 1
+                self.healing_attempts[key]["count"] = self.healing_attempts[key]["count"] + 1
                 self.healing_attempts[key]["last_attempt"] = datetime.now().isoformat()
                 
                 return True
@@ -185,19 +185,19 @@ class SelfHealer:
             logger.error(f"❌ Error restoring model: {e}")
             return False
     
-    # ---------- ۲. آموزش مجدد (بدون تغییر) ----------
+    # ---------- ۲. آموزش مجدد ----------
     
-    def _should_retrain(self, metrics: Dict) -> bool:
+    def _should_retrain(self, metrics: Dict[str, Any]) -> bool:
         """بررسی نیاز به آموزش مجدد"""
-        accuracy = metrics.get("model_accuracy")
-        loaded = metrics.get("model_loaded", False)
+        accuracy: Optional[float] = metrics.get("model_accuracy")
+        loaded: bool = metrics.get("model_loaded", False)
         
         if not loaded or (accuracy is not None and accuracy < 0.45):
-            key = "model_retrain"
-            last_attempt = self.healing_attempts.get(key, {}).get("last_attempt")
+            key: str = "model_retrain"
+            last_attempt: Optional[str] = self.healing_attempts.get(key, {}).get("last_attempt")
             
             if last_attempt:
-                cooldown = datetime.fromisoformat(last_attempt) + timedelta(minutes=60)
+                cooldown: datetime = datetime.fromisoformat(last_attempt) + timedelta(minutes=60)
                 if datetime.now() < cooldown:
                     return False
             
@@ -211,11 +211,11 @@ class SelfHealer:
             logger.warning("🔄 Retraining model...")
             
             if self.trainer:
-                result = self.trainer.train_model(period="1m")
+                result: Dict[str, Any] = self.trainer.train_model(period="1m")
                 if result.get("success"):
                     logger.info(f"✅ Model retrained successfully: {result.get('accuracy')}")
                     
-                    key = "model_retrain"
+                    key: str = "model_retrain"
                     if key not in self.healing_attempts:
                         self.healing_attempts[key] = {}
                     self.healing_attempts[key]["last_attempt"] = datetime.now().isoformat()
@@ -232,18 +232,18 @@ class SelfHealer:
             logger.error(f"❌ Error retraining model: {e}")
             return False
     
-    # ---------- ۳. پاک‌سازی کش (بدون تغییر) ----------
+    # ---------- ۳. پاک‌سازی کش ----------
     
-    def _should_clear_cache(self, metrics: Dict) -> bool:
+    def _should_clear_cache(self, metrics: Dict[str, Any]) -> bool:
         """بررسی نیاز به پاک‌سازی کش"""
-        ram = metrics.get("ram", 0)
+        ram: float = float(metrics.get("ram", 0))
         
         if ram > 85:
-            key = "cache_clear"
-            last_clear = self.healing_attempts.get(key, {}).get("last_attempt")
+            key: str = "cache_clear"
+            last_clear: Optional[str] = self.healing_attempts.get(key, {}).get("last_attempt")
             
             if last_clear:
-                cooldown = datetime.fromisoformat(last_clear) + timedelta(minutes=10)
+                cooldown: datetime = datetime.fromisoformat(last_clear) + timedelta(minutes=10)
                 if datetime.now() < cooldown:
                     return False
             
@@ -257,12 +257,12 @@ class SelfHealer:
             logger.warning("🧹 Clearing cache to free memory...")
             
             from database import get_cache
-            cache = get_cache()
+            cache: Any = get_cache()
             if cache and cache.is_connected():
                 cache._client.flushdb()
                 logger.info("✅ Cache cleared successfully")
                 
-                key = "cache_clear"
+                key: str = "cache_clear"
                 if key not in self.healing_attempts:
                     self.healing_attempts[key] = {}
                 self.healing_attempts[key]["last_attempt"] = datetime.now().isoformat()
@@ -276,11 +276,11 @@ class SelfHealer:
             logger.error(f"❌ Error clearing cache: {e}")
             return False
     
-    # ---------- ۴. ری‌استارت ماژول‌ها (بدون تغییر) ----------
+    # ---------- ۴. ری‌استارت ماژول‌ها ----------
     
-    def _restart_modules(self, metrics: Dict) -> List[str]:
+    def _restart_modules(self, metrics: Dict[str, Any]) -> List[str]:
         """ری‌استارت ماژول‌های مشکل‌دار"""
-        restarted = []
+        restarted: List[str] = []
         
         # بررسی API
         if metrics.get("api_status") in ["error", "unhealthy"]:
@@ -288,13 +288,13 @@ class SelfHealer:
             logger.info("🔄 Restarting API handler...")
         
         # بررسی دیتابیس
-        databases = metrics.get("databases", {})
+        databases: Dict[str, bool] = metrics.get("databases", {})
         for name, status in databases.items():
             if not status:
                 restarted.append(f"database_{name}")
                 try:
                     from database import db_factory
-                    result = db_factory.force_reconnect(name)
+                    result: Dict[str, bool] = db_factory.force_reconnect(name)
                     if result.get(name, False):
                         logger.info(f"✅ Database {name} reconnected successfully")
                     else:
@@ -304,9 +304,9 @@ class SelfHealer:
         
         return restarted
     
-    # ---------- ۵. وضعیت (بدون تغییر) ----------
+    # ---------- ۵. وضعیت ----------
     
-    def get_healing_status(self) -> Dict:
+    def get_healing_status(self) -> Dict[str, Any]:
         """دریافت وضعیت خودترمیمی"""
         return {
             "attempts": self.healing_attempts,
