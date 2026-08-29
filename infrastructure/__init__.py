@@ -1,7 +1,7 @@
 # infrastructure/__init__.py
 # ============================================================
 # لایه زیرساخت (Infrastructure Layer)
-# شامل API Client، Database، Repositories و Auth
+# شامل API، Database، Repositories و Auth
 # ============================================================
 
 from infrastructure.api.coinstats_client import coinstats_client, CoinStatsClient
@@ -12,7 +12,9 @@ from infrastructure.database import (
     get_backup,
     health_check,
     db_factory,
-    ensure_databases_connected
+    ensure_databases_connected,
+    registry,
+    router
 )
 from infrastructure.repositories.model_repository import ModelRepository
 from infrastructure.repositories.prediction_repository import PredictionRepository
@@ -31,6 +33,8 @@ __all__ = [
     'health_check',
     'db_factory',
     'ensure_databases_connected',
+    'registry',
+    'router',
     # Repositories
     'ModelRepository',
     'PredictionRepository',
