@@ -1,167 +1,100 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۷.۰ (پایدار و دائمی)
+# سیستم جمع‌آوری متریک - نسخه ۸.۰ (رفع وابستگی)
 # ============================================================
 
 import time
-import threading
 import psutil
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
-
-from config import get_scheduler_config
 
 logger = logging.getLogger(__name__)
 
 
 class MetricsScheduler:
     """
-    سیستم جمع‌آوری متریک با threading پایدار
-    - بدون `daemon=True` برای جلوگیری از مرگ ناگهانی
-    - با `threading.Event()` برای کنترل دقیق
-    - لاگ کامل برای عیب‌یابی
+    سیستم جمع‌آوری متریک بدون وابستگی به system
+    ✅ داده‌ها را از طریق API می‌گیرد
     """
     
     def __init__(self):
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._lock = threading.Lock()
-        self._stop_event = threading.Event()
+        self._stop_event = None  # توسط ThreadingManager تنظیم می‌شود
         
         self.metrics_cache: Dict[str, Any] = {}
         self.stats = {
             "collections": 0,
             "errors": 0,
-            "last_collection": None,
-            "loop_cycles": 0
+            "last_collection": None
         }
         self.start_time = time.time()
         
-        # دریافت تنظیمات
-        scheduler_config = get_scheduler_config()
-        self.light_interval = scheduler_config.get("light_interval", 3)
-        self.medium_interval = scheduler_config.get("medium_interval", 30)
-        self.heavy_interval = scheduler_config.get("heavy_interval", 300)
+        # فواصل
+        self.light_interval = 3
+        self.medium_interval = 30
+        self.heavy_interval = 300
         
-        logger.info(f"✅ MetricsScheduler v7.0 initialized")
-        logger.info(f"⏱️ Light={self.light_interval}s, Medium={self.medium_interval}s, Heavy={self.heavy_interval}s")
+        logger.info("✅ MetricsScheduler v8.0 initialized")
     
-    # ============================================================
-    # ✅ ۱. شروع و توقف (با لاگ کامل)
-    # ============================================================
+    def set_stop_event(self, event):
+        """تنظیم Event برای کنترل Stop"""
+        self._stop_event = event
     
     def start(self):
-        """شروع Scheduler با جمع‌آوری اولیه"""
+        """شروع Scheduler"""
         if self._running:
-            logger.info("⏳ Scheduler already running")
             return
         
-        logger.info("🔄 Starting Scheduler...")
-        
-        # ریست کردن stop_event
-        self._stop_event.clear()
-        
-        # ایجاد و شروع ترد (بدون daemon)
-        self._thread = threading.Thread(
-            target=self._scheduler_loop, 
-            daemon=False,  # ✅ تغییر: daemon=False
-            name="MetricsScheduler"
-        )
-        self._thread.start()
         self._running = True
+        logger.info("🔄 Metrics Scheduler started")
         
-        logger.info(f"✅ Scheduler started (Thread: {self._thread.name}, Daemon: {self._thread.daemon})")
-        
-        # ✅ جمع‌آوری اولیه (برای پر کردن cache بلافاصله)
-        logger.info("🔄 Collecting initial metrics...")
+        # جمع‌آوری اولیه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
-            logger.info("✅ Initial collection complete")
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
-    
-    def stop(self):
-        """متوقف کردن Scheduler"""
-        if not self._running:
-            logger.info("⏳ Scheduler already stopped")
-            return
         
-        logger.info("🔄 Stopping Scheduler...")
-        self._running = False
-        self._stop_event.set()
-        
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=5)
-            logger.info(f"✅ Thread joined (alive: {self._thread.is_alive()})")
-        
-        self._thread = None
-        logger.info("⏹️ Scheduler stopped")
-    
-    # ============================================================
-    # ✅ ۲. حلقه اصلی (با لاگ و Event)
-    # ============================================================
-    
-    def _scheduler_loop(self):
-        """حلقه اصلی - هر ۱ ثانیه چک می‌کند"""
-        logger.info("🔄 Scheduler loop started")
-    
-        # ✅ مقداردهی اولیه (برای اینکه شرط‌ها بلافاصله برقرار شوند)
+        # حلقه اصلی
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
-        cycle_count = 0
-    
-        # ✅ جمع‌آوری اولیه در حلقه
-        try:
-            self._collect_light_metrics()
-            self._collect_medium_metrics()
-            self._collect_heavy_metrics()
-            logger.info("✅ Initial collection in loop complete")
-        except Exception as e:
-            logger.error(f"❌ Initial collection error: {e}")
-    
-        while not self._stop_event.is_set() and self._running:
+        
+        while self._running and not (self._stop_event and self._stop_event.is_set()):
             try:
                 now = time.time()
-                cycle_count += 1
-            
-                if cycle_count % 10 == 0:
-                    self.stats["loop_cycles"] = cycle_count
-                    logger.debug(f"🏃 Loop alive (cycle {cycle_count})")
-            
-                # Light: هر ۳ ثانیه
+                
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
-            
-                # Medium: هر ۳۰ ثانیه
+                
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
-                    btc = self.metrics_cache.get('btc_price', {}).get('value', 0)
-                    logger.info(f"📊 Medium collected (BTC: ${btc:,.2f})")
-            
-                # Heavy: هر ۵ دقیقه
+                
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
-                    fear = self.metrics_cache.get('fear_greed', {}).get('value', 50)
-                    logger.info(f"📊 Heavy collected (Fear: {fear})")
-            
+                
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
-            
+                
             except Exception as e:
-                logger.error(f"❌ Scheduler loop error: {e}")
+                logger.error(f"❌ Scheduler error: {e}")
                 self.stats["errors"] += 1
-                time.sleep(1)
+                time.sleep(5)
+        
+        logger.info("⏹️ Metrics Scheduler stopped")
     
-        logger.info(f"⏹️ Scheduler loop stopped (after {cycle_count} cycles)")
+    def stop(self):
+        """متوقف کردن"""
+        self._running = False
+        logger.info("⏹️ Metrics Scheduler stopping")
+    
     # ============================================================
-    # ✅ ۳. جمع‌آوری‌کننده‌ها (بدون تغییر)
+    # جمع‌آوری‌کننده‌ها (بدون وابستگی به system)
     # ============================================================
     
     def _collect_light_metrics(self):
@@ -180,325 +113,205 @@ class MetricsScheduler:
                 minutes = (elapsed % 3600) // 60
                 uptime = f"{hours}h {minutes}m"
             
-            with self._lock:
-                self.metrics_cache["cpu"] = {
-                    "value": cpu,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "light"
-                }
-                self.metrics_cache["ram"] = {
-                    "value": ram,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "light"
-                }
-                self.metrics_cache["uptime"] = {
-                    "value": uptime,
-                    "timestamp": datetime.now().isoformat(),
-                    "level": "light"
-                }
-                self.stats["collections"] += 1
+            self.metrics_cache["cpu"] = {
+                "value": cpu,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.metrics_cache["ram"] = {
+                "value": ram,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.metrics_cache["uptime"] = {
+                "value": uptime,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.stats["collections"] += 1
             
         except Exception as e:
             logger.error(f"❌ Light metrics error: {e}")
             self.stats["errors"] += 1
     
     def _collect_medium_metrics(self):
-        """قیمت‌ها, API, مدل"""
+        """قیمت‌ها, API, مدل - با استفاده از API کلاینت"""
         try:
-            # ===== ۱. قیمت‌ها =====
-            try:
-                import core.system
-                system = core.system.system
-                
-                btc = system.api.get_coin("bitcoin")
-                if btc and "error" not in btc:
-                    with self._lock:
-                        self.metrics_cache["btc_price"] = {
-                            "value": btc.get("price", 0),
-                            "change_24h": btc.get("priceChange1d", 0),
-                            "timestamp": datetime.now().isoformat(),
-                            "level": "medium"
-                        }
-                
-                eth = system.api.get_coin("ethereum")
-                if eth and "error" not in eth:
-                    with self._lock:
-                        self.metrics_cache["eth_price"] = {
-                            "value": eth.get("price", 0),
-                            "change_24h": eth.get("priceChange1d", 0),
-                            "timestamp": datetime.now().isoformat(),
-                            "level": "medium"
-                        }
-            except Exception as e:
-                logger.debug(f"Price collection error: {e}")
+            # ✅ استفاده از API کلاینت (بدون وابستگی به system)
+            from api.coinstats_client import coinstats_client
+            from models.manager.model_manager import ModelManager
             
-            # ===== ۲. API Status =====
-            try:
-                import core.system
-                system = core.system.system
-                status = system.api.get_status()
-                api_status = status.get("status", "unknown") if status else "unknown"
-                
-                with self._lock:
-                    self.metrics_cache["api_status"] = {
-                        "value": api_status,
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "medium"
-                    }
-            except Exception as e:
-                logger.debug(f"API status error: {e}")
+            # قیمت‌ها
+            btc = coinstats_client.get_coin("bitcoin")
+            if btc and "error" not in btc:
+                self.metrics_cache["btc_price"] = {
+                    "value": btc.get("price", 0),
+                    "change_24h": btc.get("priceChange1d", 0),
+                    "timestamp": datetime.now().isoformat()
+                }
             
-            # ===== ۳. API Credits =====
-            try:
-                import core.system
-                system = core.system.system
-                credits = system.api.get_credits()
-                api_credits = credits.get("remainingCredits", 0) if credits else 0
-                
-                with self._lock:
-                    self.metrics_cache["api_credits"] = {
-                        "value": api_credits,
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "medium"
-                    }
-            except Exception as e:
-                logger.debug(f"Credits error: {e}")
+            eth = coinstats_client.get_coin("ethereum")
+            if eth and "error" not in eth:
+                self.metrics_cache["eth_price"] = {
+                    "value": eth.get("price", 0),
+                    "change_24h": eth.get("priceChange1d", 0),
+                    "timestamp": datetime.now().isoformat()
+                }
             
-            # ===== ۴. Model Status =====
-            try:
-                import core.system
-                system = core.system.system
-                if system.model_manager:
-                    loaded = system.model_manager.current_model is not None
-                    version = system.model_manager.current_version or "N/A"
-                else:
-                    loaded = False
-                    version = "N/A"
-                
-                with self._lock:
-                    self.metrics_cache["model_status"] = {
-                        "value": {"loaded": loaded, "version": version},
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "medium"
-                    }
-            except Exception as e:
-                logger.debug(f"Model status error: {e}")
+            # API Status
+            status = coinstats_client.get_status()
+            api_status = status.get("status", "unknown") if status else "unknown"
+            self.metrics_cache["api_status"] = {
+                "value": api_status,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Credits
+            credits = coinstats_client.get_credits()
+            api_credits = credits.get("remainingCredits", 0) if credits else 0
+            self.metrics_cache["api_credits"] = {
+                "value": api_credits,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Model Status
+            # ✅ استفاده از ModelManager بدون وابستگی به system
+            model_manager = ModelManager(coinstats_client)
+            loaded = model_manager.current_model is not None
+            version = model_manager.current_version or "N/A"
+            self.metrics_cache["model_status"] = {
+                "value": {"loaded": loaded, "version": version},
+                "timestamp": datetime.now().isoformat()
+            }
             
         except Exception as e:
-            logger.error(f"❌ Medium metrics error: {e}")
-            self.stats["errors"] += 1
+            logger.debug(f"Medium metrics error: {e}")
     
     def _collect_heavy_metrics(self):
-        """ترس و طمع, سلطه, اخبار, دیتابیس, دیسک"""
+        """سایر متریک‌ها"""
         try:
-            # ===== ۱. Fear & Greed =====
-            try:
-                import core.system
-                system = core.system.system
-                fg = system.api.get_fear_greed(use_cache=True)
-                if fg and "now" in fg:
-                    with self._lock:
-                        self.metrics_cache["fear_greed"] = {
-                            "value": fg["now"].get("value", 50),
-                            "classification": fg["now"].get("value_classification", "Neutral"),
-                            "timestamp": datetime.now().isoformat(),
-                            "level": "heavy"
-                        }
-            except Exception as e:
-                logger.debug(f"Fear & Greed error: {e}")
+            from api.coinstats_client import coinstats_client
+            from database import health_check
             
-            # ===== ۲. BTC Dominance =====
-            try:
-                import core.system
-                system = core.system.system
-                dominance = system.api.get_btc_dominance(use_cache=True)
-                if dominance:
-                    with self._lock:
-                        self.metrics_cache["btc_dominance"] = {
-                            "value": dominance.get("dominance", 50),
-                            "timestamp": datetime.now().isoformat(),
-                            "level": "heavy"
-                        }
-            except Exception as e:
-                logger.debug(f"BTC Dominance error: {e}")
-            
-            # ===== ۳. News =====
-            try:
-                import core.system
-                system = core.system.system
-                news = system.api.get_news(limit=5)
-                if news and "error" not in news:
-                    with self._lock:
-                        self.metrics_cache["news"] = {
-                            "value": news,
-                            "timestamp": datetime.now().isoformat(),
-                            "level": "heavy"
-                        }
-            except Exception as e:
-                logger.debug(f"News error: {e}")
-            
-            # ===== ۴. Database Size =====
-            try:
-                from database import get_primary
-                db = get_primary()
-                if db and db.is_connected():
-                    result = db.execute("""
-                        SELECT pg_database_size(current_database()) / 1024 / 1024 as size_mb
-                    """)
-                    db_size = result[0].get('size_mb', 0) if result else 0
-                else:
-                    db_size = 0
-                
-                with self._lock:
-                    self.metrics_cache["database_size"] = {
-                        "value": db_size,
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "heavy"
-                    }
-            except Exception as e:
-                logger.debug(f"Database size error: {e}")
-            
-            # ===== ۵. Disk Space =====
-            try:
-                usage = psutil.disk_usage('/')
-                disk = {
-                    "total_gb": round(usage.total / (1024**3), 2),
-                    "used_gb": round(usage.used / (1024**3), 2),
-                    "free_gb": round(usage.free / (1024**3), 2),
-                    "percent": usage.percent
+            # Fear & Greed
+            fg = coinstats_client.get_fear_greed(use_cache=True)
+            if fg and "now" in fg:
+                self.metrics_cache["fear_greed"] = {
+                    "value": fg["now"].get("value", 50),
+                    "classification": fg["now"].get("value_classification", "Neutral"),
+                    "timestamp": datetime.now().isoformat()
                 }
-                with self._lock:
-                    self.metrics_cache["disk_space"] = {
-                        "value": disk,
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "heavy"
-                    }
-            except Exception as e:
-                logger.debug(f"Disk space error: {e}")
             
-            # ===== ۶. Databases Status =====
-            try:
-                from database import health_check
-                health = health_check()
-                dbs = {}
-                for name, info in health.items():
-                    if name == "postgresql":
-                        dbs["postgresql"] = info.get("connected", False)
-                    elif name == "redis":
-                        dbs["redis"] = info.get("connected", False)
-                    elif name == "sqlite":
-                        dbs["sqlite"] = info.get("connected", False)
-                
-                with self._lock:
-                    self.metrics_cache["databases"] = {
-                        "value": dbs,
-                        "timestamp": datetime.now().isoformat(),
-                        "level": "heavy"
-                    }
-            except Exception as e:
-                logger.debug(f"Databases status error: {e}")
+            # BTC Dominance
+            dominance = coinstats_client.get_btc_dominance(use_cache=True)
+            if dominance:
+                self.metrics_cache["btc_dominance"] = {
+                    "value": dominance.get("dominance", 50),
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            # Databases
+            health = health_check()
+            dbs = {}
+            for name, info in health.items():
+                dbs[name] = info.get("connected", False)
+            self.metrics_cache["databases"] = {
+                "value": dbs,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Disk Space
+            usage = psutil.disk_usage('/')
+            disk = {
+                "total_gb": round(usage.total / (1024**3), 2),
+                "used_gb": round(usage.used / (1024**3), 2),
+                "free_gb": round(usage.free / (1024**3), 2),
+                "percent": usage.percent
+            }
+            self.metrics_cache["disk_space"] = {
+                "value": disk,
+                "timestamp": datetime.now().isoformat()
+            }
             
         except Exception as e:
-            logger.error(f"❌ Heavy metrics error: {e}")
-            self.stats["errors"] += 1
+            logger.debug(f"Heavy metrics error: {e}")
     
     # ============================================================
-    # ✅ ۴. API
+    # API
     # ============================================================
     
     def get_metrics(self) -> Dict:
-        with self._lock:
-            return {
-                "metrics": self.metrics_cache.copy(),
-                "stats": self.stats.copy(),
-                "timestamp": datetime.now().isoformat()
-            }
+        return {
+            "metrics": self.metrics_cache.copy(),
+            "stats": self.stats.copy(),
+            "timestamp": datetime.now().isoformat()
+        }
     
     def get_summary(self) -> Dict:
-        with self._lock:
-            return {
-                "status": "running" if self._running else "stopped",
-                "total_collections": self.stats["collections"],
-                "errors": self.stats["errors"],
-                "metrics_count": len(self.metrics_cache),
-                "last_collection": self.stats["last_collection"],
-                "loop_cycles": self.stats.get("loop_cycles", 0)
-            }
+        return {
+            "status": "running" if self._running else "stopped",
+            "total_collections": self.stats["collections"],
+            "errors": self.stats["errors"],
+            "metrics_count": len(self.metrics_cache),
+            "last_collection": self.stats["last_collection"]
+        }
     
     def get_alert_metrics(self) -> Dict:
-        with self._lock:
-            cache = self.metrics_cache
-            return {
-                "cpu": cache.get("cpu", {}).get("value", 0),
-                "ram": cache.get("ram", {}).get("value", 0),
-                "api_status": cache.get("api_status", {}).get("value", "unknown"),
-                "api_credits": cache.get("api_credits", {}).get("value", 0),
-                "model_loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-                "model_accuracy": None,
-                "databases": cache.get("databases", {}).get("value", {}),
-                "uptime": cache.get("uptime", {}).get("value", "0s"),
-            }
+        cache = self.metrics_cache
+        return {
+            "cpu": cache.get("cpu", {}).get("value", 0),
+            "ram": cache.get("ram", {}).get("value", 0),
+            "api_status": cache.get("api_status", {}).get("value", "unknown"),
+            "api_credits": cache.get("api_credits", {}).get("value", 0),
+            "model_loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
+            "model_accuracy": None,
+            "databases": cache.get("databases", {}).get("value", {}),
+            "uptime": cache.get("uptime", {}).get("value", "0s"),
+        }
     
     def get_dashboard_metrics(self) -> Dict:
-        with self._lock:
-            cache = self.metrics_cache
-            return {
-                "system": {
-                    "cpu": cache.get("cpu", {}).get("value", 0),
-                    "ram": cache.get("ram", {}).get("value", 0),
-                    "uptime": cache.get("uptime", {}).get("value", "0s"),
-                },
-                "prices": {
-                    "btc": cache.get("btc_price", {}).get("value", 0),
-                    "eth": cache.get("eth_price", {}).get("value", 0),
-                },
-                "api": {
-                    "status": cache.get("api_status", {}).get("value", "unknown"),
-                    "credits": cache.get("api_credits", {}).get("value", 0)
-                },
-                "market": {
-                    "fear_greed": cache.get("fear_greed", {}).get("value", 50),
-                    "fear_greed_label": cache.get("fear_greed", {}).get("classification", "Neutral"),
-                    "btc_dominance": cache.get("btc_dominance", {}).get("value", 50),
-                },
-                "model": {
-                    "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-                    "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
-                },
-                "database": {
-                    "size_mb": cache.get("database_size", {}).get("value", 0),
-                    "status": cache.get("databases", {}).get("value", {})
-                },
-                "disk": cache.get("disk_space", {}).get("value", {}),
-                "news": cache.get("news", {}).get("value", []),
-                "timestamp": datetime.now().isoformat()
-            }
+        cache = self.metrics_cache
+        return {
+            "system": {
+                "cpu": cache.get("cpu", {}).get("value", 0),
+                "ram": cache.get("ram", {}).get("value", 0),
+                "uptime": cache.get("uptime", {}).get("value", "0s"),
+            },
+            "prices": {
+                "btc": cache.get("btc_price", {}).get("value", 0),
+                "eth": cache.get("eth_price", {}).get("value", 0),
+            },
+            "api": {
+                "status": cache.get("api_status", {}).get("value", "unknown"),
+                "credits": cache.get("api_credits", {}).get("value", 0)
+            },
+            "market": {
+                "fear_greed": cache.get("fear_greed", {}).get("value", 50),
+                "fear_greed_label": cache.get("fear_greed", {}).get("classification", "Neutral"),
+                "btc_dominance": cache.get("btc_dominance", {}).get("value", 50),
+            },
+            "model": {
+                "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
+                "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
+            },
+            "disk": cache.get("disk_space", {}).get("value", {}),
+            "timestamp": datetime.now().isoformat()
+        }
     
     def get_health(self) -> Dict:
-        with self._lock:
-            cache = self.metrics_cache
-            cpu = cache.get("cpu", {}).get("value", 0)
-            ram = cache.get("ram", {}).get("value", 0)
-            
-            cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
-            ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
-            
-            api = cache.get("api_status", {}).get("value", "unknown")
-            api_status = "healthy" if api == "ok" else "degraded" if api == "degraded" else "unhealthy"
-            
-            return {
-                "status": "ok" if cpu_status == "healthy" and ram_status == "healthy" else "degraded",
-                "timestamp": datetime.now().isoformat(),
-                "components": {
-                    "cpu": {"status": cpu_status, "value": round(cpu, 1)},
-                    "ram": {"status": ram_status, "value": round(ram, 1)},
-                    "api": {"status": api_status},
-                }
+        cache = self.metrics_cache
+        cpu = cache.get("cpu", {}).get("value", 0)
+        ram = cache.get("ram", {}).get("value", 0)
+        
+        cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
+        ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
+        
+        return {
+            "status": "ok" if cpu_status == "healthy" and ram_status == "healthy" else "degraded",
+            "timestamp": datetime.now().isoformat(),
+            "components": {
+                "cpu": {"status": cpu_status, "value": round(cpu, 1)},
+                "ram": {"status": ram_status, "value": round(ram, 1)},
             }
+        }
 
 
-# ============================================================
-# ایجاد نمونه Singleton
-# ============================================================
-
+# ایجاد نمونه
 metrics_scheduler = MetricsScheduler()
