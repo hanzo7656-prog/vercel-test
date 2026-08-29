@@ -829,4 +829,255 @@ def register_api_routes(app, system):
             "message": f"✅ تعداد نقاط {name} به {count} تغییر کرد",
             "data": {name: count}
         })
+    # routes/api_routes.py (بخش‌های جدید اضافه شده)
+# ============================================================
+# روت‌های جدید برای پردازش موازی
+# ============================================================
+
+# ============================================================
+# ۱. پیش‌بینی چندارز (موازی)
+# ============================================================
+
+    @app.route('/api/predict/multiple', methods=['POST'])
+    def predict_multiple():
+        """
+        پیش‌بینی موازی برای چند ارز
+    
+        Body:
+            {
+                "coins": ["bitcoin", "ethereum", "solana"],
+                "period": "24h"  // اختیاری
+            }
+        """
+        try:
+            data = request.json
+            coins = data.get('coins', [])
+            period = data.get('period', '24h')
+        
+            if not coins:
+                return jsonify({"success": False, "error": "No coins provided"}), 400
+        
+            from services import prediction_service
+            results = prediction_service.predict_multiple(coins, period)
+        
+            return jsonify({
+                "success": True,
+                "data": results,
+                "count": len(results),
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Predict multiple error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۲. پیش‌بینی Async
+# ============================================================
+
+    @app.route('/api/predict/async', methods=['POST'])
+    def predict_async():
+        """پیش‌بینی غیرمترقبه (با asyncio)"""
+        try:
+            data = request.json
+            coins = data.get('coins', [])
+            period = data.get('period', '24h')
+        
+            if not coins:
+                return jsonify({"success": False, "error": "No coins provided"}), 400
+        
+            import asyncio
+            from services import prediction_service
+        
+            # اجرای async در event loop جدید
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            results = loop.run_until_complete(
+                prediction_service.predict_async(coins, period)
+            )
+            loop.close()
+        
+            return jsonify({
+                "success": True,
+                "data": results,
+                "count": len(results),
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Predict async error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۳. آموزش موازی
+# ============================================================
+
+    @app.route('/api/train/parallel', methods=['POST'])
+    def train_parallel():
+        """آموزش موازی با چند ارز"""
+        try:
+            data = request.json
+            coins = data.get('coins', ['bitcoin', 'ethereum'])
+            period = data.get('period', '1m')
+        
+            from services import training_service
+            result = training_service.train_parallel(coins, period)
+        
+            return jsonify({
+                "success": result.get("success", False),
+                "data": result,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Train parallel error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۴. آموزش افزایشی
+# ============================================================
+
+    @app.route('/api/train/incremental', methods=['POST'])
+    def train_incremental():
+        """آموزش افزایشی با داده‌های جدید"""
+        try:
+            data = request.json
+            coins = data.get('coins', ['bitcoin', 'ethereum'])
+            period = data.get('period', '1m')
+        
+            from services import training_service
+            result = training_service.train_incremental_parallel(coins, period)
+        
+            return jsonify({
+                "success": result.get("success", False),
+                "data": result,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Train incremental error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۵. Batch Processing
+# ============================================================
+
+    @app.route('/api/batch/submit', methods=['POST'])
+    def submit_batch():
+        """ثبت یک Job دسته‌ای"""
+        try:
+            data = request.json
+            items = data.get('items', [])
+            batch_size = data.get('batch_size', 10)
+            max_workers = data.get('max_workers', 5)
+        
+            if not items:
+                return jsonify({"success": False, "error": "No items provided"}), 400
+        
+            from services import batch_processor
+        
+            # تعریف پردازشگر
+            def process_item(item):
+                # اینجا منطق پردازش هر آیتم
+                return {"item": item, "processed": True, "timestamp": datetime.now().isoformat()}
+        
+            job_id = batch_processor.submit_batch(
+                items,
+                process_item,
+                batch_size=batch_size,
+                max_workers=max_workers
+            )
+        
+            return jsonify({
+                "success": True,
+                "job_id": job_id,
+                "message": "Batch job submitted",
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Batch submit error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+    @app.route('/api/batch/status/<job_id>', methods=['GET'])
+    def get_batch_status(job_id):
+        """دریافت وضعیت یک Batch Job"""
+        try:
+            from services import batch_processor
+            status = batch_processor.get_job_status(job_id)
+        
+            if not status:
+                return jsonify({"success": False, "error": "Job not found"}), 404
+        
+            return jsonify({
+                "success": True,
+                "data": status,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Batch status error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+    @app.route('/api/batch/results/<job_id>', methods=['GET'])
+    def get_batch_results(job_id):
+        """دریافت نتایج یک Batch Job"""
+        try:
+            from services import batch_processor
+            results = batch_processor.get_job_results(job_id)
+        
+            if results is None:
+                return jsonify({"success": False, "error": "Results not ready or job not found"}), 404
+        
+            return jsonify({
+                "success": True,
+                "data": results,
+                "count": len(results),
+               "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Batch results error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۶. وضعیت Threadها
+# ============================================================
+
+    @app.route('/api/threads/status', methods=['GET'])
+    def get_threads_status():
+        """دریافت وضعیت همه Threadها"""
+        try:
+            from core.threading_manager import threading_manager
+            summary = threading_manager.get_summary()
+        
+            return jsonify({
+                "success": True,
+                "data": summary,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Threads status error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# ۷. آمار پردازشگر موازی
+# ============================================================
+
+    @app.route('/api/parallel/stats', methods=['GET'])
+    def get_parallel_stats():
+        """دریافت آمار پردازشگر موازی"""
+        try:
+            from core.parallel_processor import parallel_processor
+            stats = parallel_processor.get_stats()
+        
+            return jsonify({
+                "success": True,
+                "data": stats,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Parallel stats error: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
     
