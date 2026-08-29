@@ -107,65 +107,59 @@ class MetricsScheduler:
     def _scheduler_loop(self):
         """حلقه اصلی - هر ۱ ثانیه چک می‌کند"""
         logger.info("🔄 Scheduler loop started")
-        
-        last_light = 0
-        last_medium = 0
-        last_heavy = 0
+    
+        # ✅ مقداردهی اولیه (برای اینکه شرط‌ها بلافاصله برقرار شوند)
+        last_light = time.time()
+        last_medium = time.time()
+        last_heavy = time.time()
         cycle_count = 0
-        
-        # ✅ جمع‌آوری اولیه در حلقه (امنیت بیشتر)
+    
+        # ✅ جمع‌آوری اولیه در حلقه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
-            last_light = time.time()
-            last_medium = time.time()
-            last_heavy = time.time()
+            logger.info("✅ Initial collection in loop complete")
         except Exception as e:
-            logger.error(f"❌ Initial collection in loop error: {e}")
-        
+            logger.error(f"❌ Initial collection error: {e}")
+    
         while not self._stop_event.is_set() and self._running:
             try:
                 now = time.time()
                 cycle_count += 1
-                
-                # هر ۱۰ سیکل یکبار لاگ
+            
                 if cycle_count % 10 == 0:
                     self.stats["loop_cycles"] = cycle_count
                     logger.debug(f"🏃 Loop alive (cycle {cycle_count})")
-                
-                # ===== Light: هر ۳ ثانیه =====
+            
+                # Light: هر ۳ ثانیه
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
-                    logger.debug(f"📊 Light metrics collected (CPU: {self.metrics_cache.get('cpu', {}).get('value')}%)")
-                
-                # ===== Medium: هر ۳۰ ثانیه =====
+            
+                # Medium: هر ۳۰ ثانیه
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
                     btc = self.metrics_cache.get('btc_price', {}).get('value', 0)
-                    logger.info(f"📊 Medium metrics collected (BTC: ${btc:,.2f})")
-                
-                # ===== Heavy: هر ۵ دقیقه =====
+                    logger.info(f"📊 Medium collected (BTC: ${btc:,.2f})")
+            
+                # Heavy: هر ۵ دقیقه
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     fear = self.metrics_cache.get('fear_greed', {}).get('value', 50)
-                    logger.info(f"📊 Heavy metrics collected (Fear: {fear})")
-                
+                    logger.info(f"📊 Heavy collected (Fear: {fear})")
+            
                 self.stats["last_collection"] = datetime.now().isoformat()
-                
-                # ✅ هر ۱ ثانیه چک کن (نه sleep طولانی)
                 time.sleep(1)
-                
+            
             except Exception as e:
                 logger.error(f"❌ Scheduler loop error: {e}")
                 self.stats["errors"] += 1
                 time.sleep(1)
-        
-        logger.info(f"⏹️ Scheduler loop stopped (after {cycle_count} cycles)")
     
+        logger.info(f"⏹️ Scheduler loop stopped (after {cycle_count} cycles)")
     # ============================================================
     # ✅ ۳. جمع‌آوری‌کننده‌ها (بدون تغییر)
     # ============================================================
