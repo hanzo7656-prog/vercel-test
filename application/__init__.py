@@ -10,13 +10,20 @@ from application.use_cases.train_model import TrainModelUseCase
 from application.use_cases.get_health import GetHealthUseCase
 from application.services.prediction_service import PredictionService
 from application.services.monitoring_service import MonitoringService
+from application.services.command_system import CommandSystem
+from application.services.self_healer import SelfHealer
 
 __all__ = [
+    # DTOs
     'PredictionDTO',
     'PredictionRequestDTO',
+    # Use Cases
     'PredictCoinUseCase',
     'TrainModelUseCase',
     'GetHealthUseCase',
+    # Services
     'PredictionService',
-    'MonitoringService'
+    'MonitoringService',
+    'CommandSystem',
+    'SelfHealer'
 ]
