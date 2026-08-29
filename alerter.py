@@ -1,6 +1,6 @@
 # alerter.py
 # ============================================================
-# سیستم هشدار و اعلان - نسخه ۲.۰ (با Scheduler جدید)
+# سیستم هشدار و اعلان - نسخه ۳.۰ (با Type Hints)
 # ============================================================
 
 import os
@@ -8,7 +8,7 @@ import json
 import logging
 import requests
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -17,23 +17,26 @@ logger = logging.getLogger(__name__)
 class Alerter:
     """
     مدیریت هشدارها و اعلان‌ها
-    پشتیبانی از: کنسول، لاگ، تلگرام
+    پشتیبانی از: کنسول، لاگ
     
-    ✅ نسخه ۲.۰: استفاده از Metrics Scheduler جدید
+    ✅ نسخه ۳.۰: اضافه شدن Type Hints و کامنت شدن تلگرام
     """
     
-    def __init__(self):
-        self.alerts = []
-        self.max_alerts = 100
-        self.alert_rules = self._load_rules()
+    def __init__(self) -> None:
+        self.alerts: List[Dict[str, Any]] = []
+        self.max_alerts: int = 100
+        self.alert_rules: Dict[str, Any] = self._load_rules()
         
-        # تنظیمات تلگرام (از محیط)
-        self.telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-        self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-        self.telegram_enabled = bool(self.telegram_token and self.telegram_chat_id)
+        # ============================================================
+        # ⚠️ بخش تلگرام - کامنت شده (غیرفعال)
+        # ============================================================
+        # # تنظیمات تلگرام (از محیط)
+        # self.telegram_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        # self.telegram_chat_id: str = os.getenv("TELEGRAM_CHAT_ID", "")
+        # self.telegram_enabled: bool = bool(self.telegram_token and self.telegram_chat_id)
         
         # آخرین وضعیت برای جلوگیری از هشدار تکراری
-        self.last_status = {
+        self.last_status: Dict[str, Optional[Union[str, float, int]]] = {
             "cpu": None,
             "ram": None,
             "api": None,
@@ -42,21 +45,21 @@ class Alerter:
         }
         
         # ✅ جدید: استفاده از Scheduler برای دریافت متریک
-        self._metrics_cache = {}
-        self._last_metrics_update = None
+        self._metrics_cache: Dict[str, Any] = {}
+        self._last_metrics_update: Optional[datetime] = None
         
-        if self.telegram_enabled:
-            logger.info("✅ Telegram alerts enabled")
-        else:
-            logger.info("ℹ️ Telegram alerts disabled (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)")
+        # if self.telegram_enabled:
+        #     logger.info("✅ Telegram alerts enabled")
+        # else:
+        #     logger.info("ℹ️ Telegram alerts disabled (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)")
         
-        logger.info("✅ Alerter v2.0 initialized (with Metrics Scheduler)")
+        logger.info("✅ Alerter v3.0 initialized (Telegram disabled)")
     
-    def _load_rules(self) -> Dict:
+    def _load_rules(self) -> Dict[str, Any]:
         """بارگذاری قوانین هشدار از فایل یا پیش‌فرض"""
-        rules_path = Path("config/alert_rules.json")
+        rules_path: Path = Path("config/alert_rules.json")
         
-        default_rules = {
+        default_rules: Dict[str, Any] = {
             "cpu": {
                 "warning": 70,
                 "critical": 85,
@@ -79,18 +82,21 @@ class Alerter:
             "database": {
                 "max_disconnect": 2,
                 "cooldown": 60
-            },
-            "telegram": {
-                "enabled": False,
-                "bot_token": "",
-                "chat_id": ""
             }
+            # ============================================================
+            # ⚠️ بخش تلگرام - کامنت شده
+            # ============================================================
+            # "telegram": {
+            #     "enabled": False,
+            #     "bot_token": "",
+            #     "chat_id": ""
+            # }
         }
         
         if rules_path.exists():
             try:
-                with open(rules_path, 'r') as f:
-                    rules = json.load(f)
+                with open(rules_path, 'r', encoding='utf-8') as f:
+                    rules: Dict[str, Any] = json.load(f)
                     logger.info("✅ Alert rules loaded from file")
                     return rules
             except Exception as e:
@@ -99,31 +105,27 @@ class Alerter:
         # ذخیره قوانین پیش‌فرض
         try:
             rules_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(rules_path, 'w') as f:
-                json.dump(default_rules, f, indent=4)
+            with open(rules_path, 'w', encoding='utf-8') as f:
+                json.dump(default_rules, f, indent=4, ensure_ascii=False)
             logger.info("✅ Default alert rules created")
-        except:
+        except Exception:
             pass
         
         return default_rules
     
-    def _get_metrics_from_scheduler(self) -> Dict:
-        """
-        ✅ جدید: دریافت متریک‌ها از Scheduler
-        جایگزین دریافت مستقیم از metrics_collector
-        """
+    def _get_metrics_from_scheduler(self) -> Dict[str, Any]:
+        """دریافت متریک‌ها از Scheduler"""
         try:
             from core import metrics_scheduler
             return metrics_scheduler.get_alert_metrics()
         except ImportError:
-            # Fallback برای زمانی که core ماژول موجود نیست
             logger.warning("⚠️ Metrics Scheduler not available, using fallback")
             return self._get_fallback_metrics()
         except Exception as e:
             logger.error(f"❌ Error getting metrics from scheduler: {e}")
             return self._get_fallback_metrics()
     
-    def _get_fallback_metrics(self) -> Dict:
+    def _get_fallback_metrics(self) -> Dict[str, Any]:
         """Fallback در صورت عدم دسترسی به Scheduler"""
         return {
             "cpu": 0,
@@ -137,41 +139,43 @@ class Alerter:
             "last_update": datetime.now().isoformat()
         }
     
-    def check_and_alert(self, metrics: Optional[Dict] = None) -> List[Dict]:
+    def check_and_alert(self, metrics: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         بررسی متریک‌ها و صدور هشدار در صورت نیاز
         
         پارامترها:
             metrics: اگر None باشد، از Scheduler دریافت می‌شود
+        
+        خروجی:
+            لیستی از هشدارهای جدید
         """
-        # ✅ جدید: اگر metrics ارسال نشده، از Scheduler بگیر
         if metrics is None:
             metrics = self._get_metrics_from_scheduler()
         
-        new_alerts = []
+        new_alerts: List[Dict[str, Any]] = []
         
         # ۱. بررسی CPU
-        cpu_alert = self._check_cpu(metrics)
+        cpu_alert: Optional[Dict[str, Any]] = self._check_cpu(metrics)
         if cpu_alert:
             new_alerts.append(cpu_alert)
         
         # ۲. بررسی RAM
-        ram_alert = self._check_ram(metrics)
+        ram_alert: Optional[Dict[str, Any]] = self._check_ram(metrics)
         if ram_alert:
             new_alerts.append(ram_alert)
         
         # ۳. بررسی API
-        api_alert = self._check_api(metrics)
+        api_alert: Optional[Dict[str, Any]] = self._check_api(metrics)
         if api_alert:
             new_alerts.append(api_alert)
         
         # ۴. بررسی مدل
-        model_alert = self._check_model(metrics)
+        model_alert: Optional[Dict[str, Any]] = self._check_model(metrics)
         if model_alert:
             new_alerts.append(model_alert)
         
         # ۵. بررسی دیتابیس
-        db_alert = self._check_database(metrics)
+        db_alert: Optional[Dict[str, Any]] = self._check_database(metrics)
         if db_alert:
             new_alerts.append(db_alert)
         
@@ -186,11 +190,12 @@ class Alerter:
         
         return new_alerts
     
-    # ---------- بررسی‌های اختصاصی (بدون تغییر) ----------
+    # ---------- بررسی‌های اختصاصی ----------
     
-    def _check_cpu(self, metrics: Dict) -> Optional[Dict]:
-        cpu = metrics.get("cpu", 0)
-        rules = self.alert_rules.get("cpu", {})
+    def _check_cpu(self, metrics: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """بررسی مصرف CPU"""
+        cpu: float = float(metrics.get("cpu", 0))
+        rules: Dict[str, Any] = self.alert_rules.get("cpu", {})
         
         if self.last_status.get("cpu") == cpu and cpu < rules.get("warning", 70):
             return None
@@ -213,9 +218,10 @@ class Alerter:
             )
         return None
     
-    def _check_ram(self, metrics: Dict) -> Optional[Dict]:
-        ram = metrics.get("ram", 0)
-        rules = self.alert_rules.get("ram", {})
+    def _check_ram(self, metrics: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """بررسی مصرف RAM"""
+        ram: float = float(metrics.get("ram", 0))
+        rules: Dict[str, Any] = self.alert_rules.get("ram", {})
         
         if self.last_status.get("ram") == ram and ram < rules.get("warning", 70):
             return None
@@ -238,8 +244,9 @@ class Alerter:
             )
         return None
     
-    def _check_api(self, metrics: Dict) -> Optional[Dict]:
-        api_status = metrics.get("api_status", "unknown")
+    def _check_api(self, metrics: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """بررسی وضعیت API"""
+        api_status: str = metrics.get("api_status", "unknown")
         
         if self.last_status.get("api") == api_status:
             return None
@@ -262,10 +269,11 @@ class Alerter:
             )
         return None
     
-    def _check_model(self, metrics: Dict) -> Optional[Dict]:
-        accuracy = metrics.get("model_accuracy")
-        loaded = metrics.get("model_loaded", False)
-        rules = self.alert_rules.get("model", {})
+    def _check_model(self, metrics: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """بررسی وضعیت مدل"""
+        accuracy: Optional[float] = metrics.get("model_accuracy")
+        loaded: bool = metrics.get("model_loaded", False)
+        rules: Dict[str, Any] = self.alert_rules.get("model", {})
         
         # بررسی دقت
         if accuracy is not None and accuracy < rules.get("min_accuracy", 0.50):
@@ -295,9 +303,10 @@ class Alerter:
         
         return None
     
-    def _check_database(self, metrics: Dict) -> Optional[Dict]:
-        databases = metrics.get("databases", {})
-        disconnected = [name for name, status in databases.items() if not status]
+    def _check_database(self, metrics: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """بررسی وضعیت دیتابیس"""
+        databases: Dict[str, bool] = metrics.get("databases", {})
+        disconnected: List[str] = [name for name, status in databases.items() if not status]
         
         if disconnected:
             if self.last_status.get("database") != str(disconnected):
@@ -320,9 +329,10 @@ class Alerter:
                 )
         return None
     
-    # ---------- توابع کمکی (بدون تغییر) ----------
+    # ---------- توابع کمکی ----------
     
-    def _create_alert(self, level: str, message: str, data: Dict, source: str) -> Dict:
+    def _create_alert(self, level: str, message: str, data: Dict[str, Any], source: str) -> Dict[str, Any]:
+        """ایجاد یک هشدار جدید"""
         return {
             "id": len(self.alerts) + 1,
             "level": level,
@@ -333,10 +343,10 @@ class Alerter:
             "resolved": False
         }
     
-    def _send_alert(self, alert: Dict):
+    def _send_alert(self, alert: Dict[str, Any]) -> None:
         """ارسال هشدار به مقصدهای مختلف"""
         # ۱. لاگ
-        log_level = logging.WARNING if alert['level'] in ["WARNING", "CRITICAL"] else logging.INFO
+        log_level: int = logging.WARNING if alert['level'] in ["WARNING", "CRITICAL"] else logging.INFO
         logger.log(log_level, f"[{alert['level']}] {alert['message']}")
         
         # ۲. کنسول (رنگی)
@@ -347,39 +357,44 @@ class Alerter:
         else:
             print(f"✅ [{alert['level']}] {alert['message']}")
         
-        # ۳. تلگرام (اگر فعال باشد)
-        if self.telegram_enabled:
-            self._send_telegram(alert)
+        # ============================================================
+        # ⚠️ بخش تلگرام - کامنت شده
+        # ============================================================
+        # if self.telegram_enabled:
+        #     self._send_telegram(alert)
     
-    def _send_telegram(self, alert: Dict):
-        """ارسال هشدار به تلگرام"""
-        try:
-            emoji = "🚨" if alert['level'] == "CRITICAL" else "⚠️" if alert['level'] == "WARNING" else "ℹ️"
-            message = f"""
-{emoji} *هشدار سیستم تحلیلگر*
-
-*سطح:* {alert['level']}
-*منبع:* {alert['source']}
-*پیام:* {alert['message']}
-*زمان:* {alert['timestamp']}
-
-#alert #{alert['source']}
-"""
-            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            payload = {
-                "chat_id": self.telegram_chat_id,
-                "text": message,
-                "parse_mode": "Markdown"
-            }
-            response = requests.post(url, json=payload, timeout=5)
-            if response.status_code != 200:
-                logger.error(f"❌ Telegram error: {response.text}")
-        except Exception as e:
-            logger.error(f"❌ Telegram error: {e}")
+    # ============================================================
+    # ⚠️ متد _send_telegram - کامنت شده
+    # ============================================================
+    # def _send_telegram(self, alert: Dict[str, Any]) -> None:
+    #     """ارسال هشدار به تلگرام"""
+    #     try:
+    #         emoji: str = "🚨" if alert['level'] == "CRITICAL" else "⚠️" if alert['level'] == "WARNING" else "ℹ️"
+    #         message: str = f"""
+    # {emoji} *هشدار سیستم تحلیلگر*
+    # 
+    # *سطح:* {alert['level']}
+    # *منبع:* {alert['source']}
+    # *پیام:* {alert['message']}
+    # *زمان:* {alert['timestamp']}
+    # 
+    # #alert #{alert['source']}
+    # """
+    #         url: str = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+    #         payload: Dict[str, str] = {
+    #             "chat_id": self.telegram_chat_id,
+    #             "text": message,
+    #             "parse_mode": "Markdown"
+    #         }
+    #         response: requests.Response = requests.post(url, json=payload, timeout=5)
+    #         if response.status_code != 200:
+    #             logger.error(f"❌ Telegram error: {response.text}")
+    #     except Exception as e:
+    #         logger.error(f"❌ Telegram error: {e}")
     
-    def get_alerts(self, limit: int = 20, resolved: bool = None) -> List[Dict]:
+    def get_alerts(self, limit: int = 20, resolved: Optional[bool] = None) -> List[Dict[str, Any]]:
         """دریافت هشدارهای اخیر"""
-        alerts = self.alerts[-limit:] if self.alerts else []
+        alerts: List[Dict[str, Any]] = self.alerts[-limit:] if self.alerts else []
         if resolved is not None:
             alerts = [a for a in alerts if a.get("resolved", False) == resolved]
         return alerts
@@ -396,4 +411,4 @@ class Alerter:
 
 
 # نمونه Singleton
-alerter = Alerter()
+alerter: Alerter = Alerter()
