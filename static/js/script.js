@@ -1,6 +1,6 @@
 // static/js/script.js
 // ============================================================
-// اسکریپت‌های عمومی - نسخه ۲.۰
+// اسکریپت‌های عمومی - نسخه ۳.۰
 // ============================================================
 
 (function() {
@@ -13,23 +13,9 @@
     function showToast(message, type = 'info') {
         const container = document.getElementById('toastContainer');
         if (!container) {
-            // اگر container وجود نداشت، بساز
             const newContainer = document.createElement('div');
             newContainer.id = 'toastContainer';
-            newContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 9999;
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-                align-items: center;
-                pointer-events: none;
-                width: 90%;
-                max-width: 400px;
-            `;
+            newContainer.className = 'toast-container';
             document.body.appendChild(newContainer);
             return showToast(message, type);
         }
@@ -38,38 +24,14 @@
             info: '#00d4ff',
             success: '#00ff88',
             error: '#ff4444',
-            warning: '#ffaa00'
+            warning: '#ff8800'
         };
 
         const toast = document.createElement('div');
         toast.className = 'toast ' + type;
         toast.textContent = message;
-        toast.style.cssText = `
-            padding: 10px 20px;
-            background: rgba(8, 12, 24, 0.95);
-            backdrop-filter: blur(20px);
-            border: 2px solid ${colors[type] || colors.info};
-            border-radius: 10px;
-            color: #e8eef7;
-            font-size: 0.85rem;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-            pointer-events: all;
-            animation: toastIn 0.35s ease;
-            text-align: center;
-            width: 100%;
-        `;
-
-        // اضافه کردن انیمیشن
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes toastIn {
-                from { opacity: 0; transform: translateY(20px) scale(0.95); }
-                to { opacity: 1; transform: translateY(0) scale(1); }
-            }
-            .toast { transition: all 0.3s ease; }
-        `;
-        document.head.appendChild(style);
-
+        toast.style.borderColor = colors[type] || colors.info;
+        
         container.appendChild(toast);
 
         setTimeout(() => {
@@ -92,6 +54,11 @@
         return num.toString();
     }
 
+    function formatCurrency(num, currency = '$') {
+        if (num === undefined || num === null) return '—';
+        return currency + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function formatDate(dateStr) {
         if (!dateStr) return '—';
         try {
@@ -103,13 +70,35 @@
     }
 
     function getStatusColor(status) {
-        if (status === 'ok' || status === 'healthy' || status === 'online' || status === 'success') {
-            return 'success';
-        }
-        if (status === 'degraded' || status === 'warning' || status === 'partial') {
-            return 'warning';
-        }
-        return 'error';
+        const map = {
+            'ok': 'success',
+            'healthy': 'success',
+            'online': 'success',
+            'success': 'success',
+            'degraded': 'warning',
+            'warning': 'warning',
+            'partial': 'warning',
+            'error': 'error',
+            'offline': 'error',
+            'unhealthy': 'error'
+        };
+        return map[status] || 'info';
+    }
+
+    function getStatusEmoji(status) {
+        const map = {
+            'ok': '✅',
+            'healthy': '✅',
+            'online': '✅',
+            'success': '✅',
+            'degraded': '⚠️',
+            'warning': '⚠️',
+            'partial': '⚠️',
+            'error': '❌',
+            'offline': '❌',
+            'unhealthy': '❌'
+        };
+        return map[status] || 'ℹ️';
     }
 
     // ============================================================
@@ -142,13 +131,35 @@
     }
 
     // ============================================================
-    // ۴. Export Functions
+    // ۴. Fetch with Retry
+    // ============================================================
+    
+    async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+            }
+        }
+    }
+
+    // ============================================================
+    // ۵. Export Functions
     // ============================================================
 
     window.showToast = showToast;
     window.formatNumber = formatNumber;
+    window.formatCurrency = formatCurrency;
     window.formatDate = formatDate;
     window.getStatusColor = getStatusColor;
+    window.getStatusEmoji = getStatusEmoji;
     window.copyToClipboard = copyToClipboard;
+    window.fetchWithRetry = fetchWithRetry;
 
 })();
