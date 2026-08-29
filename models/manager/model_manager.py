@@ -1,7 +1,6 @@
-# model_manager.py
+# models/manager/model_manager.py
 # ============================================================
-# مدیریت پیشرفته مدل XGBoost با نسخه‌سازی و دیتابیس
-# نسخه ۲.۰ - یکپارچه با Metrics Scheduler + رفع باگ‌ها
+# مدیریت پیشرفته مدل XGBoost - نسخه ۳.۰ (نهایی)
 # ============================================================
 
 import os
@@ -10,8 +9,9 @@ import pickle
 import logging
 import numpy as np
 import xgboost as xgb
+from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 
 from database import get_primary
 from config import get_model_config
@@ -28,28 +28,23 @@ class ModelManager:
     - Ensemble
     - ارزیابی خودکار
     
-    ✅ نسخه ۲.۰: یکپارچه با Scheduler + رفع باگ‌ها
+    ✅ نسخه ۳.۰: حذف متدهای محلی، استفاده از Path، Type Hints کامل
     """
     
-    def __init__(self, api=None):
-        self.api = api
-        self.db = get_primary()
-        self.models_dir = "models/"
-        self.current_model = None
-        self.current_version = None
-        self.config = get_model_config()
+    def __init__(self, api: Optional[Any] = None) -> None:
+        self.api: Optional[Any] = api
+        self.db: Any = get_primary()
+        self.models_dir: Path = Path("models/")
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self.current_model: Optional[xgb.Booster] = None
+        self.current_version: Optional[str] = None
+        self.config: Dict[str, Any] = get_model_config()
         
-        # ✅ رفع باگ: ایجاد پوشه مدل‌ها
-        os.makedirs(self.models_dir, exist_ok=True)
-        
-        # ✅ جدید: ثبت در Scheduler
         self._register_with_scheduler()
-        
-        # بارگذاری آخرین مدل فعال
         self._load_active_model()
     
-    def _register_with_scheduler(self):
-        """✅ جدید: ثبت وضعیت مدل در Scheduler"""
+    def _register_with_scheduler(self) -> None:
+        """ثبت وضعیت مدل در Scheduler"""
         try:
             from core import metrics_scheduler
             logger.info("✅ ModelManager registered with Metrics Scheduler")
@@ -80,11 +75,17 @@ class ModelManager:
         return True
     
     # ============================================================
-    # ۲. ذخیره و بازیابی مدل
+    # ۲. ذخیره و بازیابی مدل (فقط از دیتابیس)
     # ============================================================
     
-    def save_model(self, model, accuracy: float, period: str = "1m", 
-                   coins: List[str] = None, features: List[str] = None) -> Dict:
+    def save_model(
+        self, 
+        model: Any, 
+        accuracy: float, 
+        period: str = "1m", 
+        coins: Optional[List[str]] = None, 
+        features: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """
         ذخیره مدل در دیتابیس PostgreSQL
         
@@ -98,21 +99,20 @@ class ModelManager:
         خروجی:
             دیکشنری شامل نسخه، آیدی و وضعیت
         """
-        # ✅ قبل از هر کاری، اطمینان از اتصال
         if not self._ensure_db_connection():
-            return self._save_local(model, accuracy, period)
+            return {"success": False, "error": "Database not available"}
         
         try:
-            # ۱. تبدیل مدل به باینری (با فرمت JSON)
-            temp_path = f"{self.models_dir}temp_model.xgb"
-            model.save_model(temp_path, format='json')
+            # ۱. تبدیل مدل به باینری
+            temp_path: Path = self.models_dir / "temp_model.xgb"
+            model.save_model(str(temp_path), format='json')
             
             with open(temp_path, "rb") as f:
-                model_data = f.read()
-            os.remove(temp_path)
+                model_data: bytes = f.read()
+            temp_path.unlink()  # حذف فایل موقت
             
             # ۲. تولید نسخه
-            version = self._generate_version()
+            version: str = self._generate_version()
             
             # ۳. تنظیم مقادیر پیش‌فرض
             if coins is None:
@@ -121,7 +121,7 @@ class ModelManager:
                 features = self._get_model_features(model)
             
             # ۴. ذخیره در دیتابیس
-            query = """
+            query: str = """
                 INSERT INTO models (
                     version, model_data, accuracy, training_samples,
                     period, coins, features, is_active, created_at
@@ -129,7 +129,7 @@ class ModelManager:
                 RETURNING id
             """
             
-            result = self.db.execute(query, (
+            result: List[Dict[str, Any]] = self.db.execute(query, (
                 version,
                 model_data,
                 accuracy,
@@ -142,9 +142,9 @@ class ModelManager:
             ))
             
             if result:
-                model_id = result[0]['id']
+                model_id: int = result[0]['id']
                 
-                # ۵. غیرفعال کردن مدل‌های قبلی (با Transaction)
+                # ۵. غیرفعال کردن مدل‌های قبلی
                 try:
                     self.db.execute("BEGIN")
                     self.db.execute(
@@ -179,38 +179,39 @@ class ModelManager:
                     "message": f"مدل نسخه {version} ذخیره شد"
                 }
             
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost error: {e}")
+            return {"success": False, "error": str(e), "message": "خطا در XGBoost"}
+        except IOError as e:
+            logger.error(f"❌ IO error: {e}")
+            return {"success": False, "error": str(e), "message": "خطا در فایل"}
         except Exception as e:
-            logger.error(f"❌ خطا در ذخیره مدل: {e}")
+            logger.error(f"❌ خطا در ذخیره مدل: {e}", exc_info=True)
             return {"success": False, "error": str(e), "message": "خطا در ذخیره مدل"}
         
         return {"success": False, "message": "خطای ناشناخته"}
     
     def _load_active_model(self) -> bool:
         """بارگذاری آخرین مدل فعال از دیتابیس"""
-        if not self.db or not self.db.is_connected():
-            return self._load_local()
+        if not self._ensure_db_connection():
+            return False
         
         try:
-            # ✅ اطمینان از اتصال قبل از کوئری
-            if not self._ensure_db_connection():
-                return self._load_local()
-            
-            result = self.db.execute(
+            result: List[Dict[str, Any]] = self.db.execute(
                 "SELECT * FROM models WHERE is_active = TRUE ORDER BY id DESC LIMIT 1"
             )
             
             if result:
-                row = result[0]
-                model_data = row['model_data']
+                row: Dict[str, Any] = result[0]
+                model_data: bytes = row['model_data']
                 
-                # ذخیره موقت و بارگذاری
-                temp_path = f"{self.models_dir}temp_{row['version']}.xgb"
+                temp_path: Path = self.models_dir / f"temp_{row['version']}.xgb"
                 with open(temp_path, "wb") as f:
                     f.write(model_data)
                 
-                model = xgb.Booster()
-                model.load_model(temp_path)
-                os.remove(temp_path)
+                model: xgb.Booster = xgb.Booster()
+                model.load_model(str(temp_path))
+                temp_path.unlink()
                 
                 self.current_model = model
                 self.current_version = row['version']
@@ -218,67 +219,34 @@ class ModelManager:
                 logger.info(f"✅ مدل نسخه {self.current_version} بارگذاری شد")
                 return True
                 
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost error loading model: {e}")
+        except IOError as e:
+            logger.error(f"❌ IO error loading model: {e}")
         except Exception as e:
-            logger.error(f"❌ خطا در بارگذاری مدل: {e}")
+            logger.error(f"❌ خطا در بارگذاری مدل: {e}", exc_info=True)
         
-        return self._load_local()
+        return False
     
     def _generate_version(self) -> str:
         """تولید نسخه جدید بر اساس تاریخ و زمان"""
-        now = datetime.now()
-        version = f"v{now.year}.{now.month:02d}.{now.day:02d}_{now.hour:02d}{now.minute:02d}"
+        now: datetime = datetime.now()
+        version: str = f"v{now.year}.{now.month:02d}.{now.day:02d}_{now.hour:02d}{now.minute:02d}"
         
-        # بررسی تکراری نبودن
         if self.db and self.db.is_connected():
             try:
-                result = self.db.execute(
+                result: List[Dict[str, Any]] = self.db.execute(
                     "SELECT COUNT(*) FROM models WHERE version = %s",
                     (version,)
                 )
                 if result and result[0].get('count', 0) > 0:
                     version += f".{int(result[0]['count']) + 1}"
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Version check error: {e}")
         
         return version
     
-    def _save_local(self, model, accuracy, period) -> Dict:
-        """ذخیره محلی (در صورت عدم دسترسی به دیتابیس)"""
-        version = f"local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        path = f"{self.models_dir}{version}.xgb"
-        model.save_model(path, format='json')
-        
-        self.current_model = model
-        self.current_version = version
-        
-        logger.info(f"✅ مدل به صورت محلی ذخیره شد: {path}")
-        
-        return {
-            "success": True,
-            "version": version,
-            "path": path,
-            "accuracy": accuracy,
-            "message": "مدل به صورت محلی ذخیره شد"
-        }
-    
-    def _load_local(self) -> bool:
-        """بارگذاری آخرین مدل محلی"""
-        try:
-            files = [f for f in os.listdir(self.models_dir) if f.endswith('.xgb')]
-            if files:
-                latest = sorted(files)[-1]
-                path = os.path.join(self.models_dir, latest)
-                model = xgb.Booster()
-                model.load_model(path)
-                self.current_model = model
-                self.current_version = latest.replace('.xgb', '')
-                logger.info(f"✅ مدل محلی بارگذاری شد: {latest}")
-                return True
-        except Exception as e:
-            logger.error(f"❌ خطا در بارگذاری مدل محلی: {e}")
-        return False
-    
-    def _get_model_features(self, model) -> List[str]:
+    def _get_model_features(self, model: Any) -> List[str]:
         """دریافت لیست ویژگی‌های مدل"""
         return self.config.get("features", [
             "return_1", "return_3", "return_5", "return_10",
@@ -291,14 +259,28 @@ class ModelManager:
     # ============================================================
     
     def predict(self, features: np.ndarray) -> float:
-        """پیش‌بینی با مدل جاری"""
+        """
+        پیش‌بینی با مدل جاری
+        
+        پارامترها:
+            features: آرایه ویژگی‌ها
+        
+        خروجی:
+            عدد پیش‌بینی بین ۰ تا ۱
+        
+        استثناها:
+            ValueError: اگر مدل بارگذاری نشده باشد
+        """
         if self.current_model is None:
             raise ValueError("هیچ مدلی بارگذاری نشده است")
         
         try:
-            dmatrix = xgb.DMatrix(features.reshape(1, -1))
-            prediction = self.current_model.predict(dmatrix)[0]
-            return float(prediction)
+            dmatrix: xgb.DMatrix = xgb.DMatrix(features.reshape(1, -1))
+            prediction: np.ndarray = self.current_model.predict(dmatrix)
+            return float(prediction[0])
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost prediction error: {e}")
+            raise
         except Exception as e:
             logger.error(f"❌ خطا در پیش‌بینی: {e}")
             raise
@@ -309,9 +291,12 @@ class ModelManager:
             raise ValueError("هیچ مدلی بارگذاری نشده است")
         
         try:
-            dmatrix = xgb.DMatrix(features)
-            predictions = self.current_model.predict(dmatrix)
+            dmatrix: xgb.DMatrix = xgb.DMatrix(features)
+            predictions: np.ndarray = self.current_model.predict(dmatrix)
             return np.array(predictions)
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost batch prediction error: {e}")
+            raise
         except Exception as e:
             logger.error(f"❌ خطا در پیش‌بینی گروهی: {e}")
             raise
@@ -322,73 +307,66 @@ class ModelManager:
     
     def get_model_by_version(self, version: str) -> Optional[xgb.Booster]:
         """دریافت مدل با نسخه مشخص"""
-        if not self.db or not self.db.is_connected():
+        if not self._ensure_db_connection():
             return None
         
         try:
-            # ✅ اطمینان از اتصال
-            if not self._ensure_db_connection():
-                return None
-            
-            query = "SELECT model_data FROM models WHERE version = %s"
-            result = self.db.execute(query, (version,))
+            query: str = "SELECT model_data FROM models WHERE version = %s"
+            result: List[Dict[str, Any]] = self.db.execute(query, (version,))
             
             if result:
-                model_data = result[0]['model_data']
-                temp_path = f"{self.models_dir}temp_{version}.xgb"
+                model_data: bytes = result[0]['model_data']
+                temp_path: Path = self.models_dir / f"temp_{version}.xgb"
                 with open(temp_path, "wb") as f:
                     f.write(model_data)
                 
-                model = xgb.Booster()
-                model.load_model(temp_path)
-                os.remove(temp_path)
+                model: xgb.Booster = xgb.Booster()
+                model.load_model(str(temp_path))
+                temp_path.unlink()
                 return model
                 
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost error loading version {version}: {e}")
+        except IOError as e:
+            logger.error(f"❌ IO error loading version {version}: {e}")
         except Exception as e:
-            logger.error(f"❌ خطا در دریافت مدل: {e}")
+            logger.error(f"❌ خطا در دریافت مدل: {e}", exc_info=True)
+        
         return None
     
-    def get_version_history(self, limit: int = 10) -> List[Dict]:
+    def get_version_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """دریافت تاریخچه نسخه‌های مدل از دیتابیس"""
-        if not self.db or not self.db.is_connected():
+        if not self._ensure_db_connection():
             return []
         
         try:
-            # ✅ اطمینان از اتصال
-            if not self._ensure_db_connection():
-                return []
-            
-            query = """
+            query: str = """
                 SELECT id, version, accuracy, training_date, 
                        is_active, is_ensemble, period, training_samples
                 FROM models 
                 ORDER BY id DESC 
                 LIMIT %s
             """
-            result = self.db.execute(query, (limit,))
+            result: List[Dict[str, Any]] = self.db.execute(query, (limit,))
             return result
         except Exception as e:
-            logger.error(f"❌ خطا در دریافت تاریخچه: {e}")
+            logger.error(f"❌ خطا در دریافت تاریخچه: {e}", exc_info=True)
             return []
     
     # ============================================================
-    # ۵. آمار (✅ رفع باگ)
+    # ۵. آمار
     # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
-        """
-        دریافت آمار مدل جاری
-        
-        ✅ رفع باگ: نام متد اصلاح شد (قبلاً grt_stats بود)
-        """
-        loaded = self.current_model is not None
+        """دریافت آمار مدل جاری"""
+        loaded: bool = self.current_model is not None
         
         return {
             "loaded": loaded,
             "version": self.current_version if loaded else "N/A",
-            "model_exists": os.path.exists(self.models_dir),
+            "model_exists": self.models_dir.exists(),
             "db_connected": self.db is not None and self.db.is_connected(),
-            "model_path": self.models_dir if loaded else None,
+            "model_path": str(self.models_dir) if loaded else None,
             "timestamp": datetime.now().isoformat()
         }
     
@@ -396,17 +374,17 @@ class ModelManager:
     # ۶. آموزش افزایشی و Ensemble
     # ============================================================
     
-    def incremental_train(self, features: np.ndarray, labels: np.ndarray) -> Dict:
+    def incremental_train(self, features: np.ndarray, labels: np.ndarray) -> Dict[str, Any]:
         """آموزش افزایشی با داده‌های جدید"""
         if self.current_model is None:
             return {"success": False, "message": "مدلی برای آموزش افزایشی وجود ندارد"}
         
         try:
             # ارزیابی مدل فعلی
-            old_accuracy = self._evaluate(self.current_model, features, labels)
+            old_accuracy: float = self._evaluate(self.current_model, features, labels)
             
             # پارامترهای با نرخ یادگیری کمتر
-            params = {
+            params: Dict[str, Any] = {
                 'objective': 'binary:logistic',
                 'eval_metric': 'logloss',
                 'learning_rate': 0.05,
@@ -416,8 +394,8 @@ class ModelManager:
                 'tree_method': 'hist'
             }
             
-            dtrain = xgb.DMatrix(features, label=labels)
-            new_model = xgb.train(
+            dtrain: xgb.DMatrix = xgb.DMatrix(features, label=labels)
+            new_model: xgb.Booster = xgb.train(
                 params,
                 dtrain,
                 num_boost_round=10,
@@ -425,18 +403,16 @@ class ModelManager:
             )
             
             # ارزیابی مدل جدید
-            new_accuracy = self._evaluate(new_model, features, labels)
-            improvement = new_accuracy - old_accuracy
+            new_accuracy: float = self._evaluate(new_model, features, labels)
+            improvement: float = new_accuracy - old_accuracy
             
             if improvement > 0.02:
-                # بهبود > ۲٪ - جایگزینی کامل
                 return self.save_model(new_model, new_accuracy, "1m")
             elif improvement > 0.005:
-                # بهبود کوچک → ترکیب
-                combined = self._ensemble_models(
+                combined: Any = self._ensemble_models(
                     self.current_model, new_model, weights=[0.7, 0.3]
                 )
-                combined_accuracy = self._evaluate(combined, features, labels)
+                combined_accuracy: float = self._evaluate(combined, features, labels)
                 return self.save_model(combined, combined_accuracy, "1m")
             else:
                 return {
@@ -446,37 +422,40 @@ class ModelManager:
                     "improvement": improvement
                 }
                 
+        except xgb.core.XGBoostError as e:
+            logger.error(f"❌ XGBoost incremental training error: {e}")
+            return {"success": False, "error": str(e)}
         except Exception as e:
-            logger.error(f"❌ خطا در آموزش افزایشی: {e}")
+            logger.error(f"❌ خطا در آموزش افزایشی: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
     
-    def _evaluate(self, model, features, labels) -> float:
+    def _evaluate(self, model: Any, features: np.ndarray, labels: np.ndarray) -> float:
         """ارزیابی دقت مدل"""
         try:
             if isinstance(model, xgb.Booster):
-                dtest = xgb.DMatrix(features)
-                predictions = model.predict(dtest)
+                dtest: xgb.DMatrix = xgb.DMatrix(features)
+                predictions: np.ndarray = model.predict(dtest)
             else:
                 predictions = model.predict(features)
             
-            pred_classes = (predictions > 0.5).astype(int)
-            accuracy = np.mean(pred_classes == labels)
+            pred_classes: np.ndarray = (predictions > 0.5).astype(int)
+            accuracy: float = np.mean(pred_classes == labels)
             return float(accuracy)
         except Exception as e:
             logger.error(f"❌ خطا در ارزیابی: {e}")
             return 0.0
     
-    def _ensemble_models(self, model1, model2, weights=[0.5, 0.5]):
+    def _ensemble_models(self, model1: Any, model2: Any, weights: List[float] = [0.5, 0.5]) -> Any:
         """ترکیب دو مدل با وزن‌دهی"""
         class WeightedEnsemble:
-            def __init__(self, models, weights):
+            def __init__(self, models: List[Any], weights: List[float]) -> None:
                 self.models = models
                 self.weights = weights
             
-            def predict(self, data):
-                predictions = []
+            def predict(self, data: Any) -> np.ndarray:
+                predictions: List[np.ndarray] = []
                 for model, weight in zip(self.models, self.weights):
-                    pred = model.predict(data) * weight
+                    pred: np.ndarray = model.predict(data) * weight
                     predictions.append(pred)
                 return np.sum(predictions, axis=0)
         
