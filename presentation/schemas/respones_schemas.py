@@ -35,4 +35,25 @@ class HealthResponseSchema(BaseModel):
         timestamp: زمان پاسخ
     """
     
-    status: str = Field(..., description='وضع
+    status: str = Field(..., description='وضعیت کلی')
+    components: Dict[str, Any] = Field(default_factory=dict, description='وضعیت اجزا')
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description='زمان پاسخ')
+
+
+class ErrorResponseSchema(BaseModel):
+    """
+    Schema پاسخ خطا
+    
+    ویژگی‌ها:
+        success: همیشه False
+        error: نوع خطا
+        message: پیام خطا
+        code: کد خطا
+        timestamp: زمان پاسخ
+    """
+    
+    success: bool = Field(default=False, description='موفقیت عملیات')
+    error: str = Field(..., description='نوع خطا')
+    message: str = Field(..., description='پیام خطا')
+    code: int = Field(..., description='کد خطا')
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat(), description='زمان پاسخ')
