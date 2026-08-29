@@ -1,300 +1,111 @@
 # core/system.py
 # ============================================================
-# هسته اصلی سیستم تشخیص الگوهای بازاری - نسخه ۷.۰
-# با AutoTrainer غیرفعال در Startup
+# هسته اصلی سیستم - نسخه ۸.۰ (بازنویسی شده)
 # ============================================================
 
-import os
-import sys
 import time
-import json
-import numpy as np
 import logging
-import xgboost as xgb
 from datetime import datetime
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Optional, Dict, Any, List
 
-from api_handler import CoinStatsAPI
-from models.trainer.auto_trainer import AutoTrainer
+from api.coinstats_client import coinstats_client
 from models.manager.model_manager import ModelManager
+from models.trainer.auto_trainer import AutoTrainer
+from core.feature_engineering import feature_engineer
+from core.threading_manager import threading_manager
 from database import get_cache, health_check as db_health_check
-from database.database_factory import ensure_databases_connected
-from config import get_config, get_model_config, get_system_config, get_thresholds, get_auto_trainer_config
+from config.version import VERSION
 
 logger = logging.getLogger(__name__)
-
-# ============================================================
-# کش پیش‌بینی
-# ============================================================
-
-prediction_cache = {}
-PREDICTION_CACHE_TTL = 300
 
 
 class TradingSignalSystem:
     """
-    سیستم تشخیص الگوی بازاری
-    شامل: دریافت داده → مهندسی ویژگی‌ها → پیش‌بینی با XGBoost
+    هسته اصلی سیستم تشخیص الگوهای بازاری
+    نسخه ۸.۰ - با مدیریت Threadها و کش یکپارچه
     """
     
-    def __init__(self, api_key: Optional[str] = None):
-        """راه‌اندازی سیستم با کلید API"""
-        self.api = CoinStatsAPI(api_key)
-        self.model_manager = ModelManager(self.api)
-        self.start_time = datetime.now()
-
-        self.config = {
-            "thresholds": get_thresholds(),
-            "model": get_model_config(),
-            "system": get_system_config(),
-            "cache_ttl": get_config("cache.default_ttl", 3600)
-        }
-
-        # بارگذاری مدل با ModelManager
-        self._init_model()
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
         
-        # کش برای داده‌های خودکار
-        self._cached_coins = None
-        self._cached_news = None
-        self._cached_fear_greed = None
-        self._cached_market = None
-
-        # ============================================================
-        # ✅ AutoTrainer - غیرفعال در Startup (برای کاهش مصرف API)
-        # ============================================================
+        self._initialized = True
+        self.start_time = datetime.now()
+        
+        # ✅ استفاده از کلاینت جدید با کش Redis
+        self.api = coinstats_client
+        
+        # ✅ Feature Engineering یکپارچه
+        self.feature_engineer = feature_engineer
+        self.feature_engineer.api = self.api
+        
+        # ✅ Model Manager
+        self.model_manager = ModelManager(self.api)
+        
+        # ✅ Trainer (غیرفعال در Startup)
         self.trainer = AutoTrainer(self.api, self.model_manager)
         
-        # ❌ دیگر در Startup اجرا نمی‌شود
-        # interval = get_config("model.auto_train_interval", 6)
-        # self.trainer.start_auto_train(interval_hours=interval)
-        
-        # ✅ فقط تنظیمات را اعمال کن
-        auto_config = get_auto_trainer_config()
-        if auto_config.get("enabled", False):
-            interval = auto_config.get("interval_hours", 6)
-            period = auto_config.get("period", "1m")
-            self.trainer.start_auto_train(interval_hours=interval, period=period)
-            logger.info(f"✅ AutoTrainer started: every {interval}h, period: {period}")
-        else:
-            logger.info("🛑 AutoTrainer is DISABLED on startup to save API credits.")
-            logger.info("📌 Use POST /model/train to train manually.")
-            logger.info("📌 Use POST /model/start to enable auto-train.")
-
-        # دیتابیس‌ها
-        self.db_healthy = False
-        self._ensure_database_health()
-        
+        # ✅ کش
         self.db = get_cache()
-        if self.db and self.db.is_connected():
-            print("✅ اتصال به دیتابیس برقرار شد", file=sys.stderr)
-        else:
-            print("⚠️ دیتابیس در دسترس نیست", file=sys.stderr)
+        
+        # ✅ Threading Manager
+        self.thread_manager = threading_manager
         
         # ثبت در Scheduler
         self._register_with_scheduler()
-
+        
+        logger.info(f"✅ TradingSignalSystem v{VERSION} initialized")
+    
     def _register_with_scheduler(self):
         """ثبت در Scheduler"""
         try:
             from core.metrics import metrics_scheduler
-            logger.info("✅ TradingSignalSystem registered with Metrics Scheduler")
+            logger.info("✅ Registered with Metrics Scheduler")
         except ImportError:
             pass
-        except Exception as e:
-            logger.debug(f"Could not register with scheduler: {e}")
-
-    def _init_model(self):
-        """راه‌اندازی مدل با ModelManager"""
-        try:
-            if self.model_manager.current_model is not None:
-                print("✅ مدل با موفقیت بارگذاری شد", file=sys.stderr)
-                print(f"📊 نسخه مدل: {self.model_manager.current_version}", file=sys.stderr)
-            else:
-                print("⚠️ مدلی یافت نشد - استفاده از حالت DEMO", file=sys.stderr)
-        except Exception as e:
-            print(f"⚠️ خطا در بارگذاری مدل: {e}", file=sys.stderr)
-
-    def _ensure_database_health(self):
-        """بررسی و اطمینان از سلامت اتصال دیتابیس‌ها"""
-        try:
-            result = ensure_databases_connected()
-            self.db_healthy = result.get("primary", False)
-            if not self.db_healthy:
-                logger.warning("⚠️ دیتابیس اصلی در دسترس نیست، برخی قابلیت‌ها محدود خواهند شد")
-            return result
-        except Exception as e:
-            logger.error(f"❌ خطا در بررسی سلامت دیتابیس: {e}")
-            self.db_healthy = False
-            return {"error": str(e)}
-            
-    def cache_get(self, key: str):
-        """دریافت از کش (با دیتابیس)"""
-        if self.db and self.db.is_connected():
-            return self.db.get(key)
-        return None
     
-    def cache_set(self, key: str, value: Any, ttl: int = 3600):
-        """ذخیره در کش (با دیتابیس)"""
-        if self.db and self.db.is_connected():
-            return self.db.set(key, value, ttl)
-        return False
-
-    def extract_features(self, chart_data: List[List]) -> Optional[np.ndarray]:
-        """تبدیل داده‌های خام قیمت به ویژگی‌های عددی برای XGBoost"""
-        if not chart_data or len(chart_data) < 30:
-            return None
-
-        prices = []
-        for point in chart_data:
-            if isinstance(point, list) and len(point) >= 2:
-                prices.append(float(point[1]))
-
-        if len(prices) < 30:
-            return None
-
-        prices = np.array(prices, dtype=np.float32)
-        features = []
-
-        # 1. بازده‌ها (Returns)
-        for lag in [1, 3, 5, 10]:
-            if len(prices) > lag:
-                ret = (prices[-1] - prices[-lag-1]) / (prices[-lag-1] + 1e-8)
-                features.append(np.clip(ret, -0.5, 0.5))
-            else:
-                features.append(0.0)
-
-        # 2. میانگین متحرک ساده (SMA)
-        for window in [5, 10, 20]:
-            if len(prices) >= window:
-                sma = np.mean(prices[-window:])
-                ratio = prices[-1] / (sma + 1e-8) - 1
-                features.append(np.clip(ratio, -0.5, 0.5))
-            else:
-                features.append(0.0)
-
-        # 3. نوسان (Volatility)
-        if len(prices) >= 15:
-            returns = np.diff(prices[-15:]) / (prices[-15:-1] + 1e-8)
-            volatility = np.std(returns)
-            features.append(np.clip(volatility, 0, 0.5))
-        else:
-            features.append(0.0)
-
-        # 4. شاخص ترس و طمع
-        try:
-            fg = self.api.get_fear_greed(use_cache=True)
-            if fg and 'now' in fg:
-                fear_value = fg['now'].get('value', 50)
-                features.append(fear_value / 100.0)
-            else:
-                features.append(0.5)
-        except:
-            features.append(0.5)
-
-        # 5. شیب قیمت (روند)
-        for window in [5, 10, 20]:
-            if len(prices) >= window:
-                slope = np.polyfit(range(window), prices[-window:], 1)[0]
-                slope_norm = slope / (prices[-1] + 1e-8) * 100
-                features.append(np.clip(slope_norm, -10, 10))
-            else:
-                features.append(0.0)
-
-        # 6. قدرت روند (R-squared)
-        if len(prices) >= 10:
-            x = np.arange(10)
-            y = prices[-10:]
-            slope, intercept = np.polyfit(x, y, 1)
-            y_pred = slope * x + intercept
-            ss_tot = np.sum((y - np.mean(y)) ** 2)
-            ss_res = np.sum((y - y_pred) ** 2)
-            r2 = 1 - (ss_res / (ss_tot + 1e-8))
-            features.append(np.clip(r2, -1, 1))
-        else:
-            features.append(0.0)
-
-        return np.array(features, dtype=np.float32)
-
-    def _demo_predict(self, features: np.ndarray) -> float:
-        """شبیه‌سازی پیش‌بینی در حالت DEMO (بدون مدل واقعی)"""
-        base_score = 0.5
-    
-        if len(features) >= 4:
-            returns_avg = np.mean(features[:4])
-            base_score += returns_avg * 1.5
-    
-        if len(features) >= 10:
-            trend_strength = features[9]
-            base_score += trend_strength * 0.3
-    
-        if len(features) >= 8:
-            fear = features[7]
-            if fear < 0.3:
-                base_score += 0.15
-            elif fear > 0.7:
-                base_score -= 0.15
-    
-        prediction = np.clip(base_score + np.random.randn() * 0.05, 0, 1)
-        return float(prediction)
-
     def predict_sync(self, coin_id: str = "bitcoin", period: str = "24h") -> Dict[str, Any]:
-        """نسخه همگام (Synchronous) پیش‌بینی با کش و بهینه‌سازی"""
+        """پیش‌بینی همگام (بدون کش اضافی)"""
         start_time = time.time()
-
+        
         valid_periods = ["24h", "1w", "1m", "3m", "6m"]
         if period not in valid_periods:
-            return {
-                "error": "InvalidPeriod",
-                "message": f"بازه زمانی باید یکی از {valid_periods} باشد"
-            }
-
-        # کش
-        cache_key = f"{coin_id}_{period}"
-        if cache_key in prediction_cache:
-            cached_data, cached_time = prediction_cache[cache_key]
-            if time.time() - cached_time < PREDICTION_CACHE_TTL:
-                cached_data["from_cache"] = True
-                cached_data["cache_age"] = round(time.time() - cached_time, 1)
-                return cached_data
-
-        # دریافت داده
+            return {"error": "InvalidPeriod", "message": f"بازه باید یکی از {valid_periods} باشد"}
+        
+        # ✅ دریافت داده از API (کش در api_handler انجام می‌شود)
         chart_data = self.api.get_chart(coin_id, period)
-
-        if not chart_data:
+        
+        if not chart_data or "error" in chart_data:
             return {
-                "error": "NoData",
-                "message": "داده‌ای از API دریافت نشد",
-                "coin": coin_id,
-                "period": period
+                "error": chart_data.get("error", "NoData"),
+                "message": "داده‌ای دریافت نشد",
+                "coin": coin_id
             }
-
-        if "error" in chart_data:
-            return {
-                "error": chart_data.get("error"),
-                "message": chart_data.get("message", "خطا در دریافت داده"),
-                "coin": coin_id,
-                "period": period
-            }
-
-        # استخراج ویژگی‌ها
-        features = self.extract_features(chart_data)
-
+        
+        # ✅ استخراج ویژگی با FeatureEngineer یکپارچه
+        features = self.feature_engineer.extract_features(chart_data)
+        
         if features is None:
             return {
                 "error": "InsufficientData",
-                "message": "داده‌های کافی برای تحلیل وجود ندارد (حداقل ۳۰ نقطه لازم است)",
-                "coin": coin_id,
-                "period": period,
-                "data_points": len(chart_data) if chart_data else 0
+                "message": "داده کافی نیست (حداقل ۳۰ نقطه)",
+                "coin": coin_id
             }
-
-        # پیش‌بینی
+        
+        # ✅ پیش‌بینی
         if self.model_manager.current_model:
             try:
                 prediction = self.model_manager.predict(features)
                 prediction = float(prediction)
             except Exception as e:
-                print(f"⚠️ خطا در پیش‌بینی با مدل: {e}")
+                logger.error(f"Prediction error: {e}")
                 prediction = self._demo_predict(features)
         else:
             prediction = self._demo_predict(features)
@@ -312,16 +123,16 @@ class TradingSignalSystem:
             signal = "🟡 خنثی (بدون الگوی مشخص)"
             confidence = 50
             signal_type = "NEUTRAL"
-
+        
         confidence = min(100, max(0, confidence))
-
+        
         # اطلاعات لحظه‌ای
         coin_info = self.api.get_coin(coin_id)
         current_price = coin_info.get('price', 0) if coin_info else 0
-
+        
         processing_time = (time.time() - start_time) * 1000
-
-        result = {
+        
+        return {
             "coin": coin_id,
             "coin_name": coin_info.get('name', coin_id) if coin_info else coin_id,
             "period": period,
@@ -337,96 +148,63 @@ class TradingSignalSystem:
             "model_mode": "PRODUCTION" if self.model_manager.current_model else "DEMO",
             "from_cache": False
         }
-
-        prediction_cache[cache_key] = (result.copy(), time.time())
-        return result
-
+    
+    def _demo_predict(self, features) -> float:
+        """شبیه‌سازی پیش‌بینی در حالت DEMO"""
+        base_score = 0.5
+        
+        if len(features) >= 4:
+            returns_avg = sum(features[:4]) / 4
+            base_score += returns_avg * 1.5
+        
+        if len(features) >= 10:
+            trend_strength = features[9]
+            base_score += trend_strength * 0.3
+        
+        if len(features) >= 8:
+            fear = features[7]
+            if fear < 0.3:
+                base_score += 0.15
+            elif fear > 0.7:
+                base_score -= 0.15
+        
+        return float(np.clip(base_score + np.random.randn() * 0.05, 0, 1))
+    
     def health_check(self) -> Dict[str, Any]:
-        """بررسی کامل سلامت سیستم"""
+        """بررسی سلامت سیستم"""
         status = {
             "status": "ok",
+            "version": VERSION,
             "timestamp": datetime.now().isoformat(),
             "components": {}
         }
-
-        # 1. سلامت API
+        
+        # 1. API
         try:
             api_status = self.api.get_status()
-            if api_status and api_status.get('status') == 'ok':
-                status["components"]["api"] = {
-                    "status": "healthy",
-                    "message": "اتصال به API برقرار است"
-                }
-            else:
-                status["components"]["api"] = {
-                    "status": "degraded",
-                    "message": "API در دسترس نیست"
-                }
-                status["status"] = "degraded"
-        except Exception as e:
             status["components"]["api"] = {
-                "status": "unhealthy",
-                "message": f"خطا در اتصال به API: {str(e)}"
+                "status": "healthy" if api_status and api_status.get('status') == 'ok' else "degraded"
             }
-            status["status"] = "unhealthy"
-
-        # 2. سلامت مدل
-        model_stats = self.model_manager.get_stats() if self.model_manager else {}
-        model_exists = model_stats.get('loaded', False)
-    
+        except Exception as e:
+            status["components"]["api"] = {"status": "unhealthy", "error": str(e)}
+            status["status"] = "degraded"
+        
+        # 2. Model
+        model_stats = self.model_manager.get_stats()
         status["components"]["model"] = {
-            "status": "healthy" if model_exists else "degraded",
-            "message": "مدل بارگذاری شده است" if model_exists else "حالت DEMO (بدون مدل)",
-            "mode": "BETA" if model_exists else "DEMO",
-            "version": model_stats.get('version', 'unknown'),
-            "file_exists": model_exists
+            "status": "healthy" if model_stats.get('loaded') else "degraded",
+            "version": model_stats.get('version', 'N/A')
         }
-
-        # 3. اعتبار
-        try:
-            credits = self.api.get_credits()
-            if credits and 'remainingCredits' in credits:
-                status["components"]["credits"] = {
-                    "status": "healthy",
-                    "remaining": credits.get('remainingCredits'),
-                    "total": credits.get('totalCredits'),
-                    "used": credits.get('usedCredits'),
-                    "subscription": credits.get('subscription', 'free')
-                }
-        except Exception as e:
-            status["components"]["credits"] = {
-                "status": "unknown",
-                "message": f"خطا: {str(e)}"
-            }
-
-        # 4. دیتابیس
-        try:
-            from database import get_primary, get_cache, get_backup
-            primary_ok = get_primary() is not None and get_primary().is_connected()
-            cache_ok = get_cache() is not None and get_cache().is_connected()
-            backup_ok = get_backup() is not None and get_backup().is_connected()
         
-            status["components"]["databases"] = {
-                "status": "healthy" if (primary_ok and cache_ok and backup_ok) else "degraded",
-                "primary": primary_ok,
-                "cache": cache_ok,
-                "backup": backup_ok
-            }
+        # 3. Threads
+        status["components"]["threads"] = self.thread_manager.get_all_status()
         
-            if not primary_ok:
-                status["status"] = "degraded"
-             
-        except Exception as e:
-            status["components"]["databases"] = {
-                "status": "unknown",
-                "message": str(e)
-            }
-     
+        # 4. Cache
+        status["components"]["cache"] = self.api.get_stats().get('cache_stats', {})
+        
         return status
 
 
-# ============================================================
-# ایجاد نمونه Singleton
-# ============================================================
-
+# ✅ نمونه Singleton
+import numpy as np  # اضافه شده برای _demo_predict
 system = TradingSignalSystem()
