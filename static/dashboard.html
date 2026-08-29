@@ -108,6 +108,8 @@
         .flyout-overlay.open { opacity: 1; pointer-events: all; }
 
         .main-container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+        
+        /* ===== STATS GRID ===== */
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
         .stat-card {
             background: rgba(13, 22, 40, 0.5);
@@ -191,6 +193,43 @@
         }
         @keyframes pulse-badge { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .chart-card .chart-wrapper { height: 200px; position: relative; }
+
+        /* ===== NEWS ===== */
+        .news-section {
+            background: rgba(13, 22, 40, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 212, 255, 0.06);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+        .news-section .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .news-section .section-header .title { font-size: 0.8rem; font-weight: 600; color: #7a8fa8; display: flex; align-items: center; gap: 8px; }
+        .news-section .section-header .title i { color: #ff6b9d; }
+        .news-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            background: rgba(0, 0, 0, 0.15);
+            border-left: 3px solid #00d4ff;
+            transition: all 0.2s ease;
+            align-items: flex-start;
+        }
+        .news-item:hover { background: rgba(0, 0, 0, 0.25); }
+        .news-item .news-icon { font-size: 1.2rem; margin-top: 2px; }
+        .news-item .news-content { flex: 1; }
+        .news-item .news-title { font-size: 0.85rem; color: #e8eef7; }
+        .news-item .news-source { font-size: 0.65rem; color: #4a5a6a; }
+        .news-item .news-time { font-size: 0.6rem; color: #4a5a6a; }
 
         .alerts-section {
             background: rgba(13, 22, 40, 0.5);
@@ -280,6 +319,7 @@
             .header { padding: 8px 14px; }
             .header .logo { font-size: 0.9rem; }
             .header-actions .status-badge .text { display: none; }
+            .news-item { flex-wrap: wrap; }
             .alerts-section { padding: 14px 16px; }
             .quick-actions .btn { font-size: 0.65rem; padding: 6px 12px; }
         }
@@ -287,8 +327,6 @@
             .stats-grid { grid-template-columns: 1fr; }
             .stat-card .stat-value { font-size: 1rem; }
             .chart-card .chart-wrapper { height: 150px; }
-            .alert-item { flex-wrap: wrap; }
-            .alert-item .alert-time { width: 100%; padding-right: 28px; }
         }
     </style>
 </head>
@@ -323,6 +361,7 @@
 
     <div class="main-container">
 
+        <!-- ===== TOP STATS ===== -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <span class="stat-icon">₿</span>
@@ -350,6 +389,7 @@
             </div>
         </div>
 
+        <!-- ===== MIDDLE: Model + System + BTC Dominance ===== -->
         <div class="middle-grid">
             <div class="info-card">
                 <div class="card-title"><i class="fas fa-brain"></i> وضعیت مدل</div>
@@ -365,8 +405,18 @@
             <div class="info-card">
                 <div class="card-title"><i class="fas fa-server"></i> وضعیت سیستم</div>
                 <div class="info-grid" id="systemInfo">
-                    <div class="info-item"><span class="label">⏱️ آپتایم</span><span class="value" id="uptimeValue">—</span></div>
-                    <div class="info-item"><span class="label">🔌 API</span><span class="value" id="apiStatus">—</span></div>
+                    <div class="info-item">
+                        <span class="label">⏱️ آپتایم</span>
+                        <span class="value" id="uptimeValue">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">🔌 API</span>
+                        <span class="value" id="apiStatus">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">📊 سلطه BTC</span>
+                        <span class="value" id="btcDominance">—</span>
+                    </div>
                     <div class="info-item" style="grid-column: 1 / -1;">
                         <span class="label">🗄️ دیتابیس‌ها</span>
                         <span class="value" id="dbStatus">
@@ -379,6 +429,7 @@
             </div>
         </div>
 
+        <!-- ===== CHARTS ===== -->
         <div class="charts-grid">
             <div class="chart-card">
                 <div class="card-title">
@@ -419,14 +470,29 @@
             </div>
         </div>
 
+        <!-- ===== NEWS ===== -->
+        <div class="news-section">
+            <div class="section-header">
+                <div class="title"><i class="fas fa-newspaper"></i> آخرین اخبار</div>
+                <span class="badge-count" id="newsCount">۰ خبر</span>
+            </div>
+            <div id="newsContainer">
+                <div class="no-alerts">⏳ در حال بارگذاری اخبار...</div>
+            </div>
+        </div>
+
+        <!-- ===== ALERTS ===== -->
         <div class="alerts-section">
             <div class="section-header">
                 <div class="title"><i class="fas fa-bell"></i> هشدارهای اخیر</div>
                 <span class="badge-count" id="alertCount">۰ هشدار</span>
             </div>
-            <div id="alertsContainer"><div class="no-alerts">⏳ در حال بارگذاری هشدارها...</div></div>
+            <div id="alertsContainer">
+                <div class="no-alerts">⏳ در حال بارگذاری هشدارها...</div>
+            </div>
         </div>
 
+        <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
             <a href="/predict-page" class="btn primary"><i class="fas fa-comment-dots"></i> چت با تحلیلگر</a>
             <a href="/database-page" class="btn"><i class="fas fa-database"></i> مدیریت دیتابیس</a>
@@ -477,7 +543,7 @@
             .catch(() => {});
 
         // ============================================================
-        // UPTIME - لحظه‌ای (هر ۱ ثانیه)
+        // UPTIME
         // ============================================================
         let uptimeStartTime = null;
         let uptimeInterval = null;
@@ -720,7 +786,7 @@
         }
 
         // ============================================================
-        // ✅ UPDATE ALL STATS (بهینه شده)
+        // ✅ UPDATE ALL STATS
         // ============================================================
         let isUpdating = false;
 
@@ -728,38 +794,112 @@
             if (isUpdating) return;
             isUpdating = true;
 
-            // ✅ فقط ۳ درخواست ضروری (قبلاً ۶ درخواست)
             Promise.all([
-                fetch('/api/metrics'),           // ✅ بدون هزینه (از Scheduler)
-                fetch('/model/history'),         // ✅ بدون هزینه (از دیتابیس)
-                fetch('/api/alerts?limit=5')     // ✅ بدون هزینه (از دیتابیس)
+                fetch('/api/metrics'),
+                fetch('/model/history'),
+                fetch('/api/alerts?limit=5')
             ])
             .then(([metricsData, historyData, alertsData]) => {
-                // ۱. بروزرسانی متریک‌ها
                 if (metricsData.success) {
                     updateMetricsUI(metricsData.data);
                 }
-                
-                // ۲. بروزرسانی نمودارها
                 if (historyData.success) {
                     updateTrainingCharts(historyData.data || []);
                 }
-                
-                // ۳. بروزرسانی هشدارها
                 if (alertsData.success) {
                     updateAlertsUI(alertsData.data || []);
                 }
-                
                 updateStatusDot();
                 isUpdating = false;
             })
             .catch(() => { isUpdating = false; });
         }
 
+        // ============================================================
+        // ✅ UPDATE METRICS UI (با اخبار و سلطه بیت‌کوین)
+        // ============================================================
         function updateMetricsUI(data) {
             const metrics = data.metrics || {};
             const stats = data.stats || {};
 
+            // ============================================================
+            // ۱. قیمت‌ها
+            // ============================================================
+            const btcPrice = metrics.btc_price?.value || 0;
+            const ethPrice = metrics.eth_price?.value || 0;
+            const btcChange = metrics.btc_price?.change_24h || 0;
+            const ethChange = metrics.eth_price?.change_24h || 0;
+            
+            document.getElementById('btcPrice').textContent = '$' + btcPrice.toLocaleString();
+            document.getElementById('ethPrice').textContent = '$' + ethPrice.toLocaleString();
+            
+            const btcEl = document.getElementById('btcChange');
+            btcEl.textContent = (btcChange > 0 ? '+' : '') + btcChange.toFixed(2) + '%';
+            btcEl.style.color = btcChange >= 0 ? '#00ff88' : '#ff4444';
+            
+            const ethEl = document.getElementById('ethChange');
+            ethEl.textContent = (ethChange > 0 ? '+' : '') + ethChange.toFixed(2) + '%';
+            ethEl.style.color = ethChange >= 0 ? '#00ff88' : '#ff4444';
+
+            // ============================================================
+            // ۲. ترس و طمع
+            // ============================================================
+            const fearGreed = metrics.fear_greed?.value || 50;
+            const fearLabel = metrics.fear_greed?.classification || 'Neutral';
+            document.getElementById('fearGreedValue').textContent = fearGreed;
+            document.getElementById('fearGreedLabel').textContent = fearLabel;
+
+            // ============================================================
+            // ۳. سلطه بیت‌کوین
+            // ============================================================
+            const btcDominance = metrics.btc_dominance?.value || 0;
+            document.getElementById('btcDominance').textContent = btcDominance + '%';
+
+            // ============================================================
+            // ۴. اعتبار API
+            // ============================================================
+            const credits = metrics.api_credits?.value || 0;
+            document.getElementById('apiCredits').textContent = credits.toLocaleString();
+
+            // ============================================================
+            // ۵. وضعیت API
+            // ============================================================
+            const api = metrics.api_status?.value || 'unknown';
+            const apiEl = document.getElementById('apiStatus');
+            const apiTextEl = document.getElementById('apiStatusText');
+            
+            if (api === 'ok') {
+                apiEl.textContent = '✅ سالم';
+                apiEl.className = 'value green';
+                if (apiTextEl) {
+                    apiTextEl.textContent = '✅ API متصل';
+                    apiTextEl.style.color = '#00ff88';
+                }
+                document.getElementById('statusDot').style.background = '#00ff88';
+                document.getElementById('statusText').textContent = 'پایدار';
+            } else if (api === 'degraded') {
+                apiEl.textContent = '⚠️ ضعیف';
+                apiEl.className = 'value orange';
+                if (apiTextEl) {
+                    apiTextEl.textContent = '⚠️ API ضعیف';
+                    apiTextEl.style.color = '#ff8800';
+                }
+                document.getElementById('statusDot').style.background = '#ff8800';
+                document.getElementById('statusText').textContent = 'ضعیف';
+            } else {
+                apiEl.textContent = '❌ قطع';
+                apiEl.className = 'value red';
+                if (apiTextEl) {
+                    apiTextEl.textContent = '❌ API قطع';
+                    apiTextEl.style.color = '#ff4444';
+                }
+                document.getElementById('statusDot').style.background = '#ff4444';
+                document.getElementById('statusText').textContent = 'قطع';
+            }
+
+            // ============================================================
+            // ۶. وضعیت مدل
+            // ============================================================
             const modelStatus = metrics.model_status?.value || {};
             const loaded = modelStatus.loaded || false;
             const version = modelStatus.version || '—';
@@ -775,25 +915,9 @@
             document.getElementById('modelSamples').textContent = metrics.process_count?.value || '—';
             document.getElementById('modelLastTrain').textContent = metrics.timestamp || '—';
 
-            const api = metrics.api_status?.value || 'unknown';
-            const apiEl = document.getElementById('apiStatus');
-            const apiTextEl = document.getElementById('apiStatusText');
-            if (api === 'ok') {
-                apiEl.textContent = '✅ سالم';
-                apiEl.className = 'value green';
-                if (apiTextEl) { apiTextEl.textContent = '✅ API متصل'; apiTextEl.style.color = '#00ff88'; }
-            } else if (api === 'degraded') {
-                apiEl.textContent = '⚠️ ضعیف';
-                apiEl.className = 'value orange';
-                if (apiTextEl) { apiTextEl.textContent = '⚠️ API ضعیف'; apiTextEl.style.color = '#ff8800'; }
-            } else {
-                apiEl.textContent = '❌ قطع';
-                apiEl.className = 'value red';
-                if (apiTextEl) { apiTextEl.textContent = '❌ API قطع'; apiTextEl.style.color = '#ff4444'; }
-            }
-
-            document.getElementById('apiCredits').textContent = (metrics.api_credits?.value || 0).toLocaleString();
-
+            // ============================================================
+            // ۷. دیتابیس‌ها
+            // ============================================================
             const dbStatus = metrics.databases?.value || {};
             const dbStatusEl = document.getElementById('dbStatus');
             dbStatusEl.innerHTML = `
@@ -801,8 +925,49 @@
                 <span class="status-chip ${dbStatus.redis ? 'online' : 'offline'}">⬤ Redis</span>
                 <span class="status-chip ${dbStatus.sqlite ? 'online' : 'offline'}">⬤ SQLite</span>
             `;
+
+            // ============================================================
+            // ۸. اخبار
+            // ============================================================
+            const news = metrics.news?.value || [];
+            updateNewsUI(news);
         }
 
+        // ============================================================
+        // ✅ UPDATE NEWS
+        // ============================================================
+        function updateNewsUI(news) {
+            const container = document.getElementById('newsContainer');
+            const countEl = document.getElementById('newsCount');
+            
+            if (news && news.length > 0) {
+                countEl.textContent = news.length + ' خبر';
+                let html = '';
+                news.slice(0, 5).forEach(item => {
+                    const title = item.title || 'بدون عنوان';
+                    const source = item.source || 'نامشخص';
+                    const time = item.publishedAt || item.timestamp || '';
+                    html += `
+                        <div class="news-item">
+                            <span class="news-icon">📰</span>
+                            <div class="news-content">
+                                <div class="news-title">${title}</div>
+                                <div class="news-source">${source}</div>
+                                <div class="news-time">${time ? new Date(time).toLocaleString('fa-IR') : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                countEl.textContent = '۰ خبر';
+                container.innerHTML = `<div class="no-alerts">📭 خبر جدیدی یافت نشد</div>`;
+            }
+        }
+
+        // ============================================================
+        // UPDATE TRAINING CHARTS
+        // ============================================================
         function updateTrainingCharts(history) {
             const accData = history.slice(-30).map(h => (h.accuracy || 0) * 100);
             const accLabels = history.slice(-30).map(h => {
@@ -832,6 +997,9 @@
             }
         }
 
+        // ============================================================
+        // UPDATE ALERTS
+        // ============================================================
         function updateAlertsUI(alerts) {
             const container = document.getElementById('alertsContainer');
             const countEl = document.getElementById('alertCount');
@@ -903,20 +1071,17 @@
         }
 
         // ============================================================
-        // ✅ INIT - با زمان‌بندی بهینه
+        // ✅ INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
             updateAllStats();
             
-            // ✅ نمودارها هر ۳ ثانیه
             setInterval(updateLiveCharts, 3000);
-            
-            // ✅ داده‌های کامل هر ۶۰ ثانیه (کاهش ۷۵٪ درخواست‌ها)
             setInterval(updateAllStats, 60000);
             
             startUptimeFromServer();
-            console.log('🚀 Dashboard v5.0 loaded (Optimized: 60s full update)');
+            console.log('🚀 Dashboard v6.0 loaded (with News & BTC Dominance)');
         });
     </script>
 
