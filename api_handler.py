@@ -27,7 +27,7 @@ class CoinStatsAPI:
             logger.warning("⚠️ COINSTATS_API_KEY not set in environment!")
             self.api_key = os.getenv(
                 "COINSTATS_API_KEY",
-                "40QRC4gdyzWIGwsvGkqWtcDOf0bk+FV217KmLxQ/Wmw="
+                "3b09a6494162ad98d48a389680572121d3eefbe3811f"
             )
         
         self.base_url = "https://api.coinstats.app"
