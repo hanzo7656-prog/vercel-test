@@ -10,7 +10,14 @@ from domain.value_objects.price import Price
 from domain.value_objects.signal import Signal
 from domain.interfaces.repository import Repository
 from domain.interfaces.api_client import APIClient
-from domain.services.numeric_analyzer import NumericAnalyzer
+
+# ✅ Lazy Loading برای NumericAnalyzer (جلوگیری از Circular Import)
+# from domain.services.numeric_analyzer import NumericAnalyzer
+
+def get_numeric_analyzer():
+    """Lazy Loading برای NumericAnalyzer"""
+    from domain.services.numeric_analyzer import NumericAnalyzer
+    return NumericAnalyzer
 
 __all__ = [
     # Entities
@@ -24,6 +31,7 @@ __all__ = [
     # Interfaces
     'Repository',
     'APIClient',
-    # Services
-    'NumericAnalyzer'
+    # Services (با Lazy Loading)
+    # 'NumericAnalyzer',  # ❌ حذف
+    'get_numeric_analyzer'
 ]
