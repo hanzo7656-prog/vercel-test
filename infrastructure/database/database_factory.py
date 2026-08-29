@@ -1,13 +1,13 @@
 # infrastructure/database/database_factory.py
 # ============================================================
-# کارخانه ساخت اتصالات دیتابیس - نسخه ۳.۰ (انتقال به Infrastructure)
+# کارخانه ساخت اتصالات دیتابیس - نسخه ۳.۰
 # ============================================================
 
 import os
 import json
 import time
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from infrastructure.database.base import DatabaseBase
