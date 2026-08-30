@@ -3,935 +3,564 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>مدیریت پیشرفته دیتابیس</title>
+    <title>مدیریت دیتابیس</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        /* ============================================================
-           DATABASE PAGE - استایل‌های اختصاصی
-           ============================================================ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --bg-deep: #080c18;
-            --bg-card: rgba(13, 22, 40, 0.75);
-            --border-glow: rgba(0, 212, 255, 0.12);
-            --text-primary: #e8eef7;
-            --text-secondary: #7a8fa8;
-            --accent-cyan: #00d4ff;
-            --accent-green: #00ff88;
-            --accent-purple: #a855f7;
-            --accent-pink: #ff6b9d;
-            --accent-orange: #ff8800;
-            --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        body {
-            background: var(--bg-deep);
-            font-family: 'Segoe UI', 'Vazir', system-ui, sans-serif;
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 10px; }
+        body { background: #080c18; font-family: 'Segoe UI', 'Vazir', system-ui, sans-serif; color: #e8eef7; min-height: 100vh; }
+        #navContainer { position: sticky; top: 0; z-index: 100; }
+        .main-container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
 
         /* ===== HEADER ===== */
-        .header {
-            background: rgba(8, 12, 24, 0.9);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border-glow);
-            padding: 10px 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .header .logo {
-            font-size: 1.1rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-        }
-        .header .logo i { -webkit-text-fill-color: var(--accent-cyan); }
-        .header-actions { display: flex; align-items: center; gap: 14px; }
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-        .status-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            animation: pulse-dot 2s infinite;
-        }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.3; transform: scale(0.8); }
-        }
-        .menu-toggle {
-            width: 38px; height: 38px;
-            border-radius: 10px;
-            background: rgba(0, 212, 255, 0.05);
-            border: 1px solid var(--border-glow);
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-        }
-        .menu-toggle:hover {
-            background: rgba(0, 212, 255, 0.1);
-            border-color: var(--accent-cyan);
-        }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .page-header h1 { font-size: 1.4rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .page-header h1 i { color: #00d4ff; }
+        .page-header .subtitle { color: #7a8fa8; font-size: 0.8rem; }
+        .page-header .timestamp { color: #4a5a6a; font-size: 0.65rem; font-family: 'Courier New', monospace; }
 
-        /* ===== FLYOUT MENU ===== */
-        .flyout-menu {
-            position: fixed;
-            top: 68px;
-            right: 16px;
-            background: rgba(8, 12, 24, 0.95);
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--border-glow);
-            border-radius: 16px;
-            padding: 8px 0;
-            min-width: 200px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-            transform: scale(0.9);
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            z-index: 150;
-            transform-origin: top right;
-        }
-        .flyout-menu.open { transform: scale(1); opacity: 1; pointer-events: all; }
-        .flyout-menu a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 20px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
-            border-right: 2px solid transparent;
-        }
-        .flyout-menu a:hover {
-            background: rgba(0, 212, 255, 0.05);
-            color: var(--text-primary);
-            border-right-color: var(--accent-cyan);
-        }
-        .flyout-menu a.active {
-            color: var(--accent-cyan);
-            border-right-color: var(--accent-cyan);
-            background: rgba(0, 212, 255, 0.05);
-        }
-        .flyout-menu .menu-divider {
-            height: 1px;
-            background: var(--border-glow);
-            margin: 6px 16px;
-        }
-        .flyout-menu .menu-label {
-            padding: 8px 20px 4px;
-            font-size: 0.6rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            opacity: 0.5;
-        }
-        .flyout-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 140;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .flyout-overlay.open { opacity: 1; pointer-events: all; }
-
-        /* ===== DB PAGE ===== */
-        .db-page {
-            display: flex;
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 16px 24px;
-            gap: 20px;
-            min-height: calc(100vh - 68px);
-        }
-        .db-content { flex: 1; min-width: 0; }
-
-        /* ===== SIDEBAR ===== */
-        .db-sidebar {
-            width: 210px;
-            background: rgba(8, 12, 24, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-glow);
-            border-radius: 16px;
-            padding: 12px 0;
-            flex-shrink: 0;
-            position: sticky;
-            top: 84px;
-            height: calc(100vh - 100px);
-            overflow-y: auto;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .db-sidebar::-webkit-scrollbar { width: 2px; }
-        .sidebar-brand {
-            padding: 0 16px 16px;
-            border-bottom: 1px solid var(--border-glow);
-            margin-bottom: 8px;
-        }
-        .sidebar-brand h2 {
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-        }
-        .sidebar-brand h2 i { color: var(--accent-cyan); }
-        .sidebar-brand .sub { font-size: 0.55rem; color: var(--text-secondary); opacity: 0.6; }
-        .sidebar-section { padding: 4px 10px; }
-        .sidebar-label {
-            font-size: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-secondary);
-            padding: 8px 10px 4px;
-            opacity: 0.4;
-        }
-        .sidebar-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.75rem;
-            width: 100%;
-            background: transparent;
-            border: none;
-            font-family: inherit;
-            position: relative;
-        }
-        .sidebar-item:hover {
-            background: rgba(0, 212, 255, 0.04);
-            color: var(--text-primary);
-        }
-        .sidebar-item.active {
-            background: rgba(0, 212, 255, 0.08);
-            color: var(--accent-cyan);
-            box-shadow: inset 2px 0 0 var(--accent-cyan);
-        }
-        .sidebar-item i { width: 18px; text-align: center; font-size: 0.8rem; }
-        .sidebar-item .badge-dot {
-            width: 5px; height: 5px;
-            border-radius: 50%;
-            margin-right: auto;
-        }
-        .sidebar-item .badge-dot.online { background: var(--accent-green); }
-        .sidebar-item .badge-dot.offline { background: #ff4444; }
-        .sidebar-item .badge-dot.warning { background: var(--accent-orange); }
-        .sidebar-divider {
-            height: 1px;
-            background: var(--border-glow);
-            margin: 6px 12px;
-        }
-
-        .sidebar-toggle-btn {
-            display: none;
-            background: rgba(0, 212, 255, 0.04);
-            border: 1px solid var(--border-glow);
-            border-radius: 8px;
-            color: var(--text-secondary);
-            padding: 6px 14px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-        .sidebar-toggle-btn:hover {
-            border-color: var(--accent-cyan);
-            color: var(--text-primary);
-        }
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 55;
-            top: 68px;
-        }
-        .sidebar-overlay.open { display: block; }
-
-        /* ===== PAGE HEADER ===== */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .page-header h1 {
-            font-size: 1.3rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-        }
-        .page-header h1 i { color: var(--accent-cyan); }
-        .header-tools {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .btn-action {
-            padding: 6px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border-glow);
-            background: rgba(0, 212, 255, 0.04);
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-family: inherit;
-        }
-        .btn-action:hover {
-            border-color: var(--accent-cyan);
-            color: var(--text-primary);
-            background: rgba(0, 212, 255, 0.08);
-        }
-        .btn-action.primary {
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(168, 85, 247, 0.15));
-            border-color: rgba(0, 212, 255, 0.2);
-            color: var(--accent-cyan);
-        }
-        .btn-action.success {
-            background: rgba(0, 255, 136, 0.08);
-            border-color: rgba(0, 255, 136, 0.15);
-            color: var(--accent-green);
-        }
-        .btn-action.danger {
-            background: rgba(255, 68, 68, 0.08);
-            border-color: rgba(255, 68, 68, 0.15);
-            color: #ff4444;
-        }
-        .timestamp {
-            font-size: 0.6rem;
-            color: var(--text-secondary);
-            font-family: 'Courier New', monospace;
-            opacity: 0.5;
-        }
+        /* ===== TABS ===== */
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: rgba(13, 22, 40, 0.6); border-radius: 12px; padding: 4px; border: 1px solid rgba(0, 212, 255, 0.06); overflow-x: auto; flex-wrap: wrap; }
+        .tab-btn { padding: 8px 18px; background: transparent; border: none; border-radius: 8px; color: #7a8fa8; cursor: pointer; transition: all 0.3s ease; font-size: 0.8rem; font-family: inherit; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .tab-btn:hover { color: #e8eef7; background: rgba(0, 212, 255, 0.04); }
+        .tab-btn.active { background: rgba(0, 212, 255, 0.08); color: #00d4ff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         /* ===== CARDS ===== */
-        .card-glow {
-            background: var(--bg-card);
+        .db-card {
+            background: rgba(13, 22, 40, 0.6);
             backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glow);
-            border-radius: 14px;
-            padding: 20px 24px;
+            border: 1px solid rgba(0, 212, 255, 0.06);
+            border-radius: 16px;
+            padding: 18px 20px;
             margin-bottom: 16px;
             transition: all 0.3s ease;
         }
-        .card-glow:hover { border-color: rgba(0, 212, 255, 0.15); }
-        .card-glow .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .card-glow .card-header h3 {
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-        }
-        .card-glow .card-header h3 i { color: var(--accent-cyan); }
+        .db-card:hover { border-color: rgba(0, 212, 255, 0.12); }
+        .db-card .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+        .db-card .card-header h3 { font-size: 0.9rem; display: flex; align-items: center; gap: 8px; color: #e8eef7; }
+        .db-card .card-header h3 i { color: #00d4ff; }
+        .db-card .card-header .badge { font-size: 0.55rem; padding: 2px 12px; border-radius: 20px; background: rgba(0, 212, 255, 0.06); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.08); }
 
-        /* ===== STATS GRID ===== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 14px;
-            margin-bottom: 16px;
-        }
-        .stat-item {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-glow);
-            border-radius: 12px;
-            padding: 14px 16px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-item .stat-icon { font-size: 1.2rem; margin-bottom: 6px; display: block; }
-        .stat-item .stat-value {
-            font-size: 1.4rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: var(--text-primary);
-        }
-        .stat-item .stat-value.cyan { color: var(--accent-cyan); }
-        .stat-item .stat-value.green { color: var(--accent-green); }
-        .stat-item .stat-value.pink { color: var(--accent-pink); }
-        .stat-item .stat-value.orange { color: var(--accent-orange); }
-        .stat-item .stat-value.purple { color: var(--accent-purple); }
-        .stat-item .stat-label {
-            font-size: 0.6rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        /* ===== STATS ===== */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+        .stat-item { background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(0, 212, 255, 0.06); border-radius: 12px; padding: 14px 16px; text-align: center; }
+        .stat-item .stat-value { font-size: 1.4rem; font-weight: 700; font-family: 'Courier New', monospace; }
+        .stat-item .stat-value.cyan { color: #00d4ff; }
+        .stat-item .stat-value.green { color: #00ff88; }
+        .stat-item .stat-value.orange { color: #ff8800; }
+        .stat-item .stat-value.pink { color: #ff6b9d; }
+        .stat-item .stat-label { font-size: 0.6rem; color: #7a8fa8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
         /* ===== TABLE ===== */
         .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .table-modern {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.78rem;
-        }
-        .table-modern th {
-            text-align: right;
-            padding: 8px 12px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--border-glow);
-        }
-        .table-modern td {
-            padding: 8px 12px;
-            border-bottom: 1px solid rgba(0, 212, 255, 0.03);
-            color: var(--text-primary);
-        }
+        .table-modern { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        .table-modern th { text-align: right; padding: 8px 12px; color: #7a8fa8; font-weight: 500; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid rgba(0, 212, 255, 0.06); }
+        .table-modern td { padding: 8px 12px; border-bottom: 1px solid rgba(0, 212, 255, 0.03); color: #e8eef7; }
         .table-modern tr:hover td { background: rgba(0, 212, 255, 0.02); }
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 0.6rem;
-            font-weight: 500;
-        }
-        .chip.online {
-            background: rgba(0, 255, 136, 0.08);
-            color: var(--accent-green);
-            border: 1px solid rgba(0, 255, 136, 0.12);
-        }
-        .chip.offline {
-            background: rgba(255, 68, 68, 0.08);
-            color: #ff4444;
-            border: 1px solid rgba(255, 68, 68, 0.12);
-        }
-        .chip.cyan {
-            background: rgba(0, 212, 255, 0.06);
-            color: var(--accent-cyan);
-            border: 1px solid rgba(0, 212, 255, 0.1);
-        }
-        .chip.warning {
-            background: rgba(255, 136, 0, 0.08);
-            color: var(--accent-orange);
-            border: 1px solid rgba(255, 136, 0, 0.12);
-        }
+
+        /* ===== CHIP ===== */
+        .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 12px; border-radius: 20px; font-size: 0.6rem; font-weight: 500; }
+        .chip.online { background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.12); }
+        .chip.offline { background: rgba(255, 68, 68, 0.08); color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.12); }
+        .chip.cyan { background: rgba(0, 212, 255, 0.06); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.08); }
+        .chip.warning { background: rgba(255, 136, 0, 0.08); color: #ff8800; border: 1px solid rgba(255, 136, 0, 0.12); }
 
         /* ===== SEARCH ===== */
-        .search-bar {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-        }
-        .search-bar input {
-            flex: 1;
-            padding: 8px 14px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-glow);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.8rem;
-            font-family: inherit;
-            min-width: 120px;
-        }
-        .search-bar input:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 30px rgba(0, 212, 255, 0.02);
-        }
-        .search-bar input::placeholder { color: var(--text-secondary); opacity: 0.4; }
+        .search-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .search-bar input { flex: 1; padding: 8px 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(0, 212, 255, 0.06); border-radius: 8px; color: #e8eef7; font-size: 0.8rem; font-family: inherit; min-width: 120px; }
+        .search-bar input:focus { outline: none; border-color: #00d4ff; }
+        .search-bar input::placeholder { color: #4a5a6a; opacity: 0.5; }
+        .search-bar .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.06); background: rgba(0, 212, 255, 0.04); color: #7a8fa8; cursor: pointer; font-size: 0.75rem; transition: all 0.3s ease; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+        .search-bar .btn:hover { border-color: #00d4ff; color: #e8eef7; background: rgba(0, 212, 255, 0.06); }
+
+        /* ===== ROW ACTIONS ===== */
+        .row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+        .row-actions button { background: transparent; border: none; color: #7a8fa8; cursor: pointer; padding: 4px 6px; border-radius: 4px; transition: all 0.2s ease; font-size: 0.7rem; }
+        .row-actions button:hover { color: #00d4ff; background: rgba(0, 212, 255, 0.04); }
+        .row-actions button.danger:hover { color: #ff4444; background: rgba(255, 68, 68, 0.04); }
 
         /* ===== LOADING ===== */
-        .loading-modern {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 50px 20px;
-            gap: 16px;
-        }
-        .spinner-glow {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 3px solid rgba(0, 212, 255, 0.04);
-            border-top: 3px solid var(--accent-cyan);
-            animation: spin 0.9s linear infinite;
-            box-shadow: 0 0 50px rgba(0, 212, 255, 0.03);
-        }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 14px; }
+        .spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid rgba(0, 212, 255, 0.06); border-top: 3px solid #00d4ff; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { color: #7a8fa8; font-size: 0.8rem; }
 
         /* ===== TOAST ===== */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: center;
-            pointer-events: none;
-            width: 90%;
-            max-width: 400px;
-        }
-        .toast {
-            padding: 10px 20px;
-            background: rgba(8, 12, 24, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-glow);
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-size: 0.8rem;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-            pointer-events: all;
-            animation: toastIn 0.35s ease;
-            text-align: center;
-            width: 100%;
-        }
-        .toast.success { border-color: var(--accent-green); }
+        .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; width: 90%; max-width: 400px; }
+        .toast { padding: 10px 20px; background: rgba(8,12,24,0.95); backdrop-filter: blur(20px); border: 2px solid #00d4ff; border-radius: 10px; color: #e8eef7; font-size: 0.85rem; box-shadow: 0 8px 40px rgba(0,0,0,0.5); pointer-events: all; animation: slideUp 0.35s ease; text-align: center; width: 100%; }
+        .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
-        @keyframes toastIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
+        .toast.warning { border-color: #ff8800; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
         /* ===== RESPONSIVE ===== */
-        @media (max-width: 768px) {
-            .db-page { flex-direction: column; padding: 12px; gap: 12px; }
-            .db-sidebar {
-                position: fixed;
-                top: 68px;
-                right: -100%;
-                width: 270px;
-                height: calc(100vh - 68px);
-                border-radius: 0 0 16px 16px;
-                z-index: 60;
-                border: 1px solid var(--border-glow);
-            }
-            .db-sidebar.open { right: 0; }
-            .sidebar-toggle-btn { display: inline-flex; }
-            .sidebar-overlay.open { display: block; }
-            .header { padding: 8px 16px; }
-            .header .logo { font-size: 0.95rem; }
-            .header-actions .status-badge .text { display: none; }
-            .card-glow { padding: 14px 16px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-        }
-        @media (min-width: 769px) {
-            .sidebar-toggle-btn { display: none !important; }
-            .sidebar-overlay { display: none !important; }
-        }
-        @media (max-width: 480px) {
-            .stats-grid { grid-template-columns: 1fr; }
-            .stat-item .stat-value { font-size: 1.1rem; }
-            .stat-item { padding: 10px 12px; }
-            .table-modern { font-size: 0.6rem; }
-        }
+        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .main-container { padding: 12px 16px; } .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; } .stat-item .stat-value { font-size: 1.1rem; } .tabs { flex-wrap: nowrap; overflow-x: auto; } .tab-btn { font-size: 0.7rem; padding: 6px 12px; } }
+        @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } .stat-item .stat-value { font-size: 1rem; } .table-modern { font-size: 0.65rem; } }
     </style>
 </head>
 <body>
 
-    <header class="header">
-        <a href="/dashboard" class="logo">
-            <i class="fas fa-cubes"></i> سیستم تحلیلگر
-        </a>
-        <div class="header-actions">
-            <div class="status-badge">
-                <span class="status-dot"></span>
-                <span class="text">پایدار</span>
+    <div id="navContainer"></div>
+
+    <div class="main-container">
+
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-database"></i> مدیریت دیتابیس</h1>
+                <span class="subtitle">مانیتورینگ و مدیریت دیتابیس‌های سیستم</span>
             </div>
-            <span id="uptimeDisplay" style="font-size:0.6rem;color:var(--text-secondary);font-family:'Courier New',monospace;">⏱️ ۰ ثانیه</span>
-            <span id="userDisplay" style="font-size:0.7rem;color:var(--accent-cyan);"></span>
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
+            <span class="timestamp" id="pageTimestamp"></span>
         </div>
-    </header>
 
-    <div class="flyout-overlay" id="flyoutOverlay"></div>
-    <nav class="flyout-menu" id="flyoutMenu">
-        <div class="menu-label">🔹 منوی اصلی</div>
-        <a href="/dashboard"><i class="fas fa-chart-pie"></i> داشبورد</a>
-        <a href="/chart-page"><i class="fas fa-chart-line"></i> نمودار</a>
-        <a href="/predict-page"><i class="fas fa-bullseye"></i> تحلیلگر</a>
-        <a href="/database-page" class="active"><i class="fas fa-database"></i> دیتابیس</a>
-        <div class="menu-divider"></div>
-        <a href="/test-api-page"><i class="fas fa-plug"></i> تست API</a>
-        <a href="/settings-page"><i class="fas fa-sliders-h"></i> تنظیمات</a>
-        <div class="menu-divider"></div>
-        <a href="/debug-page" style="color:#ff6b00;"><i class="fas fa-bug"></i> دیباگ</a>
-    </nav>
+        <!-- TABS -->
+        <div class="tabs" id="tabContainer">
+            <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')"><i class="fas fa-chart-pie"></i> نمای کلی</button>
+            <button class="tab-btn" data-tab="postgresql" onclick="switchTab('postgresql')"><i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL</button>
+            <button class="tab-btn" data-tab="redis" onclick="switchTab('redis')"><i class="fas fa-bolt" style="color:#ff4444;"></i> Redis</button>
+            <button class="tab-btn" data-tab="sqlite" onclick="switchTab('sqlite')"><i class="fas fa-file" style="color:#00ff88;"></i> SQLite</button>
+            <button class="tab-btn" data-tab="explorer" onclick="switchTab('explorer')"><i class="fas fa-search"></i> کاوشگر</button>
+            <button class="tab-btn" data-tab="monitor" onclick="switchTab('monitor')"><i class="fas fa-chart-line"></i> مانیتورینگ</button>
+        </div>
 
-    <div class="db-page">
+        <!-- TAB: OVERVIEW -->
+        <div class="tab-content active" id="tab-overview">
+            <div id="overviewContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+            </div>
+        </div>
 
-        <!-- SIDEBAR -->
-        <nav class="db-sidebar" id="dbSidebar">
-            <div class="sidebar-brand">
-                <h2><i class="fas fa-database"></i> دیتابیس</h2>
-                <div class="sub">مدیریت &amp; مانیتورینگ</div>
+        <!-- TAB: POSTGRESQL -->
+        <div class="tab-content" id="tab-postgresql">
+            <div id="postgresqlContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
             </div>
-            <div class="sidebar-section">
-                <div class="sidebar-label">📊 نمای کلی</div>
-                <button class="sidebar-item active" data-tab="overview" onclick="switchTab('overview')">
-                    <i class="fas fa-chart-pie"></i> نمای کلی
-                    <span class="badge-dot" id="dotOverview"></span>
-                </button>
-                <button class="sidebar-item" data-tab="explorer" onclick="switchTab('explorer')">
-                    <i class="fas fa-search"></i> کاوشگر
-                </button>
-                <button class="sidebar-item" data-tab="monitor" onclick="switchTab('monitor')">
-                    <i class="fas fa-chart-line"></i> مانیتورینگ
-                </button>
-            </div>
-            <div class="sidebar-divider"></div>
-            <div class="sidebar-section">
-                <div class="sidebar-label">🗄️ دیتابیس‌ها</div>
-                <button class="sidebar-item" data-tab="postgresql" onclick="switchTab('postgresql')">
-                    <i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL
-                    <span class="badge-dot" id="dotPostgresql"></span>
-                </button>
-                <button class="sidebar-item" data-tab="redis" onclick="switchTab('redis')">
-                    <i class="fas fa-bolt" style="color:#ff4444;"></i> Redis
-                    <span class="badge-dot" id="dotRedis"></span>
-                </button>
-                <button class="sidebar-item" data-tab="sqlite" onclick="switchTab('sqlite')">
-                    <i class="fas fa-file" style="color:#00ff88;"></i> SQLite
-                    <span class="badge-dot" id="dotSqlite"></span>
-                </button>
-            </div>
-            <div class="sidebar-divider"></div>
-            <div class="sidebar-section">
-                <button class="sidebar-item" onclick="refreshAll()" style="color:#ffaa00;">
-                    <i class="fas fa-sync-alt"></i> بروزرسانی همه
-                </button>
-            </div>
-        </nav>
+        </div>
 
-        <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-        <main class="db-content">
-            <div class="page-header">
-                <h1 id="pageTitle"><i class="fas fa-chart-pie"></i> نمای کلی</h1>
-                <div class="header-tools">
-                    <span class="timestamp" id="pageTimestamp"></span>
-                    <button class="btn-action primary" onclick="refreshAll()">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی
-                    </button>
-                    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()">
-                        <i class="fas fa-bars"></i> منو
-                    </button>
-                </div>
+        <!-- TAB: REDIS -->
+        <div class="tab-content" id="tab-redis">
+            <div id="redisContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
             </div>
+        </div>
 
-            <div id="tabContainer">
-                <div class="loading-modern">
-                    <div class="spinner-glow"></div>
-                    <p>بارگذاری داده‌های دیتابیس...</p>
-                </div>
+        <!-- TAB: SQLITE -->
+        <div class="tab-content" id="tab-sqlite">
+            <div id="sqliteContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
             </div>
-        </main>
+        </div>
+
+        <!-- TAB: EXPLORER -->
+        <div class="tab-content" id="tab-explorer">
+            <div id="explorerContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+            </div>
+        </div>
+
+        <!-- TAB: MONITOR -->
+        <div class="tab-content" id="tab-monitor">
+            <div id="monitorContent">
+                <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+            </div>
+        </div>
 
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="/static/js/script.js"></script>
     <script>
-        // ============================================================
-        // MENU
-        // ============================================================
-        const menuToggle = document.getElementById('menuToggle');
-        const flyoutMenu = document.getElementById('flyoutMenu');
-        const flyoutOverlay = document.getElementById('flyoutOverlay');
-
-        if (menuToggle && flyoutMenu && flyoutOverlay) {
-            menuToggle.addEventListener('click', function() {
-                const open = flyoutMenu.classList.toggle('open');
-                flyoutOverlay.classList.toggle('open');
-                menuToggle.innerHTML = open ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-            });
-            flyoutOverlay.addEventListener('click', function() {
-                flyoutMenu.classList.remove('open');
-                flyoutOverlay.classList.remove('open');
-                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
-            });
-        }
-
-        // ============================================================
-        // USER INFO & UPTIME
-        // ============================================================
-        fetch('/api/user', { credentials: 'include' })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const display = document.getElementById('userDisplay');
-                    if (display) {
-                        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
-                        display.textContent = roleMap[data.data.role] || data.data.username;
-                    }
-                }
-            })
-            .catch(() => {});
-
-        function fetchUptime() {
-            fetch('/stats')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.uptime) {
-                        const el = document.getElementById('uptimeDisplay');
-                        if (el) el.textContent = '⏱️ ' + data.uptime;
-                    }
-                })
-                .catch(() => {});
-        }
-        fetchUptime();
-        setInterval(fetchUptime, 30000);
-
-        // ============================================================
-        // SIDEBAR
-        // ============================================================
-        let sidebarOpen = false;
-
-        function toggleSidebar() {
-            sidebarOpen = !sidebarOpen;
-            const sidebar = document.getElementById('dbSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (sidebar) sidebar.classList.toggle('open', sidebarOpen);
-            if (overlay) overlay.classList.toggle('open', sidebarOpen);
-        }
-
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('dbSidebar');
-            const toggleBtn = document.getElementById('sidebarToggleBtn');
-            if (window.innerWidth <= 768 && sidebarOpen) {
-                if (!sidebar?.contains(e.target) && !toggleBtn?.contains(e.target)) {
-                    toggleSidebar();
-                }
-            }
-        });
-
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768 && sidebarOpen) {
-                toggleSidebar();
-            }
-        });
-
-        // ============================================================
-        // TABS
-        // ============================================================
-        let currentTab = 'overview';
-        let isLoading = false;
-        const loadedTabs = new Set();
-
-        function switchTab(tab) {
-            if (isLoading) return;
-            if (currentTab === tab && loadedTabs.has(tab)) return;
-
-            currentTab = tab;
-            const container = document.getElementById('tabContainer');
-            const title = document.getElementById('pageTitle');
-
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.toggle('active', item.dataset.tab === tab);
-            });
-
-            const titles = {
-                'overview': '<i class="fas fa-chart-pie"></i> نمای کلی',
-                'explorer': '<i class="fas fa-search"></i> کاوشگر',
-                'monitor': '<i class="fas fa-chart-line"></i> مانیتورینگ',
-                'postgresql': '<i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL',
-                'redis': '<i class="fas fa-bolt" style="color:#ff4444;"></i> Redis',
-                'sqlite': '<i class="fas fa-file" style="color:#00ff88;"></i> SQLite'
-            };
-            title.innerHTML = titles[tab] || tab;
-
-            if (loadedTabs.has(tab)) {
-                const content = document.getElementById('tabContent_' + tab);
-                if (content) {
-                    container.innerHTML = content.innerHTML;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const newScript = document.createElement('script');
-                        newScript.textContent = old.textContent;
-                        if (old.src) newScript.src = old.src;
-                        old.parentNode.replaceChild(newScript, old);
+        // ===== LOAD NAV =====
+        function loadNav() {
+            const c = document.getElementById('navContainer');
+            if (!c) return;
+            fetch('/static/nav.html')
+                .then(r => r.text())
+                .then(h => {
+                    c.innerHTML = h;
+                    c.querySelectorAll('script').forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
                     });
-                    const initFn = window['init_' + tab];
-                    if (typeof initFn === 'function') setTimeout(initFn, 100);
-                    if (window.innerWidth <= 768 && sidebarOpen) toggleSidebar();
-                    return;
-                }
-            }
-
-            isLoading = true;
-            container.innerHTML = `
-                <div class="loading-modern">
-                    <div class="spinner-glow"></div>
-                    <p>بارگذاری ${titles[tab]?.replace(/<[^>]*>/g, '') || tab}...</p>
-                </div>
-            `;
-
-            fetch(`/static/db-parts/${tab}.html`)
-                .then(res => {
-                    if (!res.ok) throw new Error('تاب یافت نشد');
-                    return res.text();
-                })
-                .then(html => {
-                    loadedTabs.add(tab);
-                    const contentDiv = document.createElement('div');
-                    contentDiv.id = 'tabContent_' + tab;
-                    contentDiv.innerHTML = html;
-                    container.innerHTML = contentDiv.innerHTML;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const newScript = document.createElement('script');
-                        newScript.textContent = old.textContent;
-                        if (old.src) newScript.src = old.src;
-                        old.parentNode.replaceChild(newScript, old);
-                    });
-                    const initFn = window['init_' + tab];
-                    if (typeof initFn === 'function') setTimeout(initFn, 100);
-                    if (window.innerWidth <= 768 && sidebarOpen) toggleSidebar();
-                    isLoading = false;
-                })
-                .catch(err => {
-                    container.innerHTML = `
-                        <div class="card-glow">
-                            <p style="color:#ff4444;text-align:center;padding:20px;">
-                                ❌ خطا در بارگذاری: ${err.message}
-                            </p>
-                        </div>
-                    `;
-                    isLoading = false;
-                });
-        }
-
-        function refreshAll() {
-            loadedTabs.clear();
-            switchTab(currentTab);
-            updateSidebarDots();
-            showToast('🔄 بروزرسانی شد', 'success');
-        }
-
-        // ============================================================
-        // SIDEBAR DOTS
-        // ============================================================
-        function updateSidebarDots() {
-            fetch('/health/database')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data) {
-                        const dbs = data.data;
-                        const pg = dbs.postgresql || {};
-                        const redis = dbs.redis || {};
-                        const sqlite = dbs.sqlite || {};
-
-                        const pgDot = document.getElementById('dotPostgresql');
-                        if (pgDot) pgDot.className = 'badge-dot ' + (pg.connected ? 'online' : 'offline');
-
-                        const redisDot = document.getElementById('dotRedis');
-                        if (redisDot) redisDot.className = 'badge-dot ' + (redis.connected ? 'online' : 'offline');
-
-                        const sqliteDot = document.getElementById('dotSqlite');
-                        if (sqliteDot) sqliteDot.className = 'badge-dot ' + (sqlite.connected ? 'online' : 'offline');
-
-                        const overviewDot = document.getElementById('dotOverview');
-                        if (overviewDot) {
-                            const allOnline = pg.connected && redis.connected && sqlite.connected;
-                            overviewDot.className = 'badge-dot ' + (allOnline ? 'online' : 'warning');
-                        }
-                    }
+                    if (typeof initMenu === 'function') initMenu();
                 })
                 .catch(() => {});
         }
 
-        // ============================================================
-        // TIMESTAMP & TOAST
-        // ============================================================
+        // ===== TIMESTAMP =====
         function updateTimestamp() {
             const el = document.getElementById('pageTimestamp');
             if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
         }
         setInterval(updateTimestamp, 1000);
 
-        function showToast(message, type = 'info') {
-            if (typeof window.showToast === 'function') {
-                window.showToast(message, type);
-                return;
+        // ===== TABS =====
+        let currentTab = 'overview';
+        const loadedTabs = new Set();
+
+        function switchTab(tab) {
+            if (currentTab === tab && loadedTabs.has(tab)) return;
+            currentTab = tab;
+
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+
+            if (!loadedTabs.has(tab)) {
+                loadTabContent(tab);
             }
-            const container = document.getElementById('toastContainer');
-            if (!container) return;
+        }
+
+        function loadTabContent(tab) {
+            const container = document.getElementById(tab + 'Content');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/static/db-parts/' + tab + '.html')
+                .then(r => {
+                    if (!r.ok) throw new Error('تاب یافت نشد');
+                    return r.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    loadedTabs.add(tab);
+                    container.querySelectorAll('script').forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                    const initFn = window['init_' + tab];
+                    if (typeof initFn === 'function') setTimeout(initFn, 100);
+                })
+                .catch(() => {
+                    container.innerHTML = `
+                        <div class="db-card">
+                            <p style="color:#ff4444;text-align:center;padding:20px;">
+                                ❌ خطا در بارگذاری: تاب یافت نشد
+                            </p>
+                        </div>
+                    `;
+                });
+        }
+
+        // ===== TOAST =====
+        function showToast(msg, type = 'info') {
+            const c = document.getElementById('toastContainer');
+            if (!c) return;
             const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ff8800' };
-            const toast = document.createElement('div');
-            toast.className = 'toast ' + type;
-            toast.textContent = message;
-            toast.style.borderColor = colors[type] || colors.info;
-            container.appendChild(toast);
+            const t = document.createElement('div');
+            t.className = 'toast ' + type;
+            t.textContent = msg;
+            t.style.borderColor = colors[type] || colors.info;
+            c.appendChild(t);
             setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(-10px)';
+                setTimeout(() => t.remove(), 300);
             }, 3000);
         }
 
-        // ============================================================
-        // INIT
-        // ============================================================
+        // ===== LOAD OVERVIEW =====
+        function loadOverview() {
+            const container = document.getElementById('overviewContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/health/database')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const dbs = data.data || {};
+                    const entries = Object.entries(dbs);
+                    let online = 0;
+                    entries.forEach(([_, info]) => { if (info.connected) online++; });
+
+                    let statsHtml = `
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="stat-value cyan">${entries.length}</div><div class="stat-label">کل دیتابیس‌ها</div></div>
+                            <div class="stat-item"><div class="stat-value green">${online}</div><div class="stat-label">متصل</div></div>
+                            <div class="stat-item"><div class="stat-value pink">${entries.length - online}</div><div class="stat-label">قطع</div></div>
+                            <div class="stat-item"><div class="stat-value orange">${new Date().toLocaleTimeString('fa-IR')}</div><div class="stat-label">آخرین بروزرسانی</div></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="card-header"><h3><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</h3></div>
+                            <div class="table-wrap">
+                                <table class="table-modern">
+                                    <thead><tr><th>نام</th><th>نوع</th><th>وضعیت</th><th>ورژن</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    entries.forEach(([name, info]) => {
+                        const status = info.connected ? 'online' : 'offline';
+                        const icon = info.type === 'redis' ? '⚡' : info.type === 'postgresql' ? '🐘' : '📄';
+                        statsHtml += `
+                            <tr>
+                                <td><strong>${icon} ${name}</strong></td>
+                                <td>${info.type || '—'}</td>
+                                <td><span class="chip ${status}">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span></td>
+                                <td>${info.version || '—'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    statsHtml += `</tbody></table></div></div>`;
+                    container.innerHTML = statsHtml;
+                })
+                .catch(() => {
+                    container.innerHTML = `
+                        <div class="db-card">
+                            <p style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // ===== LOAD POSTGRESQL =====
+        function loadPostgresql() {
+            const container = document.getElementById('postgresqlContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/api/db/postgresql/tables')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const tables = data.data || [];
+                    let totalRows = 0, totalSize = 0;
+                    tables.forEach(t => { totalRows += t.row_count || 0; totalSize += t.size_mb || 0; });
+
+                    let html = `
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="stat-value cyan">${tables.length}</div><div class="stat-label">جدول</div></div>
+                            <div class="stat-item"><div class="stat-value green">${totalRows.toLocaleString()}</div><div class="stat-label">رکورد</div></div>
+                            <div class="stat-item"><div class="stat-value orange">${totalSize.toFixed(1)} MB</div><div class="stat-label">حجم</div></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="card-header"><h3><i class="fas fa-table"></i> جدول‌ها</h3></div>
+                            <div class="table-wrap">
+                                <table class="table-modern">
+                                    <thead><tr><th>نام جدول</th><th>رکورد</th><th>حجم (MB)</th><th>عملیات</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    tables.forEach(t => {
+                        html += `
+                            <tr>
+                                <td><strong>${t.table_name}</strong></td>
+                                <td>${(t.row_count || 0).toLocaleString()}</td>
+                                <td>${(t.size_mb || 0).toFixed(2)}</td>
+                                <td><div class="row-actions"><button onclick="showToast('📋 نمایش ${t.table_name}', 'info')"><i class="fas fa-eye"></i></button></div></td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `</tbody></table></div></div>`;
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p></div>`;
+                });
+        }
+
+        // ===== LOAD REDIS =====
+        function loadRedis() {
+            const container = document.getElementById('redisContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/api/db/redis/keys')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const keys = data.data || [];
+
+                    let html = `
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="stat-value cyan">${keys.length}</div><div class="stat-label">کلید</div></div>
+                            <div class="stat-item"><div class="stat-value green">${new Date().toLocaleTimeString('fa-IR')}</div><div class="stat-label">آخرین بروزرسانی</div></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="card-header"><h3><i class="fas fa-key"></i> کلیدها</h3></div>
+                            <div class="table-wrap">
+                                <table class="table-modern">
+                                    <thead><tr><th>کلید</th><th>نوع</th><th>TTL</th><th>عملیات</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    keys.slice(0, 30).forEach(k => {
+                        html += `
+                            <tr>
+                                <td style="font-family:'Courier New',monospace;font-size:0.7rem;">${k.key}</td>
+                                <td><span class="chip cyan">${k.type}</span></td>
+                                <td>${k.ttl}</td>
+                                <td><div class="row-actions"><button onclick="showToast('📋 مشاهده ${k.key}', 'info')"><i class="fas fa-eye"></i></button></div></td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `</tbody></table></div></div>`;
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p></div>`;
+                });
+        }
+
+        // ===== LOAD SQLITE =====
+        function loadSqlite() {
+            const container = document.getElementById('sqliteContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/api/db/sqlite/tables')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const tables = data.data || [];
+                    let totalRows = 0;
+                    tables.forEach(t => { totalRows += t.row_count || 0; });
+
+                    let html = `
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="stat-value cyan">${tables.length}</div><div class="stat-label">جدول</div></div>
+                            <div class="stat-item"><div class="stat-value green">${totalRows.toLocaleString()}</div><div class="stat-label">رکورد</div></div>
+                        </div>
+                        <div class="db-card">
+                            <div class="card-header"><h3><i class="fas fa-table"></i> جدول‌ها</h3></div>
+                            <div class="table-wrap">
+                                <table class="table-modern">
+                                    <thead><tr><th>نام جدول</th><th>رکورد</th><th>عملیات</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    tables.forEach(t => {
+                        html += `
+                            <tr>
+                                <td><strong>${t.table_name}</strong></td>
+                                <td>${(t.row_count || 0).toLocaleString()}</td>
+                                <td><div class="row-actions"><button onclick="showToast('📋 نمایش ${t.table_name}', 'info')"><i class="fas fa-eye"></i></button></div></td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `</tbody></table></div></div>`;
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="db-card"><p style="color:#ff4444;text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p></div>`;
+                });
+        }
+
+        // ===== LOAD EXPLORER =====
+        function loadExplorer() {
+            const container = document.getElementById('explorerContent');
+            container.innerHTML = `
+                <div class="db-card">
+                    <div class="card-header"><h3><i class="fas fa-search"></i> کاوشگر دیتابیس</h3></div>
+                    <div class="search-bar">
+                        <input type="text" id="explorerSearch" placeholder="جستجو..." onkeypress="if(event.key==='Enter') searchExplorer()">
+                        <button class="btn" onclick="searchExplorer()"><i class="fas fa-search"></i> جستجو</button>
+                        <button class="btn" onclick="clearExplorer()"><i class="fas fa-times"></i> پاک کردن</button>
+                    </div>
+                    <div id="explorerResults"><div class="no-data" style="text-align:center;color:#4a5a6a;padding:20px;">عبارت مورد نظر را وارد کنید</div></div>
+                </div>
+            `;
+        }
+
+        function searchExplorer() {
+            const q = document.getElementById('explorerSearch').value.trim();
+            const results = document.getElementById('explorerResults');
+            if (!q) { results.innerHTML = '<div class="no-data" style="text-align:center;color:#4a5a6a;padding:20px;">عبارت مورد نظر را وارد کنید</div>'; return; }
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال جستجو...</p></div>';
+
+            fetch('/api/db/search?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const items = data.data || [];
+                    if (items.length === 0) {
+                        results.innerHTML = '<div class="no-data" style="text-align:center;color:#4a5a6a;padding:20px;">نتیجه‌ای یافت نشد</div>';
+                        return;
+                    }
+                    let html = '';
+                    items.forEach(item => {
+                        html += `
+                            <div style="padding:10px 14px;border-bottom:1px solid rgba(0,212,255,0.03);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                                <div><strong style="color:#00d4ff;">${item.database}</strong> • ${item.key || item.table || ''}</div>
+                                <div style="font-size:0.65rem;color:#4a5a6a;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.content || ''}</div>
+                            </div>
+                        `;
+                    });
+                    results.innerHTML = html;
+                })
+                .catch(() => {
+                    results.innerHTML = '<div class="no-data" style="text-align:center;color:#ff4444;padding:20px;">❌ خطا در جستجو</div>';
+                });
+        }
+
+        function clearExplorer() {
+            document.getElementById('explorerSearch').value = '';
+            document.getElementById('explorerResults').innerHTML = '<div class="no-data" style="text-align:center;color:#4a5a6a;padding:20px;">عبارت مورد نظر را وارد کنید</div>';
+        }
+
+        // ===== LOAD MONITOR =====
+        function loadMonitor() {
+            const container = document.getElementById('monitorContent');
+            container.innerHTML = `
+                <div class="db-card">
+                    <div class="card-header"><h3><i class="fas fa-chart-line"></i> مانیتورینگ دیتابیس</h3></div>
+                    <div id="monitorStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+                        <div class="stat-item"><div class="stat-value cyan" id="monTotal">—</div><div class="stat-label">کل</div></div>
+                        <div class="stat-item"><div class="stat-value green" id="monOnline">—</div><div class="stat-label">متصل</div></div>
+                        <div class="stat-item"><div class="stat-value pink" id="monOffline">—</div><div class="stat-label">قطع</div></div>
+                    </div>
+                    <div id="monitorDetails"><div class="no-data" style="text-align:center;color:#4a5a6a;padding:20px;">در حال بارگذاری...</div></div>
+                </div>
+            `;
+
+            fetch('/health/database')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error('خطا');
+                    const dbs = data.data || {};
+                    const entries = Object.entries(dbs);
+                    let online = 0;
+                    entries.forEach(([_, info]) => { if (info.connected) online++; });
+
+                    document.getElementById('monTotal').textContent = entries.length;
+                    document.getElementById('monOnline').textContent = online;
+                    document.getElementById('monOffline').textContent = entries.length - online;
+
+                    let html = '';
+                    entries.forEach(([name, info]) => {
+                        const status = info.connected ? '🟢 متصل' : '🔴 قطع';
+                        html += `
+                            <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid rgba(0,212,255,0.03);">
+                                <span><strong>${name}</strong> <span style="color:#4a5a6a;font-size:0.7rem;">${info.type || ''}</span></span>
+                                <span style="color:${info.connected ? '#00ff88' : '#ff4444'};">${status}</span>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('monitorDetails').innerHTML = html;
+                })
+                .catch(() => {
+                    document.getElementById('monitorDetails').innerHTML = '<div class="no-data" style="text-align:center;color:#ff4444;padding:20px;">❌ خطا</div>';
+                });
+        }
+
+        // ===== INIT =====
         document.addEventListener('DOMContentLoaded', function() {
-            switchTab('overview');
-            updateSidebarDots();
-            setInterval(updateSidebarDots, 10000);
-            console.log('🚀 Database page v3.0 loaded');
+            loadNav();
+            loadOverview();
+            setInterval(() => { if (currentTab === 'overview') loadOverview(); }, 30000);
         });
+
+        // ===== TAB LOAD FUNCTIONS =====
+        window.init_overview = loadOverview;
+        window.init_postgresql = loadPostgresql;
+        window.init_redis = loadRedis;
+        window.init_sqlite = loadSqlite;
+        window.init_explorer = loadExplorer;
+        window.init_monitor = loadMonitor;
+
+        console.log('🚀 Database page v3.0 loaded');
     </script>
 
 </body>
