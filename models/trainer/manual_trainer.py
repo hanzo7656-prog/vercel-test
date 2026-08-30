@@ -12,7 +12,8 @@ from datetime import datetime
 # اضافه کردن مسیر پروژه
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from api_handler import CoinStatsAPI
+# ✅ اصلاح Import - استفاده از مسیر جدید
+from infrastructure.api.coinstats_client import CoinStatsClient
 from models.manager.model_manager import ModelManager
 from models.trainer.auto_trainer import AutoTrainer
 
@@ -34,7 +35,7 @@ def train_model(period: str = "1m", save: bool = True):
     logger.info(f"🚀 شروع آموزش دستی مدل (بازه: {period})")
     
     # راه‌اندازی
-    api = CoinStatsAPI()
+    api = CoinStatsClient()
     model_manager = ModelManager(api)
     trainer = AutoTrainer(api, model_manager)
     
