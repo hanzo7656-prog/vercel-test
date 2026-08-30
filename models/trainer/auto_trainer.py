@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional, List, Tuple, Union
 
 from api.coinstats_client import coinstats_client
 from models.manager.model_manager import ModelManager
-from database import get_primary
+from infrastructure.database import get_primary
 from config.config_manager import get_historical_points, get_auto_trainer_config
 
 logger = logging.getLogger(__name__)
