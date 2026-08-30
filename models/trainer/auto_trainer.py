@@ -1,7 +1,6 @@
 # models/trainer/auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰ نهایی
-# با جایگزینی کامل print با logger
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰ (رفع Import)
 # ============================================================
 
 import os
@@ -18,8 +17,10 @@ from typing import Dict, Any, Optional, List, Tuple, Union
 
 from api.coinstats_client import coinstats_client
 from models.manager.model_manager import ModelManager
+# ✅ اصلاح Import
 from infrastructure.database import get_primary
 from config.config_manager import get_historical_points, get_auto_trainer_config
+
 
 logger = logging.getLogger(__name__)
 
