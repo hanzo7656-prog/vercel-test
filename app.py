@@ -1,6 +1,6 @@
 # app.py
 # ============================================================
-# فقط بخش Import - نسخه اصلاح شده
+# ورودی اصلی سیستم - نسخه ۹.۲ (فقط API)
 # ============================================================
 
 import os
@@ -14,45 +14,36 @@ from config.version import VERSION, APP_NAME
 from container import container
 from providers import init_container
 
-# ✅ Import‌های اصلاح شده
+# ✅ فقط Import‌های مورد نیاز برای API
 from infrastructure.external.alerter import alerter
 from application.services.self_healer import SelfHealer
 
 logger = logging.getLogger(__name__)
 
 
-
 # ============================================================
-# Signal Handler برای Stop Graceful
+# Signal Handler
 # ============================================================
 
 def signal_handler(sig, frame) -> None:
-    """مدیریت سیگنال‌های توقف"""
     logger.info(f"🛑 Received signal {sig}, shutting down gracefully...")
-    
     try:
         metrics_scheduler = container.get('metrics_scheduler')
         if metrics_scheduler:
             metrics_scheduler.stop()
-            logger.info("✅ Metrics Scheduler stopped")
     except Exception as e:
         logger.error(f"❌ Error stopping metrics scheduler: {e}")
-    
     try:
         threading_manager = container.get('threading_manager')
         if threading_manager:
             threading_manager.stop_all()
-            logger.info("✅ All threads stopped")
     except Exception as e:
         logger.error(f"❌ Error stopping threads: {e}")
-    
     try:
         from core.parallel_processor import parallel_processor
         parallel_processor.shutdown()
-        logger.info("✅ Parallel processor shutdown")
     except Exception as e:
         logger.error(f"❌ Error shutting down parallel processor: {e}")
-    
     logger.info("✅ Graceful shutdown complete")
     sys.exit(0)
 
@@ -79,18 +70,16 @@ logger.info("✅ Container initialized")
 
 
 # ============================================================
-# ثبت Blueprintها
+# ✅ ثبت فقط Blueprintهای API
 # ============================================================
 
 from presentation.routes.api_routes import api_bp
-from presentation.routes.web_routes import web_bp
 from presentation.routes.metrics_routes import metrics_bp
 
 app.register_blueprint(api_bp)
-app.register_blueprint(web_bp)
 app.register_blueprint(metrics_bp)
 
-logger.info("✅ Blueprints registered")
+logger.info("✅ API Blueprints registered")
 
 
 # ============================================================
@@ -98,7 +87,6 @@ logger.info("✅ Blueprints registered")
 # ============================================================
 
 def start_metrics_scheduler() -> None:
-    """راه‌اندازی Scheduler متریک"""
     try:
         metrics_scheduler = container.get('metrics_scheduler')
         if metrics_scheduler:
@@ -125,11 +113,7 @@ def start_metrics_scheduler() -> None:
 # ============================================================
 
 def start_alert_system() -> None:
-    """راه‌اندازی سیستم هشدار و خودترمیمی"""
     try:
-        from infrastructure.external.alerter import alerter
-        from infrastructure.services.self_healer import SelfHealer
-        
         model_manager = container.get('model_manager')
         trainer = container.get('trainer')
         self_healer = SelfHealer(model_manager, trainer)
@@ -165,7 +149,6 @@ def start_alert_system() -> None:
             alert_thread = threading.Thread(target=alert_loop, daemon=False)
             alert_thread.start()
             logger.info("✅ Alert system started directly")
-            
     except Exception as e:
         logger.error(f"❌ Failed to start alert system: {e}")
 
@@ -175,7 +158,6 @@ def start_alert_system() -> None:
 # ============================================================
 
 def start_db_health_check() -> None:
-    """راه‌اندازی بررسی دوره‌ای دیتابیس"""
     try:
         from infrastructure.database.database_factory import ensure_databases_connected
         
@@ -199,7 +181,6 @@ def start_db_health_check() -> None:
                 max_restarts=10
             )
             logger.info("✅ Database health check started")
-            
     except Exception as e:
         logger.error(f"❌ Failed to start DB health check: {e}")
 
@@ -214,12 +195,11 @@ start_db_health_check()
 
 
 # ============================================================
-# Error Handlers
+# ✅ Error Handlers (فقط JSON)
 # ============================================================
 
 @app.errorhandler(404)
 def not_found(error):
-    """مدیریت خطای 404"""
     return jsonify({
         'success': False,
         'error': 'NotFound',
@@ -230,7 +210,6 @@ def not_found(error):
 
 @app.errorhandler(405)
 def method_not_allowed(error):
-    """مدیریت خطای 405"""
     return jsonify({
         'success': False,
         'error': 'MethodNotAllowed',
@@ -241,7 +220,6 @@ def method_not_allowed(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    """مدیریت خطای 500"""
     logger.error(f"Internal server error: {error}")
     return jsonify({
         'success': False,
@@ -252,32 +230,26 @@ def internal_error(error):
 
 
 # ============================================================
-# قبل از هر درخواست
+# ✅ روت ساده برای بررسی وضعیت (بدون HTML)
 # ============================================================
 
-@app.before_request
-def before_request():
-    """قبل از هر درخواست - تنظیمات اولیه"""
-    import time
-    import flask
-    flask.g.start_time = time.time()
-
-
-# ============================================================
-# بعد از هر درخواست
-# ============================================================
-
-@app.after_request
-def after_request(response):
-    """بعد از هر درخواست - آمار و لاگ"""
-    try:
-        import time
-        import flask
-        elapsed = time.time() - flask.g.start_time
-        logger.debug(f"Response time: {elapsed*1000:.2f}ms")
-    except Exception:
-        pass
-    return response
+@app.route('/')
+def home():
+    return jsonify({
+        'name': APP_NAME,
+        'version': VERSION,
+        'status': 'running',
+        'timestamp': datetime.now().isoformat(),
+        'endpoints': [
+            '/api/metrics',
+            '/api/predict',
+            '/api/model/status',
+            '/api/model/train',
+            '/api/health',
+            '/api/alerts',
+            '/api/credits'
+        ]
+    })
 
 
 # ============================================================
@@ -304,45 +276,19 @@ if __name__ == "__main__":
     container_status = container.get_status()
     
     print("=" * 70)
-    print(f"🚀 {APP_NAME} v{VERSION}")
+    print(f"🚀 {APP_NAME} v{VERSION} (API Only)")
     print(f"📡 Port: {port}")
     print(f"🐛 Debug: {debug}")
     print("=" * 70)
-    print("📊 Architecture Status:")
-    print(f"   ✅ Domain Layer: Entities + Value Objects")
-    print(f"   ✅ Application Layer: Use Cases + Services")
-    print(f"   ✅ Infrastructure Layer: API + Database + Repositories")
-    print(f"   ✅ Presentation Layer: Routes + Middlewares")
-    print(f"   ✅ DI Container: {container_status['total']} services")
-    print("=" * 70)
-    
-    # دریافت وضعیت مدل با Lazy Loading
-    try:
-        model_manager = container.get('model_manager')
-        if model_manager and model_manager.current_model:
-            print(f"🧠 Model: ✅ Loaded (v{model_manager.current_version})")
-        else:
-            print(f"🧠 Model: ❌ Not Loaded (DEMO mode)")
-    except Exception:
-        print(f"🧠 Model: ❌ Not Available")
-    
-    # دریافت وضعیت Threadها
-    try:
-        threading_manager = container.get('threading_manager')
-        if threading_manager:
-            thread_status = threading_manager.get_summary()
-            print(f"🔧 Threads: {thread_status.get('total_threads', 0)} active")
-    except Exception:
-        pass
-    
-    print("=" * 70)
-    print("📌 Available Endpoints:")
+    print("📊 API Endpoints:")
+    print("  GET  /api/metrics           - System metrics")
     print("  GET  /api/predict           - Predict single coin")
     print("  POST /api/predict/multiple  - Predict multiple coins")
+    print("  GET  /api/model/status      - Model status")
     print("  POST /api/model/train       - Train model")
     print("  GET  /api/health            - Health check")
-    print("  GET  /api/metrics           - System metrics")
-    print("  GET  /dashboard             - Web dashboard")
+    print("  GET  /api/alerts            - Get alerts")
+    print("  GET  /api/credits           - API credits")
     print("=" * 70)
     print("🔧 Use CTRL+C to stop gracefully")
     print("=" * 70)
