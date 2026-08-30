@@ -1,7 +1,6 @@
-
 # core/system.py
 # ============================================================
-# هسته اصلی سیستم تشخیص الگوهای بازاری - نسخه ۸.۰ (رفع Import)
+# فقط بخش Import - نسخه اصلاح شده
 # ============================================================
 
 import os
@@ -15,17 +14,17 @@ from datetime import datetime
 from typing import Any, Dict, Optional, List, Tuple, Union
 from pathlib import Path
 
-from api.coinstats_client import coinstats_client
+# ✅ اصلاح Import - استفاده از مسیر جدید
+from infrastructure.api.coinstats_client import coinstats_client
+from infrastructure.api.cache_manager import cache_manager
 from models.manager.model_manager import ModelManager
 from models.trainer.auto_trainer import AutoTrainer
 from core.feature_engineering import feature_engineer
 from core.threading_manager import threading_manager
-# ✅ اصلاح Import
 from infrastructure.database import get_cache, health_check as db_health_check
 from infrastructure.database.database_factory import ensure_databases_connected
 from config import get_config, get_model_config, get_system_config, get_thresholds, get_auto_trainer_config
 from config.version import VERSION
-
 
 logger = logging.getLogger(__name__)
 
