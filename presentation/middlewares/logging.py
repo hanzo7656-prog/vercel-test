@@ -31,8 +31,13 @@ class LoggingMiddleware:
         # لاگ پارامترها (در صورت Debug)
         if request.args:
             logger.debug(f"   Query: {dict(request.args)}")
-        if request.json:
-            logger.debug(f"   Body: {dict(request.json)}")
+        
+        # ✅ اصلاح - بررسی Content-Type قبل از دسترسی به request.json
+        if request.is_json:
+            try:
+                logger.debug(f"   Body: {request.json}")
+            except Exception:
+                pass
     
     @staticmethod
     def after_request(response):
