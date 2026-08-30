@@ -109,7 +109,6 @@ def get_metrics_summary():
 # ============================================================
 
 @api_bp.route('/predict', methods=['GET'])
-@require_auth()
 def predict():
     try:
         coin = request.args.get('coin', 'bitcoin')
@@ -129,7 +128,6 @@ def predict():
 
 
 @api_bp.route('/predict/multiple', methods=['POST'])
-@require_auth()
 def predict_multiple():
     try:
         data = request.json
@@ -159,7 +157,6 @@ def predict_multiple():
 # ============================================================
 
 @api_bp.route('/model/status', methods=['GET'])
-@require_auth()
 def model_status():
     try:
         container = current_app.container
@@ -172,7 +169,6 @@ def model_status():
 
 
 @api_bp.route('/model/train', methods=['POST'])
-@require_auth('admin')
 def train_model():
     try:
         data = request.json or {}
@@ -189,7 +185,6 @@ def train_model():
 
 
 @api_bp.route('/model/clear-logs', methods=['POST'])
-@require_auth('admin')
 def clear_logs():
     try:
         container = current_app.container
@@ -204,7 +199,6 @@ def clear_logs():
 
 
 @api_bp.route('/model/history', methods=['GET'])
-@require_auth()
 def model_history():
     try:
         container = current_app.container
@@ -221,7 +215,6 @@ def model_history():
 # ============================================================
 
 @api_bp.route('/coinstats/prices', methods=['GET'])
-@require_auth()
 def coinstats_prices():
     try:
         container = current_app.container
@@ -247,7 +240,6 @@ def coinstats_prices():
 
 
 @api_bp.route('/coinstats/fear-greed', methods=['GET'])
-@require_auth()
 def coinstats_fear_greed():
     try:
         container = current_app.container
@@ -266,7 +258,6 @@ def coinstats_fear_greed():
 
 
 @api_bp.route('/coinstats/btc-dominance', methods=['GET'])
-@require_auth()
 def coinstats_btc_dominance():
     try:
         container = current_app.container
@@ -284,7 +275,6 @@ def coinstats_btc_dominance():
 
 
 @api_bp.route('/coinstats/all', methods=['GET'])
-@require_auth()
 def coinstats_all():
     try:
         container = current_app.container
@@ -326,7 +316,6 @@ def coinstats_all():
 # ============================================================
 
 @api_bp.route('/alerts', methods=['GET'])
-@require_auth()
 def get_alerts():
     try:
         limit = request.args.get('limit', 20, type=int)
@@ -341,7 +330,6 @@ def get_alerts():
 
 
 @api_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
-@require_auth('admin')
 def resolve_alert(alert_id):
     try:
         success = alerter.resolve_alert(alert_id)
@@ -356,7 +344,6 @@ def resolve_alert(alert_id):
 # ============================================================
 
 @api_bp.route('/credits', methods=['GET'])
-@require_auth()
 def credits():
     try:
         container = current_app.container
@@ -373,7 +360,6 @@ def credits():
 # ============================================================
 
 @api_bp.route('/debug/exec', methods=['POST'])
-@require_auth('admin')
 def debug_exec():
     try:
         data = request.json
@@ -404,7 +390,6 @@ def debug_exec():
 
 
 @api_bp.route('/debug/env', methods=['GET'])
-@require_auth('admin')
 def debug_env():
     try:
         env = {
