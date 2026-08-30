@@ -20,8 +20,8 @@ from models.manager.model_manager import ModelManager
 from models.trainer.auto_trainer import AutoTrainer
 from core.feature_engineering import feature_engineer
 from core.threading_manager import threading_manager
-from database import get_cache, health_check as db_health_check
-from database.database_factory import ensure_databases_connected
+from infrastructure.database import get_cache, health_check as db_health_check
+from infrastructure.database.database_factory import ensure_databases_connected
 from config import get_config, get_model_config, get_system_config, get_thresholds, get_auto_trainer_config
 from config.version import VERSION
 
