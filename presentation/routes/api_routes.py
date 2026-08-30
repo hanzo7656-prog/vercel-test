@@ -1,12 +1,11 @@
 # presentation/routes/api_routes.py
 # ============================================================
-# API Routes - نسخه ۳.۰ (فقط JSON)
+# API Routes - نسخه کامل (همه اندپوینت‌ها)
 # ============================================================
 
-import json
-import logging
 import os
 import sys
+import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
 
@@ -24,7 +23,89 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
 # ============================================================
-# ۱. پیش‌بینی
+# ۱. صفحه اصلی (سلامت ساده)
+# ============================================================
+
+@api_bp.route('', methods=['GET'])
+def api_home():
+    return jsonify({
+        'name': 'Trading Signal System API',
+        'version': '9.0.0',
+        'status': 'running',
+        'timestamp': datetime.now().isoformat(),
+        'endpoints': [
+            '/api/health',
+            '/api/metrics',
+            '/api/predict',
+            '/api/model/status',
+            '/api/model/train',
+            '/api/alerts',
+            '/api/credits',
+            '/api/coinstats/prices',
+            '/api/coinstats/fear-greed',
+            '/api/coinstats/all'
+        ]
+    })
+
+
+# ============================================================
+# ۲. سلامت
+# ============================================================
+
+@api_bp.route('/health', methods=['GET'])
+def health():
+    try:
+        container = current_app.container
+        monitoring_service: MonitoringService = container.monitoring_service()
+        health_data = monitoring_service.get_health()
+        return jsonify(health_data), 200 if health_data.get('status') == 'ok' else 503
+    except Exception as e:
+        logger.error(f"Health error: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+@api_bp.route('/health/simple', methods=['GET'])
+def health_simple():
+    try:
+        container = current_app.container
+        monitoring_service: MonitoringService = container.monitoring_service()
+        health_data = monitoring_service.get_health()
+        if health_data.get('status') == 'ok':
+            return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()}), 200
+        return jsonify({'status': 'degraded'}), 503
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ============================================================
+# ۳. متریک‌ها
+# ============================================================
+
+@api_bp.route('/metrics', methods=['GET'])
+def get_metrics():
+    try:
+        container = current_app.container
+        monitoring_service: MonitoringService = container.monitoring_service()
+        metrics = monitoring_service.get_metrics()
+        return jsonify(metrics), 200 if metrics.get('success') else 500
+    except Exception as e:
+        logger.error(f"Metrics error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/metrics/summary', methods=['GET'])
+def get_metrics_summary():
+    try:
+        container = current_app.container
+        monitoring_service: MonitoringService = container.monitoring_service()
+        summary = monitoring_service.get_metrics_summary()
+        return jsonify(summary), 200 if summary.get('success') else 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۴. پیش‌بینی
 # ============================================================
 
 @api_bp.route('/predict', methods=['GET'])
@@ -43,7 +124,7 @@ def predict():
             'timestamp': datetime.now().isoformat()
         }), 200 if dto.success else 400
     except Exception as e:
-        logger.error(f"Error in predict: {e}", exc_info=True)
+        logger.error(f"Predict error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -69,12 +150,12 @@ def predict_multiple():
             'timestamp': datetime.now().isoformat()
         }), 200 if dto.success else 400
     except Exception as e:
-        logger.error(f"Error in predict_multiple: {e}", exc_info=True)
+        logger.error(f"Predict multiple error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================
-# ۲. مدل
+# ۵. مدل
 # ============================================================
 
 @api_bp.route('/model/status', methods=['GET'])
@@ -86,7 +167,7 @@ def model_status():
         status = train_use_case.get_status()
         return jsonify({'success': True, 'data': status}), 200
     except Exception as e:
-        logger.error(f"Error in model_status: {e}", exc_info=True)
+        logger.error(f"Model status error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -103,7 +184,7 @@ def train_model():
         result = train_use_case.execute(period, coins, incremental)
         return jsonify(result), 200 if result.get('success') else 400
     except Exception as e:
-        logger.error(f"Error in train_model: {e}", exc_info=True)
+        logger.error(f"Train model error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -118,7 +199,7 @@ def clear_logs():
             return jsonify({'success': True, 'message': 'Logs cleared'}), 200
         return jsonify({'success': False, 'error': 'Method not available'}), 400
     except Exception as e:
-        logger.error(f"Error in clear_logs: {e}", exc_info=True)
+        logger.error(f"Clear logs error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -131,199 +212,12 @@ def model_history():
         history = model_manager.get_version_history(limit=20)
         return jsonify({'success': True, 'data': history}), 200
     except Exception as e:
-        logger.error(f"Error in model_history: {e}", exc_info=True)
+        logger.error(f"Model history error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================
-# ۳. سلامت
-# ============================================================
-
-@api_bp.route('/health', methods=['GET'])
-def health():
-    try:
-        container = current_app.container
-        monitoring_service: MonitoringService = container.monitoring_service()
-        health_data = monitoring_service.get_health()
-        status_code = 200 if health_data.get('status') == 'ok' else 503
-        return jsonify(health_data), status_code
-    except Exception as e:
-        logger.error(f"Error in health: {e}", exc_info=True)
-        return jsonify({'status': 'error', 'error': str(e)}), 500
-
-
-@api_bp.route('/health/simple', methods=['GET'])
-def health_simple():
-    try:
-        container = current_app.container
-        monitoring_service: MonitoringService = container.monitoring_service()
-        health_data = monitoring_service.get_health()
-        if health_data.get('status') == 'ok':
-            return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()}), 200
-        return jsonify({'status': 'degraded', 'timestamp': datetime.now().isoformat()}), 503
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 500
-
-
-# ============================================================
-# ۴. هشدارها
-# ============================================================
-
-@api_bp.route('/alerts', methods=['GET'])
-@require_auth()
-def get_alerts():
-    try:
-        limit = request.args.get('limit', 20, type=int)
-        resolved = request.args.get('resolved')
-        if resolved is not None:
-            resolved = resolved.lower() == 'true'
-        alerts = alerter.get_alerts(limit=limit, resolved=resolved)
-        return jsonify({'success': True, 'data': alerts, 'count': len(alerts)}), 200
-    except Exception as e:
-        logger.error(f"Error in get_alerts: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@api_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
-@require_auth('admin')
-def resolve_alert(alert_id):
-    try:
-        success = alerter.resolve_alert(alert_id)
-        return jsonify({'success': success}), 200
-    except Exception as e:
-        logger.error(f"Error in resolve_alert: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ============================================================
-# ۵. اعتبار API
-# ============================================================
-
-@api_bp.route('/credits', methods=['GET'])
-@require_auth()
-def credits():
-    try:
-        container = current_app.container
-        api_client = container.api_client()
-        credits_data = api_client.get_credits()
-        return jsonify({'success': True, 'data': credits_data}), 200
-    except Exception as e:
-        logger.error(f"Error in credits: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ============================================================
-# ۶. دیباگ (فقط ادمین)
-# ============================================================
-
-@api_bp.route('/debug/exec', methods=['POST'])
-@require_auth('admin')
-def debug_exec():
-    try:
-        data = request.json
-        command = data.get('command', '').strip()
-        if not command:
-            return jsonify({'success': False, 'error': 'دستور وارد نشده'}), 400
-        
-        dangerous_keywords = ['import os; os.system', 'import subprocess', 'exec(', 'eval(', '__import__', 'open(', 'file(']
-        for keyword in dangerous_keywords:
-            if keyword in command:
-                return jsonify({'success': False, 'error': 'دستور غیرمجاز'}), 403
-        
-        import io
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = io.StringIO()
-        sys.stderr = io.StringIO()
-        
-        try:
-            namespace = {
-                '__builtins__': __builtins__,
-                'os': __import__('os'),
-                'sys': __import__('sys'),
-                'json': __import__('json'),
-                'datetime': __import__('datetime'),
-                'time': __import__('time'),
-                'Path': __import__('pathlib').Path,
-            }
-            exec(command, namespace)
-            result = sys.stdout.getvalue()
-            error = sys.stderr.getvalue()
-        except Exception as e:
-            result = sys.stdout.getvalue()
-            error = str(e)
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-        
-        output = result
-        if error:
-            output += f"\n❌ Error: {error}"
-        if not output.strip():
-            output = "✅ Command executed successfully (no output)"
-        
-        return jsonify({'success': True, 'result': output})
-    except Exception as e:
-        logger.error(f"Error in debug_exec: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@api_bp.route('/debug/env', methods=['GET'])
-@require_auth('admin')
-def debug_env():
-    try:
-        env_vars = {}
-        safe_keys = ['PORT', 'FLASK_DEBUG', 'FLASK_ENV', 'COINSTATS_API_KEY', 'PYTHONPATH']
-        for key in safe_keys:
-            value = os.getenv(key)
-            if value:
-                if 'KEY' in key or 'SECRET' in key:
-                    value = value[:6] + '...' + value[-4:] if len(value) > 10 else '***'
-                env_vars[key] = value
-        env_vars['SYSTEM'] = {
-            'cwd': os.getcwd(),
-            'python_version': sys.version,
-            'platform': sys.platform,
-        }
-        return jsonify({'success': True, 'data': env_vars}), 200
-    except Exception as e:
-        logger.error(f"Error in debug_env: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@api_bp.route('/debug/file', methods=['POST'])
-@require_auth('admin')
-def debug_file():
-    try:
-        data = request.json
-        filename = data.get('filename', '').strip()
-        if not filename:
-            return jsonify({'success': False, 'error': 'نام فایل وارد نشده'}), 400
-        
-        allowed_files = [
-            'config/settings.json',
-            'config/databases.json',
-            'config/users.json',
-            'config/alert_rules.json',
-            'app.py',
-            'container.py',
-            'requirements.txt'
-        ]
-        if filename not in allowed_files:
-            return jsonify({'success': False, 'error': 'دسترسی به این فایل مجاز نیست'}), 403
-        
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return jsonify({'success': True, 'content': content}), 200
-    except FileNotFoundError:
-        return jsonify({'success': False, 'error': 'فایل یافت نشد'}), 404
-    except Exception as e:
-        logger.error(f"Error in debug_file: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ============================================================
-# ۷. CoinStats مستقیم
+# ۶. CoinStats (داده‌های مستقیم)
 # ============================================================
 
 @api_bp.route('/coinstats/prices', methods=['GET'])
@@ -337,12 +231,18 @@ def coinstats_prices():
         return jsonify({
             'success': True,
             'data': {
-                'btc': {'price': btc.get('price', 0), 'change_24h': btc.get('priceChange1d', 0)} if btc else {},
-                'eth': {'price': eth.get('price', 0), 'change_24h': eth.get('priceChange1d', 0)} if eth else {}
+                'btc': {
+                    'price': btc.get('price', 0),
+                    'change_24h': btc.get('priceChange1d', 0)
+                } if btc else {},
+                'eth': {
+                    'price': eth.get('price', 0),
+                    'change_24h': eth.get('priceChange1d', 0)
+                } if eth else {}
             }
         }), 200
     except Exception as e:
-        logger.error(f"Error in coinstats_prices: {e}", exc_info=True)
+        logger.error(f"CoinStats prices error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -361,7 +261,25 @@ def coinstats_fear_greed():
             }
         }), 200
     except Exception as e:
-        logger.error(f"Error in coinstats_fear_greed: {e}", exc_info=True)
+        logger.error(f"Fear-greed error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/coinstats/btc-dominance', methods=['GET'])
+@require_auth()
+def coinstats_btc_dominance():
+    try:
+        container = current_app.container
+        api_client = container.api_client()
+        dominance = api_client.get_btc_dominance(use_cache=True)
+        return jsonify({
+            'success': True,
+            'data': {
+                'value': dominance.get('dominance', 50) if dominance else 50
+            }
+        }), 200
+    except Exception as e:
+        logger.error(f"BTC dominance error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -381,8 +299,14 @@ def coinstats_all():
         return jsonify({
             'success': True,
             'data': {
-                'btc': {'price': btc.get('price', 0), 'change_24h': btc.get('priceChange1d', 0)} if btc else {},
-                'eth': {'price': eth.get('price', 0), 'change_24h': eth.get('priceChange1d', 0)} if eth else {},
+                'btc': {
+                    'price': btc.get('price', 0),
+                    'change_24h': btc.get('priceChange1d', 0)
+                } if btc else {},
+                'eth': {
+                    'price': eth.get('price', 0),
+                    'change_24h': eth.get('priceChange1d', 0)
+                } if eth else {},
                 'fear_greed': {
                     'value': fg.get('now', {}).get('value', 50) if fg else 50,
                     'classification': fg.get('now', {}).get('value_classification', 'Neutral') if fg else 'Neutral'
@@ -393,5 +317,102 @@ def coinstats_all():
             }
         }), 200
     except Exception as e:
-        logger.error(f"Error in coinstats_all: {e}", exc_info=True)
+        logger.error(f"CoinStats all error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۷. هشدارها
+# ============================================================
+
+@api_bp.route('/alerts', methods=['GET'])
+@require_auth()
+def get_alerts():
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        resolved = request.args.get('resolved')
+        if resolved is not None:
+            resolved = resolved.lower() == 'true'
+        alerts = alerter.get_alerts(limit=limit, resolved=resolved)
+        return jsonify({'success': True, 'data': alerts, 'count': len(alerts)}), 200
+    except Exception as e:
+        logger.error(f"Alerts error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
+@require_auth('admin')
+def resolve_alert(alert_id):
+    try:
+        success = alerter.resolve_alert(alert_id)
+        return jsonify({'success': success}), 200
+    except Exception as e:
+        logger.error(f"Resolve alert error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۸. اعتبار
+# ============================================================
+
+@api_bp.route('/credits', methods=['GET'])
+@require_auth()
+def credits():
+    try:
+        container = current_app.container
+        api_client = container.api_client()
+        credits_data = api_client.get_credits()
+        return jsonify({'success': True, 'data': credits_data}), 200
+    except Exception as e:
+        logger.error(f"Credits error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۹. دیباگ
+# ============================================================
+
+@api_bp.route('/debug/exec', methods=['POST'])
+@require_auth('admin')
+def debug_exec():
+    try:
+        data = request.json
+        command = data.get('command', '').strip()
+        if not command:
+            return jsonify({'success': False, 'error': 'Command required'}), 400
+        
+        dangerous = ['os.system', 'subprocess', 'exec(', 'eval(', '__import__']
+        for kw in dangerous:
+            if kw in command:
+                return jsonify({'success': False, 'error': 'Dangerous command'}), 403
+        
+        import io
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            exec(command, {'__builtins__': __builtins__, 'os': __import__('os'), 'sys': __import__('sys')})
+            result = sys.stdout.getvalue()
+        except Exception as e:
+            result = str(e)
+        finally:
+            sys.stdout = old_stdout
+        
+        return jsonify({'success': True, 'result': result or '✅ Done'})
+    except Exception as e:
+        logger.error(f"Debug exec error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/env', methods=['GET'])
+@require_auth('admin')
+def debug_env():
+    try:
+        env = {
+            'PORT': os.getenv('PORT'),
+            'FLASK_DEBUG': os.getenv('FLASK_DEBUG'),
+            'FLASK_ENV': os.getenv('FLASK_ENV'),
+            'COINSTATS_API_KEY': '***' if os.getenv('COINSTATS_API_KEY') else None,
+        }
+        return jsonify({'success': True, 'data': env}), 200
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
