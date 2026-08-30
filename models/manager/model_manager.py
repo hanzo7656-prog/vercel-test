@@ -1,6 +1,6 @@
 # models/manager/model_manager.py
 # ============================================================
-# مدیریت پیشرفته مدل XGBoost - نسخه ۳.۰ (نهایی)
+# مدیریت پیشرفته مدل XGBoost - نسخه ۳.۰ (رفع Import)
 # ============================================================
 
 import os
@@ -13,7 +13,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-from database import get_primary
+# ✅ اصلاح Import - استفاده از مسیر صحیح
+from infrastructure.database import get_primary
 from config import get_model_config
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class ModelManager:
     - Ensemble
     - ارزیابی خودکار
     
-    ✅ نسخه ۳.۰: حذف متدهای محلی، استفاده از Path، Type Hints کامل
+    ✅ نسخه ۳.۰: رفع Import و استفاده از Path
     """
     
     def __init__(self, api: Optional[Any] = None) -> None:
@@ -61,7 +62,7 @@ class ModelManager:
         """اطمینان از اتصال دیتابیس و reconnect در صورت نیاز"""
         if not self.db or not self.db.is_connected():
             try:
-                from database import get_primary
+                from infrastructure.database import get_primary
                 self.db = get_primary()
                 if self.db and self.db.is_connected():
                     logger.info("✅ دیتابیس reconnect شد")
@@ -75,7 +76,7 @@ class ModelManager:
         return True
     
     # ============================================================
-    # ۲. ذخیره و بازیابی مدل (فقط از دیتابیس)
+    # ۲. ذخیره و بازیابی مدل
     # ============================================================
     
     def save_model(
