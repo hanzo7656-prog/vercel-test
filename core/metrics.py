@@ -1,6 +1,6 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۸.۰ (رفع وابستگی)
+# سیستم جمع‌آوری متریک - نسخه ۸.۱ (رفع مشکل جمع‌آوری)
 # ============================================================
 
 import time
@@ -20,7 +20,7 @@ class MetricsScheduler:
     
     def __init__(self):
         self._running = False
-        self._stop_event = None  # توسط ThreadingManager تنظیم می‌شود
+        self._stop_event = None
         
         self.metrics_cache: Dict[str, Any] = {}
         self.stats = {
@@ -30,15 +30,14 @@ class MetricsScheduler:
         }
         self.start_time = time.time()
         
-        # فواصل
+        # فواصل (کوتاه‌تر برای تست)
         self.light_interval = 3
-        self.medium_interval = 30
-        self.heavy_interval = 300
+        self.medium_interval = 10   # ✅ کاهش از 30 به 10 ثانیه
+        self.heavy_interval = 30    # ✅ کاهش از 300 به 30 ثانیه
         
-        logger.info("✅ MetricsScheduler v8.0 initialized")
+        logger.info("✅ MetricsScheduler v8.1 initialized")
     
     def set_stop_event(self, event):
-        """تنظیم Event برای کنترل Stop"""
         self._stop_event = event
     
     def start(self):
@@ -49,11 +48,12 @@ class MetricsScheduler:
         self._running = True
         logger.info("🔄 Metrics Scheduler started")
         
-        # جمع‌آوری اولیه
+        # ✅ جمع‌آوری اولیه همه سطوح
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
+            logger.info("✅ Initial all-level collection complete")
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
         
@@ -61,22 +61,29 @@ class MetricsScheduler:
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
+        cycle_count = 0
         
         while self._running and not (self._stop_event and self._stop_event.is_set()):
             try:
                 now = time.time()
+                cycle_count += 1
                 
+                # Light: هر ۳ ثانیه
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
                 
+                # Medium: هر ۱۰ ثانیه
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
+                    logger.info(f"📊 Medium collected (cycle {cycle_count})")
                 
+                # Heavy: هر ۳۰ ثانیه
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
+                    logger.info(f"📊 Heavy collected (cycle {cycle_count})")
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
@@ -89,12 +96,11 @@ class MetricsScheduler:
         logger.info("⏹️ Metrics Scheduler stopped")
     
     def stop(self):
-        """متوقف کردن"""
         self._running = False
         logger.info("⏹️ Metrics Scheduler stopping")
     
     # ============================================================
-    # جمع‌آوری‌کننده‌ها (بدون وابستگی به system)
+    # جمع‌آوری‌کننده‌ها
     # ============================================================
     
     def _collect_light_metrics(self):
@@ -132,106 +138,179 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     def _collect_medium_metrics(self):
-        """قیمت‌ها, API, مدل - با استفاده از API کلاینت"""
+        """قیمت‌ها, API, مدل"""
         try:
-            # ✅ استفاده از API کلاینت (بدون وابستگی به system)
-            from api.coinstats_client import coinstats_client
+            from infrastructure.api.coinstats_client import coinstats_client
             from models.manager.model_manager import ModelManager
             
-            # قیمت‌ها
-            btc = coinstats_client.get_coin("bitcoin")
-            if btc and "error" not in btc:
-                self.metrics_cache["btc_price"] = {
-                    "value": btc.get("price", 0),
-                    "change_24h": btc.get("priceChange1d", 0),
+            # ===== ۱. قیمت بیت‌کوین =====
+            try:
+                btc = coinstats_client.get_coin("bitcoin")
+                if btc and "error" not in btc:
+                    self.metrics_cache["btc_price"] = {
+                        "value": btc.get("price", 0),
+                        "change_24h": btc.get("priceChange1d", 0),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.debug(f"✅ BTC Price: ${btc.get('price', 0)}")
+                else:
+                    logger.warning(f"⚠️ BTC data error: {btc}")
+            except Exception as e:
+                logger.warning(f"⚠️ BTC price error: {e}")
+            
+            # ===== ۲. قیمت اتریوم =====
+            try:
+                eth = coinstats_client.get_coin("ethereum")
+                if eth and "error" not in eth:
+                    self.metrics_cache["eth_price"] = {
+                        "value": eth.get("price", 0),
+                        "change_24h": eth.get("priceChange1d", 0),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.debug(f"✅ ETH Price: ${eth.get('price', 0)}")
+                else:
+                    logger.warning(f"⚠️ ETH data error: {eth}")
+            except Exception as e:
+                logger.warning(f"⚠️ ETH price error: {e}")
+            
+            # ===== ۳. وضعیت API =====
+            try:
+                status = coinstats_client.get_status()
+                api_status = status.get("status", "unknown") if status else "unknown"
+                self.metrics_cache["api_status"] = {
+                    "value": api_status,
                     "timestamp": datetime.now().isoformat()
                 }
+                logger.debug(f"✅ API Status: {api_status}")
+            except Exception as e:
+                logger.warning(f"⚠️ API status error: {e}")
             
-            eth = coinstats_client.get_coin("ethereum")
-            if eth and "error" not in eth:
-                self.metrics_cache["eth_price"] = {
-                    "value": eth.get("price", 0),
-                    "change_24h": eth.get("priceChange1d", 0),
+            # ===== ۴. اعتبار API =====
+            try:
+                credits = coinstats_client.get_credits()
+                api_credits = credits.get("remainingCredits", 0) if credits else 0
+                self.metrics_cache["api_credits"] = {
+                    "value": api_credits,
                     "timestamp": datetime.now().isoformat()
                 }
+                logger.debug(f"✅ API Credits: {api_credits}")
+            except Exception as e:
+                logger.warning(f"⚠️ Credits error: {e}")
             
-            # API Status
-            status = coinstats_client.get_status()
-            api_status = status.get("status", "unknown") if status else "unknown"
-            self.metrics_cache["api_status"] = {
-                "value": api_status,
-                "timestamp": datetime.now().isoformat()
-            }
+            # ===== ۵. وضعیت مدل =====
+            try:
+                # استفاده از ModelManager بدون وابستگی به system
+                model_manager = ModelManager(coinstats_client)
+                loaded = model_manager.current_model is not None
+                version = model_manager.current_version or "N/A"
+                self.metrics_cache["model_status"] = {
+                    "value": {"loaded": loaded, "version": version},
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.metrics_cache["model_accuracy"] = {
+                    "value": None,  # برای نسخه‌های بعدی
+                    "timestamp": datetime.now().isoformat()
+                }
+                logger.debug(f"✅ Model Status: loaded={loaded}, version={version}")
+            except Exception as e:
+                logger.warning(f"⚠️ Model status error: {e}")
             
-            # Credits
-            credits = coinstats_client.get_credits()
-            api_credits = credits.get("remainingCredits", 0) if credits else 0
-            self.metrics_cache["api_credits"] = {
-                "value": api_credits,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            # Model Status
-            # ✅ استفاده از ModelManager بدون وابستگی به system
-            model_manager = ModelManager(coinstats_client)
-            loaded = model_manager.current_model is not None
-            version = model_manager.current_version or "N/A"
-            self.metrics_cache["model_status"] = {
-                "value": {"loaded": loaded, "version": version},
-                "timestamp": datetime.now().isoformat()
-            }
+            # ===== ۶. تعداد درخواست‌ها =====
+            try:
+                stats = coinstats_client.get_stats()
+                self.metrics_cache["request_count"] = {
+                    "value": stats.get("total_requests", 0),
+                    "timestamp": datetime.now().isoformat()
+                }
+            except Exception as e:
+                logger.warning(f"⚠️ Request count error: {e}")
             
         except Exception as e:
-            logger.debug(f"Medium metrics error: {e}")
+            logger.error(f"❌ Medium metrics error: {e}")
+            self.stats["errors"] += 1
     
     def _collect_heavy_metrics(self):
-        """سایر متریک‌ها"""
+        """ترس و طمع, سلطه, اخبار, دیتابیس, دیسک"""
         try:
-            from api.coinstats_client import coinstats_client
-            from database import health_check
+            from infrastructure.api.coinstats_client import coinstats_client
+            from infrastructure.database import health_check
             
-            # Fear & Greed
-            fg = coinstats_client.get_fear_greed(use_cache=True)
-            if fg and "now" in fg:
-                self.metrics_cache["fear_greed"] = {
-                    "value": fg["now"].get("value", 50),
-                    "classification": fg["now"].get("value_classification", "Neutral"),
+            # ===== ۱. ترس و طمع =====
+            try:
+                fg = coinstats_client.get_fear_greed(use_cache=True)
+                if fg and "now" in fg:
+                    self.metrics_cache["fear_greed"] = {
+                        "value": fg["now"].get("value", 50),
+                        "classification": fg["now"].get("value_classification", "Neutral"),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.debug(f"✅ Fear & Greed: {fg['now'].get('value', 50)}")
+                else:
+                    logger.warning(f"⚠️ Fear & Greed data error: {fg}")
+            except Exception as e:
+                logger.warning(f"⚠️ Fear & Greed error: {e}")
+            
+            # ===== ۲. سلطه بیت‌کوین =====
+            try:
+                dominance = coinstats_client.get_btc_dominance(use_cache=True)
+                if dominance:
+                    self.metrics_cache["btc_dominance"] = {
+                        "value": dominance.get("dominance", 50),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.debug(f"✅ BTC Dominance: {dominance.get('dominance', 50)}")
+                else:
+                    logger.warning(f"⚠️ BTC Dominance data error: {dominance}")
+            except Exception as e:
+                logger.warning(f"⚠️ BTC Dominance error: {e}")
+            
+            # ===== ۳. اخبار =====
+            try:
+                news = coinstats_client.get_news(limit=5)
+                if news and "error" not in news:
+                    self.metrics_cache["news"] = {
+                        "value": news,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    logger.debug(f"✅ News: {len(news) if news else 0} items")
+                else:
+                    logger.warning(f"⚠️ News data error: {news}")
+            except Exception as e:
+                logger.warning(f"⚠️ News error: {e}")
+            
+            # ===== ۴. دیتابیس =====
+            try:
+                health = health_check()
+                dbs = {}
+                for name, info in health.items():
+                    dbs[name] = info.get("connected", False)
+                self.metrics_cache["databases"] = {
+                    "value": dbs,
                     "timestamp": datetime.now().isoformat()
                 }
+                logger.debug(f"✅ Databases: {dbs}")
+            except Exception as e:
+                logger.warning(f"⚠️ Databases error: {e}")
             
-            # BTC Dominance
-            dominance = coinstats_client.get_btc_dominance(use_cache=True)
-            if dominance:
-                self.metrics_cache["btc_dominance"] = {
-                    "value": dominance.get("dominance", 50),
+            # ===== ۵. فضای دیسک =====
+            try:
+                usage = psutil.disk_usage('/')
+                disk = {
+                    "total_gb": round(usage.total / (1024**3), 2),
+                    "used_gb": round(usage.used / (1024**3), 2),
+                    "free_gb": round(usage.free / (1024**3), 2),
+                    "percent": usage.percent
+                }
+                self.metrics_cache["disk_space"] = {
+                    "value": disk,
                     "timestamp": datetime.now().isoformat()
                 }
-            
-            # Databases
-            health = health_check()
-            dbs = {}
-            for name, info in health.items():
-                dbs[name] = info.get("connected", False)
-            self.metrics_cache["databases"] = {
-                "value": dbs,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            # Disk Space
-            usage = psutil.disk_usage('/')
-            disk = {
-                "total_gb": round(usage.total / (1024**3), 2),
-                "used_gb": round(usage.used / (1024**3), 2),
-                "free_gb": round(usage.free / (1024**3), 2),
-                "percent": usage.percent
-            }
-            self.metrics_cache["disk_space"] = {
-                "value": disk,
-                "timestamp": datetime.now().isoformat()
-            }
+            except Exception as e:
+                logger.warning(f"⚠️ Disk space error: {e}")
             
         except Exception as e:
-            logger.debug(f"Heavy metrics error: {e}")
+            logger.error(f"❌ Heavy metrics error: {e}")
+            self.stats["errors"] += 1
     
     # ============================================================
     # API
