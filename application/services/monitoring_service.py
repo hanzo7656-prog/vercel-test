@@ -30,19 +30,40 @@ class MonitoringService:
         
         logger.info("✅ MonitoringService initialized")
     
-    # application/services/monitoring_service.py
     def get_health(self):
         try:
-            # بررسی دیتابیس‌ها با timeout
+            # ✅ اضافه کردن timeout برای دیتابیس
+            import signal
+        
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Database health check timeout")
+        
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(5)  # ۵ ثانیه تایم‌اوت
+        
             from infrastructure.database import health_check
             health = health_check()
+        
+            signal.alarm(0)  # لغو تایم‌اوت
+        
             return {
                 'status': 'ok' if all(info.get('connected') for info in health.values()) else 'degraded',
-                'components': health
+                'components': health,
+                'timestamp': datetime.now().isoformat()
+            }
+        except TimeoutError:
+            return {
+                'status': 'degraded',
+                'error': 'Database health check timeout',
+                'timestamp': datetime.now().isoformat()
             }
         except Exception as e:
-            return {'status': 'error', 'error': str(e)}
-    
+            return {
+                'status': 'error',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+            
     def get_metrics(self) -> Dict[str, Any]:
         """
         دریافت متریک‌های لحظه‌ای
