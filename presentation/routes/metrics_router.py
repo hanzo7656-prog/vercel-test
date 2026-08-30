@@ -20,18 +20,11 @@ def get_metrics():
     try:
         container = current_app.container
         monitoring_service: MonitoringService = container.monitoring_service()
-        
         metrics = monitoring_service.get_metrics()
-        
         return jsonify(metrics), 200 if metrics.get('success') else 500
-        
     except Exception as e:
         logger.error(f"Error in get_metrics: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @metrics_bp.route('/summary', methods=['GET'])
@@ -40,18 +33,11 @@ def get_metrics_summary():
     try:
         container = current_app.container
         monitoring_service: MonitoringService = container.monitoring_service()
-        
         summary = monitoring_service.get_metrics_summary()
-        
         return jsonify(summary), 200 if summary.get('success') else 500
-        
     except Exception as e:
         logger.error(f"Error in get_metrics_summary: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @metrics_bp.route('/dashboard', methods=['GET'])
@@ -60,18 +46,11 @@ def get_dashboard_metrics():
     try:
         container = current_app.container
         monitoring_service: MonitoringService = container.monitoring_service()
-        
         metrics = monitoring_service.get_dashboard_metrics()
-        
         return jsonify(metrics), 200 if metrics.get('success') else 500
-        
     except Exception as e:
         logger.error(f"Error in get_dashboard_metrics: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @metrics_bp.route('/threads', methods=['GET'])
@@ -80,18 +59,11 @@ def get_thread_metrics():
     try:
         container = current_app.container
         monitoring_service: MonitoringService = container.monitoring_service()
-        
         status = monitoring_service.get_thread_status()
-        
         return jsonify(status), 200 if status.get('success') else 500
-        
     except Exception as e:
         logger.error(f"Error in get_thread_metrics: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @metrics_bp.route('/api', methods=['GET'])
@@ -101,15 +73,8 @@ def get_api_metrics():
         container = current_app.container
         monitoring_service: MonitoringService = container.monitoring_service()
         api_client = container.api_client()
-        
         stats = monitoring_service.get_api_stats(api_client)
-        
         return jsonify(stats), 200 if stats.get('success') else 500
-        
     except Exception as e:
         logger.error(f"Error in get_api_metrics: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
