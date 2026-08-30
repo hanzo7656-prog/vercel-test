@@ -1043,7 +1043,7 @@ def db_query():
         if not query:
             return jsonify({'success': False, 'error': 'Query is required'}), 400
         
-        # فقط کوئری‌های SELECT و CREATE TABLE مجاز است (برای تست)
+        # فقط کوئری‌های SELECT و CREATE TABLE مجاز است
         query_upper = query.upper().strip()
         if not (query_upper.startswith('SELECT') or query_upper.startswith('CREATE TABLE')):
             return jsonify({
@@ -1051,23 +1051,29 @@ def db_query():
                 'error': 'Only SELECT and CREATE TABLE queries are allowed'
             }), 403
         
+        # ✅ دریافت اتصال جدید
+        from infrastructure.database import get_primary
         db = get_primary()
-        if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'Database not connected'}), 503
         
+        if not db or not db.is_connected():
+            # ✅ تلاش مجدد برای اتصال
+            db.connect()
+            if not db.is_connected():
+                return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        # ✅ اجرای کوئری با اتصال جدید
         result = db.execute(query)
         
         return jsonify({
             'success': True,
             'data': {
                 'rows': result,
-                'count': len(result)
+                'count': len(result) if result else 0
             }
         })
     except Exception as e:
         logger.error(f"DB query error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @api_bp.route('/db/tables', methods=['GET'])
 def db_tables():
