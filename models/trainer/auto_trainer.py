@@ -4,6 +4,12 @@
 # ============================================================
 
 import os
+# models/trainer/auto_trainer.py
+# ============================================================
+# فقط بخش Import - نسخه اصلاح شده
+# ============================================================
+
+import os
 import sys
 import time
 import json
@@ -15,12 +21,11 @@ from datetime import datetime, timedelta
 from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-from api.coinstats_client import coinstats_client
+# ✅ اصلاح Import - استفاده از مسیر جدید
+from infrastructure.api.coinstats_client import coinstats_client
 from models.manager.model_manager import ModelManager
-# ✅ اصلاح Import
 from infrastructure.database import get_primary
 from config.config_manager import get_historical_points, get_auto_trainer_config
-
 
 logger = logging.getLogger(__name__)
 
