@@ -1,12 +1,12 @@
 # infrastructure/database/redis_manager.py
 # ============================================================
-# مدیریت Redis - نسخه ۲.۰ (آپدیت شده)
+# مدیریت Redis - نسخه ۲.۰ (آپدیت شده با Fix typing)
 # ============================================================
 
 import redis
 import json
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List  # ✅ اضافه کردن List
 from infrastructure.database.base import DatabaseBase
 
 logger = logging.getLogger(__name__)
