@@ -369,7 +369,8 @@ class AutoTrainer:
             current_price: float = prices_arr[i]
             future_price: float = prices_arr[i+3]
             
-            label: int = 1 if future_price > current_price else 0            features: List[float] = []
+            label: int = 1 if future_price > current_price else 0           
+            features: List[float] = []
             
             # 1. بازده‌ها
             for lag in [1, 3, 5]:
