@@ -10,7 +10,8 @@ from datetime import datetime
 from domain.interfaces.api_client import APIClient
 from models.manager.model_manager import ModelManager
 from core.metrics import metrics_scheduler
-from database import health_check as db_health_check
+# ✅ اصلاح Import
+from infrastructure.database import health_check as db_health_check
 
 logger = logging.getLogger(__name__)
 
