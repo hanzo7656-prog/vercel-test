@@ -106,7 +106,7 @@ class ModelManager:
         try:
             # ۱. تبدیل مدل به باینری
             temp_path: Path = self.models_dir / "temp_model.xgb"
-            model.save_model(str(temp_path), format='json')
+            model.save_model(str(temp_path))
             
             with open(temp_path, "rb") as f:
                 model_data: bytes = f.read()
