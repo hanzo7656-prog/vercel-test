@@ -1,6 +1,6 @@
 # application/services/command_system.py
 # ============================================================
-# سیستم دستوری - نسخه ۴.۰ (انتقال به Application)
+# سیستم دستوری - نسخه ۴.۰ (رفع Import)
 # ============================================================
 
 import logging
@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Callable
 
 from domain.services.numeric_analyzer import NumericAnalyzer
+# ✅ اصلاح Import
 from infrastructure.database import get_primary
 
 logger = logging.getLogger(__name__)
