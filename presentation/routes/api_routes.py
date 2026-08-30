@@ -1,6 +1,6 @@
 # presentation/routes/api_routes.py
 # ============================================================
-# API Routes - نسخه ۳.۰ (با Use Cases جدید)
+# فقط بخش Import - نسخه اصلاح شده
 # ============================================================
 
 import json
@@ -13,9 +13,15 @@ from application.services.prediction_service import PredictionService
 from application.services.monitoring_service import MonitoringService
 from application.use_cases.train_model import TrainModelUseCase
 from infrastructure.auth.auth_manager import require_auth, get_current_user_from_request
+
+# ✅ Import‌های اصلاح شده
+from infrastructure.external.alerter import alerter
+from application.services.self_healer import SelfHealer
+
 from container import Container
 
 logger = logging.getLogger(__name__)
+
 
 # ایجاد Blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
