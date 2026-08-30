@@ -558,7 +558,7 @@ class AutoTrainer:
             model.fit(X, y)
             training_time: float = time.time() - start_time
             
-            model.save_model(str(self.model_path), format='json')
+            model.save_model(str(self.model_path))
             
             score: float = model.score(X, y)
             self.stats["last_score"] = round(score, 3)
