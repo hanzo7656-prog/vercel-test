@@ -1,12 +1,7 @@
 # models/trainer/auto_trainer.py
 # ============================================================
-# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۰ (رفع Import)
-# ============================================================
-
-import os
-# models/trainer/auto_trainer.py
-# ============================================================
-# فقط بخش Import - نسخه اصلاح شده
+# سیستم آموزش خودکار مدل XGBoost - نسخه ۳.۱
+# با قابلیت ایجاد خودکار جدول‌ها
 # ============================================================
 
 import os
@@ -21,7 +16,6 @@ from datetime import datetime, timedelta
 from threading import Thread, Event
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-# ✅ اصلاح Import - استفاده از مسیر جدید
 from infrastructure.api.coinstats_client import coinstats_client
 from models.manager.model_manager import ModelManager
 from infrastructure.database import get_primary
@@ -40,10 +34,9 @@ class AutoTrainer:
     - آموزش افزایشی (Incremental Learning)
     - ترکیب با وزن‌دهی (Ensemble)
     - ارزیابی خودکار
-    - قابلیت تنظیم تعداد نقاط تاریخی
-    - یکپارچه با Metrics Scheduler
+    - ✅ ایجاد خودکار جدول‌ها در صورت عدم وجود
     
-    ✅ نسخه ۳.۰: حذف print، استفاده از logger، Type Hints کامل
+    ✅ نسخه ۳.۱: اضافه شدن متد _ensure_tables_exist()
     """
     
     def __init__(self, api: Any, model_manager: ModelManager) -> None:
@@ -120,7 +113,7 @@ class AutoTrainer:
         else:
             self._add_log(f"📦 مدل یافت نشد (حالت DEMO)")
         
-        self._add_log(f"✅ AutoTrainer ۳.۰ راه‌اندازی شد")
+        self._add_log(f"✅ AutoTrainer ۳.۱ راه‌اندازی شد")
         self._add_log(f"📊 تعداد نقاط: ترس و طمع={self.historical_points_config['fear_greed']}, "
                       f"سلطه={self.historical_points_config['btc_dominance']}, "
                       f"بازار={self.historical_points_config['global_market']}")
@@ -212,6 +205,105 @@ class AutoTrainer:
                 "can_train": False,
                 "message": f"خطا: {str(e)}"
             }
+    
+    # ============================================================
+    # ✅ متد جدید: اطمینان از وجود جدول‌ها
+    # ============================================================
+    
+    def _ensure_tables_exist(self) -> bool:
+        """
+        اطمینان از وجود جدول‌های مورد نیاز در دیتابیس
+        اگر وجود نداشتند، آنها را ایجاد می‌کند
+        """
+        try:
+            if not self.db or not self.db.is_connected():
+                logger.warning("⚠️ Database not connected, cannot ensure tables")
+                return False
+            
+            # بررسی وجود جدول models
+            result = self.db.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_name = 'models'
+                )
+            """)
+            
+            if result and result[0].get('exists', False):
+                logger.info("✅ جدول models وجود دارد")
+                return True
+            
+            # ایجاد جدول models
+            logger.info("📋 ایجاد جدول models...")
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS models (
+                    id SERIAL PRIMARY KEY,
+                    version VARCHAR(50) UNIQUE NOT NULL,
+                    model_data BYTEA NOT NULL,
+                    accuracy FLOAT NOT NULL,
+                    training_samples INTEGER DEFAULT 0,
+                    period VARCHAR(10) DEFAULT '1m',
+                    coins TEXT[] DEFAULT '{"bitcoin","ethereum"}',
+                    features TEXT[] DEFAULT ARRAY[
+                        'return_1','return_3','return_5','return_10',
+                        'sma_5','sma_10','sma_20',
+                        'volatility','fear_greed',
+                        'trend_5','trend_10','trend_20','r2'
+                    ],
+                    is_active BOOLEAN DEFAULT FALSE,
+                    is_ensemble BOOLEAN DEFAULT FALSE,
+                    training_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ جدول models ایجاد شد")
+            
+            # ایجاد جدول fear_greed_history
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS fear_greed_history (
+                    id SERIAL PRIMARY KEY,
+                    value INTEGER NOT NULL,
+                    classification VARCHAR(50),
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ جدول fear_greed_history ایجاد شد")
+            
+            # ایجاد جدول btc_dominance_history
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS btc_dominance_history (
+                    id SERIAL PRIMARY KEY,
+                    value DECIMAL(5,2) NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ جدول btc_dominance_history ایجاد شد")
+            
+            # ایجاد جدول model_training_history
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS model_training_history (
+                    id SERIAL PRIMARY KEY,
+                    model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+                    action VARCHAR(50) NOT NULL,
+                    old_accuracy FLOAT,
+                    new_accuracy FLOAT,
+                    samples_used INTEGER,
+                    training_time_seconds FLOAT,
+                    reason TEXT,
+                    status VARCHAR(20) DEFAULT 'success',
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            logger.info("✅ جدول model_training_history ایجاد شد")
+            
+            self._add_log("✅ همه جدول‌های مورد نیاز ایجاد شدند")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error ensuring tables: {e}")
+            self._add_log(f"❌ خطا در ایجاد جدول‌ها: {e}")
+            return False
     
     # ============================================================
     # دریافت داده‌های تاریخی
@@ -374,7 +466,8 @@ class AutoTrainer:
             current_price: float = prices_arr[i]
             future_price: float = prices_arr[i+3]
             
-            label: int = 1 if future_price > current_price else 0           
+            # ✅ اصلاح شده - جدا کردن به دو خط
+            label: int = 1 if future_price > current_price else 0
             features: List[float] = []
             
             # 1. بازده‌ها
@@ -482,13 +575,20 @@ class AutoTrainer:
             return 0.0
     
     # ============================================================
-    # آموزش مدل
+    # آموزش مدل (با ایجاد خودکار جدول‌ها)
     # ============================================================
     
     def train_model(self, period: str = "1m") -> Dict[str, Any]:
         """آموزش مدل"""
         if self.is_training:
             return {"success": False, "message": "آموزش در حال انجام است"}
+        
+        # ✅ قبل از هر چیزی، مطمئن شوید جدول‌ها وجود دارند
+        if not self._ensure_tables_exist():
+            return {
+                "success": False,
+                "message": "Failed to ensure database tables exist"
+            }
         
         status: Dict[str, Any] = self.check_api_status()
         if not status["can_train"]:
@@ -658,6 +758,13 @@ class AutoTrainer:
         
         if self.is_training:
             return {"success": False, "message": "آموزش در حال انجام است"}
+        
+        # ✅ قبل از هر چیزی، مطمئن شوید جدول‌ها وجود دارند
+        if not self._ensure_tables_exist():
+            return {
+                "success": False,
+                "message": "Failed to ensure database tables exist"
+            }
         
         self.is_training = True
         self._add_log(f"📚 شروع آموزش افزایشی با بازه: {period}")
