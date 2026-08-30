@@ -33,8 +33,8 @@ class MetricsScheduler:
         
         # فواصل
         self.light_interval = 3
-        self.medium_interval = 10
-        self.heavy_interval = 30
+        self.medium_interval = 60
+        self.heavy_interval = 300
         
         logger.info("✅ MetricsScheduler v8.2 initialized")
     
