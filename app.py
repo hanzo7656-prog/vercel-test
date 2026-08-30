@@ -127,8 +127,8 @@ def start_metrics_scheduler() -> None:
 def start_alert_system() -> None:
     """راه‌اندازی سیستم هشدار و خودترمیمی"""
     try:
-        from alerter import alerter
-        from self_healer import SelfHealer
+        from infrastructure.external.alerter import alerter
+        from infrastructure.services.self_healer import SelfHealer
         
         model_manager = container.get('model_manager')
         trainer = container.get('trainer')
