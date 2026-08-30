@@ -1,6 +1,6 @@
 # application/services/self_healer.py
 # ============================================================
-# سیستم خودترمیمی - نسخه ۴.۰ (انتقال به Application)
+# سیستم خودترمیمی - نسخه ۴.۰ (رفع Import)
 # ============================================================
 
 import os
@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, List, Union
 from domain.interfaces.api_client import APIClient
 from models.manager.model_manager import ModelManager
 from models.trainer.auto_trainer import AutoTrainer
+# ✅ اصلاح Import
 from infrastructure.database import get_cache
 
 logger = logging.getLogger(__name__)
