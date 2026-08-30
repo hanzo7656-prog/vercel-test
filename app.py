@@ -1,6 +1,6 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۹.۱ (رفع Circular Import)
+# فقط بخش Import - نسخه اصلاح شده
 # ============================================================
 
 import os
@@ -14,7 +14,12 @@ from config.version import VERSION, APP_NAME
 from container import container
 from providers import init_container
 
+# ✅ Import‌های اصلاح شده
+from infrastructure.external.alerter import alerter
+from application.services.self_healer import SelfHealer
+
 logger = logging.getLogger(__name__)
+
 
 
 # ============================================================
