@@ -30,14 +30,18 @@ class MonitoringService:
         
         logger.info("✅ MonitoringService initialized")
     
-    def get_health(self) -> Dict[str, Any]:
-        """
-        دریافت سلامت کامل سیستم
-        
-        خروجی:
-            دیکشنری وضعیت سلامت
-        """
-        return self.health_use_case.execute()
+    # application/services/monitoring_service.py
+    def get_health(self):
+        try:
+            # بررسی دیتابیس‌ها با timeout
+            from infrastructure.database import health_check
+            health = health_check()
+            return {
+                'status': 'ok' if all(info.get('connected') for info in health.values()) else 'degraded',
+                'components': health
+            }
+        except Exception as e:
+            return {'status': 'error', 'error': str(e)}
     
     def get_metrics(self) -> Dict[str, Any]:
         """
