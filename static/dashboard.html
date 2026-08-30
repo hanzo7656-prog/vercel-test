@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        /* ===== RESET & BASE ===== */
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #080c18;
@@ -17,8 +19,27 @@
             min-height: 100vh;
         }
 
+        /* ===== NAV ===== */
+        #navContainer {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* ===== MAIN ===== */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+        }
+
         /* ===== STATS GRID ===== */
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
         .stat-card {
             background: rgba(13, 22, 40, 0.5);
             backdrop-filter: blur(12px);
@@ -47,15 +68,25 @@
         .stat-card .stat-value.cyan { color: #00d4ff; }
         .stat-card .stat-value.green { color: #00ff88; }
         .stat-card .stat-value.orange { color: #ff8800; }
-        .stat-card .stat-value.pink { color: #ff6b9d; }
         .stat-card .stat-value.purple { color: #a855f7; }
         .stat-card .stat-label { font-size: 0.6rem; color: #7a8fa8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
         .stat-card .stat-sub { font-size: 0.55rem; color: #4a5a6a; margin-top: 4px; }
         .stat-card .stat-sub .highlight { color: #00ff88; }
         .stat-card .stat-sub .highlight.down { color: #ff4444; }
+        .stat-card .stat-sub .loading-text { color: #ffaa00; animation: pulse-text 1.5s ease-in-out infinite; }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
 
         /* ===== MIDDLE GRID ===== */
-        .middle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+        .middle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
         .info-card {
             background: rgba(13, 22, 40, 0.5);
             backdrop-filter: blur(12px);
@@ -76,7 +107,12 @@
         .info-item .value.red { color: #ff4444; }
 
         /* ===== CHARTS ===== */
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
         .chart-card {
             background: rgba(13, 22, 40, 0.5);
             backdrop-filter: blur(12px);
@@ -85,14 +121,29 @@
             padding: 16px 18px;
         }
         .chart-card:hover { border-color: rgba(0, 212, 255, 0.1); }
-        .chart-card .card-title { font-size: 0.75rem; font-weight: 600; color: #7a8fa8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .chart-card .card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #7a8fa8;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .chart-card .card-title i { color: #00d4ff; }
         .chart-card .card-title .live-badge {
-            font-size: 0.5rem; padding: 2px 10px; border-radius: 20px;
-            background: rgba(0, 255, 136, 0.1); color: #00ff88;
-            border: 1px solid rgba(0, 255, 136, 0.15); animation: pulse-badge 2s infinite;
+            font-size: 0.5rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.15);
+            animation: pulse-badge 2s infinite;
         }
-        @keyframes pulse-badge { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
         .chart-card .chart-wrapper { height: 180px; position: relative; }
 
         /* ===== NEWS ===== */
@@ -115,8 +166,11 @@
         .news-section .section-header .title { font-size: 0.75rem; font-weight: 600; color: #7a8fa8; display: flex; align-items: center; gap: 8px; }
         .news-section .section-header .title i { color: #ff6b9d; }
         .news-section .section-header .badge-count {
-            font-size: 0.55rem; padding: 2px 12px; border-radius: 20px;
-            background: rgba(0, 212, 255, 0.06); color: #00d4ff;
+            font-size: 0.55rem;
+            padding: 2px 12px;
+            border-radius: 20px;
+            background: rgba(0, 212, 255, 0.06);
+            color: #00d4ff;
             border: 1px solid rgba(0, 212, 255, 0.08);
         }
         .news-item {
@@ -157,13 +211,22 @@
         .alerts-section .section-header .title { font-size: 0.75rem; font-weight: 600; color: #7a8fa8; display: flex; align-items: center; gap: 8px; }
         .alerts-section .section-header .title i { color: #ff6b9d; }
         .alerts-section .section-header .badge-count {
-            font-size: 0.55rem; padding: 2px 12px; border-radius: 20px;
-            background: rgba(255, 107, 157, 0.08); color: #ff6b9d;
+            font-size: 0.55rem;
+            padding: 2px 12px;
+            border-radius: 20px;
+            background: rgba(255, 107, 157, 0.08);
+            color: #ff6b9d;
             border: 1px solid rgba(255, 107, 157, 0.1);
         }
         .alert-item {
-            display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 8px;
-            margin-bottom: 4px; background: rgba(0, 0, 0, 0.15); border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            background: rgba(0, 0, 0, 0.15);
+            border-left: 3px solid transparent;
             transition: all 0.2s ease;
         }
         .alert-item:hover { background: rgba(0, 0, 0, 0.25); }
@@ -180,31 +243,68 @@
         .no-alerts { text-align: center; color: #4a5a6a; font-size: 0.75rem; padding: 12px 0; }
 
         /* ===== QUICK ACTIONS ===== */
-        .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-        .quick-actions .btn {
-            display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 8px;
-            border: 1px solid rgba(0, 212, 255, 0.08); background: rgba(0, 212, 255, 0.04);
-            color: #7a8fa8; font-size: 0.7rem; cursor: pointer; transition: all 0.3s ease;
-            text-decoration: none; font-family: inherit;
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
         }
-        .quick-actions .btn:hover { border-color: #00d4ff; color: #e8eef7; background: rgba(0, 212, 255, 0.06); transform: translateY(-2px); }
+        .quick-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.08);
+            background: rgba(0, 212, 255, 0.04);
+            color: #7a8fa8;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-family: inherit;
+        }
+        .quick-actions .btn:hover {
+            border-color: #00d4ff;
+            color: #e8eef7;
+            background: rgba(0, 212, 255, 0.06);
+            transform: translateY(-2px);
+        }
         .quick-actions .btn.primary {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(168, 85, 247, 0.15));
-            border-color: rgba(0, 212, 255, 0.15); color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
         }
         .quick-actions .btn.primary:hover { box-shadow: 0 8px 30px rgba(0, 212, 255, 0.05); }
 
         /* ===== TOAST ===== */
         .toast-container {
-            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-            z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center;
-            pointer-events: none; width: 90%; max-width: 400px;
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+            pointer-events: none;
+            width: 90%;
+            max-width: 400px;
         }
         .toast {
-            padding: 10px 20px; background: rgba(8, 12, 24, 0.95); backdrop-filter: blur(20px);
-            border: 2px solid #00d4ff; border-radius: 10px; color: #e8eef7; font-size: 0.85rem;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5); pointer-events: all; animation: toastIn 0.35s ease;
-            text-align: center; width: 100%;
+            padding: 10px 20px;
+            background: rgba(8, 12, 24, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            color: #e8eef7;
+            font-size: 0.85rem;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+            pointer-events: all;
+            animation: toastIn 0.35s ease;
+            text-align: center;
+            width: 100%;
         }
         .toast.success { border-color: #00ff88; }
         .toast.error { border-color: #ff4444; }
@@ -212,6 +312,37 @@
         @keyframes toastIn {
             from { opacity: 0; transform: translateY(20px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ===== CHIP ===== */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 500;
+        }
+        .chip.online {
+            background: rgba(0, 255, 136, 0.08);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.12);
+        }
+        .chip.offline {
+            background: rgba(255, 68, 68, 0.08);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.12);
+        }
+        .chip.cyan {
+            background: rgba(0, 212, 255, 0.06);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.08);
+        }
+        .chip.warning {
+            background: rgba(255, 136, 0, 0.08);
+            color: #ff8800;
+            border: 1px solid rgba(255, 136, 0, 0.12);
         }
 
         /* ===== RESPONSIVE ===== */
@@ -249,25 +380,25 @@
                 <span class="stat-icon">₿</span>
                 <div class="stat-value cyan" id="btcPrice">—</div>
                 <div class="stat-label">بیت‌کوین</div>
-                <div class="stat-sub">تغییر: <span class="highlight" id="btcChange">—</span></div>
+                <div class="stat-sub">تغییر: <span class="highlight" id="btcChange">⏳</span></div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">⟠</span>
                 <div class="stat-value purple" id="ethPrice">—</div>
                 <div class="stat-label">اتریوم</div>
-                <div class="stat-sub">تغییر: <span class="highlight" id="ethChange">—</span></div>
+                <div class="stat-sub">تغییر: <span class="highlight" id="ethChange">⏳</span></div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">😨</span>
                 <div class="stat-value orange" id="fearGreedValue">—</div>
                 <div class="stat-label">شاخص ترس و طمع</div>
-                <div class="stat-sub" id="fearGreedLabel">در حال بارگذاری...</div>
+                <div class="stat-sub" id="fearGreedLabel">⏳ در حال بارگذاری...</div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">💰</span>
                 <div class="stat-value green" id="apiCredits">—</div>
                 <div class="stat-label">اعتبار API</div>
-                <div class="stat-sub" id="apiStatusText">وضعیت: در حال بارگذاری...</div>
+                <div class="stat-sub" id="apiStatusText">⏳ در حال بارگذاری...</div>
             </div>
         </div>
 
@@ -280,8 +411,6 @@
                     <div class="info-item"><span class="label">نسخه</span><span class="value" id="modelVersion">—</span></div>
                     <div class="info-item"><span class="label">دقت</span><span class="value" id="modelAccuracy">—</span></div>
                     <div class="info-item"><span class="label">تعداد آموزش</span><span class="value" id="modelTrainings">—</span></div>
-                    <div class="info-item"><span class="label">آخرین آموزش</span><span class="value" id="modelLastTrain">—</span></div>
-                    <div class="info-item"><span class="label">نمونه‌ها</span><span class="value" id="modelSamples">—</span></div>
                 </div>
             </div>
             <div class="info-card">
@@ -369,88 +498,9 @@
     <!-- ============================================================
     SCRIPTS
     ============================================================ -->
-    <script src="/static/js/script.js"></script>
     <script>
         // ============================================================
-        // بارگذاری منو (مثل نسخه قبلی)
-        // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            
-            fetch('/static/nav.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    // اجرای اسکریپت‌های داخل nav.html
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        newScript.textContent = oldScript.textContent;
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
-                    // اگر تابع initMenu وجود دارد، اجرا کن
-                    if (typeof initMenu === 'function') {
-                        initMenu();
-                    }
-                    if (typeof fetchAndStartUptime === 'function') {
-                        fetchAndStartUptime();
-                    }
-                })
-                .catch(err => console.error('❌ Nav error:', err));
-        }
-
-        // ============================================================
-        // UPTIME
-        // ============================================================
-        let uptimeStartTime = null;
-        function startUptimeFromServer() {
-            fetch('/stats')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.uptime) {
-                        const parts = data.uptime.match(/(\d+)\s*(h|m|s)/g);
-                        let totalSeconds = 0;
-                        if (parts) {
-                            parts.forEach(part => {
-                                const num = parseInt(part);
-                                const unit = part.slice(-1);
-                                if (unit === 'h') totalSeconds += num * 3600;
-                                else if (unit === 'm') totalSeconds += num * 60;
-                                else if (unit === 's') totalSeconds += num;
-                            });
-                        }
-                        uptimeStartTime = Date.now() - (totalSeconds * 1000);
-                        updateUptimeDisplay();
-                        setInterval(updateUptimeDisplay, 1000);
-                    }
-                })
-                .catch(() => {});
-        }
-        function updateUptimeDisplay() {
-            const el = document.getElementById('uptimeValue');
-            if (!el || !uptimeStartTime) return;
-            const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
-            el.textContent = formatDuration(elapsed);
-        }
-        function formatDuration(seconds) {
-            if (seconds < 60) return seconds + 's';
-            const days = Math.floor(seconds / 86400);
-            seconds -= days * 86400;
-            const hours = Math.floor(seconds / 3600);
-            seconds -= hours * 3600;
-            const minutes = Math.floor(seconds / 60);
-            seconds -= minutes * 60;
-            let parts = [];
-            if (days > 0) parts.push(days + 'd');
-            if (hours > 0 || days > 0) parts.push(hours + 'h');
-            if (minutes > 0 || hours > 0 || days > 0) parts.push(minutes + 'm');
-            parts.push(seconds + 's');
-            return parts.join(' ');
-        }
-
-        // ============================================================
-        // CHARTS
+        // VARIABLES
         // ============================================================
         let cpuRamChartInstance = null;
         let apiRequestsChartInstance = null;
@@ -463,6 +513,31 @@
         const apiData = [];
         const timeLabels = [];
 
+        // ============================================================
+        // LOAD NAV (منو از nav.html)
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+
+            fetch('/static/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = oldScript.textContent;
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                    if (typeof initMenu === 'function') initMenu();
+                })
+                .catch(err => console.error('❌ Nav error:', err));
+        }
+
+        // ============================================================
+        // CHARTS
+        // ============================================================
         function initCharts() {
             const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
             if (ctx1) {
@@ -523,7 +598,8 @@
 
         function getChartOptions(label, isBar = false) {
             return {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'top',
@@ -558,43 +634,43 @@
         // ============================================================
         function updateLiveCharts() {
             const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-            
+
             fetch('/api/metrics')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data) {
                         const metrics = data.data.metrics || {};
                         const stats = data.data.stats || {};
-                        
+
                         const cpu = metrics.cpu?.value || 0;
                         const ram = metrics.ram?.value || 0;
                         const apiCount = stats.collections || 0;
-                        
+
                         cpuData.push(cpu);
                         if (cpuData.length > MAX_DATA_POINTS) cpuData.shift();
-                        
+
                         ramData.push(ram);
                         if (ramData.length > MAX_DATA_POINTS) ramData.shift();
-                        
+
                         apiData.push(apiCount);
                         if (apiData.length > MAX_DATA_POINTS) apiData.shift();
-                        
+
                         timeLabels.push(now);
                         if (timeLabels.length > MAX_DATA_POINTS) timeLabels.shift();
-                        
+
                         if (cpuRamChartInstance) {
                             cpuRamChartInstance.data.labels = timeLabels;
                             cpuRamChartInstance.data.datasets[0].data = cpuData;
                             cpuRamChartInstance.data.datasets[1].data = ramData;
                             cpuRamChartInstance.update('none');
                         }
-                        
+
                         if (apiRequestsChartInstance) {
                             apiRequestsChartInstance.data.labels = timeLabels;
                             apiRequestsChartInstance.data.datasets[0].data = apiData;
                             apiRequestsChartInstance.update('none');
                         }
-                        
+
                         updateMetricsUI(data);
                     }
                 })
@@ -609,47 +685,64 @@
                 console.warn('⚠️ Invalid metrics data:', data);
                 return;
             }
-            
+
             const metrics = data.data.metrics || {};
             const stats = data.data.stats || {};
 
-            // قیمت‌ها
+            // ===== 1. Bitcoin Price =====
             const btcPrice = metrics.btc_price?.value || 0;
-            const ethPrice = metrics.eth_price?.value || 0;
             const btcChange = metrics.btc_price?.change_24h || 0;
-            const ethChange = metrics.eth_price?.change_24h || 0;
-            
-            document.getElementById('btcPrice').textContent = btcPrice ? '$' + btcPrice.toLocaleString() : '⏳';
-            document.getElementById('ethPrice').textContent = ethPrice ? '$' + ethPrice.toLocaleString() : '⏳';
-            
-            const btcEl = document.getElementById('btcChange');
+            const btcEl = document.getElementById('btcPrice');
             if (btcEl) {
-                btcEl.textContent = (btcChange > 0 ? '+' : '') + btcChange.toFixed(2) + '%';
-                btcEl.style.color = btcChange >= 0 ? '#00ff88' : '#ff4444';
+                btcEl.textContent = btcPrice ? '$' + btcPrice.toLocaleString() : '⏳';
             }
-            
-            const ethEl = document.getElementById('ethChange');
+            const btcChangeEl = document.getElementById('btcChange');
+            if (btcChangeEl) {
+                if (btcChange !== undefined) {
+                    btcChangeEl.textContent = (btcChange > 0 ? '+' : '') + btcChange.toFixed(2) + '%';
+                    btcChangeEl.style.color = btcChange >= 0 ? '#00ff88' : '#ff4444';
+                } else {
+                    btcChangeEl.textContent = '⏳';
+                    btcChangeEl.style.color = '#ffaa00';
+                }
+            }
+
+            // ===== 2. Ethereum Price =====
+            const ethPrice = metrics.eth_price?.value || 0;
+            const ethChange = metrics.eth_price?.change_24h || 0;
+            const ethEl = document.getElementById('ethPrice');
             if (ethEl) {
-                ethEl.textContent = (ethChange > 0 ? '+' : '') + ethChange.toFixed(2) + '%';
-                ethEl.style.color = ethChange >= 0 ? '#00ff88' : '#ff4444';
+                ethEl.textContent = ethPrice ? '$' + ethPrice.toLocaleString() : '⏳';
+            }
+            const ethChangeEl = document.getElementById('ethChange');
+            if (ethChangeEl) {
+                if (ethChange !== undefined) {
+                    ethChangeEl.textContent = (ethChange > 0 ? '+' : '') + ethChange.toFixed(2) + '%';
+                    ethChangeEl.style.color = ethChange >= 0 ? '#00ff88' : '#ff4444';
+                } else {
+                    ethChangeEl.textContent = '⏳';
+                    ethChangeEl.style.color = '#ffaa00';
+                }
             }
 
-            // ترس و طمع
+            // ===== 3. Fear & Greed =====
             const fearGreed = metrics.fear_greed?.value || 50;
+            const fearLabel = metrics.fear_greed?.classification || 'Neutral';
             document.getElementById('fearGreedValue').textContent = fearGreed;
-            document.getElementById('fearGreedLabel').textContent = metrics.fear_greed?.classification || 'Neutral';
+            document.getElementById('fearGreedLabel').textContent = fearLabel;
 
-            // سلطه بیت‌کوین
-            document.getElementById('btcDominance').textContent = (metrics.btc_dominance?.value || 0) + '%';
+            // ===== 4. BTC Dominance =====
+            const btcDominance = metrics.btc_dominance?.value || 0;
+            document.getElementById('btcDominance').textContent = btcDominance ? btcDominance + '%' : '⏳';
 
-            // اعتبار
-            document.getElementById('apiCredits').textContent = (metrics.api_credits?.value || 0).toLocaleString();
+            // ===== 5. API Credits =====
+            const credits = metrics.api_credits?.value || 0;
+            document.getElementById('apiCredits').textContent = credits ? credits.toLocaleString() : '⏳';
 
-            // وضعیت API
+            // ===== 6. API Status =====
             const api = metrics.api_status?.value || 'unknown';
             const apiEl = document.getElementById('apiStatus');
             const apiTextEl = document.getElementById('apiStatusText');
-            
             if (apiEl) {
                 if (api === 'ok') {
                     apiEl.textContent = '✅ سالم';
@@ -666,7 +759,7 @@
                 }
             }
 
-            // وضعیت مدل
+            // ===== 7. Model Status =====
             const modelStatus = metrics.model_status?.value || {};
             const loaded = modelStatus.loaded || false;
             const version = modelStatus.version || '—';
@@ -677,13 +770,11 @@
                 loadedEl.textContent = loaded ? '✅ فعال' : '📦 دمو';
                 loadedEl.className = 'value ' + (loaded ? 'green' : 'orange');
             }
-
             document.getElementById('modelVersion').textContent = version;
             document.getElementById('modelAccuracy').textContent = accuracy !== null ? (accuracy * 100).toFixed(1) + '%' : '—';
             document.getElementById('modelTrainings').textContent = stats.collections || '—';
-            document.getElementById('modelSamples').textContent = metrics.process_count?.value || '—';
 
-            // دیتابیس‌ها
+            // ===== 8. Databases =====
             const dbStatus = metrics.databases?.value || {};
             const dbStatusEl = document.getElementById('dbStatus');
             if (dbStatusEl) {
@@ -694,9 +785,13 @@
                 `;
             }
 
-            // اخبار
+            // ===== 9. News =====
             const news = metrics.news?.value || [];
             updateNewsUI(news);
+
+            // ===== 10. Uptime =====
+            const uptime = metrics.uptime?.value || '0s';
+            document.getElementById('uptimeValue').textContent = uptime;
         }
 
         // ============================================================
@@ -705,7 +800,7 @@
         function updateNewsUI(news) {
             const container = document.getElementById('newsContainer');
             const countEl = document.getElementById('newsCount');
-            
+
             if (news && news.length > 0) {
                 countEl.textContent = news.length + ' خبر';
                 let html = '';
@@ -769,7 +864,7 @@
         function updateAlertsUI(alerts) {
             const container = document.getElementById('alertsContainer');
             const countEl = document.getElementById('alertCount');
-            
+
             if (alerts && alerts.length > 0) {
                 countEl.textContent = alerts.length + ' هشدار';
                 let html = '';
@@ -800,32 +895,33 @@
         function resolveAlert(alertId) {
             fetch(`/api/alerts/${alertId}/resolve`, { method: 'POST' })
                 .then(res => res.json())
-                .then(data => { if (data.success) { refreshDashboard(); showToast('✅ هشدار بسته شد', 'success'); } })
+                .then(data => {
+                    if (data.success) {
+                        refreshDashboard();
+                        showToast('✅ هشدار بسته شد', 'success');
+                    }
+                })
                 .catch(() => showToast('❌ خطا', 'error'));
         }
 
         // ============================================================
         // REFRESH
         // ============================================================
-        let isUpdating = false;
-
         function refreshDashboard() {
-            if (isUpdating) return;
-            isUpdating = true;
-            
+            showToast('🔄 بروزرسانی...', 'info');
             fetch('/api/metrics')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data) {
                         updateMetricsUI(data);
                         updateLiveCharts();
+                        showToast('✅ بروزرسانی شد', 'success');
+                    } else {
+                        showToast('❌ خطا در دریافت داده', 'error');
                     }
-                    isUpdating = false;
-                    showToast('🔄 بروزرسانی شد', 'success');
                 })
-                .catch(() => { 
-                    isUpdating = false; 
-                    showToast('❌ خطا در بروزرسانی', 'error');
+                .catch(() => {
+                    showToast('❌ خطا در ارتباط با سرور', 'error');
                 });
         }
 
@@ -849,26 +945,71 @@
         }
 
         // ============================================================
+        // LOAD TRAINING HISTORY
+        // ============================================================
+        function loadTrainingHistory() {
+            fetch('/model/history')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateTrainingCharts(data.data || []);
+                    }
+                })
+                .catch(err => console.error('❌ Training history error:', err));
+        }
+
+        // ============================================================
+        // LOAD ALERTS
+        // ============================================================
+        function loadAlerts() {
+            fetch('/api/alerts?limit=5')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateAlertsUI(data.data || []);
+                    }
+                })
+                .catch(err => console.error('❌ Alerts error:', err));
+        }
+
+        // ============================================================
         // INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
+            // 1. بارگذاری منو
             loadNav();
+
+            // 2. راه‌اندازی نمودارها
             initCharts();
-            
-            fetch('/api/metrics')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data) {
-                        updateMetricsUI(data);
-                    }
-                })
-                .catch(err => console.error('❌ Initial load error:', err));
-            
-            startUptimeFromServer();
-            setInterval(updateLiveCharts, 3000);
-            setInterval(refreshDashboard, 60000);
-            
-            console.log('🚀 Dashboard v3.0 loaded');
+
+            // 3. بارگذاری اولیه داده‌ها
+            Promise.all([
+                fetch('/api/metrics').then(r => r.json()),
+                fetch('/model/history').then(r => r.json()),
+                fetch('/api/alerts?limit=5').then(r => r.json())
+            ])
+            .then(([metricsData, historyData, alertsData]) => {
+                if (metricsData.success) {
+                    updateMetricsUI(metricsData);
+                    updateLiveCharts();
+                }
+                if (historyData.success) {
+                    updateTrainingCharts(historyData.data || []);
+                }
+                if (alertsData.success) {
+                    updateAlertsUI(alertsData.data || []);
+                }
+                console.log('🚀 Dashboard loaded successfully');
+            })
+            .catch(err => {
+                console.error('❌ Initial load error:', err);
+            });
+
+            // 4. بروزرسانی دوره‌ای
+            setInterval(updateLiveCharts, 3000);        // هر ۳ ثانیه
+            setInterval(refreshDashboard, 60000);       // هر ۱ دقیقه
+
+            console.log('🚀 Dashboard v4.0 loaded');
         });
     </script>
 
