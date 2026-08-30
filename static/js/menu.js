@@ -1,6 +1,6 @@
 // static/js/menu.js
 // ============================================================
-// مدیریت منوی اصلی - نسخه ۳.۰
+// مدیریت منوی اصلی - نسخه ۲.۰
 // ============================================================
 
 (function() {
@@ -26,70 +26,40 @@
             const isOpen = flyoutMenu.classList.toggle('open');
             flyoutOverlay.classList.toggle('open');
             menuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-            menuToggle.classList.toggle('open', isOpen);
         });
 
         // بستن با کلیک روی overlay
         flyoutOverlay.addEventListener('click', function() {
-            closeMenu();
+            flyoutMenu.classList.remove('open');
+            flyoutOverlay.classList.remove('open');
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
         });
 
         // بستن با کلیک روی لینک‌ها
-        flyoutMenu.querySelectorAll('.menu-item').forEach(function(link) {
+        flyoutMenu.querySelectorAll('a').forEach(function(link) {
             link.addEventListener('click', function() {
-                closeMenu();
-                flyoutMenu.querySelectorAll('.menu-item').forEach(function(el) {
-                    el.classList.remove('active');
-                });
-                this.classList.add('active');
+                flyoutMenu.classList.remove('open');
+                flyoutOverlay.classList.remove('open');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
             });
         });
 
         // بستن با کلید ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && flyoutMenu.classList.contains('open')) {
-                closeMenu();
+                flyoutMenu.classList.remove('open');
+                flyoutOverlay.classList.remove('open');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
             }
         });
 
-        // بستن با کلیک خارج
-        document.addEventListener('click', function(e) {
-            if (flyoutMenu.classList.contains('open')) {
-                if (!flyoutMenu.contains(e.target) && !menuToggle.contains(e.target)) {
-                    closeMenu();
-                }
-            }
-        });
-
-        // علامت‌گذاری صفحه فعلی
-        const currentPath = window.location.pathname;
-        flyoutMenu.querySelectorAll('.menu-item').forEach(function(item) {
-            const href = item.getAttribute('href');
-            if (href && currentPath.startsWith(href) && href !== '/') {
-                item.classList.add('active');
-            } else if (href === '/' && currentPath === '/') {
-                item.classList.add('active');
-            }
-        });
-    }
-
-    function closeMenu() {
-        const flyoutMenu = document.getElementById('flyoutMenu');
-        const flyoutOverlay = document.getElementById('flyoutOverlay');
-        const menuToggle = document.getElementById('menuToggle');
-        
-        if (flyoutMenu) flyoutMenu.classList.remove('open');
-        if (flyoutOverlay) flyoutOverlay.classList.remove('open');
-        if (menuToggle) {
-            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
-            menuToggle.classList.remove('open');
-        }
+        console.log('✅ Menu initialized');
     }
 
     // ============================================================
     // ۲. آپتایم
     // ============================================================
-    
+
     let uptimeStartTime = null;
     let uptimeInterval = null;
 
@@ -107,6 +77,7 @@
     function startUptime(uptimeStr) {
         if (!uptimeStr) return;
         
+        // تبدیل "1h 23m" یا "1h23m" یا "1h 23m 45s" به ثانیه
         let totalSeconds = 0;
         const parts = uptimeStr.match(/(\d+)\s*(h|m|s)/g);
         if (parts) {
@@ -118,6 +89,7 @@
                 else if (unit === 's') totalSeconds += num;
             });
         } else {
+            // fallback
             const parts2 = uptimeStr.split(':').map(Number);
             if (parts2.length === 3) totalSeconds = parts2[0] * 3600 + parts2[1] * 60 + parts2[2];
             else if (parts2.length === 2) totalSeconds = parts2[0] * 60 + parts2[1];
@@ -132,7 +104,7 @@
     }
 
     function updateUptimeDisplay() {
-        const el = document.getElementById('uptimeText');
+        const el = document.getElementById('uptimeDisplay');
         if (!el || !uptimeStartTime) return;
         
         const elapsed = Math.floor((Date.now() - uptimeStartTime) / 1000);
@@ -161,7 +133,7 @@
     // ============================================================
     // ۳. وضعیت آنلاین/آفلاین
     // ============================================================
-    
+
     function updateStatusDot() {
         fetch('/api/metrics', { credentials: 'include' })
             .then(function(res) { return res.json(); })
@@ -173,15 +145,14 @@
                     const text = document.getElementById('statusText');
                     
                     if (dot && text) {
-                        dot.className = 'status-dot';
                         if (api === 'ok') {
-                            dot.classList.remove('warning', 'error');
+                            dot.style.background = '#00ff88';
                             text.textContent = 'پایدار';
                         } else if (api === 'degraded') {
-                            dot.classList.add('warning');
+                            dot.style.background = '#ff8800';
                             text.textContent = 'ضعیف';
                         } else {
-                            dot.classList.add('error');
+                            dot.style.background = '#ff4444';
                             text.textContent = 'قطع';
                         }
                     }
@@ -193,13 +164,13 @@
     // ============================================================
     // ۴. نمایش کاربر
     // ============================================================
-    
+
     function loadUserDisplay() {
         fetch('/api/user', { credentials: 'include' })
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
-                    const display = document.getElementById('userName');
+                    const display = document.getElementById('userDisplay');
                     if (display) {
                         const roleMap = { 
                             'admin': '👑 ادمین', 
@@ -214,37 +185,25 @@
     }
 
     // ============================================================
-    // ۵. خروج
+    // ۵. اجرا
     // ============================================================
-    
-    window.logoutUser = function() {
-        if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-        fetch('/logout', { method: 'POST', credentials: 'include' })
-            .then(function() { window.location.href = '/login'; })
-            .catch(function() { window.location.href = '/login'; });
-    };
 
-    // ============================================================
-    // ۶. اجرا
-    // ============================================================
-    
+    // اجرا بعد از لود کامل DOM
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             initMenu();
             loadUserDisplay();
             updateStatusDot();
             setInterval(updateStatusDot, 10000);
-            fetchAndStartUptime();
         });
     } else {
         initMenu();
         loadUserDisplay();
         updateStatusDot();
         setInterval(updateStatusDot, 10000);
-        fetchAndStartUptime();
     }
 
-    // صادر کردن توابع
+    // صادر کردن توابع برای استفاده در صفحات دیگر
     window.initMenu = initMenu;
     window.fetchAndStartUptime = fetchAndStartUptime;
     window.updateStatusDot = updateStatusDot;
