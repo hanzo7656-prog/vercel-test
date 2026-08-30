@@ -77,6 +77,30 @@ def health_simple():
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
 
+
+# ============================================================
+# ۳. دیتابیس
+# ============================================================
+
+@api_bp.route('/health/database', methods=['GET'])
+def health_database():
+    """بررسی سلامت همه دیتابیس‌ها"""
+    try:
+        from infrastructure.database import health_check
+        health = health_check()
+        return jsonify({
+            'success': True,
+            'data': health,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Database health error: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 # ============================================================
 # ۳. متریک‌ها
 # ============================================================
