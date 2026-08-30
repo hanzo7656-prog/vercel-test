@@ -1031,7 +1031,75 @@ def database_stats():
         logger.error(f"Database stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@api_bp.route('/db/query', methods=['POST'])
+def db_query():
+    """
+    اجرای کوئری SQL دلخواه (فقط SELECT و CREATE TABLE برای تست)
+    """
+    try:
+        data = request.json
+        query = data.get('query', '').strip()
+        
+        if not query:
+            return jsonify({'success': False, 'error': 'Query is required'}), 400
+        
+        # فقط کوئری‌های SELECT و CREATE TABLE مجاز است (برای تست)
+        query_upper = query.upper().strip()
+        if not (query_upper.startswith('SELECT') or query_upper.startswith('CREATE TABLE')):
+            return jsonify({
+                'success': False,
+                'error': 'Only SELECT and CREATE TABLE queries are allowed'
+            }), 403
+        
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        result = db.execute(query)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'rows': result,
+                'count': len(result)
+            }
+        })
+    except Exception as e:
+        logger.error(f"DB query error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@api_bp.route('/db/tables', methods=['GET'])
+def db_tables():
+    """دریافت لیست همه جدول‌ها"""
+    try:
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        result = db.execute("""
+            SELECT 
+                table_name,
+                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
+            FROM information_schema.tables t
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        
+        for table in result:
+            size_result = db.execute(f"""
+                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
+            """)
+            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"DB tables error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # ۱۳. CoinStats (داده‌های مستقیم)
 # ============================================================
