@@ -1,6 +1,6 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۸.۱ (رفع مشکل جمع‌آوری)
+# سیستم جمع‌آوری متریک - نسخه ۸.۲ (با دیتابیس)
 # ============================================================
 
 import time
@@ -16,6 +16,7 @@ class MetricsScheduler:
     """
     سیستم جمع‌آوری متریک بدون وابستگی به system
     ✅ داده‌ها را از طریق API می‌گیرد
+    ✅ وضعیت دیتابیس‌ها را بررسی می‌کند
     """
     
     def __init__(self):
@@ -30,12 +31,12 @@ class MetricsScheduler:
         }
         self.start_time = time.time()
         
-        # فواصل (کوتاه‌تر برای تست)
+        # فواصل
         self.light_interval = 3
-        self.medium_interval = 10   # ✅ کاهش از 30 به 10 ثانیه
-        self.heavy_interval = 30    # ✅ کاهش از 300 به 30 ثانیه
+        self.medium_interval = 10
+        self.heavy_interval = 30
         
-        logger.info("✅ MetricsScheduler v8.1 initialized")
+        logger.info("✅ MetricsScheduler v8.2 initialized")
     
     def set_stop_event(self, event):
         self._stop_event = event
@@ -48,7 +49,7 @@ class MetricsScheduler:
         self._running = True
         logger.info("🔄 Metrics Scheduler started")
         
-        # ✅ جمع‌آوری اولیه همه سطوح
+        # جمع‌آوری اولیه همه سطوح
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
@@ -68,22 +69,19 @@ class MetricsScheduler:
                 now = time.time()
                 cycle_count += 1
                 
-                # Light: هر ۳ ثانیه
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
                 
-                # Medium: هر ۱۰ ثانیه
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
-                    logger.info(f"📊 Medium collected (cycle {cycle_count})")
+                    logger.debug(f"📊 Medium collected (cycle {cycle_count})")
                 
-                # Heavy: هر ۳۰ ثانیه
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
-                    logger.info(f"📊 Heavy collected (cycle {cycle_count})")
+                    logger.debug(f"📊 Heavy collected (cycle {cycle_count})")
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
@@ -138,10 +136,11 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     def _collect_medium_metrics(self):
-        """قیمت‌ها, API, مدل"""
+        """قیمت‌ها, API, مدل, دیتابیس‌ها"""
         try:
             from infrastructure.api.coinstats_client import coinstats_client
             from models.manager.model_manager import ModelManager
+            from infrastructure.database import health_check  # ✅ اضافه شد
             
             # ===== ۱. قیمت بیت‌کوین =====
             try:
@@ -152,9 +151,6 @@ class MetricsScheduler:
                         "change_24h": btc.get("priceChange1d", 0),
                         "timestamp": datetime.now().isoformat()
                     }
-                    logger.debug(f"✅ BTC Price: ${btc.get('price', 0)}")
-                else:
-                    logger.warning(f"⚠️ BTC data error: {btc}")
             except Exception as e:
                 logger.warning(f"⚠️ BTC price error: {e}")
             
@@ -167,9 +163,6 @@ class MetricsScheduler:
                         "change_24h": eth.get("priceChange1d", 0),
                         "timestamp": datetime.now().isoformat()
                     }
-                    logger.debug(f"✅ ETH Price: ${eth.get('price', 0)}")
-                else:
-                    logger.warning(f"⚠️ ETH data error: {eth}")
             except Exception as e:
                 logger.warning(f"⚠️ ETH price error: {e}")
             
@@ -181,7 +174,6 @@ class MetricsScheduler:
                     "value": api_status,
                     "timestamp": datetime.now().isoformat()
                 }
-                logger.debug(f"✅ API Status: {api_status}")
             except Exception as e:
                 logger.warning(f"⚠️ API status error: {e}")
             
@@ -193,13 +185,11 @@ class MetricsScheduler:
                     "value": api_credits,
                     "timestamp": datetime.now().isoformat()
                 }
-                logger.debug(f"✅ API Credits: {api_credits}")
             except Exception as e:
                 logger.warning(f"⚠️ Credits error: {e}")
             
             # ===== ۵. وضعیت مدل =====
             try:
-                # استفاده از ModelManager بدون وابستگی به system
                 model_manager = ModelManager(coinstats_client)
                 loaded = model_manager.current_model is not None
                 version = model_manager.current_version or "N/A"
@@ -208,14 +198,27 @@ class MetricsScheduler:
                     "timestamp": datetime.now().isoformat()
                 }
                 self.metrics_cache["model_accuracy"] = {
-                    "value": None,  # برای نسخه‌های بعدی
+                    "value": None,
                     "timestamp": datetime.now().isoformat()
                 }
-                logger.debug(f"✅ Model Status: loaded={loaded}, version={version}")
             except Exception as e:
                 logger.warning(f"⚠️ Model status error: {e}")
             
-            # ===== ۶. تعداد درخواست‌ها =====
+            # ===== ✅ ۶. وضعیت دیتابیس‌ها (جدید) =====
+            try:
+                health = health_check()
+                dbs = {}
+                for name, info in health.items():
+                    dbs[name] = info.get("connected", False)
+                self.metrics_cache["databases"] = {
+                    "value": dbs,
+                    "timestamp": datetime.now().isoformat()
+                }
+                logger.debug(f"✅ Databases: {dbs}")
+            except Exception as e:
+                logger.warning(f"⚠️ Databases error: {e}")
+            
+            # ===== ۷. تعداد درخواست‌ها =====
             try:
                 stats = coinstats_client.get_stats()
                 self.metrics_cache["request_count"] = {
@@ -230,10 +233,10 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     def _collect_heavy_metrics(self):
-        """ترس و طمع, سلطه, اخبار, دیتابیس, دیسک"""
+        """ترس و طمع, سلطه, اخبار, دیسک"""
         try:
             from infrastructure.api.coinstats_client import coinstats_client
-            from infrastructure.database import health_check
+            import psutil
             
             # ===== ۱. ترس و طمع =====
             try:
@@ -244,9 +247,6 @@ class MetricsScheduler:
                         "classification": fg["now"].get("value_classification", "Neutral"),
                         "timestamp": datetime.now().isoformat()
                     }
-                    logger.debug(f"✅ Fear & Greed: {fg['now'].get('value', 50)}")
-                else:
-                    logger.warning(f"⚠️ Fear & Greed data error: {fg}")
             except Exception as e:
                 logger.warning(f"⚠️ Fear & Greed error: {e}")
             
@@ -258,9 +258,6 @@ class MetricsScheduler:
                         "value": dominance.get("dominance", 50),
                         "timestamp": datetime.now().isoformat()
                     }
-                    logger.debug(f"✅ BTC Dominance: {dominance.get('dominance', 50)}")
-                else:
-                    logger.warning(f"⚠️ BTC Dominance data error: {dominance}")
             except Exception as e:
                 logger.warning(f"⚠️ BTC Dominance error: {e}")
             
@@ -272,27 +269,10 @@ class MetricsScheduler:
                         "value": news,
                         "timestamp": datetime.now().isoformat()
                     }
-                    logger.debug(f"✅ News: {len(news) if news else 0} items")
-                else:
-                    logger.warning(f"⚠️ News data error: {news}")
             except Exception as e:
                 logger.warning(f"⚠️ News error: {e}")
             
-            # ===== ۴. دیتابیس =====
-            try:
-                health = health_check()
-                dbs = {}
-                for name, info in health.items():
-                    dbs[name] = info.get("connected", False)
-                self.metrics_cache["databases"] = {
-                    "value": dbs,
-                    "timestamp": datetime.now().isoformat()
-                }
-                logger.debug(f"✅ Databases: {dbs}")
-            except Exception as e:
-                logger.warning(f"⚠️ Databases error: {e}")
-            
-            # ===== ۵. فضای دیسک =====
+            # ===== ۴. فضای دیسک =====
             try:
                 usage = psutil.disk_usage('/')
                 disk = {
@@ -370,6 +350,7 @@ class MetricsScheduler:
                 "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
                 "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
             },
+            "databases": cache.get("databases", {}).get("value", {}),
             "disk": cache.get("disk_space", {}).get("value", {}),
             "timestamp": datetime.now().isoformat()
         }
