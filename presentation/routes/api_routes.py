@@ -1266,3 +1266,24 @@ def credits():
     except Exception as e:
         logger.error(f"Credits error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+#====================
+# لاگین
+#====================
+@api_bp.route('/login', methods=['POST'])
+def api_login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    from infrastructure.auth.auth_manager import get_auth
+    auth = get_auth()
+    result = auth.login(username, password)
+    
+    if result.get('success'):
+        return jsonify({
+            'success': True,
+            'session_id': result.get('session_id'),
+            'username': result.get('username')
+        })
+    return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
