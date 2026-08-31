@@ -75,7 +75,9 @@ logger.info("✅ Container initialized")
 
 from presentation.routes.api_routes import api_bp
 from presentation.routes.metrics_routes import metrics_bp
+from presentation.routes.web_routes import web_bp
 
+app.register_blueprint(web_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(metrics_bp)
 
