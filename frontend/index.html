@@ -406,9 +406,6 @@
             const errorText = document.getElementById('errorText');
             const btn = document.getElementById('loginBtn');
 
-            // ============================================================
-            // نمایش خطا
-            // ============================================================
             function showError(message) {
                 errorText.textContent = message;
                 errorEl.classList.add('show');
@@ -418,9 +415,6 @@
                 errorEl.classList.remove('show');
             }
 
-            // ============================================================
-            // وضعیت دکمه
-            // ============================================================
             function setLoading(loading) {
                 if (loading) {
                     btn.disabled = true;
@@ -431,9 +425,6 @@
                 }
             }
 
-            // ============================================================
-            // لاگین با Enter
-            // ============================================================
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     const active = document.activeElement;
@@ -444,16 +435,12 @@
                 }
             });
 
-            // ============================================================
-            // لاگین
-            // ============================================================
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
                 const username = usernameInput.value.trim();
                 const password = passwordInput.value.trim();
 
-                // اعتبارسنجی ساده
                 if (!username || !password) {
                     showError('لطفاً نام کاربری و رمز عبور را وارد کنید');
                     return;
@@ -474,7 +461,10 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // ✅ ذخیره session_id برای استفاده‌های بعدی (اختیاری)
+                        // ✅ تنظیم کوکی با session_id (راه‌حل اصلی)
+                        document.cookie = `session_id=${data.session_id}; path=/; max-age=86400;`;
+
+                        // ذخیره در localStorage برای استفاده‌های بعدی
                         localStorage.setItem('session_id', data.session_id);
                         localStorage.setItem('username', data.username);
 
@@ -492,9 +482,6 @@
                 }
             });
 
-            // ============================================================
-            // پاک کردن خطا هنگام تایپ
-            // ============================================================
             usernameInput.addEventListener('input', hideError);
             passwordInput.addEventListener('input', hideError);
 
