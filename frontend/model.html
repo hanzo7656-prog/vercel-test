@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت مدل</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .model-container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+        .model-status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .status-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px 18px; text-align: center; }
+        .status-item .label { color: var(--text-secondary); font-size: 0.7rem; }
+        .status-item .value { font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
+        .status-item .value.active { color: var(--accent-green); }
+        .status-item .value.inactive { color: var(--accent-orange); }
+        .model-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+        .model-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .btn-train { background: linear-gradient(135deg, var(--accent-green), #00cc66); color: #fff; }
+        .btn-train:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 255, 136, 0.25); }
+        .btn-stop { background: linear-gradient(135deg, var(--accent-red), #cc0000); color: #fff; }
+        .btn-stop:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 68, 68, 0.25); }
+        .btn-export { background: linear-gradient(135deg, var(--accent-cyan), #0099cc); color: #fff; }
+        .btn-export:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25); }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .history-table th { text-align: right; padding: 10px 12px; border-bottom: 2px solid var(--border-color); color: var(--text-secondary); }
+        .history-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        @media (max-width: 768px) {
+            .model-status-grid { grid-template-columns: 1fr 1fr; }
+            .model-actions { flex-direction: column; }
+            .model-actions button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="navContainer"></div>
+    
+    <main class="model-container">
+        <h1>🤖 مدیریت مدل</h1>
+        <p class="subtitle">مدیریت و آموزش مدل XGBoost</p>
+        
+        <div class="model-status-grid" id="modelStatusGrid">
+            <div class="status-item">
+                <div class="label">🧠 وضعیت</div>
+                <div class="value" id="statusLoaded">⏳ در حال بارگذاری...</div>
+            </div>
+            <div class="status-item">
+                <div class="label">📌 نسخه</div>
+                <div class="value" id="statusVersion">—</div>
+            </div>
+            <div class="status-item">
+                <div class="label">🎯 دقت</div>
+                <div class="value" id="statusAccuracy">—</div>
+            </div>
+            <div class="status-item">
+                <div class="label">📊 آموزش‌ها</div>
+                <div class="value" id="statusTrainings">—</div>
+            </div>
+            <div class="status-item">
+                <div class="label">⏳ وضعیت آموزش</div>
+                <div class="value" id="statusTraining">⏹️ غیرفعال</div>
+            </div>
+            <div class="status-item">
+                <div class="label">🔄 زمان‌بندی</div>
+                <div class="value" id="statusSchedule">⏹️ غیرفعال</div>
+            </div>
+        </div>
+        
+        <div class="model-actions">
+            <button class="btn-train" id="trainBtn">🚀 آموزش دستی</button>
+            <button class="btn-stop" id="stopBtn">⏹️ توقف آموزش</button>
+            <button class="btn-export" id="exportBtn">📥 دانلود مدل</button>
+            <button class="btn-export" id="scheduleBtn">⏰ تنظیم زمان‌بندی</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>📋 تاریخچه نسخه‌ها</h3>
+            <div class="history-wrapper" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:16px;overflow-x:auto;">
+                <table class="history-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>نسخه</th>
+                            <th>دقت</th>
+                            <th>بازه</th>
+                            <th>تاریخ</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">در حال بارگذاری...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/script.js"></script>
+    <script src="/js/menu.js"></script>
+    <script src="/js/model.js"></script>
+</body>
+</html>
