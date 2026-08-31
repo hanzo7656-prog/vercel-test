@@ -84,6 +84,7 @@ def health_simple():
 
 
 @api_bp.route('/health/database', methods=['GET'])
+@require_auth()
 def health_database():
     try:
         health = health_check()
@@ -334,6 +335,7 @@ def model_management():
 # ============================================================
 
 @api_bp.route('/model/export', methods=['GET', 'POST'])
+@require_auth()
 def model_export_import():
     """
     خروجی/ورودی فایل مدل
@@ -415,6 +417,7 @@ def model_export_import():
 # ============================================================
 
 @api_bp.route('/model/schedule', methods=['GET', 'POST', 'DELETE'])
+@require_auth()
 def model_schedule():
     """
     زمان‌بندی آموزش خودکار
@@ -475,6 +478,7 @@ def model_schedule():
 # ============================================================
 
 @api_bp.route('/debug', methods=['GET', 'POST', 'DELETE'])
+@require_auth()
 def debug_management():
     """
     مدیریت کامل دیباگ
@@ -673,6 +677,7 @@ def debug_management():
 # ============================================================
 
 @api_bp.route('/db', methods=['GET', 'POST', 'DELETE'])
+@require_auth()
 def database_management():
     """
     مدیریت جدول‌ها و داده‌ها
@@ -827,6 +832,7 @@ def database_management():
 # ============================================================
 
 @api_bp.route('/db/search', methods=['GET'])
+@require_auth()
 def database_search():
     """
     جستجوی یکپارچه در همه جدول‌ها
@@ -901,6 +907,7 @@ def database_search():
 # ============================================================
 
 @api_bp.route('/db/backup', methods=['GET', 'POST'])
+@require_auth()
 def database_backup():
     """
     بک‌آپ و بازیابی
@@ -976,6 +983,7 @@ def database_backup():
 # ============================================================
 
 @api_bp.route('/db/stats', methods=['GET'])
+@require_auth()
 def database_stats():
     """
     آمار و آنالیز دیتابیس
@@ -1032,6 +1040,7 @@ def database_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @api_bp.route('/db/query', methods=['POST'])
+@require_auth()
 def db_query():
     """
     اجرای کوئری SQL دلخواه (فقط SELECT و CREATE TABLE برای تست)
@@ -1076,6 +1085,7 @@ def db_query():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @api_bp.route('/db/tables', methods=['GET'])
+@require_auth()
 def db_tables():
     """دریافت لیست همه جدول‌ها"""
     try:
@@ -1111,6 +1121,7 @@ def db_tables():
 # ============================================================
 
 @api_bp.route('/coinstats/prices', methods=['GET'])
+@require_auth()
 def coinstats_prices():
     try:
         container = current_app.container
@@ -1136,6 +1147,7 @@ def coinstats_prices():
 
 
 @api_bp.route('/coinstats/fear-greed', methods=['GET'])
+@require_auth()
 def coinstats_fear_greed():
     try:
         container = current_app.container
@@ -1154,6 +1166,7 @@ def coinstats_fear_greed():
 
 
 @api_bp.route('/coinstats/btc-dominance', methods=['GET'])
+@require_auth()
 def coinstats_btc_dominance():
     try:
         container = current_app.container
@@ -1171,6 +1184,7 @@ def coinstats_btc_dominance():
 
 
 @api_bp.route('/coinstats/all', methods=['GET'])
+@require_auth()
 def coinstats_all():
     try:
         container = current_app.container
@@ -1212,6 +1226,7 @@ def coinstats_all():
 # ============================================================
 
 @api_bp.route('/alerts', methods=['GET'])
+@require_auth()
 def get_alerts():
     try:
         limit = request.args.get('limit', 20, type=int)
@@ -1226,6 +1241,7 @@ def get_alerts():
 
 
 @api_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
+@require_auth()
 def resolve_alert(alert_id):
     try:
         success = alerter.resolve_alert(alert_id)
@@ -1240,6 +1256,7 @@ def resolve_alert(alert_id):
 # ============================================================
 
 @api_bp.route('/credits', methods=['GET'])
+@require_auth()
 def credits():
     try:
         container = current_app.container
