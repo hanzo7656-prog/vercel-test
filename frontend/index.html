@@ -5,70 +5,367 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود - سیستم تحلیلگر</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #080c18;
+            font-family: 'Segoe UI', 'Vazir', system-ui, sans-serif;
+            color: #e8eef7;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ============================================================
+           LOGIN CONTAINER
+           ============================================================ */
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-box {
+            background: rgba(13, 22, 40, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 212, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px 36px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .login-box:hover {
+            border-color: rgba(0, 212, 255, 0.2);
+        }
+
+        .login-box .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-box .logo .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .login-box .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-box .logo .subtitle {
+            color: #7a8fa8;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           FORM
+           ============================================================ */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #a0b4c8;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(10, 14, 23, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.08);
+            border-radius: 10px;
+            color: #e8eef7;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.04);
+        }
+
+        .form-group input::placeholder {
+            color: #4a5a6a;
+            opacity: 0.6;
+        }
+
+        /* ============================================================
+           BUTTON
+           ============================================================ */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-top: 4px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.25);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ============================================================
+           ERROR
+           ============================================================ */
+        .error-msg {
+            color: #ff4444;
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            background: rgba(255, 68, 68, 0.08);
+            border: 1px solid rgba(255, 68, 68, 0.15);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 212, 255, 0.04);
+            color: #4a5a6a;
+            font-size: 0.8rem;
+        }
+
+        .login-footer a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .login-footer a:hover {
+            color: #00e5ff;
+        }
+
+        /* ============================================================
+           LOADING SPINNER
+           ============================================================ */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 480px) {
+            .login-box {
+                padding: 28px 20px;
+            }
+            .login-box .logo h1 {
+                font-size: 1.2rem;
+            }
+            .form-group input {
+                padding: 10px 14px;
+                font-size: 0.9rem;
+            }
+            .btn-login {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
+
     <div class="login-container">
         <div class="login-box">
-            <h1>📊 سیستم تحلیلگر</h1>
-            <p class="subtitle">ورود به حساب کاربری</p>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label>نام کاربری</label>
-                    <input type="text" id="username" placeholder="نام کاربری خود را وارد کنید" required>
-                </div>
-                <div class="form-group">
-                    <label>رمز عبور</label>
-                    <input type="password" id="password" placeholder="رمز عبور خود را وارد کنید" required>
-                </div>
-                <div id="loginError" class="error-msg"></div>
-                <button type="submit" id="loginBtn">ورود</button>
-            </form>
-            <div class="login-footer">
-                <span>پشتیبانی: <a href="#">@your_telegram</a></span>
+
+            <!-- ===== LOGO ===== -->
+            <div class="logo">
+                <span class="icon">📊</span>
+                <h1>سیستم تحلیلگر</h1>
+                <p class="subtitle">ورود به پنل مدیریت</p>
             </div>
+
+            <!-- ===== FORM ===== -->
+            <form id="loginForm" autocomplete="off">
+                <div class="form-group">
+                    <label>👤 نام کاربری</label>
+                    <input
+                        type="text"
+                        id="username"
+                        placeholder="نام کاربری خود را وارد کنید"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>🔑 رمز عبور</label>
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="رمز عبور خود را وارد کنید"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+
+                <div id="loginError" class="error-msg"></div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    ورود
+                </button>
+            </form>
+
+            <!-- ===== FOOTER ===== -->
+            <div class="login-footer">
+                <span>پشتیبانی: </span>
+                <a href="https://t.me/your_telegram_id" target="_blank">@your_telegram_id</a>
+            </div>
+
         </div>
     </div>
-    <script src="/js/script.js"></script>
+
+    <!-- ============================================================
+    SCRIPT
+    ============================================================ -->
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('loginForm');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
             const errorEl = document.getElementById('loginError');
             const btn = document.getElementById('loginBtn');
 
-            if (!username || !password) {
-                errorEl.textContent = 'لطفاً نام کاربری و رمز عبور را وارد کنید';
-                errorEl.style.display = 'block';
-                return;
+            // ============================================================
+            // لاگین با کلید Enter
+            // ============================================================
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleLogin();
+                }
+            });
+
+            // ============================================================
+            // لاگین با دکمه
+            // ============================================================
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleLogin();
+            });
+
+            // ============================================================
+            // تابع اصلی لاگین
+            // ============================================================
+            async function handleLogin() {
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                // اعتبارسنجی
+                if (!username || !password) {
+                    showError('لطفاً نام کاربری و رمز عبور را وارد کنید');
+                    return;
+                }
+
+                hideError();
+                setLoading(true);
+
+                try {
+                    // ✅ استفاده از /api/login (نه /login)
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // ذخیره session_id در کوکی (مرورگر خودکار انجام می‌دهد)
+                        // ریدایرکت به داشبورد
+                        window.location.href = '/dashboard';
+                    } else {
+                        showError(data.error || 'نام کاربری یا رمز عبور اشتباه است');
+                        setLoading(false);
+                    }
+
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showError('خطا در ارتباط با سرور. لطفاً مجدداً تلاش کنید.');
+                    setLoading(false);
+                }
             }
 
-            errorEl.style.display = 'none';
-            btn.disabled = true;
-            btn.textContent = '⏳ در حال ورود...';
+            // ============================================================
+            // توابع کمکی
+            // ============================================================
+            function showError(message) {
+                errorEl.textContent = message;
+                errorEl.classList.add('show');
+            }
 
-            try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.href = '/dashboard';
+            function hideError() {
+                errorEl.classList.remove('show');
+                errorEl.textContent = '';
+            }
+
+            function setLoading(loading) {
+                if (loading) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner"></span> در حال ورود...';
                 } else {
-                    errorEl.textContent = data.error || 'خطا در ورود';
-                    errorEl.style.display = 'block';
                     btn.disabled = false;
-                    btn.textContent = 'ورود';
+                    btn.innerHTML = 'ورود';
                 }
-            } catch (err) {
-                errorEl.textContent = 'خطا در ارتباط با سرور';
-                errorEl.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'ورود';
             }
         });
     </script>
+
 </body>
 </html>
