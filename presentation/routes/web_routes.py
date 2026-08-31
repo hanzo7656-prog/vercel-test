@@ -1,7 +1,7 @@
 # presentation/routes/web_routes.py
 
-from flask import Blueprint, send_from_directory, redirect
-from infrastructure.auth.auth_manager import require_auth
+from flask import Blueprint, send_from_directory, redirect, request, jsonify
+from infrastructure.auth.auth_manager import require_auth, get_auth
 
 web_bp = Blueprint('web', __name__)
 
@@ -17,7 +17,6 @@ def home():
 @require_auth()
 def dashboard():
     return send_from_directory('frontend', 'dashboard.html')
-
 @web_bp.route('/analyzer')
 @require_auth()
 def analyzer():
