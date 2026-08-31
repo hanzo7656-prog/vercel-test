@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود - سیستم تحلیلگر</title>
-    <link rel="stylesheet" href="/css/style.css">
     <style>
         /* ============================================================
            RESET & BASE
@@ -23,51 +22,108 @@
         }
 
         /* ============================================================
+           ANIMATED BACKGROUND
+           ============================================================ */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            pointer-events: none;
+            animation: floatOrb 25s ease-in-out infinite alternate;
+        }
+
+        .bg-orb:nth-child(1) {
+            width: 400px;
+            height: 400px;
+            background: #00d4ff;
+            top: -100px;
+            right: -100px;
+            animation-duration: 30s;
+        }
+
+        .bg-orb:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            background: #a855f7;
+            bottom: -80px;
+            left: -80px;
+            animation-duration: 25s;
+            animation-delay: -8s;
+        }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-80px, 50px) scale(1.2); }
+            66% { transform: translate(70px, -60px) scale(0.9); }
+            100% { transform: translate(-40px, 40px) scale(1.1); }
+        }
+
+        /* ============================================================
            LOGIN CONTAINER
            ============================================================ */
         .login-container {
             width: 100%;
             max-width: 420px;
+            position: relative;
+            z-index: 1;
         }
 
         .login-box {
-            background: rgba(13, 22, 40, 0.8);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 212, 255, 0.1);
-            border-radius: 20px;
-            padding: 40px 36px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s ease;
+            background: rgba(13, 22, 40, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(0, 212, 255, 0.08);
+            border-radius: 24px;
+            padding: 44px 38px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+            transition: all 0.4s ease;
         }
 
         .login-box:hover {
-            border-color: rgba(0, 212, 255, 0.2);
+            border-color: rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
         }
 
-        .login-box .logo {
+        /* ============================================================
+           LOGO
+           ============================================================ */
+        .login-logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
         }
 
-        .login-box .logo .icon {
-            font-size: 2.5rem;
+        .login-logo .icon {
+            font-size: 2.8rem;
             display: block;
             margin-bottom: 8px;
         }
 
-        .login-box .logo h1 {
-            font-size: 1.5rem;
+        .login-logo h1 {
+            font-size: 1.6rem;
             font-weight: 700;
             background: linear-gradient(135deg, #00d4ff, #a855f7);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            letter-spacing: -0.5px;
         }
 
-        .login-box .logo .subtitle {
+        .login-logo .subtitle {
             color: #7a8fa8;
             font-size: 0.85rem;
             margin-top: 4px;
+            font-weight: 400;
+        }
+
+        .login-logo .version {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 0.55rem;
+            color: #4a5a6a;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 2px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
         }
 
         /* ============================================================
@@ -80,19 +136,33 @@
         .form-group label {
             display: block;
             color: #a0b4c8;
-            font-size: 0.85rem;
-            margin-bottom: 6px;
+            font-size: 0.8rem;
             font-weight: 500;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .form-group .input-wrapper {
+            position: relative;
+        }
+
+        .form-group .input-wrapper .input-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4a5a6a;
+            font-size: 1rem;
         }
 
         .form-group input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 12px 44px 12px 16px;
             background: rgba(10, 14, 23, 0.6);
-            border: 1px solid rgba(0, 212, 255, 0.08);
-            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.06);
+            border-radius: 12px;
             color: #e8eef7;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: all 0.3s ease;
             font-family: inherit;
         }
@@ -101,11 +171,12 @@
             outline: none;
             border-color: #00d4ff;
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.04);
+            background: rgba(10, 14, 23, 0.8);
         }
 
         .form-group input::placeholder {
             color: #4a5a6a;
-            opacity: 0.6;
+            opacity: 0.5;
         }
 
         /* ============================================================
@@ -116,7 +187,7 @@
             padding: 14px;
             background: linear-gradient(135deg, #00d4ff, #0099cc);
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             color: #fff;
             font-size: 1rem;
             font-weight: 600;
@@ -124,17 +195,39 @@
             transition: all 0.3s ease;
             font-family: inherit;
             margin-top: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
         }
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.25);
+            box-shadow: 0 8px 35px rgba(0, 212, 255, 0.25);
+        }
+
+        .btn-login:active {
+            transform: scale(0.98);
         }
 
         .btn-login:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         /* ============================================================
@@ -145,14 +238,20 @@
             font-size: 0.85rem;
             margin-bottom: 14px;
             padding: 10px 14px;
-            background: rgba(255, 68, 68, 0.08);
-            border: 1px solid rgba(255, 68, 68, 0.15);
-            border-radius: 8px;
+            background: rgba(255, 68, 68, 0.06);
+            border: 1px solid rgba(255, 68, 68, 0.12);
+            border-radius: 10px;
             display: none;
+            align-items: center;
+            gap: 8px;
         }
 
         .error-msg.show {
-            display: block;
+            display: flex;
+        }
+
+        .error-msg .error-icon {
+            font-size: 1.1rem;
         }
 
         /* ============================================================
@@ -160,11 +259,11 @@
            ============================================================ */
         .login-footer {
             text-align: center;
-            margin-top: 20px;
-            padding-top: 16px;
+            margin-top: 22px;
+            padding-top: 18px;
             border-top: 1px solid rgba(0, 212, 255, 0.04);
             color: #4a5a6a;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
 
         .login-footer a {
@@ -175,19 +274,20 @@
 
         .login-footer a:hover {
             color: #00e5ff;
+            text-decoration: underline;
         }
 
         /* ============================================================
-           LOADING SPINNER
+           SPINNER
            ============================================================ */
         .spinner {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.15);
             border-top: 2px solid #fff;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
             vertical-align: middle;
             margin-left: 8px;
         }
@@ -202,65 +302,90 @@
         @media (max-width: 480px) {
             .login-box {
                 padding: 28px 20px;
+                border-radius: 18px;
             }
-            .login-box .logo h1 {
-                font-size: 1.2rem;
+            .login-logo h1 {
+                font-size: 1.3rem;
+            }
+            .login-logo .icon {
+                font-size: 2.2rem;
             }
             .form-group input {
-                padding: 10px 14px;
-                font-size: 0.9rem;
+                padding: 10px 38px 10px 14px;
+                font-size: 0.85rem;
             }
             .btn-login {
                 padding: 12px;
                 font-size: 0.9rem;
             }
         }
+
+        @media (max-width: 380px) {
+            .login-box {
+                padding: 20px 14px;
+            }
+        }
     </style>
 </head>
 <body>
 
+    <!-- ===== BACKGROUND ===== -->
+    <div class="bg-orb"></div>
+    <div class="bg-orb"></div>
+
+    <!-- ===== LOGIN ===== -->
     <div class="login-container">
         <div class="login-box">
 
-            <!-- ===== LOGO ===== -->
-            <div class="logo">
+            <!-- LOGO -->
+            <div class="login-logo">
                 <span class="icon">📊</span>
                 <h1>سیستم تحلیلگر</h1>
                 <p class="subtitle">ورود به پنل مدیریت</p>
+                <span class="version">v9.0</span>
             </div>
 
-            <!-- ===== FORM ===== -->
-            <form id="loginForm" autocomplete="off">
+            <!-- FORM -->
+            <form id="loginForm" autocomplete="off" novalidate>
                 <div class="form-group">
                     <label>👤 نام کاربری</label>
-                    <input
-                        type="text"
-                        id="username"
-                        placeholder="نام کاربری خود را وارد کنید"
-                        autocomplete="username"
-                        required
-                    >
+                    <div class="input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input
+                            type="text"
+                            id="username"
+                            placeholder="نام کاربری خود را وارد کنید"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>🔑 رمز عبور</label>
-                    <input
-                        type="password"
-                        id="password"
-                        placeholder="رمز عبور خود را وارد کنید"
-                        autocomplete="current-password"
-                        required
-                    >
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="رمز عبور خود را وارد کنید"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
                 </div>
 
-                <div id="loginError" class="error-msg"></div>
+                <div id="loginError" class="error-msg">
+                    <span class="error-icon">❌</span>
+                    <span id="errorText">خطا</span>
+                </div>
 
                 <button type="submit" class="btn-login" id="loginBtn">
                     ورود
                 </button>
             </form>
 
-            <!-- ===== FOOTER ===== -->
+            <!-- FOOTER -->
             <div class="login-footer">
                 <span>پشتیبانی: </span>
                 <a href="https://t.me/your_telegram_id" target="_blank">@your_telegram_id</a>
@@ -278,34 +403,57 @@
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
             const errorEl = document.getElementById('loginError');
+            const errorText = document.getElementById('errorText');
             const btn = document.getElementById('loginBtn');
 
             // ============================================================
-            // لاگین با کلید Enter
+            // نمایش خطا
             // ============================================================
-            form.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleLogin();
+            function showError(message) {
+                errorText.textContent = message;
+                errorEl.classList.add('show');
+            }
+
+            function hideError() {
+                errorEl.classList.remove('show');
+            }
+
+            // ============================================================
+            // وضعیت دکمه
+            // ============================================================
+            function setLoading(loading) {
+                if (loading) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner"></span> در حال ورود...';
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = 'ورود';
+                }
+            }
+
+            // ============================================================
+            // لاگین با Enter
+            // ============================================================
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    const active = document.activeElement;
+                    if (active === usernameInput || active === passwordInput) {
+                        e.preventDefault();
+                        form.dispatchEvent(new Event('submit'));
+                    }
                 }
             });
 
             // ============================================================
-            // لاگین با دکمه
+            // لاگین
             // ============================================================
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                handleLogin();
-            });
 
-            // ============================================================
-            // تابع اصلی لاگین
-            // ============================================================
-            async function handleLogin() {
                 const username = usernameInput.value.trim();
                 const password = passwordInput.value.trim();
 
-                // اعتبارسنجی
+                // اعتبارسنجی ساده
                 if (!username || !password) {
                     showError('لطفاً نام کاربری و رمز عبور را وارد کنید');
                     return;
@@ -315,7 +463,6 @@
                 setLoading(true);
 
                 try {
-                    // ✅ استفاده از /api/login (نه /login)
                     const response = await fetch('/api/login', {
                         method: 'POST',
                         headers: {
@@ -327,8 +474,11 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // ذخیره session_id در کوکی (مرورگر خودکار انجام می‌دهد)
-                        // ریدایرکت به داشبورد
+                        // ✅ ذخیره session_id برای استفاده‌های بعدی (اختیاری)
+                        localStorage.setItem('session_id', data.session_id);
+                        localStorage.setItem('username', data.username);
+
+                        // ✅ ریدایرکت به داشبورد
                         window.location.href = '/dashboard';
                     } else {
                         showError(data.error || 'نام کاربری یا رمز عبور اشتباه است');
@@ -340,30 +490,14 @@
                     showError('خطا در ارتباط با سرور. لطفاً مجدداً تلاش کنید.');
                     setLoading(false);
                 }
-            }
+            });
 
             // ============================================================
-            // توابع کمکی
+            // پاک کردن خطا هنگام تایپ
             // ============================================================
-            function showError(message) {
-                errorEl.textContent = message;
-                errorEl.classList.add('show');
-            }
+            usernameInput.addEventListener('input', hideError);
+            passwordInput.addEventListener('input', hideError);
 
-            function hideError() {
-                errorEl.classList.remove('show');
-                errorEl.textContent = '';
-            }
-
-            function setLoading(loading) {
-                if (loading) {
-                    btn.disabled = true;
-                    btn.innerHTML = '<span class="spinner"></span> در حال ورود...';
-                } else {
-                    btn.disabled = false;
-                    btn.innerHTML = 'ورود';
-                }
-            }
         });
     </script>
 
