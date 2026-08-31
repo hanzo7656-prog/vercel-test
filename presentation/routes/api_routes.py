@@ -1039,11 +1039,9 @@ def database_stats():
         logger.error(f"Database stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @api_bp.route('/db/query', methods=['POST'])
 def db_query():
-    """
-    اجرای کوئری SQL دلخواه (فقط SELECT و CREATE TABLE)
-    """
     try:
         data = request.json
         query = data.get('query', '').strip()
@@ -1058,14 +1056,12 @@ def db_query():
                 'error': 'Only SELECT and CREATE TABLE queries are allowed'
             }), 403
         
-        # ✅ دریافت اتصال جدید هر بار
         from infrastructure.database import get_primary
         db = get_primary()
         
         if not db:
             return jsonify({'success': False, 'error': 'Database not available'}), 503
         
-        # ✅ اجرای کوئری
         result = db.execute(query)
         
         return jsonify({
@@ -1076,9 +1072,8 @@ def db_query():
             }
         })
     except Exception as e:
-        logger.error(f"DB query error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-    
+        a
 @api_bp.route('/db/tables', methods=['GET'])
 @require_auth()
 def db_tables():
