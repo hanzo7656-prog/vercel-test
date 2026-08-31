@@ -1,0 +1,50 @@
+<!-- nav.html - منوی اصلی -->
+<header class="navbar">
+    <div class="navbar-brand">
+        <a href="/dashboard">📊 سیستم تحلیلگر</a>
+        <span class="version">v9.0</span>
+    </div>
+    <button class="menu-toggle" id="menuToggle" aria-label="منو">
+        <i class="fas fa-bars"></i>
+    </button>
+    <nav class="navbar-menu" id="navbarMenu">
+        <a href="/dashboard" class="active">🏠 داشبورد</a>
+        <a href="/chart">📈 نمودار</a>
+        <a href="/analyzer">🧠 تحلیلگر</a>
+        <a href="/model">🤖 مدل</a>
+        <a href="/database">🗄️ دیتابیس</a>
+        <a href="/alerts">🔔 هشدارها</a>
+        <a href="/debug">🐛 دیباگ</a>
+        <a href="/settings">⚙️ تنظیمات</a>
+        <a href="#" id="logoutBtn" class="logout">🚪 خروج</a>
+    </nav>
+</header>
+
+<script>
+// بارگذاری منو در همه صفحات
+document.addEventListener('DOMContentLoaded', function() {
+    const toggle = document.getElementById('menuToggle');
+    const menu = document.getElementById('navbarMenu');
+    
+    if (toggle && menu) {
+        toggle.addEventListener('click', function() {
+            menu.classList.toggle('open');
+        });
+    }
+    
+    // خروج از حساب
+    document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetch('/logout', { method: 'POST', credentials: 'include' })
+            .then(() => window.location.href = '/');
+    });
+    
+    // علامت‌گذاری صفحه فعلی
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.navbar-menu a').forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+        }
+    });
+});
+</script>
