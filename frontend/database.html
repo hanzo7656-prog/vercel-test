@@ -2,44 +2,298 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>مدیریت دیتابیس</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .db-container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
-        .db-tabs { display: flex; gap: 4px; background: var(--bg-secondary); border-radius: 12px; padding: 4px; border: 1px solid var(--border-color); margin-bottom: 20px; overflow-x: auto; }
-        .db-tabs button { padding: 10px 20px; background: transparent; border: none; border-radius: 8px; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease; font-size: 0.85rem; white-space: nowrap; }
-        .db-tabs button:hover { background: rgba(0, 212, 255, 0.05); color: var(--text-primary); }
-        .db-tabs button.active { background: rgba(0, 212, 255, 0.1); color: var(--accent-cyan); }
-        .db-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; min-height: 400px; }
-        .db-table-wrapper { overflow-x: auto; }
-        .db-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .db-table th { text-align: right; padding: 10px 12px; border-bottom: 2px solid var(--border-color); color: var(--text-secondary); }
-        .db-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-        .db-search { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-        .db-search input { flex: 1; padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); min-width: 150px; }
-        .db-search input:focus { outline: none; border-color: var(--accent-cyan); }
-        .db-search button { padding: 8px 20px; border: none; border-radius: 8px; background: var(--accent-cyan); color: #fff; font-weight: 600; cursor: pointer; }
-        .db-search button:hover { box-shadow: 0 4px 20px rgba(0, 212, 255, 0.25); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        /* ============================================================
+           DATABASE PAGE - استایل‌های اختصاصی
+           ============================================================ */
+        .db-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+        }
+
+        /* ===== STATS ===== */
+        .db-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .db-stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .db-stat-card:hover {
+            border-color: rgba(0, 212, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .db-stat-card .stat-icon { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+        .db-stat-card .stat-value { font-size: 1.1rem; font-weight: 700; font-family: 'Courier New', monospace; }
+        .db-stat-card .stat-value.cyan { color: var(--accent-cyan); }
+        .db-stat-card .stat-value.green { color: var(--accent-green); }
+        .db-stat-card .stat-value.orange { color: var(--accent-orange); }
+        .db-stat-card .stat-value.pink { color: var(--accent-pink); }
+        .db-stat-card .stat-label { font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+        /* ===== TABS ===== */
+        .db-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            border: 1px solid var(--border-glow);
+            margin-bottom: 16px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
+
+        .db-tabs button {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.8rem;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .db-tabs button:hover {
+            color: var(--text-primary);
+            background: rgba(0, 212, 255, 0.04);
+        }
+
+        .db-tabs button.active {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-cyan);
+        }
+
+        /* ===== TAB CONTENT ===== */
+        .db-tab-content {
+            display: none;
+        }
+
+        .db-tab-content.active {
+            display: block;
+        }
+
+        /* ===== TABLE ===== */
+        .db-table-wrap {
+            overflow-x: auto;
+        }
+
+        .db-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .db-table th {
+            text-align: right;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid var(--border-glow);
+        }
+
+        .db-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .db-table tr:hover td {
+            background: rgba(0, 212, 255, 0.02);
+        }
+
+        /* ===== SEARCH ===== */
+        .db-search {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .db-search input {
+            flex: 1;
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-family: inherit;
+            min-width: 150px;
+        }
+
+        .db-search input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+
+        .db-search input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .db-search .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glow);
+            background: rgba(0, 212, 255, 0.04);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: var(--transition);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .db-search .btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+            background: rgba(0, 212, 255, 0.06);
+        }
+
+        .db-search .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(168, 85, 247, 0.15));
+            border-color: rgba(0, 212, 255, 0.15);
+            color: var(--accent-cyan);
+        }
+
+        /* ===== RESULT ITEMS ===== */
+        .db-result-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .db-result-item:hover {
+            background: rgba(0, 212, 255, 0.02);
+        }
+
+        .db-result-item .result-table {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .db-result-item .result-count {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+        }
+
+        .db-result-item .result-preview {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            direction: ltr;
+            text-align: left;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .db-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
+            .db-container { padding: 10px 12px; }
+            .db-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .db-stat-card { padding: 10px 12px; }
+            .db-stat-card .stat-value { font-size: 0.9rem; }
             .db-tabs { flex-wrap: nowrap; overflow-x: auto; }
-            .db-tabs button { font-size: 0.75rem; padding: 8px 14px; }
+            .db-tabs button { font-size: 0.7rem; padding: 6px 12px; }
             .db-search { flex-direction: column; }
             .db-search input { width: 100%; }
-            .db-search button { width: 100%; }
+            .db-search .btn { width: 100%; justify-content: center; }
+            .db-result-item { flex-direction: column; align-items: stretch; }
+            .db-result-item .result-preview { max-width: 100%; white-space: normal; }
+        }
+
+        @media (max-width: 480px) {
+            .db-stats-grid { grid-template-columns: 1fr 1fr; }
+            .db-stat-card .stat-value { font-size: 0.8rem; }
+            .db-table { font-size: 0.65rem; }
+            .db-table th, .db-table td { padding: 4px 8px; }
         }
     </style>
 </head>
 <body>
+
+    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
-    
-    <main class="db-container">
-        <h1>🗄️ مدیریت دیتابیس</h1>
-        <p class="subtitle">مشاهده و مدیریت دیتابیس‌های سیستم</p>
-        
+
+    <!-- ===== DATABASE ===== -->
+    <div class="db-container">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-database" style="color:var(--accent-cyan);"></i> مدیریت دیتابیس</h1>
+                <span class="subtitle">مشاهده و مدیریت دیتابیس‌های سیستم</span>
+            </div>
+            <span class="timestamp" id="pageTimestamp"></span>
+        </div>
+
+        <!-- ===== STATS ===== -->
+        <div class="db-stats-grid" id="dbStats">
+            <div class="db-stat-card">
+                <span class="stat-icon">🗄️</span>
+                <div class="stat-value cyan" id="dbTotal">—</div>
+                <div class="stat-label">کل دیتابیس‌ها</div>
+            </div>
+            <div class="db-stat-card">
+                <span class="stat-icon">🟢</span>
+                <div class="stat-value green" id="dbOnline">—</div>
+                <div class="stat-label">متصل</div>
+            </div>
+            <div class="db-stat-card">
+                <span class="stat-icon">🔴</span>
+                <div class="stat-value pink" id="dbOffline">—</div>
+                <div class="stat-label">قطع</div>
+            </div>
+            <div class="db-stat-card">
+                <span class="stat-icon">📊</span>
+                <div class="stat-value orange" id="dbTables">—</div>
+                <div class="stat-label">جدول‌ها</div>
+            </div>
+        </div>
+
+        <!-- ===== TABS ===== -->
         <div class="db-tabs" id="dbTabs">
             <button class="active" data-tab="overview">📊 نمای کلی</button>
             <button data-tab="postgresql">🐘 PostgreSQL</button>
@@ -48,15 +302,520 @@
             <button data-tab="explorer">🔍 کاوشگر</button>
             <button data-tab="monitor">📈 مانیتورینگ</button>
         </div>
-        
-        <div class="db-content" id="dbContent">
-            <!-- تب‌ها با جاوااسکریپت بارگذاری می‌شوند -->
-            <div class="loading">در حال بارگذاری...</div>
-        </div>
-    </main>
 
+        <!-- ===== TAB: OVERVIEW ===== -->
+        <div class="db-tab-content active" id="tab-overview">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</div>
+                <div id="overviewContent">
+                    <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: POSTGRESQL ===== -->
+        <div class="db-tab-content" id="tab-postgresql">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL</div>
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>نام جدول</th>
+                                <th>رکوردها</th>
+                                <th>حجم (MB)</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pgTableBody">
+                            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: REDIS ===== -->
+        <div class="db-tab-content" id="tab-redis">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-bolt" style="color:#ff4444;"></i> Redis</div>
+                <div class="db-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
+                    <div class="db-stat-card">
+                        <span class="stat-icon">🔑</span>
+                        <div class="stat-value cyan" id="redisKeys">—</div>
+                        <div class="stat-label">کلیدها</div>
+                    </div>
+                    <div class="db-stat-card">
+                        <span class="stat-icon">💾</span>
+                        <div class="stat-value green" id="redisMemory">—</div>
+                        <div class="stat-label">حافظه</div>
+                    </div>
+                    <div class="db-stat-card">
+                        <span class="stat-icon">👥</span>
+                        <div class="stat-value orange" id="redisClients">—</div>
+                        <div class="stat-label">کلاینت‌ها</div>
+                    </div>
+                </div>
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>کلید</th>
+                                <th>نوع</th>
+                                <th>TTL</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="redisTableBody">
+                            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: SQLITE ===== -->
+        <div class="db-tab-content" id="tab-sqlite">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-file" style="color:#00ff88;"></i> SQLite</div>
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>نام جدول</th>
+                                <th>رکوردها</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sqliteTableBody">
+                            <tr><td colspan="3" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: EXPLORER ===== -->
+        <div class="db-tab-content" id="tab-explorer">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-search"></i> کاوشگر دیتابیس</div>
+                <div class="db-search">
+                    <input type="text" id="explorerSearch" placeholder="جستجو در دیتابیس..." onkeypress="if(event.key==='Enter') searchExplorer()">
+                    <button class="btn btn-primary" onclick="searchExplorer()"><i class="fas fa-search"></i> جستجو</button>
+                    <button class="btn" onclick="clearExplorer()"><i class="fas fa-times"></i> پاک کردن</button>
+                </div>
+                <div id="explorerResults">
+                    <div class="no-data" style="text-align:center;padding:20px;">🔍 عبارت مورد نظر را وارد کنید</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: MONITOR ===== -->
+        <div class="db-tab-content" id="tab-monitor">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-chart-line"></i> مانیتورینگ دیتابیس</div>
+                <div id="monitorContent">
+                    <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/js/script.js"></script>
-    <script src="/js/menu.js"></script>
-    <script src="/js/database.js"></script>
+    <script>
+        // ============================================================
+        // TABS
+        // ============================================================
+        document.querySelectorAll('#dbTabs button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('#dbTabs button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const tab = this.dataset.tab;
+                document.querySelectorAll('.db-tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab-' + tab).classList.add('active');
+
+                const loaders = {
+                    'overview': loadOverview,
+                    'postgresql': loadPostgresql,
+                    'redis': loadRedis,
+                    'sqlite': loadSqlite,
+                    'explorer': null,
+                    'monitor': loadMonitor
+                };
+                if (loaders[tab]) loaders[tab]();
+            });
+        });
+
+        // ============================================================
+        // LOAD OVERVIEW
+        // ============================================================
+        function loadOverview() {
+            const container = document.getElementById('overviewContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/health/database', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const entries = Object.entries(data.data);
+                        let online = 0,
+                            offline = 0;
+                        entries.forEach(([_, info]) => {
+                            if (info.connected) online++;
+                            else offline++;
+                        });
+
+                        document.getElementById('dbTotal').textContent = entries.length;
+                        document.getElementById('dbOnline').textContent = online;
+                        document.getElementById('dbOffline').textContent = offline;
+
+                        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">';
+                        entries.forEach(([name, info]) => {
+                            const status = info.connected ? '🟢 متصل' : '🔴 قطع';
+                            const statusColor = info.connected ? 'var(--accent-green)' : 'var(--accent-red)';
+                            const icon = info.type === 'redis' ? '⚡' :
+                                info.type === 'postgresql' ? '🐘' : '📄';
+                            html += `
+                                    <div style="background:rgba(0,0,0,0.2);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-glow);">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                                            <span style="font-weight:600;">${icon} ${name}</span>
+                                            <span style="color:${statusColor};font-size:0.8rem;">${status}</span>
+                                        </div>
+                                        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">
+                                            نسخه: ${info.version || 'unknown'} •
+                                            ${info.type || 'unknown'}
+                                        </div>
+                                    </div>
+                                `;
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<p style="color:var(--accent-red);text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<p style="color:var(--accent-red);text-align:center;padding:20px;">❌ خطا در ارتباط با سرور</p>';
+                });
+        }
+
+        // ============================================================
+        // LOAD POSTGRESQL
+        // ============================================================
+        function loadPostgresql() {
+            const tbody = document.getElementById('pgTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>';
+
+            fetch('/api/db?table=', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const tables = data.data;
+                        document.getElementById('dbTables').textContent = tables.length;
+                        if (tables.length === 0) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                            return;
+                        }
+                        let html = '';
+                        tables.forEach(t => {
+                            html += `
+                                    <tr>
+                                        <td><strong>${t.table_name}</strong></td>
+                                        <td>${(t.row_count || 0).toLocaleString()}</td>
+                                        <td>${(t.size_mb || 0).toFixed(2)}</td>
+                                        <td>
+                                            <button class="btn btn-xs btn-outline" onclick="showToast('📋 نمایش ${t.table_name}', 'info')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا</td></tr>';
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                });
+        }
+
+        // ============================================================
+        // LOAD REDIS
+        // ============================================================
+        function loadRedis() {
+            const tbody = document.getElementById('redisTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>';
+
+            fetch('/api/db/redis/keys', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const keys = data.data;
+                        document.getElementById('redisKeys').textContent = keys.length;
+                        if (keys.length === 0) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">🔑 هیچ کلیدی یافت نشد</td></tr>';
+                            return;
+                        }
+                        let html = '';
+                        keys.slice(0, 30).forEach(k => {
+                            html += `
+                                    <tr>
+                                        <td style="font-family:'Courier New',monospace;font-size:0.7rem;">${k.key}</td>
+                                        <td><span class="chip cyan">${k.type}</span></td>
+                                        <td>${k.ttl}</td>
+                                        <td>
+                                            <button class="btn btn-xs btn-outline" onclick="showToast('📋 مشاهده ${k.key}', 'info')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                        });
+                        tbody.innerHTML = html;
+
+                        // Stats
+                        const stats = data.stats || {};
+                        document.getElementById('redisMemory').textContent = stats.memory || '—';
+                        document.getElementById('redisClients').textContent = stats.clients || '—';
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا</td></tr>';
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                });
+        }
+
+        // ============================================================
+        // LOAD SQLITE
+        // ============================================================
+        function loadSqlite() {
+            const tbody = document.getElementById('sqliteTableBody');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>';
+
+            fetch('/api/db/sqlite/tables', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const tables = data.data;
+                        if (tables.length === 0) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                            return;
+                        }
+                        let html = '';
+                        tables.forEach(t => {
+                            html += `
+                                    <tr>
+                                        <td><strong>${t.table_name}</strong></td>
+                                        <td>${(t.row_count || 0).toLocaleString()}</td>
+                                        <td>
+                                            <button class="btn btn-xs btn-outline" onclick="showToast('📋 نمایش ${t.table_name}', 'info')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا</td></tr>';
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                });
+        }
+
+        // ============================================================
+        // SEARCH EXPLORER
+        // ============================================================
+        function searchExplorer() {
+            const q = document.getElementById('explorerSearch').value.trim();
+            const results = document.getElementById('explorerResults');
+
+            if (!q) {
+                results.innerHTML = '<div class="no-data" style="text-align:center;padding:20px;">🔍 عبارت مورد نظر را وارد کنید</div>';
+                return;
+            }
+
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال جستجو...</p></div>';
+
+            fetch(`/api/db/search?q=${encodeURIComponent(q)}`, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const items = data.data;
+                        if (items.length === 0) {
+                            results.innerHTML =
+                                '<div class="no-data" style="text-align:center;padding:20px;">🔍 نتیجه‌ای یافت نشد</div>';
+                            return;
+                        }
+                        let html = '';
+                        items.forEach(item => {
+                            const rows = item.rows || [];
+                            const preview = rows.length > 0 ? JSON.stringify(rows[0]).slice(0, 100) : '';
+                            html += `
+                                    <div class="db-result-item">
+                                        <div>
+                                            <span class="result-table">📋 ${item.table}</span>
+                                            <span class="result-count">${item.count} نتیجه</span>
+                                        </div>
+                                        <div class="result-preview">${preview || 'هیچ داده‌ای یافت نشد'}</div>
+                                    </div>
+                                `;
+                        });
+                        results.innerHTML = html;
+                    } else {
+                        results.innerHTML =
+                        '<div class="no-data" style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در جستجو</div>';
+                    }
+                })
+                .catch(() => {
+                    results.innerHTML =
+                        '<div class="no-data" style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در ارتباط</div>';
+                });
+        }
+
+        function clearExplorer() {
+            document.getElementById('explorerSearch').value = '';
+            document.getElementById('explorerResults').innerHTML =
+                '<div class="no-data" style="text-align:center;padding:20px;">🔍 عبارت مورد نظر را وارد کنید</div>';
+        }
+
+        // ============================================================
+        // LOAD MONITOR
+        // ============================================================
+        function loadMonitor() {
+            const container = document.getElementById('monitorContent');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/health/database', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const entries = Object.entries(data.data);
+                        let online = 0;
+                        entries.forEach(([_, info]) => { if (info.connected) online++; });
+
+                        let html = `
+                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;">
+                                    <div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-glow);">
+                                        <div style="font-size:0.55rem;color:var(--text-muted);">🟢 متصل</div>
+                                        <div style="font-size:1.3rem;font-weight:700;color:var(--accent-green);">${online}</div>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-glow);">
+                                        <div style="font-size:0.55rem;color:var(--text-muted);">🔴 قطع</div>
+                                        <div style="font-size:1.3rem;font-weight:700;color:var(--accent-red);">${entries.length - online}</div>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-glow);">
+                                        <div style="font-size:0.55rem;color:var(--text-muted);">📊 کل</div>
+                                        <div style="font-size:1.3rem;font-weight:700;color:var(--accent-cyan);">${entries.length}</div>
+                                    </div>
+                                </div>
+                                <div style="display:grid;gap:6px;">
+                            `;
+
+                        entries.forEach(([name, info]) => {
+                            const status = info.connected ? '🟢 متصل' : '🔴 قطع';
+                            const statusColor = info.connected ? 'var(--accent-green)' : 'var(--accent-red)';
+                            html += `
+                                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.1);border-radius:var(--radius-sm);border:1px solid var(--border-glow);">
+                                        <span><strong>${name}</strong> <span style="color:var(--text-muted);font-size:0.65rem;">${info.type || ''}</span></span>
+                                        <span style="color:${statusColor};">${status}</span>
+                                    </div>
+                                `;
+                        });
+
+                        html += '</div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML =
+                            '<p style="color:var(--accent-red);text-align:center;padding:20px;">❌ خطا در دریافت اطلاعات</p>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML =
+                        '<p style="color:var(--accent-red);text-align:center;padding:20px;">❌ خطا در ارتباط</p>';
+                });
+        }
+
+        // ============================================================
+        // LOAD NAV
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+
+            fetch('/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html not found');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                })
+                .catch(err => {
+                    console.error('❌ Nav error:', err);
+                    container.innerHTML = `
+                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
+                                ⚠️ خطا در بارگذاری منو
+                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                            </div>
+                        `;
+                });
+        }
+
+        // ============================================================
+        // TIMESTAMP
+        // ============================================================
+        function updateTimestamp() {
+            const el = document.getElementById('pageTimestamp');
+            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+        }
+        setInterval(updateTimestamp, 1000);
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Database page initializing...');
+
+            loadNav();
+
+            // بارگذاری اولیه
+            setTimeout(() => {
+                loadOverview();
+                loadPostgresql();
+                loadRedis();
+                loadSqlite();
+                loadMonitor();
+            }, 300);
+
+            // بروزرسانی خودکار
+            setInterval(loadOverview, 30000);
+
+            console.log('🚀 Database page ready');
+        });
+    </script>
+
 </body>
 </html>
