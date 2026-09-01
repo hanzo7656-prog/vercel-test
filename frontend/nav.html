@@ -1,27 +1,29 @@
 <!-- static/nav.html -->
 <!-- ============================================================
-     نویگیشن بار حرفه‌ای - نسخه ۳.۰
+     نویگیشن بار حرفه‌ای - نسخه ۴.۰
+     با قابلیت‌های: منوی واکنش‌گرا، وضعیت زنده، آیکون‌های زیبا
      ============================================================ -->
-<nav class="navbar">
+<nav class="navbar" id="mainNav">
     <div class="navbar-container">
-        <!-- برند -->
+        
+        <!-- ===== برند ===== -->
         <a href="/dashboard" class="navbar-brand">
             <span class="brand-icon">📊</span>
             <span class="brand-text">سیستم تحلیلگر</span>
             <span class="brand-version">v9</span>
         </a>
 
-        <!-- دکمه همبرگری (موبایل) -->
+        <!-- ===== دکمه همبرگری ===== -->
         <button class="navbar-toggle" id="navbarToggle" aria-label="منو">
             <span></span>
             <span></span>
             <span></span>
         </button>
 
-        <!-- منوی اصلی -->
+        <!-- ===== منوی اصلی ===== -->
         <ul class="navbar-menu" id="navbarMenu">
             <li>
-                <a href="/dashboard" class="nav-link active" data-page="dashboard">
+                <a href="/dashboard" class="nav-link" data-page="dashboard">
                     <i class="fas fa-chart-pie"></i>
                     <span>داشبورد</span>
                 </a>
@@ -71,39 +73,48 @@
             </li>
             <li class="nav-divider"></li>
             <li>
-                <a href="#" id="logoutBtn" class="nav-link logout">
+                <button class="nav-link theme-toggle" id="themeToggle" title="تغییر تم">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                    <span id="themeLabel">تیره</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-link logout" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>خروج</span>
-                </a>
+                </button>
             </li>
         </ul>
 
-        <!-- وضعیت سیستم (سمت راست) -->
+        <!-- ===== وضعیت سیستم ===== -->
         <div class="navbar-status">
-            <div class="status-item" id="statusDot">
-                <span class="status-indicator"></span>
+            <div class="status-item">
+                <span class="status-indicator online" id="statusDot"></span>
                 <span class="status-text" id="statusText">پایدار</span>
             </div>
             <div class="status-item uptime">
                 <i class="fas fa-clock"></i>
                 <span id="uptimeDisplay">۰s</span>
             </div>
-            <div class="status-item user">
+            <div class="status-item user" id="userDisplay">
                 <i class="fas fa-user-circle"></i>
-                <span id="userDisplay">کاربر</span>
+                <span>کاربر</span>
             </div>
         </div>
+        
     </div>
 </nav>
 
 <style>
     /* ============================================================
-       NAVBAR STYLES
+       NAVBAR - استایل‌های جدید و بهبود یافته
        ============================================================ */
+    
     .navbar {
-        background: rgba(8, 12, 24, 0.92);
+        background: var(--bg-card);
         backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border-color);
         position: sticky;
         top: 0;
         z-index: 1000;
@@ -111,8 +122,9 @@
         height: 60px;
         display: flex;
         align-items: center;
+        transition: var(--transition);
     }
-
+    
     .navbar-container {
         max-width: 1400px;
         width: 100%;
@@ -122,32 +134,37 @@
         justify-content: space-between;
         gap: 16px;
     }
-
+    
     /* ===== برند ===== */
     .navbar-brand {
         display: flex;
         align-items: center;
         gap: 8px;
         text-decoration: none;
-        color: #00d4ff;
+        color: var(--accent-cyan);
         font-weight: 700;
         font-size: 1.1rem;
         flex-shrink: 0;
+        transition: var(--transition);
     }
-
+    
+    .navbar-brand:hover {
+        color: #00e5ff;
+    }
+    
     .navbar-brand .brand-icon {
         font-size: 1.3rem;
     }
-
+    
     .navbar-brand .brand-version {
         font-size: 0.55rem;
-        color: #4a5a6a;
-        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-muted);
+        background: var(--bg-input);
         padding: 1px 8px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: var(--radius-full);
+        border: 1px solid var(--border-color);
     }
-
+    
     /* ===== دکمه همبرگری ===== */
     .navbar-toggle {
         display: none;
@@ -157,35 +174,36 @@
         border: none;
         cursor: pointer;
         padding: 6px;
-        border-radius: 8px;
-        transition: all 0.3s ease;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
     }
-
+    
     .navbar-toggle:hover {
-        background: rgba(0, 212, 255, 0.05);
+        background: var(--bg-hover);
     }
-
+    
     .navbar-toggle span {
         display: block;
         width: 22px;
         height: 2px;
-        background: #e8eef7;
+        background: var(--text-primary);
         border-radius: 2px;
-        transition: all 0.3s ease;
+        transition: var(--transition);
     }
-
+    
     .navbar-toggle.active span:nth-child(1) {
         transform: rotate(45deg) translate(4px, 4px);
     }
-
+    
     .navbar-toggle.active span:nth-child(2) {
         opacity: 0;
+        transform: scaleX(0);
     }
-
+    
     .navbar-toggle.active span:nth-child(3) {
         transform: rotate(-45deg) translate(4px, -4px);
     }
-
+    
     /* ===== منو ===== */
     .navbar-menu {
         display: flex;
@@ -196,41 +214,46 @@
         padding: 0;
         flex: 1;
     }
-
+    
     .navbar-menu li {
         list-style: none;
     }
-
+    
     .nav-link {
         display: flex;
         align-items: center;
         gap: 6px;
         padding: 6px 14px;
-        border-radius: 8px;
-        color: #7a8fa8;
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
         text-decoration: none;
         font-size: 0.8rem;
-        transition: all 0.25s ease;
+        transition: var(--transition);
         position: relative;
         white-space: nowrap;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        width: 100%;
     }
-
+    
     .nav-link i {
         font-size: 0.85rem;
         width: 18px;
         text-align: center;
     }
-
+    
     .nav-link:hover {
-        color: #e8eef7;
-        background: rgba(0, 212, 255, 0.04);
+        color: var(--text-primary);
+        background: var(--bg-hover);
     }
-
+    
     .nav-link.active {
-        color: #00d4ff;
-        background: rgba(0, 212, 255, 0.08);
+        color: var(--accent-cyan);
+        background: rgba(0, 212, 255, 0.06);
     }
-
+    
     .nav-link.active::after {
         content: '';
         position: absolute;
@@ -239,36 +262,46 @@
         transform: translateX(-50%);
         width: 20px;
         height: 2px;
-        background: #00d4ff;
+        background: var(--accent-cyan);
         border-radius: 2px;
     }
-
+    
     .nav-link.logout {
-        color: #ff4444;
+        color: var(--accent-red);
     }
-
+    
     .nav-link.logout:hover {
-        background: rgba(255, 68, 68, 0.08);
-        color: #ff6666;
+        background: rgba(239, 68, 68, 0.06);
+        color: var(--accent-rose);
     }
-
+    
+    .nav-link.theme-toggle {
+        color: var(--text-muted);
+    }
+    
+    .nav-link.theme-toggle:hover {
+        color: var(--text-primary);
+        background: var(--bg-hover);
+    }
+    
     .nav-badge {
-        background: #ff4444;
-        color: #fff;
+        background: var(--accent-red);
+        color: white;
         font-size: 0.5rem;
         padding: 1px 6px;
-        border-radius: 10px;
+        border-radius: var(--radius-full);
         min-width: 16px;
         text-align: center;
+        font-weight: 600;
     }
-
+    
     .nav-divider {
         width: 1px;
         height: 28px;
-        background: rgba(255, 255, 255, 0.06);
-        margin: 0 6px;
+        background: var(--border-color);
+        margin: 0 4px;
     }
-
+    
     /* ===== وضعیت ===== */
     .navbar-status {
         display: flex;
@@ -276,15 +309,15 @@
         gap: 16px;
         flex-shrink: 0;
         font-size: 0.75rem;
-        color: #7a8fa8;
+        color: var(--text-secondary);
     }
-
+    
     .status-item {
         display: flex;
         align-items: center;
         gap: 4px;
     }
-
+    
     .status-indicator {
         width: 8px;
         height: 8px;
@@ -292,43 +325,35 @@
         display: inline-block;
         animation: pulse-dot 2s infinite;
     }
-
-    .status-indicator.online {
-        background: #00ff88;
-    }
-    .status-indicator.warning {
-        background: #ff8800;
-    }
-    .status-indicator.offline {
-        background: #ff4444;
-    }
-
+    
+    .status-indicator.online { background: var(--accent-green); }
+    .status-indicator.warning { background: var(--accent-orange); }
+    .status-indicator.offline { background: var(--accent-red); }
+    
     @keyframes pulse-dot {
-        0%,
-        100% {
-            opacity: 1;
-            transform: scale(1);
-        }
-        50% {
-            opacity: 0.4;
-            transform: scale(0.8);
-        }
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
     }
-
+    
     .status-item.uptime {
-        font-family: 'Courier New', monospace;
+        font-family: var(--font-mono);
         font-size: 0.65rem;
-        color: #4a5a6a;
+        color: var(--text-muted);
     }
-
+    
     .status-item.user {
-        color: #00d4ff;
+        color: var(--accent-cyan);
         font-weight: 500;
     }
-
+    
+    .status-item.user i {
+        font-size: 0.9rem;
+    }
+    
     /* ============================================================
        RESPONSIVE
        ============================================================ */
+    
     @media (max-width: 1024px) {
         .navbar-menu {
             gap: 0;
@@ -342,28 +367,29 @@
             width: 16px;
         }
     }
-
+    
     @media (max-width: 768px) {
         .navbar {
             height: 54px;
             padding: 0 14px;
         }
-
+        
         .navbar-toggle {
             display: flex;
         }
-
+        
         .navbar-menu {
-            position: absolute;
+            position: fixed;
             top: 54px;
             left: 0;
             right: 0;
             flex-direction: column;
-            background: rgba(8, 12, 24, 0.98);
+            background: var(--bg-card);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 8px 16px;
             gap: 2px;
-            border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+            border-bottom: 1px solid var(--border-color);
             transform: scaleY(0);
             transform-origin: top;
             opacity: 0;
@@ -371,206 +397,268 @@
             transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             max-height: calc(100vh - 54px);
             overflow-y: auto;
+            box-shadow: var(--shadow-lg);
         }
-
+        
         .navbar-menu.open {
             transform: scaleY(1);
             opacity: 1;
             pointer-events: all;
         }
-
+        
         .navbar-menu li {
             width: 100%;
         }
-
+        
         .nav-link {
             padding: 10px 14px;
             width: 100%;
             font-size: 0.85rem;
         }
-
+        
         .nav-link.active::after {
             display: none;
         }
-
+        
         .nav-link.active {
-            border-right: 2px solid #00d4ff;
+            border-right: 2px solid var(--accent-cyan);
+            background: rgba(0, 212, 255, 0.04);
         }
-
+        
         .nav-divider {
             width: 100%;
             height: 1px;
             margin: 4px 0;
         }
-
+        
         .navbar-status {
             gap: 10px;
         }
-
+        
         .status-item.uptime {
             display: none;
         }
-
+        
         .status-item.user span {
             display: none;
         }
     }
-
+    
     @media (max-width: 480px) {
         .navbar {
             height: 48px;
             padding: 0 10px;
         }
-
+        
         .navbar-brand {
             font-size: 0.9rem;
         }
-
+        
         .navbar-brand .brand-version {
             display: none;
         }
-
+        
         .navbar-menu {
             top: 48px;
         }
-
+        
         .nav-link {
             font-size: 0.8rem;
             padding: 8px 12px;
+        }
+        
+        .navbar-status .status-text {
+            display: none;
         }
     }
 </style>
 
 <script>
     // ============================================================
-    // NAVBAR SCRIPT
+    // NAVBAR SCRIPT - نسخه ۴.۰
     // ============================================================
     (function() {
         'use strict';
-
-        // 1. منوی همبرگری
+        
+        // ===== 1. منوی همبرگری =====
         const toggle = document.getElementById('navbarToggle');
         const menu = document.getElementById('navbarMenu');
-
+        
         if (toggle && menu) {
             toggle.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const isOpen = menu.classList.toggle('open');
                 toggle.classList.toggle('active', isOpen);
+                document.body.style.overflow = isOpen ? 'hidden' : '';
             });
-
+            
             // بستن منو با کلیک خارج
             document.addEventListener('click', function(e) {
                 if (menu.classList.contains('open')) {
                     if (!menu.contains(e.target) && !toggle.contains(e.target)) {
                         menu.classList.remove('open');
                         toggle.classList.remove('active');
+                        document.body.style.overflow = '';
                     }
                 }
             });
-
+            
             // بستن منو با کلیک روی لینک
             menu.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', function() {
                     menu.classList.remove('open');
                     toggle.classList.remove('active');
+                    document.body.style.overflow = '';
                 });
             });
         }
-
-        // 2. علامت‌گذاری صفحه فعال
+        
+        // ===== 2. علامت‌گذاری صفحه فعال =====
         const currentPath = window.location.pathname;
-        document.querySelectorAll('.nav-link').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href && href !== '#' && currentPath.startsWith(href) && href !== '/') {
+        const navLinks = document.querySelectorAll('.nav-link[data-page]');
+        
+        navLinks.forEach(link => {
+            const page = link.dataset.page;
+            if (page === 'dashboard' && (currentPath === '/' || currentPath === '/dashboard')) {
                 link.classList.add('active');
-            } else if (href === '/' && currentPath === '/') {
+            } else if (page !== 'dashboard' && currentPath.includes(page)) {
                 link.classList.add('active');
             }
         });
-
-        // 3. خروج
+        
+        // ===== 3. تغییر تم =====
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+        
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                // بروزرسانی آیکون و برچسب
+                if (newTheme === 'dark') {
+                    themeIcon.className = 'fas fa-moon';
+                    themeLabel.textContent = 'تیره';
+                } else {
+                    themeIcon.className = 'fas fa-sun';
+                    themeLabel.textContent = 'روشن';
+                }
+                
+                showToast(`🌓 حالت ${newTheme === 'dark' ? 'تیره' : 'روشن'}`, 'info');
+            });
+            
+            // بارگذاری تم ذخیره شده
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'dark') {
+                themeIcon.className = 'fas fa-moon';
+                themeLabel.textContent = 'تیره';
+            } else {
+                themeIcon.className = 'fas fa-sun';
+                themeLabel.textContent = 'روشن';
+            }
+        }
+        
+        // ===== 4. خروج =====
         document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
             e.preventDefault();
             if (confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
                 fetch('/logout', { method: 'POST', credentials: 'include' })
-                    .then(() => window.location.href = '/');
+                    .then(() => {
+                        document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                        window.location.href = '/';
+                    })
+                    .catch(() => {
+                        window.location.href = '/';
+                    });
             }
         });
-
-        // 4. دریافت اطلاعات کاربر
-        fetch('/api/user', { credentials: 'include' })
-            .then(res => res.json())
-            .then(data => {
+        
+        // ===== 5. دریافت اطلاعات کاربر =====
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/api/user', { credentials: 'include' });
+                const data = await res.json();
                 if (data.success) {
                     const display = document.getElementById('userDisplay');
                     if (display) {
-                        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
-                        display.textContent = roleMap[data.data.role] || data.data.username;
+                        const roleMap = { 
+                            'admin': '👑 ادمین', 
+                            'vip': '⭐ VIP', 
+                            'guest': '👤 مهمان' 
+                        };
+                        display.innerHTML = `<i class="fas fa-user-circle"></i> ${roleMap[data.data.role] || data.data.username}`;
                     }
                 }
-            })
-            .catch(() => {});
-
-        // 5. آپتایم
-        function fetchUptime() {
-            fetch('/stats', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.uptime) {
-                        const el = document.getElementById('uptimeDisplay');
-                        if (el) el.textContent = data.uptime;
-                    }
-                })
-                .catch(() => {});
+            } catch (err) {
+                console.error('User info error:', err);
+            }
+        }
+        loadUserInfo();
+        
+        // ===== 6. آپتایم =====
+        async function fetchUptime() {
+            try {
+                const res = await fetch('/stats', { credentials: 'include' });
+                const data = await res.json();
+                if (data.uptime) {
+                    const el = document.getElementById('uptimeDisplay');
+                    if (el) el.textContent = data.uptime;
+                }
+            } catch (err) {
+                // Silently fail
+            }
         }
         fetchUptime();
         setInterval(fetchUptime, 30000);
-
-        // 6. وضعیت سیستم
-        function updateStatus() {
-            fetch('/api/metrics', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const metrics = data.data.metrics || {};
-                        const api = metrics.api_status?.value || 'unknown';
-                        const dot = document.querySelector('.status-indicator');
-                        const text = document.getElementById('statusText');
-
-                        if (dot && text) {
-                            dot.className = 'status-indicator';
-                            if (api === 'ok') {
-                                dot.classList.add('online');
-                                text.textContent = 'پایدار';
-                            } else if (api === 'degraded') {
-                                dot.classList.add('warning');
-                                text.textContent = 'ضعیف';
-                            } else {
-                                dot.classList.add('offline');
-                                text.textContent = 'قطع';
-                            }
+        
+        // ===== 7. وضعیت سیستم =====
+        async function updateStatus() {
+            try {
+                const res = await fetch('/api/metrics', { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) {
+                    const metrics = data.data.metrics || {};
+                    const api = metrics.api_status?.value || 'unknown';
+                    const dot = document.getElementById('statusDot');
+                    const text = document.getElementById('statusText');
+                    
+                    if (dot && text) {
+                        dot.className = 'status-indicator';
+                        if (api === 'ok') {
+                            dot.classList.add('online');
+                            text.textContent = 'پایدار';
+                        } else if (api === 'degraded') {
+                            dot.classList.add('warning');
+                            text.textContent = 'ضعیف';
+                        } else {
+                            dot.classList.add('offline');
+                            text.textContent = 'قطع';
                         }
-
-                        // تعداد هشدارها
-                        fetch('/api/alerts?limit=1&resolved=false', { credentials: 'include' })
-                            .then(r => r.json())
-                            .then(d => {
-                                const badge = document.getElementById('alertBadge');
-                                if (badge && d.data) {
-                                    const count = d.data.length || 0;
-                                    badge.textContent = count;
-                                    badge.style.display = count > 0 ? 'inline' : 'none';
-                                }
-                            })
-                            .catch(() => {});
                     }
-                })
-                .catch(() => {});
+                    
+                    // تعداد هشدارها
+                    const alertRes = await fetch('/api/alerts?limit=1&resolved=false', { credentials: 'include' });
+                    const alertData = await alertRes.json();
+                    const badge = document.getElementById('alertBadge');
+                    if (badge && alertData.data) {
+                        const count = alertData.data.length || 0;
+                        badge.textContent = count;
+                        badge.style.display = count > 0 ? 'inline' : 'none';
+                    }
+                }
+            } catch (err) {
+                // Silently fail
+            }
         }
         updateStatus();
         setInterval(updateStatus, 15000);
-
-        console.log('✅ Navbar v3.0 loaded');
+        
+        console.log('✅ Navbar v4.0 loaded');
     })();
 </script>
