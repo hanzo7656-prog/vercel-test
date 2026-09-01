@@ -2,16 +2,57 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>نمودار</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .chart-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .chart-wrapper {
+            height: 100%;
+            width: 100%;
+            background: #080c18;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-glow);
+            overflow: hidden;
+        }
+
+        .chart-wrapper .tradingview-widget-container {
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        .chart-wrapper .tradingview-widget-container__widget {
+            height: calc(100% - 32px) !important;
+            width: 100% !important;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                padding: 10px 12px;
+                height: calc(100vh - 80px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-container {
+                padding: 6px 8px;
+                height: calc(100vh - 70px);
+            }
+        }
+    </style>
 </head>
 <body>
+
     <div id="navContainer"></div>
-    
-    <main class="chart-page">
+
+    <div class="chart-container">
         <div class="chart-wrapper">
-            <!-- TradingView Widget -->
             <div class="tradingview-widget-container" style="height:100%;width:100%">
                 <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
                 <div class="tradingview-widget-copyright">
@@ -21,37 +62,75 @@
                     <span class="trademark"> by TradingView</span>
                 </div>
                 <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-                {
-                    "allow_symbol_change": true,
-                    "calendar": false,
-                    "details": false,
-                    "hide_side_toolbar": false,
-                    "hide_top_toolbar": false,
-                    "hide_legend": false,
-                    "hide_volume": false,
-                    "hotlist": false,
-                    "interval": "D",
-                    "locale": "en",
-                    "save_image": true,
-                    "style": "1",
-                    "symbol": "BINANCE:BTCUSDT",
-                    "theme": "dark",
-                    "timezone": "Asia/Tehran",
-                    "backgroundColor": "#0F0F0F",
-                    "gridColor": "rgba(242, 242, 242, 0.2)",
-                    "watchlist": [],
-                    "withdateranges": true,
-                    "compareSymbols": [],
-                    "support_host": "https://www.tradingview.com",
-                    "studies": ["STD;Divergence%1Indicator"],
-                    "autosize": true
-                }
+                    {
+                        "allow_symbol_change": true,
+                        "calendar": false,
+                        "details": false,
+                        "hide_side_toolbar": false,
+                        "hide_top_toolbar": false,
+                        "hide_legend": false,
+                        "hide_volume": false,
+                        "hotlist": false,
+                        "interval": "D",
+                        "locale": "en",
+                        "save_image": true,
+                        "style": "1",
+                        "symbol": "BINANCE:BTCUSDT",
+                        "theme": "dark",
+                        "timezone": "Asia/Tehran",
+                        "backgroundColor": "#0F0F0F",
+                        "gridColor": "rgba(242, 242, 242, 0.2)",
+                        "watchlist": [],
+                        "withdateranges": true,
+                        "compareSymbols": [],
+                        "support_host": "https://www.tradingview.com",
+                        "studies": ["STD;Divergence%1Indicator"],
+                        "autosize": true
+                    }
                 </script>
             </div>
         </div>
-    </main>
+    </div>
 
     <script src="/js/script.js"></script>
-    <script src="/js/menu.js"></script>
+    <script>
+        // ============================================================
+        // LOAD NAV
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+
+            fetch('/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html not found');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                })
+                .catch(err => {
+                    console.error('❌ Nav error:', err);
+                    container.innerHTML = `
+                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
+                                ⚠️ خطا در بارگذاری منو
+                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                            </div>
+                        `;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            console.log('🚀 Chart page ready');
+        });
+    </script>
+
 </body>
 </html>
