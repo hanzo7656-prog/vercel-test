@@ -2,134 +2,112 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>داشبورد</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ============================================================
-           RESET & BASE
+           DASHBOARD - استایل‌های اختصاصی
            ============================================================ */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            background: #080c18;
-            font-family: 'Segoe UI', 'Vazir', system-ui, sans-serif;
-            color: #e8eef7;
-            min-height: 100vh;
-        }
-
-        /* ============================================================
-           NAV
-           ============================================================ */
-        #navContainer {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        /* ============================================================
-           MAIN CONTAINER
-           ============================================================ */
-        .main-container {
+        .dashboard-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 16px 20px;
         }
 
-        /* ============================================================
-           STATS GRID
-           ============================================================ */
+        /* ===== STATS CARDS ===== */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
             margin-bottom: 20px;
         }
 
         .stat-card {
-            background: rgba(13, 22, 40, 0.5);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 212, 255, 0.06);
-            border-radius: 14px;
-            padding: 16px 18px;
-            transition: all 0.3s ease;
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            transition: var(--transition);
+            text-align: center;
         }
 
         .stat-card:hover {
-            border-color: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.12);
             transform: translateY(-2px);
         }
 
         .stat-card .stat-icon {
-            font-size: 1.3rem;
-            margin-bottom: 4px;
+            font-size: 1.1rem;
             display: block;
+            margin-bottom: 2px;
         }
 
         .stat-card .stat-value {
-            font-size: 1.4rem;
+            font-size: 1rem;
             font-weight: 700;
             font-family: 'Courier New', monospace;
         }
 
-        .stat-card .stat-value.cyan { color: #00d4ff; }
-        .stat-card .stat-value.green { color: #00ff88; }
-        .stat-card .stat-value.orange { color: #ff8800; }
-        .stat-card .stat-value.purple { color: #a855f7; }
+        .stat-card .stat-value.cyan { color: var(--accent-cyan); }
+        .stat-card .stat-value.green { color: var(--accent-green); }
+        .stat-card .stat-value.orange { color: var(--accent-orange); }
+        .stat-card .stat-value.purple { color: var(--accent-purple); }
+        .stat-card .stat-value.pink { color: var(--accent-pink); }
+        .stat-card .stat-value.red { color: var(--accent-red); }
 
         .stat-card .stat-label {
-            font-size: 0.6rem;
-            color: #7a8fa8;
+            font-size: 0.55rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             margin-top: 2px;
         }
 
-        .stat-card .stat-sub {
-            font-size: 0.55rem;
-            color: #4a5a6a;
-            margin-top: 4px;
+        .stat-card .stat-change {
+            font-size: 0.5rem;
+            margin-top: 2px;
         }
 
-        .stat-card .stat-sub .up { color: #00ff88; }
-        .stat-card .stat-sub .down { color: #ff4444; }
+        .stat-card .stat-change.up { color: var(--accent-green); }
+        .stat-card .stat-change.down { color: var(--accent-red); }
+        .stat-card .stat-change.neutral { color: var(--text-muted); }
 
-        /* ============================================================
-           INFO GRID
-           ============================================================ */
-        .info-grid {
+        /* ===== MIDDLE GRID ===== */
+        .middle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            gap: 16px;
             margin-bottom: 20px;
         }
 
         .info-card {
-            background: rgba(13, 22, 40, 0.5);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 212, 255, 0.06);
-            border-radius: 14px;
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
             padding: 16px 18px;
         }
 
         .info-card .card-title {
             font-size: 0.75rem;
             font-weight: 600;
-            color: #7a8fa8;
+            color: var(--text-secondary);
             margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .info-card .card-title i { color: #00d4ff; }
+        .info-card .card-title i { color: var(--accent-cyan); }
 
         .info-items {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px 14px;
+            gap: 4px 14px;
         }
 
         .info-item {
@@ -140,53 +118,51 @@
             font-size: 0.75rem;
         }
 
-        .info-item .label { color: #7a8fa8; }
-        .info-item .value { color: #e8eef7; font-weight: 500; }
-        .info-item .value.green { color: #00ff88; }
-        .info-item .value.orange { color: #ff8800; }
-        .info-item .value.red { color: #ff4444; }
+        .info-item .label { color: var(--text-secondary); }
+        .info-item .value { color: var(--text-primary); font-weight: 500; }
+        .info-item .value.green { color: var(--accent-green); }
+        .info-item .value.orange { color: var(--accent-orange); }
+        .info-item .value.red { color: var(--accent-red); }
 
-        /* ============================================================
-           CHARTS
-           ============================================================ */
+        /* ===== CHARTS ===== */
         .charts-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            gap: 16px;
             margin-bottom: 20px;
         }
 
         .chart-card {
-            background: rgba(13, 22, 40, 0.5);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 212, 255, 0.06);
-            border-radius: 14px;
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
             padding: 16px 18px;
         }
 
         .chart-card .card-title {
             font-size: 0.75rem;
             font-weight: 600;
-            color: #7a8fa8;
+            color: var(--text-secondary);
             margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .chart-card .card-title i { color: #00d4ff; }
+        .chart-card .card-title i { color: var(--accent-cyan); }
 
         .chart-card .card-title .live-badge {
             font-size: 0.5rem;
             padding: 2px 10px;
             border-radius: 20px;
             background: rgba(0, 255, 136, 0.1);
-            color: #00ff88;
+            color: var(--accent-green);
             border: 1px solid rgba(0, 255, 136, 0.15);
-            animation: pulse 2s infinite;
+            animation: pulse-badge 2s infinite;
         }
 
-        @keyframes pulse {
+        @keyframes pulse-badge {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
@@ -196,65 +172,26 @@
             position: relative;
         }
 
-        /* ============================================================
-           CHIP
-           ============================================================ */
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 0.6rem;
-            font-weight: 500;
-        }
-
-        .chip.online {
-            background: rgba(0, 255, 136, 0.08);
-            color: #00ff88;
-            border: 1px solid rgba(0, 255, 136, 0.12);
-        }
-
-        .chip.offline {
-            background: rgba(255, 68, 68, 0.08);
-            color: #ff4444;
-            border: 1px solid rgba(255, 68, 68, 0.12);
-        }
-
-        .chip.cyan {
-            background: rgba(0, 212, 255, 0.06);
-            color: #00d4ff;
-            border: 1px solid rgba(0, 212, 255, 0.08);
-        }
-
-        .chip.warning {
-            background: rgba(255, 136, 0, 0.08);
-            color: #ff8800;
-            border: 1px solid rgba(255, 136, 0, 0.12);
-        }
-
-        /* ============================================================
-           BOTTOM GRID (NEWS & ALERTS)
-           ============================================================ */
+        /* ===== BOTTOM ===== */
         .bottom-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            gap: 16px;
             margin-bottom: 20px;
         }
 
         .bottom-card {
-            background: rgba(13, 22, 40, 0.5);
+            background: var(--bg-card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 212, 255, 0.06);
-            border-radius: 14px;
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
             padding: 16px 18px;
         }
 
         .bottom-card .card-title {
             font-size: 0.75rem;
             font-weight: 600;
-            color: #7a8fa8;
+            color: var(--text-secondary);
             margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
@@ -268,42 +205,41 @@
             padding: 2px 12px;
             border-radius: 20px;
             background: rgba(0, 212, 255, 0.06);
-            color: #00d4ff;
+            color: var(--accent-cyan);
             border: 1px solid rgba(0, 212, 255, 0.08);
         }
 
-        /* ============================================================
-           NEWS ITEMS
-           ============================================================ */
+        /* ===== NEWS ===== */
         .news-item {
             display: flex;
             gap: 10px;
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             margin-bottom: 4px;
             background: rgba(0, 0, 0, 0.15);
-            border-left: 3px solid #00d4ff;
+            border-right: 3px solid var(--accent-cyan);
+            transition: var(--transition);
+            align-items: flex-start;
         }
 
         .news-item:hover { background: rgba(0, 0, 0, 0.25); }
 
         .news-item .news-content { flex: 1; }
-        .news-item .news-title { font-size: 0.8rem; color: #e8eef7; }
-        .news-item .news-source { font-size: 0.6rem; color: #4a5a6a; }
-        .news-item .news-time { font-size: 0.55rem; color: #4a5a6a; }
+        .news-item .news-title { font-size: 0.8rem; color: var(--text-primary); }
+        .news-item .news-source { font-size: 0.6rem; color: var(--text-muted); }
+        .news-item .news-time { font-size: 0.55rem; color: var(--text-muted); }
 
-        /* ============================================================
-           ALERT ITEMS
-           ============================================================ */
+        /* ===== ALERTS ===== */
         .alert-item {
             display: flex;
             align-items: center;
             gap: 10px;
             padding: 6px 12px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             margin-bottom: 4px;
             background: rgba(0, 0, 0, 0.15);
-            border-left: 3px solid transparent;
+            border-right: 3px solid transparent;
+            transition: var(--transition);
         }
 
         .alert-item:hover { background: rgba(0, 0, 0, 0.25); }
@@ -313,29 +249,38 @@
             font-size: 0.75rem;
         }
 
+        .alert-item .alert-text .source {
+            color: var(--text-muted);
+            font-size: 0.6rem;
+        }
+
         .alert-item .alert-time {
             font-size: 0.55rem;
-            color: #4a5a6a;
+            color: var(--text-muted);
         }
 
         .alert-item .alert-resolve-btn {
             background: none;
             border: none;
-            color: #4a5a6a;
+            color: var(--text-muted);
             cursor: pointer;
             font-size: 0.65rem;
+            transition: var(--transition);
         }
 
-        .alert-item .alert-resolve-btn:hover { color: #00ff88; }
+        .alert-item .alert-resolve-btn:hover { color: var(--accent-green); }
 
-        .alert-item.critical { border-left-color: #ff4444; }
-        .alert-item.warning { border-left-color: #ff8800; }
-        .alert-item.info { border-left-color: #00d4ff; }
-        .alert-item.resolved { border-left-color: #00ff88; opacity: 0.6; }
+        .alert-item.critical { border-right-color: var(--accent-red); }
+        .alert-item.warning { border-right-color: var(--accent-orange); }
+        .alert-item.info { border-right-color: var(--accent-cyan); }
+        .alert-item.resolved {
+            border-right-color: var(--accent-green);
+            opacity: 0.5;
+        }
 
         .no-data {
             text-align: center;
-            color: #4a5a6a;
+            color: var(--text-muted);
             font-size: 0.75rem;
             padding: 16px 0;
         }
@@ -345,29 +290,30 @@
            ============================================================ */
         .quick-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
+            margin-top: 4px;
         }
 
         .quick-actions .btn {
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glow);
+            background: rgba(0, 212, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-family: inherit;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 16px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 212, 255, 0.08);
-            background: rgba(0, 212, 255, 0.04);
-            color: #7a8fa8;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-family: inherit;
         }
 
         .quick-actions .btn:hover {
-            border-color: #00d4ff;
-            color: #e8eef7;
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
             background: rgba(0, 212, 255, 0.06);
             transform: translateY(-2px);
         }
@@ -375,136 +321,130 @@
         .quick-actions .btn.primary {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(168, 85, 247, 0.15));
             border-color: rgba(0, 212, 255, 0.15);
-            color: #00d4ff;
-        }
-
-        /* ============================================================
-           TOAST
-           ============================================================ */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: center;
-            pointer-events: none;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .toast {
-            padding: 10px 20px;
-            background: rgba(8, 12, 24, 0.95);
-            backdrop-filter: blur(20px);
-            border: 2px solid #00d4ff;
-            border-radius: 10px;
-            color: #e8eef7;
-            font-size: 0.85rem;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-            pointer-events: all;
-            animation: slideUp 0.35s ease;
-            text-align: center;
-            width: 100%;
-        }
-
-        .toast.success { border-color: #00ff88; }
-        .toast.error { border-color: #ff4444; }
-        .toast.warning { border-color: #ff8800; }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            color: var(--accent-cyan);
         }
 
         /* ============================================================
            RESPONSIVE
            ============================================================ */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
         @media (max-width: 1024px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .info-grid { grid-template-columns: 1fr; }
+            .middle-grid { grid-template-columns: 1fr; }
             .charts-grid { grid-template-columns: 1fr; }
             .bottom-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 768px) {
-            .main-container { padding: 10px 12px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-            .stat-card { padding: 12px 14px; }
-            .stat-card .stat-value { font-size: 1.1rem; }
+            .dashboard-container { padding: 10px 12px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 8px 10px; }
+            .stat-card .stat-value { font-size: 0.85rem; }
             .info-items { grid-template-columns: 1fr; }
+            .chart-card .chart-wrapper { height: 140px; }
         }
 
         @media (max-width: 480px) {
-            .stats-grid { grid-template-columns: 1fr; }
-            .stat-card .stat-value { font-size: 1rem; }
-            .chart-card .chart-wrapper { height: 140px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-card .stat-value { font-size: 0.75rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ============================================================
-    NAV
-    ============================================================ -->
+    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
 
-    <!-- ============================================================
-    MAIN
-    ============================================================ -->
-    <div class="main-container">
+    <!-- ===== DASHBOARD ===== -->
+    <div class="dashboard-container">
 
-        <!-- ===== STATS ===== -->
+        <!-- ===== STATS (6 کارت کوچک) ===== -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <span class="stat-icon">₿</span>
                 <div class="stat-value cyan" id="btcPrice">—</div>
                 <div class="stat-label">بیت‌کوین</div>
-                <div class="stat-sub" id="btcChange">⏳</div>
+                <div class="stat-change" id="btcChange">⏳</div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">⟠</span>
                 <div class="stat-value purple" id="ethPrice">—</div>
                 <div class="stat-label">اتریوم</div>
-                <div class="stat-sub" id="ethChange">⏳</div>
+                <div class="stat-change" id="ethChange">⏳</div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">😨</span>
                 <div class="stat-value orange" id="fearGreedValue">—</div>
                 <div class="stat-label">ترس و طمع</div>
-                <div class="stat-sub" id="fearGreedLabel">⏳</div>
+                <div class="stat-change" id="fearGreedLabel">⏳</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">📊</span>
+                <div class="stat-value cyan" id="btcDominance">—</div>
+                <div class="stat-label">سلطه BTC</div>
             </div>
             <div class="stat-card">
                 <span class="stat-icon">💰</span>
                 <div class="stat-value green" id="apiCredits">—</div>
                 <div class="stat-label">اعتبار API</div>
-                <div class="stat-sub" id="apiStatusText">⏳</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🔄</span>
+                <div class="stat-value cyan" id="apiStatus">—</div>
+                <div class="stat-label">وضعیت API</div>
             </div>
         </div>
 
-        <!-- ===== INFO ===== -->
-        <div class="info-grid">
+        <!-- ===== MIDDLE (مدل + سیستم) ===== -->
+        <div class="middle-grid">
+            <!-- مدل -->
             <div class="info-card">
                 <div class="card-title"><i class="fas fa-brain"></i> وضعیت مدل</div>
                 <div class="info-items" id="modelInfo">
-                    <div class="info-item"><span class="label">وضعیت</span><span class="value" id="modelLoaded">⏳</span></div>
-                    <div class="info-item"><span class="label">نسخه</span><span class="value" id="modelVersion">—</span></div>
-                    <div class="info-item"><span class="label">دقت</span><span class="value" id="modelAccuracy">—</span></div>
-                    <div class="info-item"><span class="label">آموزش</span><span class="value" id="modelTrainings">—</span></div>
+                    <div class="info-item">
+                        <span class="label">وضعیت</span>
+                        <span class="value" id="modelLoaded">⏳</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">نسخه</span>
+                        <span class="value" id="modelVersion">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">دقت</span>
+                        <span class="value" id="modelAccuracy">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">آموزش</span>
+                        <span class="value" id="modelTrainings">—</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- سیستم -->
             <div class="info-card">
                 <div class="card-title"><i class="fas fa-server"></i> وضعیت سیستم</div>
                 <div class="info-items" id="systemInfo">
-                    <div class="info-item"><span class="label">⏱️ آپتایم</span><span class="value" id="uptimeValue">—</span></div>
-                    <div class="info-item"><span class="label">🔌 API</span><span class="value" id="apiStatus">—</span></div>
-                    <div class="info-item"><span class="label">📊 سلطه BTC</span><span class="value" id="btcDominance">—</span></div>
+                    <div class="info-item">
+                        <span class="label">⏱️ آپتایم</span>
+                        <span class="value" id="uptimeValue">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">💻 CPU</span>
+                        <span class="value" id="cpuValue">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">💾 RAM</span>
+                        <span class="value" id="ramValue">—</span>
+                    </div>
                     <div class="info-item" style="grid-column:1/-1;">
                         <span class="label">🗄️ دیتابیس</span>
-                        <span class="value" id="dbStatus"><span class="chip warning">⬤ در حال بارگذاری...</span></span>
+                        <span class="value" id="dbStatus">
+                            <span class="chip warning">⬤ در حال بارگذاری...</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -521,7 +461,7 @@
             </div>
             <div class="chart-card">
                 <div class="card-title">
-                    <span><i class="fas fa-plug"></i> درخواست‌ها</span>
+                    <span><i class="fas fa-plug"></i> درخواست‌های API</span>
                     <span class="live-badge">● LIVE</span>
                 </div>
                 <div class="chart-wrapper"><canvas id="apiRequestsChart"></canvas></div>
@@ -548,7 +488,8 @@
 
         <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
-            <a href="/analyzer" class="btn primary"><i class="fas fa-comment-dots"></i> تحلیلگر</a>
+            <a href="/analyzer" class="btn primary"><i class="fas fa-robot"></i> تحلیلگر</a>
+            <a href="/model" class="btn"><i class="fas fa-brain"></i> مدل</a>
             <a href="/database" class="btn"><i class="fas fa-database"></i> دیتابیس</a>
             <a href="/chart" class="btn"><i class="fas fa-chart-line"></i> نمودار</a>
             <button class="btn" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> بروزرسانی</button>
@@ -556,85 +497,30 @@
 
     </div>
 
-    <!-- ============================================================
-    TOAST
-    ============================================================ -->
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- ============================================================
     SCRIPTS
     ============================================================ -->
+    <script src="/js/script.js"></script>
     <script>
         // ============================================================
-        // 1. LOAD NAV
+        // CHARTS
         // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-
-            fetch('/nav.html')
-                .then(res => {
-                    if (!res.ok) throw new Error('nav.html not found (status: ' + res.status + ')');
-                    return res.text();
-                })
-                .then(html => {
-                    container.innerHTML = html;
-
-                    // اجرای اسکریپت‌های داخل nav.html
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        newScript.textContent = oldScript.textContent;
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
-
-                    console.log('✅ منو بارگذاری شد');
-                })
-                .catch(err => {
-                    console.error('❌ Nav error:', err);
-                    container.innerHTML = `
-                        <div style="background:#111d2b;padding:10px;text-align:center;border-bottom:1px solid #1a2a3a;">
-                            <span style="color:#ff4444;">⚠️ خطا در بارگذاری منو</span>
-                            <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;margin:4px;">🔄 تلاش مجدد</button>
-                        </div>
-                    `;
-                });
-        }
-
-        // ============================================================
-        // 2. MENU TOGGLE
-        // ============================================================
-        document.addEventListener('click', function(e) {
-            const toggle = document.getElementById('menuToggle');
-            const menu = document.getElementById('navbarMenu');
-
-            if (toggle && menu && (e.target === toggle || toggle.contains(e.target))) {
-                menu.classList.toggle('open');
-            }
-
-            // بستن منو با کلیک خارج
-            if (menu && menu.classList.contains('open')) {
-                if (!menu.contains(e.target) && !toggle.contains(e.target)) {
-                    menu.classList.remove('open');
-                }
-            }
-        });
-
-        // ============================================================
-        // 3. CHARTS
-        // ============================================================
-        let cpuRamChart, apiReqChart;
-        const MAX = 30;
+        let cpuRamChart = null;
+        let apiReqChart = null;
+        const MAX_DATA = 30;
         const cpuData = [],
             ramData = [],
             apiData = [],
             timeLabels = [];
 
         function initCharts() {
-            // CPU / RAM Chart
-            const c1 = document.getElementById('cpuRamChart')?.getContext('2d');
-            if (c1) {
-                cpuRamChart = new Chart(c1, {
+            // CPU/RAM Chart
+            const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
+            if (ctx1) {
+                cpuRamChart = new Chart(ctx1, {
                     type: 'line',
                     data: {
                         labels: timeLabels,
@@ -642,7 +528,7 @@
                             label: 'CPU (%)',
                             data: cpuData,
                             borderColor: '#00d4ff',
-                            backgroundColor: 'rgba(0, 212, 255, 0.05)',
+                            backgroundColor: 'rgba(0,212,255,0.05)',
                             borderWidth: 2,
                             pointRadius: 1.5,
                             tension: 0.3,
@@ -651,7 +537,7 @@
                             label: 'RAM (%)',
                             data: ramData,
                             borderColor: '#ff8800',
-                            backgroundColor: 'rgba(255, 136, 0, 0.05)',
+                            backgroundColor: 'rgba(255,136,0,0.05)',
                             borderWidth: 2,
                             pointRadius: 1.5,
                             tension: 0.3,
@@ -686,22 +572,23 @@
                                     callback: v => v + '%'
                                 }
                             }
-                        }
+                        },
+                        animation: { duration: 500 }
                     }
                 });
             }
 
             // API Requests Chart
-            const c2 = document.getElementById('apiRequestsChart')?.getContext('2d');
-            if (c2) {
-                apiReqChart = new Chart(c2, {
+            const ctx2 = document.getElementById('apiRequestsChart')?.getContext('2d');
+            if (ctx2) {
+                apiReqChart = new Chart(ctx2, {
                     type: 'bar',
                     data: {
                         labels: timeLabels,
                         datasets: [{
                             label: 'درخواست‌ها',
                             data: apiData,
-                            backgroundColor: 'rgba(255, 107, 157, 0.5)',
+                            backgroundColor: 'rgba(255,107,157,0.5)',
                             borderColor: '#ff6b9d',
                             borderWidth: 1,
                             borderRadius: 3
@@ -726,17 +613,18 @@
                                     font: { size: 7 }
                                 }
                             }
-                        }
+                        },
+                        animation: { duration: 500 }
                     }
                 });
             }
         }
 
         // ============================================================
-        // 4. UPDATE DASHBOARD
+        // UPDATE DASHBOARD
         // ============================================================
         function updateDashboard() {
-            fetch('/api/metrics')
+            fetch('/api/metrics', { credentials: 'include' })
                 .then(res => {
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     return res.json();
@@ -748,82 +636,86 @@
                     }
                 })
                 .catch(err => {
-                    console.error('❌ Dashboard update error:', err);
+                    console.error('❌ Update error:', err);
                 });
         }
 
         // ============================================================
-        // 5. UPDATE STATS
+        // UPDATE STATS
         // ============================================================
-        function updateStats(metricsData) {
-            const metrics = metricsData.metrics || {};
-            const stats = metricsData.stats || {};
+        function updateStats(data) {
+            const metrics = data.metrics || {};
+            const stats = data.stats || {};
 
-            // ===== Bitcoin =====
+            // Bitcoin
             const btc = metrics.btc_price || {};
-            document.getElementById('btcPrice').textContent = btc.value ? '$' + btc.value.toLocaleString() : '—';
-            const btcEl = document.getElementById('btcChange');
+            document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
+            const btcChange = document.getElementById('btcChange');
             if (btc.change_24h !== undefined) {
-                btcEl.textContent = (btc.change_24h > 0 ? '+' : '') + btc.change_24h.toFixed(2) + '%';
-                btcEl.className = 'stat-sub ' + (btc.change_24h >= 0 ? 'up' : 'down');
+                btcChange.textContent = (btc.change_24h > 0 ? '+' : '') + btc.change_24h.toFixed(2) + '%';
+                btcChange.className = 'stat-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
             } else {
-                btcEl.textContent = '⏳';
+                btcChange.textContent = '⏳';
+                btcChange.className = 'stat-change neutral';
             }
 
-            // ===== Ethereum =====
+            // Ethereum
             const eth = metrics.eth_price || {};
-            document.getElementById('ethPrice').textContent = eth.value ? '$' + eth.value.toLocaleString() : '—';
-            const ethEl = document.getElementById('ethChange');
+            document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
+            const ethChange = document.getElementById('ethChange');
             if (eth.change_24h !== undefined) {
-                ethEl.textContent = (eth.change_24h > 0 ? '+' : '') + eth.change_24h.toFixed(2) + '%';
-                ethEl.className = 'stat-sub ' + (eth.change_24h >= 0 ? 'up' : 'down');
+                ethChange.textContent = (eth.change_24h > 0 ? '+' : '') + eth.change_24h.toFixed(2) + '%';
+                ethChange.className = 'stat-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
             } else {
-                ethEl.textContent = '⏳';
+                ethChange.textContent = '⏳';
+                ethChange.className = 'stat-change neutral';
             }
 
-            // ===== Fear & Greed =====
-            const fear = metrics.fear_greed || {};
-            document.getElementById('fearGreedValue').textContent = fear.value || '—';
-            document.getElementById('fearGreedLabel').textContent = fear.classification || '⏳';
+            // Fear & Greed
+            const fg = metrics.fear_greed || {};
+            document.getElementById('fearGreedValue').textContent = fg.value || '—';
+            document.getElementById('fearGreedLabel').textContent = fg.classification || '⏳';
 
-            // ===== API Credits =====
-            const credits = metrics.api_credits || {};
-            document.getElementById('apiCredits').textContent = credits.value ? credits.value.toLocaleString() : '—';
-            document.getElementById('apiStatusText').textContent = metrics.api_status?.value === 'ok' ? '✅ متصل' :
-                '⚠️ ' + (metrics.api_status?.value || 'نامشخص');
-
-            // ===== BTC Dominance =====
+            // BTC Dominance
             document.getElementById('btcDominance').textContent = (metrics.btc_dominance?.value || 0) + '%';
 
-            // ===== Model Status =====
-            const ms = metrics.model_status?.value || {};
-            document.getElementById('modelLoaded').textContent = ms.loaded ? '✅ فعال' : '📦 دمو';
-            document.getElementById('modelLoaded').className = 'value ' + (ms.loaded ? 'green' : 'orange');
-            document.getElementById('modelVersion').textContent = ms.version || '—';
-            document.getElementById('modelAccuracy').textContent = metrics.model_accuracy?.value !== null && metrics
-                .model_accuracy?.value !== undefined ?
-                (metrics.model_accuracy.value * 100).toFixed(1) + '%' :
-                '—';
-            document.getElementById('modelTrainings').textContent = stats.collections || '—';
+            // API Credits
+            document.getElementById('apiCredits').textContent = formatNumber(metrics.api_credits?.value || 0);
 
-            // ===== Uptime =====
-            document.getElementById('uptimeValue').textContent = metrics.uptime?.value || '0s';
-
-            // ===== API Status =====
+            // API Status
             const api = metrics.api_status?.value || 'unknown';
             const apiEl = document.getElementById('apiStatus');
             if (api === 'ok') {
                 apiEl.textContent = '✅ سالم';
-                apiEl.className = 'value green';
+                apiEl.className = 'stat-value green';
             } else if (api === 'degraded') {
                 apiEl.textContent = '⚠️ ضعیف';
-                apiEl.className = 'value orange';
+                apiEl.className = 'stat-value orange';
             } else {
                 apiEl.textContent = '❌ قطع';
-                apiEl.className = 'value red';
+                apiEl.className = 'stat-value red';
             }
 
-            // ===== Databases =====
+            // Model
+            const ms = metrics.model_status?.value || {};
+            document.getElementById('modelLoaded').textContent = ms.loaded ? '✅ فعال' : '📦 دمو';
+            document.getElementById('modelLoaded').className = 'value ' + (ms.loaded ? 'green' : 'orange');
+            document.getElementById('modelVersion').textContent = ms.version || '—';
+            document.getElementById('modelAccuracy').textContent = metrics.model_accuracy?.value !== null ?
+                (metrics.model_accuracy.value * 100).toFixed(1) + '%' :
+                '—';
+            document.getElementById('modelTrainings').textContent = stats.collections || '—';
+
+            // System
+            document.getElementById('uptimeValue').textContent = metrics.uptime?.value || '0s';
+            document.getElementById('cpuValue').textContent = (metrics.cpu?.value || 0) + '%';
+            document.getElementById('cpuValue').className = 'value ' +
+                (metrics.cpu?.value > 80 ? 'red' : metrics.cpu?.value > 60 ? 'orange' : 'green');
+            document.getElementById('ramValue').textContent = (metrics.ram?.value || 0) + '%';
+            document.getElementById('ramValue').className = 'value ' +
+                (metrics.ram?.value > 80 ? 'red' : metrics.ram?.value > 60 ? 'orange' : 'green');
+
+            // Databases
             const db = metrics.databases?.value || {};
             const dbEl = document.getElementById('dbStatus');
             let dbHtml = '';
@@ -839,7 +731,7 @@
             }
             dbEl.innerHTML = dbHtml || '<span class="chip warning">⬤ در حال بارگذاری...</span>';
 
-            // ===== News =====
+            // News
             const news = metrics.news?.value || [];
             const newsC = document.getElementById('newsContainer');
             const newsCount = document.getElementById('newsCount');
@@ -858,8 +750,8 @@
                 newsC.innerHTML = '<div class="no-data">📭 خبری یافت نشد</div>';
             }
 
-            // ===== Alerts =====
-            fetch('/api/alerts?limit=4')
+            // Alerts
+            fetch('/api/alerts?limit=4', { credentials: 'include' })
                 .then(r => r.json())
                 .then(d => {
                     const alerts = d.data || [];
@@ -870,7 +762,7 @@
                         alertC.innerHTML = alerts.map(a => `
                                 <div class="alert-item ${a.resolved ? 'resolved' : a.level?.toLowerCase() || 'info'}">
                                     <span>${a.level === 'CRITICAL' ? '🚨' : a.level === 'WARNING' ? '⚠️' : 'ℹ️'}</span>
-                                    <span class="alert-text">${a.message}<span style="color:#4a5a6a;font-size:0.6rem;"> • ${a.source || 'system'}</span></span>
+                                    <span class="alert-text">${a.message} <span class="source">• ${a.source || 'system'}</span></span>
                                     <span class="alert-time">${new Date(a.timestamp).toLocaleTimeString('fa-IR')}</span>
                                     ${!a.resolved ? `<button class="alert-resolve-btn" onclick="resolveAlert(${a.id})"><i class="fas fa-check"></i></button>` : ''}
                                 </div>
@@ -884,11 +776,11 @@
         }
 
         // ============================================================
-        // 6. UPDATE CHARTS
+        // UPDATE CHARTS
         // ============================================================
-        function updateCharts(metricsData) {
-            const metrics = metricsData.metrics || {};
-            const stats = metricsData.stats || {};
+        function updateCharts(data) {
+            const metrics = data.metrics || {};
+            const stats = data.stats || {};
 
             const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
             const cpu = metrics.cpu?.value || 0;
@@ -896,13 +788,13 @@
             const apiCount = stats.collections || 0;
 
             cpuData.push(cpu);
-            if (cpuData.length > MAX) cpuData.shift();
+            if (cpuData.length > MAX_DATA) cpuData.shift();
             ramData.push(ram);
-            if (ramData.length > MAX) ramData.shift();
+            if (ramData.length > MAX_DATA) ramData.shift();
             apiData.push(apiCount);
-            if (apiData.length > MAX) apiData.shift();
+            if (apiData.length > MAX_DATA) apiData.shift();
             timeLabels.push(now);
-            if (timeLabels.length > MAX) timeLabels.shift();
+            if (timeLabels.length > MAX_DATA) timeLabels.shift();
 
             if (cpuRamChart) {
                 cpuRamChart.data.labels = timeLabels;
@@ -910,6 +802,7 @@
                 cpuRamChart.data.datasets[1].data = ramData;
                 cpuRamChart.update('none');
             }
+
             if (apiReqChart) {
                 apiReqChart.data.labels = timeLabels;
                 apiReqChart.data.datasets[0].data = apiData;
@@ -918,49 +811,64 @@
         }
 
         // ============================================================
-        // 7. RESOLVE ALERT
+        // RESOLVE ALERT
         // ============================================================
         function resolveAlert(id) {
-            fetch(`/api/alerts/${id}/resolve`, { method: 'POST' })
+            fetch(`/api/alerts/${id}/resolve`, { method: 'POST', credentials: 'include' })
                 .then(() => {
                     updateDashboard();
-                    showToast('✅ بسته شد', 'success');
+                    showToast('✅ هشدار بسته شد', 'success');
                 })
                 .catch(() => showToast('❌ خطا', 'error'));
         }
 
         // ============================================================
-        // 8. REFRESH
+        // REFRESH
         // ============================================================
         function refreshDashboard() {
             showToast('🔄 بروزرسانی...', 'info');
             updateDashboard();
+            setTimeout(() => showToast('✅ بروزرسانی شد', 'success'), 1000);
         }
 
         // ============================================================
-        // 9. TOAST
+        // LOAD NAV
         // ============================================================
-        function showToast(msg, type = 'info') {
-            const c = document.getElementById('toastContainer');
-            if (!c) return;
-            const colors = { info: '#00d4ff', success: '#00ff88', error: '#ff4444', warning: '#ff8800' };
-            const t = document.createElement('div');
-            t.className = 'toast ' + type;
-            t.textContent = msg;
-            t.style.borderColor = colors[type] || colors.info;
-            c.appendChild(t);
-            setTimeout(() => {
-                t.style.opacity = '0';
-                t.style.transform = 'translateY(-10px)';
-                setTimeout(() => t.remove(), 300);
-            }, 3000);
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+
+            fetch('/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html not found');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                    console.log('✅ Nav loaded');
+                })
+                .catch(err => {
+                    console.error('❌ Nav error:', err);
+                    container.innerHTML = `
+                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
+                                ⚠️ خطا در بارگذاری منو
+                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                            </div>
+                        `;
+                });
         }
 
         // ============================================================
-        // 10. INIT
+        // INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Dashboard initializing...');
+            console.log('🚀 Dashboard v3.0 initializing...');
 
             // بارگذاری منو
             loadNav();
@@ -968,13 +876,12 @@
             // راه‌اندازی نمودارها
             initCharts();
 
-            // بارگذاری اولیه داده‌ها
+            // بارگذاری اولیه
             setTimeout(updateDashboard, 500);
 
             // بروزرسانی خودکار
-            setInterval(updateDashboard, 10000); // هر ۱۰ ثانیه همه داده‌ها
             setInterval(() => {
-                fetch('/api/metrics')
+                fetch('/api/metrics', { credentials: 'include' })
                     .then(r => r.json())
                     .then(d => {
                         if (d.success) {
@@ -982,9 +889,11 @@
                         }
                     })
                     .catch(() => {});
-            }, 3000); // هر ۳ ثانیه فقط نمودارها
+            }, 3000);
 
-            console.log('🚀 Dashboard ready');
+            setInterval(updateDashboard, 15000);
+
+            console.log('🚀 Dashboard v3.0 ready');
         });
     </script>
 
