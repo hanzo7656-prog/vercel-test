@@ -7,165 +7,330 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .analyzer-container { max-width: 1200px; margin: 0 auto; padding: 16px 20px; }
-
+        /* ============================================================
+           ANALYZER - استایل‌های اختصاصی
+           ============================================================ */
+        
+        .analyzer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .analyzer-grid .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        /* ===== CONTROLS ===== */
         .analyzer-controls {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
             background: var(--bg-card);
-            border: 1px solid var(--border-glow);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            padding: 16px 20px;
-            margin-bottom: 20px;
+            padding: 18px 22px;
             align-items: center;
+            margin-bottom: 20px;
         }
-
+        
+        .analyzer-controls .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .analyzer-controls .control-group label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
         .analyzer-controls select,
         .analyzer-controls input {
             padding: 8px 14px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-glow);
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
             font-size: 0.85rem;
             font-family: inherit;
-            min-width: 120px;
+            transition: var(--transition);
+            width: 100%;
         }
-
+        
         .analyzer-controls select:focus,
         .analyzer-controls input:focus {
             outline: none;
             border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05);
         }
-
+        
+        .analyzer-controls select option {
+            background: var(--bg-secondary);
+        }
+        
         .analyzer-controls .btn {
-            padding: 8px 24px;
+            padding: 10px 28px;
             border-radius: var(--radius-sm);
             border: none;
-            background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
-            color: #fff;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white;
             font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
             font-family: inherit;
+            font-size: 0.85rem;
+            margin-top: 16px;
+            align-self: flex-end;
+            min-width: 120px;
         }
-
+        
         .analyzer-controls .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.25);
         }
-
+        
         .analyzer-controls .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none !important;
+            box-shadow: none !important;
         }
-
+        
+        .analyzer-controls .btn .spinner-sm {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        
+        /* ===== RESULT CARD ===== */
         .result-card {
             background: var(--bg-card);
-            border: 1px solid var(--border-glow);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            padding: 20px 24px;
-            margin-bottom: 16px;
+            padding: 24px 28px;
+            transition: var(--transition);
         }
-
-        .result-card .signal {
+        
+        .result-card:hover {
+            border-color: var(--border-hover);
+        }
+        
+        .result-card .signal-display {
+            text-align: center;
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
             font-size: 2rem;
             font-weight: 700;
-            text-align: center;
-            padding: 16px;
-            border-radius: var(--radius-sm);
+            transition: var(--transition);
         }
-
-        .result-card .signal.buy { color: var(--accent-green); }
-        .result-card .signal.sell { color: var(--accent-red); }
-        .result-card .signal.neutral { color: var(--accent-orange); }
-
+        
+        .result-card .signal-display.buy {
+            background: rgba(34, 211, 238, 0.05);
+            color: var(--accent-green);
+            border: 2px solid rgba(34, 211, 238, 0.1);
+        }
+        
+        .result-card .signal-display.sell {
+            background: rgba(239, 68, 68, 0.05);
+            color: var(--accent-red);
+            border: 2px solid rgba(239, 68, 68, 0.1);
+        }
+        
+        .result-card .signal-display.neutral {
+            background: rgba(245, 158, 11, 0.05);
+            color: var(--accent-orange);
+            border: 2px solid rgba(245, 158, 11, 0.1);
+        }
+        
+        .result-card .signal-display .signal-icon {
+            display: block;
+            font-size: 3rem;
+            margin-bottom: 4px;
+        }
+        
+        .result-card .signal-display .signal-sub {
+            font-size: 0.9rem;
+            font-weight: 400;
+            opacity: 0.7;
+        }
+        
         .result-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 12px;
-            margin-top: 12px;
         }
-
+        
         .result-item {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px 14px;
+            background: var(--bg-input);
+            padding: 12px 16px;
             border-radius: var(--radius-sm);
             text-align: center;
-            border: 1px solid var(--border-glow);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
         }
-
+        
+        .result-item:hover {
+            border-color: var(--border-hover);
+        }
+        
         .result-item .label {
             font-size: 0.6rem;
             color: var(--text-secondary);
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-
+        
         .result-item .value {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             margin-top: 4px;
             font-family: 'Courier New', monospace;
         }
-
+        
         .result-item .value.cyan { color: var(--accent-cyan); }
         .result-item .value.green { color: var(--accent-green); }
         .result-item .value.orange { color: var(--accent-orange); }
         .result-item .value.purple { color: var(--accent-purple); }
-
-        .history-list {
-            display: grid;
-            gap: 6px;
-        }
-
+        .result-item .value.pink { color: var(--accent-pink); }
+        .result-item .value.red { color: var(--accent-red); }
+        
+        /* ===== HISTORY ===== */
         .history-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 14px;
-            background: rgba(0, 0, 0, 0.15);
+            padding: 10px 16px;
+            background: var(--bg-input);
             border-radius: var(--radius-sm);
-            border: 1px solid var(--border-glow);
-            font-size: 0.8rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 6px;
             transition: var(--transition);
+            flex-wrap: wrap;
+            gap: 8px;
         }
-
+        
         .history-item:hover {
-            border-color: rgba(0, 212, 255, 0.1);
+            border-color: var(--border-hover);
+            background: var(--bg-hover);
         }
-
-        .history-item .h-signal { font-weight: 600; }
+        
+        .history-item .h-signal {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
         .history-item .h-signal.buy { color: var(--accent-green); }
         .history-item .h-signal.sell { color: var(--accent-red); }
         .history-item .h-signal.neutral { color: var(--accent-orange); }
-        .history-item .h-time { color: var(--text-muted); font-size: 0.65rem; }
-        .history-item .h-price { font-family: 'Courier New', monospace; }
-
-        @media (max-width: 768px) {
-            .analyzer-container { padding: 10px 12px; }
-            .analyzer-controls { flex-direction: column; }
-            .analyzer-controls select,
-            .analyzer-controls input,
-            .analyzer-controls .btn { width: 100%; }
-            .result-grid { grid-template-columns: 1fr 1fr; }
-            .result-card .signal { font-size: 1.5rem; }
-            .history-item { flex-wrap: wrap; gap: 4px; }
+        
+        .history-item .h-details {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
         }
-
+        
+        .history-item .h-details .h-price {
+            font-family: 'Courier New', monospace;
+            color: var(--text-primary);
+        }
+        
+        .history-item .h-details .h-time {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+        
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .analyzer-grid {
+                grid-template-columns: 1fr;
+            }
+            .result-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .analyzer-controls {
+                flex-direction: column;
+                padding: 14px 16px;
+            }
+            .analyzer-controls .control-group {
+                min-width: 100%;
+            }
+            .analyzer-controls .btn {
+                width: 100%;
+                margin-top: 8px;
+                justify-content: center;
+            }
+            .result-card {
+                padding: 16px 18px;
+            }
+            .result-card .signal-display {
+                font-size: 1.5rem;
+                padding: 14px;
+            }
+            .result-card .signal-display .signal-icon {
+                font-size: 2rem;
+            }
+            .result-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .result-item {
+                padding: 8px 12px;
+            }
+            .result-item .value {
+                font-size: 0.9rem;
+            }
+            .history-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .history-item .h-details {
+                justify-content: space-between;
+            }
+        }
+        
         @media (max-width: 480px) {
-            .result-grid { grid-template-columns: 1fr; }
-            .result-card .signal { font-size: 1.2rem; }
-            .result-item .value { font-size: 0.85rem; }
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            .result-item .value {
+                font-size: 0.85rem;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
 
-    <div class="analyzer-container">
+    <!-- ===== ANALYZER ===== -->
+    <div class="container">
+
+        <!-- Page Header -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-robot" style="color:var(--accent-purple);"></i> تحلیلگر بازار</h1>
@@ -176,208 +341,300 @@
 
         <!-- Controls -->
         <div class="analyzer-controls">
-            <select id="coinSelect">
-                <option value="bitcoin">₿ بیت‌کوین</option>
-                <option value="ethereum">⟠ اتریوم</option>
-                <option value="solana">◎ سولانا</option>
-                <option value="cardano">₳ کاردانو</option>
-                <option value="ripple">✕ ریپل</option>
-            </select>
-            <select id="periodSelect">
-                <option value="24h">۲۴ ساعت</option>
-                <option value="1w">۱ هفته</option>
-                <option value="1m" selected>۱ ماه</option>
-            </select>
-            <button class="btn" id="predictBtn"><i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی</button>
+            <div class="control-group">
+                <label>🪙 ارز دیجیتال</label>
+                <select id="coinSelect">
+                    <option value="bitcoin">₿ بیت‌کوین</option>
+                    <option value="ethereum">⟠ اتریوم</option>
+                    <option value="solana">◎ سولانا</option>
+                    <option value="cardano">₳ کاردانو</option>
+                    <option value="ripple">✕ ریپل</option>
+                    <option value="polkadot">◈ پولکادات</option>
+                    <option value="dogecoin">🐕 دوج‌کوین</option>
+                    <option value="avalanche">❄️ آوالانچ</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>⏱️ بازه زمانی</label>
+                <select id="periodSelect">
+                    <option value="24h">۲۴ ساعت</option>
+                    <option value="1w">۱ هفته</option>
+                    <option value="1m" selected>۱ ماه</option>
+                    <option value="3m">۳ ماه</option>
+                </select>
+            </div>
+            <button class="btn" id="predictBtn">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                پیش‌بینی
+            </button>
         </div>
 
         <!-- Result -->
-        <div id="resultContainer">
-            <div class="result-card">
-                <p style="color:var(--text-muted);text-align:center;padding:20px;">
-                    🔮 برای شروع پیش‌بینی، ارز و بازه را انتخاب کنید
-                </p>
-            </div>
-        </div>
-
-        <!-- History -->
-        <div class="card">
-            <div class="card-title">
-                <i class="fas fa-history"></i> تاریخچه پیش‌بینی‌ها
-                <span class="badge-count" id="historyCount">۰</span>
-            </div>
-            <div id="historyContainer">
-                <div class="no-data">⏳ در حال بارگذاری...</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast-container" id="toastContainer"></div>
-
-    <script src="/js/script.js"></script>
-    <script>
-        // ============================================================
-        // PREDICT
-        // ============================================================
-        document.getElementById('predictBtn').addEventListener('click', function() {
-            const coin = document.getElementById('coinSelect').value;
-            const period = document.getElementById('periodSelect').value;
-            const container = document.getElementById('resultContainer');
-            const btn = this;
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال تحلیل...';
-
-            container.innerHTML = `
-                    <div class="result-card">
-                        <div class="loading"><div class="spinner"></div><p>در حال دریافت پیش‌بینی...</p></div>
+        <div class="analyzer-grid">
+            <div class="full-width" id="resultContainer">
+                <div class="result-card">
+                    <div style="text-align:center;padding:30px 20px;color:var(--text-muted);">
+                        <div style="font-size:3rem;margin-bottom:12px;">🔮</div>
+                        <p style="font-size:1rem;">برای شروع پیش‌بینی، ارز و بازه را انتخاب کنید</p>
+                        <p style="font-size:0.8rem;margin-top:4px;">مدل XGBoost با دقت بالا آماده تحلیل است</p>
                     </div>
-                `;
+                </div>
+            </div>
 
-            fetch(`/api/predict?coin=${coin}&period=${period}`, { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data) {
-                        renderPrediction(data.data);
-                    } else {
-                        container.innerHTML = `
-                                <div class="result-card">
-                                    <p style="color:var(--accent-red);text-align:center;padding:20px;">
-                                        ❌ ${data.error || 'خطا در پیش‌بینی'}
-                                    </p>
-                                </div>
-                            `;
-                    }
-                })
-                .catch(() => {
-                    container.innerHTML = `
-                            <div class="result-card">
-                                <p style="color:var(--accent-red);text-align:center;padding:20px;">
-                                    ❌ خطا در ارتباط با سرور
-                                </p>
-                            </div>
-                        `;
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی';
-                });
-        });
-
-        function renderPrediction(data) {
-            const container = document.getElementById('resultContainer');
-            const signalClass = data.signal_type?.toLowerCase() || 'neutral';
-            const signalEmoji = signalClass === 'buy' ? '🟢' : signalClass === 'sell' ? '🔴' : '🟡';
-
-            container.innerHTML = `
-                    <div class="result-card">
-                        <div class="signal ${signalClass}">${signalEmoji} ${data.signal || 'خنثی'}</div>
-                        <div class="result-grid">
-                            <div class="result-item">
-                                <div class="label">💰 قیمت</div>
-                                <div class="value cyan">$${data.current_price?.toLocaleString() || '—'}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="label">🎯 اطمینان</div>
-                                <div class="value green">${data.confidence || '—'}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="label">🧠 مدل</div>
-                                <div class="value purple">${data.model_mode || 'DEMO'}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="label">📊 امتیاز</div>
-                                <div class="value orange">${((data.prediction_score || 0) * 100).toFixed(1)}%</div>
-                            </div>
-                            <div class="result-item" style="grid-column:1/-1;">
-                                <div class="label">🪙 ارز • ⏱️ زمان</div>
-                                <div class="value" style="font-size:0.85rem;color:var(--text-secondary);">
-                                    ${data.coin_name || data.coin} •
-                                    ${data.timestamp ? new Date(data.timestamp).toLocaleString('fa-IR') : '—'}
-                                </div>
-                            </div>
+            <!-- History -->
+            <div class="full-width">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-history"></i> تاریخچه پیش‌بینی‌ها
+                        <span class="badge-count" id="historyCount" style="margin-right:auto;font-size:0.7rem;color:var(--text-muted);">۰</span>
+                    </div>
+                    <div id="historyContainer">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p class="loading-text">در حال بارگذاری...</p>
                         </div>
                     </div>
-                `;
+                </div>
+            </div>
+        </div>
 
-            // بروزرسانی تاریخچه
-            loadHistory();
-        }
+    </div>
 
-        // ============================================================
-        // LOAD HISTORY
-        // ============================================================
-        function loadHistory() {
-            const container = document.getElementById('historyContainer');
-            const countEl = document.getElementById('historyCount');
+    <!-- ===== TOAST ===== -->
+    <div class="toast-container" id="toastContainer"></div>
 
-            fetch('/api/model?section=history', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data && data.data.length > 0) {
-                        countEl.textContent = data.data.length;
-                        let html = '<div class="history-list">';
-                        data.data.slice(0, 10).forEach(item => {
-                            const signal = item.is_active ? '✅ فعال' : '📦 غیرفعال';
-                            const signalClass = item.is_active ? 'buy' : 'neutral';
-                            html += `
-                                    <div class="history-item">
-                                        <span class="h-signal ${signalClass}">${signal}</span>
-                                        <span class="h-price">نسخه: ${item.version || '—'}</span>
-                                        <span class="h-price">دقت: ${((item.accuracy || 0) * 100).toFixed(1)}%</span>
-                                        <span class="h-time">${new Date(item.training_date).toLocaleDateString('fa-IR')}</span>
-                                    </div>
-                                `;
-                        });
-                        html += '</div>';
-                        container.innerHTML = html;
-                    } else {
-                        countEl.textContent = '۰';
-                        container.innerHTML = '<div class="no-data">📭 هیچ پیش‌بینی ذخیره‌ای یافت نشد</div>';
-                    }
-                })
-                .catch(() => {
-                    container.innerHTML = '<div class="no-data" style="color:var(--accent-red);">❌ خطا در دریافت تاریخچه</div>';
-                });
-        }
-
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+    <script>
         // ============================================================
-        // NAV & TIMESTAMP
+        // ANALYZER CONTROLLER
         // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            fetch('/nav.html')
-                .then(res => res.text())
-                .then(html => {
+        
+        class AnalyzerController {
+            constructor() {
+                this.isLoading = false;
+                this.init();
+            }
+            
+            async init() {
+                console.log('🚀 Analyzer initializing...');
+                
+                await this.loadNav();
+                this.setupEventListeners();
+                await this.loadHistory();
+                
+                console.log('🚀 Analyzer ready');
+            }
+            
+            // ===== NAV =====
+            async loadNav() {
+                const container = document.getElementById('navContainer');
+                if (!container) return;
+                
+                try {
+                    const res = await fetch('/nav.html');
+                    if (!res.ok) throw new Error('nav.html not found');
+                    const html = await res.text();
                     container.innerHTML = html;
+                    
                     const scripts = container.querySelectorAll('script');
                     scripts.forEach(old => {
                         const ns = document.createElement('script');
                         ns.textContent = old.textContent;
                         old.parentNode.replaceChild(ns, old);
                     });
-                })
-                .catch(() => {
+                } catch (err) {
+                    console.error('❌ Nav error:', err);
                     container.innerHTML = `
-                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
-                                ⚠️ خطا در بارگذاری منو
-                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                        <div style="background:var(--bg-secondary);padding:8px;text-align:center;border-bottom:1px solid var(--border-color);font-size:0.8rem;color:var(--accent-red);">
+                            ⚠️ خطا در بارگذاری منو
+                            <button onclick="location.reload()" style="background:var(--accent-cyan);color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // ===== EVENTS =====
+            setupEventListeners() {
+                const predictBtn = document.getElementById('predictBtn');
+                const coinSelect = document.getElementById('coinSelect');
+                const periodSelect = document.getElementById('periodSelect');
+                
+                predictBtn.addEventListener('click', () => this.predict());
+                
+                // Enter key on selects
+                coinSelect.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') this.predict();
+                });
+                periodSelect.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') this.predict();
+                });
+            }
+            
+            // ===== PREDICT =====
+            async predict() {
+                if (this.isLoading) return;
+                
+                const coin = document.getElementById('coinSelect').value;
+                const period = document.getElementById('periodSelect').value;
+                const container = document.getElementById('resultContainer');
+                const btn = document.getElementById('predictBtn');
+                
+                this.isLoading = true;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-sm"></span> در حال تحلیل...';
+                
+                container.innerHTML = `
+                    <div class="result-card">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p class="loading-text">در حال دریافت پیش‌بینی از مدل...</p>
+                            <p style="font-size:0.7rem;color:var(--text-muted);">${coin} • ${period}</p>
+                        </div>
+                    </div>
+                `;
+                
+                try {
+                    const data = await api.predict(coin, period);
+                    
+                    if (data.success && data.data) {
+                        this.renderPrediction(data.data);
+                        await this.loadHistory(); // بروزرسانی تاریخچه
+                    } else {
+                        this.renderError(data.error || 'خطا در پیش‌بینی');
+                    }
+                } catch (err) {
+                    console.error('Prediction error:', err);
+                    this.renderError('خطا در ارتباط با سرور');
+                }
+                
+                this.isLoading = false;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی';
+            }
+            
+            // ===== RENDER PREDICTION =====
+            renderPrediction(data) {
+                const container = document.getElementById('resultContainer');
+                const signalType = data.signal_type?.toLowerCase() || 'neutral';
+                
+                const signalEmojis = {
+                    buy: '🟢',
+                    sell: '🔴',
+                    neutral: '🟡'
+                };
+                
+                const signalLabels = {
+                    buy: 'خرید',
+                    sell: 'فروش',
+                    neutral: 'خنثی'
+                };
+                
+                container.innerHTML = `
+                    <div class="result-card">
+                        <div class="signal-display ${signalType}">
+                            <span class="signal-icon">${signalEmojis[signalType] || '🟡'}</span>
+                            ${signalLabels[signalType] || 'خنثی'}
+                            <div class="signal-sub">${data.signal || 'سیگنال خنثی'}</div>
+                        </div>
+                        
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="label">💰 قیمت</div>
+                                <div class="value cyan">${formatCurrency(data.current_price)}</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="label">🎯 اطمینان</div>
+                                <div class="value green">${data.confidence || '—'}</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="label">📊 امتیاز</div>
+                                <div class="value orange">${((data.prediction_score || 0) * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="label">🧠 مدل</div>
+                                <div class="value purple">${data.model_mode || 'DEMO'}</div>
+                            </div>
+                            <div class="result-item" style="grid-column:1/-1;">
+                                <div class="label">🪙 ارز • ⏱️ زمان</div>
+                                <div class="value" style="font-size:0.9rem;color:var(--text-secondary);">
+                                    ${data.coin_name || data.coin} •
+                                    ${data.timestamp ? formatDate(data.timestamp) : '—'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            renderError(message) {
+                const container = document.getElementById('resultContainer');
+                container.innerHTML = `
+                    <div class="result-card">
+                        <div style="text-align:center;padding:30px 20px;">
+                            <div style="font-size:3rem;margin-bottom:12px;">❌</div>
+                            <p style="color:var(--accent-red);font-size:1rem;">${message}</p>
+                            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">لطفاً مجدداً تلاش کنید</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ===== HISTORY =====
+            async loadHistory() {
+                const container = document.getElementById('historyContainer');
+                const countEl = document.getElementById('historyCount');
+                
+                try {
+                    const data = await api.getModelHistory(10);
+                    
+                    if (data.success && data.data && data.data.length > 0) {
+                        countEl.textContent = `${data.data.length} نسخه`;
+                        
+                        container.innerHTML = data.data.map(item => {
+                            const signal = item.is_active ? 'buy' : 'neutral';
+                            const label = item.is_active ? '✅ فعال' : '📦 غیرفعال';
+                            return `
+                                <div class="history-item">
+                                    <div class="h-signal ${signal}">
+                                        ${signal === 'buy' ? '🟢' : '🟡'} ${label}
+                                    </div>
+                                    <div class="h-details">
+                                        <span class="h-price">نسخه: ${item.version || '—'}</span>
+                                        <span class="h-price">دقت: ${((item.accuracy || 0) * 100).toFixed(1)}%</span>
+                                        <span class="h-time">${formatDate(item.training_date)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        countEl.textContent = '۰';
+                        container.innerHTML = `
+                            <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                                📭 هیچ پیش‌بینی ذخیره‌ای یافت نشد
                             </div>
                         `;
-                });
+                    }
+                } catch (err) {
+                    console.error('History error:', err);
+                    container.innerHTML = `
+                        <div style="text-align:center;padding:20px;color:var(--accent-red);">
+                            ❌ خطا در دریافت تاریخچه
+                        </div>
+                    `;
+                }
+            }
         }
-
-        function updateTimestamp() {
-            const el = document.getElementById('pageTimestamp');
-            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
-        }
-        setInterval(updateTimestamp, 1000);
-
+        
+        // ============================================================
+        // INIT
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadHistory();
-            console.log('🚀 Analyzer page ready');
+            new AnalyzerController();
         });
     </script>
 </body>
