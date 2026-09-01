@@ -1,50 +1,576 @@
-<!-- nav.html - منوی اصلی -->
-<header class="navbar">
-    <div class="navbar-brand">
-        <a href="/dashboard">📊 سیستم تحلیلگر</a>
-        <span class="version">v9.0</span>
+<!-- static/nav.html -->
+<!-- ============================================================
+     نویگیشن بار حرفه‌ای - نسخه ۳.۰
+     ============================================================ -->
+<nav class="navbar">
+    <div class="navbar-container">
+        <!-- برند -->
+        <a href="/dashboard" class="navbar-brand">
+            <span class="brand-icon">📊</span>
+            <span class="brand-text">سیستم تحلیلگر</span>
+            <span class="brand-version">v9</span>
+        </a>
+
+        <!-- دکمه همبرگری (موبایل) -->
+        <button class="navbar-toggle" id="navbarToggle" aria-label="منو">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <!-- منوی اصلی -->
+        <ul class="navbar-menu" id="navbarMenu">
+            <li>
+                <a href="/dashboard" class="nav-link active" data-page="dashboard">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>داشبورد</span>
+                </a>
+            </li>
+            <li>
+                <a href="/chart" class="nav-link" data-page="chart">
+                    <i class="fas fa-chart-line"></i>
+                    <span>نمودار</span>
+                </a>
+            </li>
+            <li>
+                <a href="/analyzer" class="nav-link" data-page="analyzer">
+                    <i class="fas fa-robot"></i>
+                    <span>تحلیلگر</span>
+                </a>
+            </li>
+            <li>
+                <a href="/model" class="nav-link" data-page="model">
+                    <i class="fas fa-brain"></i>
+                    <span>مدل</span>
+                </a>
+            </li>
+            <li>
+                <a href="/database" class="nav-link" data-page="database">
+                    <i class="fas fa-database"></i>
+                    <span>دیتابیس</span>
+                </a>
+            </li>
+            <li>
+                <a href="/alerts" class="nav-link" data-page="alerts">
+                    <i class="fas fa-bell"></i>
+                    <span>هشدارها</span>
+                    <span class="nav-badge" id="alertBadge">0</span>
+                </a>
+            </li>
+            <li>
+                <a href="/debug" class="nav-link" data-page="debug">
+                    <i class="fas fa-bug"></i>
+                    <span>دیباگ</span>
+                </a>
+            </li>
+            <li>
+                <a href="/settings" class="nav-link" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>تنظیمات</span>
+                </a>
+            </li>
+            <li class="nav-divider"></li>
+            <li>
+                <a href="#" id="logoutBtn" class="nav-link logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>خروج</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- وضعیت سیستم (سمت راست) -->
+        <div class="navbar-status">
+            <div class="status-item" id="statusDot">
+                <span class="status-indicator"></span>
+                <span class="status-text" id="statusText">پایدار</span>
+            </div>
+            <div class="status-item uptime">
+                <i class="fas fa-clock"></i>
+                <span id="uptimeDisplay">۰s</span>
+            </div>
+            <div class="status-item user">
+                <i class="fas fa-user-circle"></i>
+                <span id="userDisplay">کاربر</span>
+            </div>
+        </div>
     </div>
-    <button class="menu-toggle" id="menuToggle" aria-label="منو">
-        <i class="fas fa-bars"></i>
-    </button>
-    <nav class="navbar-menu" id="navbarMenu">
-        <a href="/dashboard" class="active">🏠 داشبورد</a>
-        <a href="/chart">📈 نمودار</a>
-        <a href="/analyzer">🧠 تحلیلگر</a>
-        <a href="/model">🤖 مدل</a>
-        <a href="/database">🗄️ دیتابیس</a>
-        <a href="/alerts">🔔 هشدارها</a>
-        <a href="/debug">🐛 دیباگ</a>
-        <a href="/settings">⚙️ تنظیمات</a>
-        <a href="#" id="logoutBtn" class="logout">🚪 خروج</a>
-    </nav>
-</header>
+</nav>
+
+<style>
+    /* ============================================================
+       NAVBAR STYLES
+       ============================================================ */
+    .navbar {
+        background: rgba(8, 12, 24, 0.92);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        padding: 0 20px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar-container {
+        max-width: 1400px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    /* ===== برند ===== */
+    .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #00d4ff;
+        font-weight: 700;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .navbar-brand .brand-icon {
+        font-size: 1.3rem;
+    }
+
+    .navbar-brand .brand-version {
+        font-size: 0.55rem;
+        color: #4a5a6a;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 1px 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* ===== دکمه همبرگری ===== */
+    .navbar-toggle {
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .navbar-toggle:hover {
+        background: rgba(0, 212, 255, 0.05);
+    }
+
+    .navbar-toggle span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        background: #e8eef7;
+        border-radius: 2px;
+        transition: all 0.3s ease;
+    }
+
+    .navbar-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(4px, 4px);
+    }
+
+    .navbar-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .navbar-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(4px, -4px);
+    }
+
+    /* ===== منو ===== */
+    .navbar-menu {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+    }
+
+    .navbar-menu li {
+        list-style: none;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        color: #7a8fa8;
+        text-decoration: none;
+        font-size: 0.8rem;
+        transition: all 0.25s ease;
+        position: relative;
+        white-space: nowrap;
+    }
+
+    .nav-link i {
+        font-size: 0.85rem;
+        width: 18px;
+        text-align: center;
+    }
+
+    .nav-link:hover {
+        color: #e8eef7;
+        background: rgba(0, 212, 255, 0.04);
+    }
+
+    .nav-link.active {
+        color: #00d4ff;
+        background: rgba(0, 212, 255, 0.08);
+    }
+
+    .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 2px;
+        background: #00d4ff;
+        border-radius: 2px;
+    }
+
+    .nav-link.logout {
+        color: #ff4444;
+    }
+
+    .nav-link.logout:hover {
+        background: rgba(255, 68, 68, 0.08);
+        color: #ff6666;
+    }
+
+    .nav-badge {
+        background: #ff4444;
+        color: #fff;
+        font-size: 0.5rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+        min-width: 16px;
+        text-align: center;
+    }
+
+    .nav-divider {
+        width: 1px;
+        height: 28px;
+        background: rgba(255, 255, 255, 0.06);
+        margin: 0 6px;
+    }
+
+    /* ===== وضعیت ===== */
+    .navbar-status {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        color: #7a8fa8;
+    }
+
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse-dot 2s infinite;
+    }
+
+    .status-indicator.online {
+        background: #00ff88;
+    }
+    .status-indicator.warning {
+        background: #ff8800;
+    }
+    .status-indicator.offline {
+        background: #ff4444;
+    }
+
+    @keyframes pulse-dot {
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.4;
+            transform: scale(0.8);
+        }
+    }
+
+    .status-item.uptime {
+        font-family: 'Courier New', monospace;
+        font-size: 0.65rem;
+        color: #4a5a6a;
+    }
+
+    .status-item.user {
+        color: #00d4ff;
+        font-weight: 500;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 1024px) {
+        .navbar-menu {
+            gap: 0;
+        }
+        .nav-link {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+        }
+        .nav-link i {
+            font-size: 0.75rem;
+            width: 16px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .navbar {
+            height: 54px;
+            padding: 0 14px;
+        }
+
+        .navbar-toggle {
+            display: flex;
+        }
+
+        .navbar-menu {
+            position: absolute;
+            top: 54px;
+            left: 0;
+            right: 0;
+            flex-direction: column;
+            background: rgba(8, 12, 24, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 8px 16px;
+            gap: 2px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+            transform: scaleY(0);
+            transform-origin: top;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-height: calc(100vh - 54px);
+            overflow-y: auto;
+        }
+
+        .navbar-menu.open {
+            transform: scaleY(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .navbar-menu li {
+            width: 100%;
+        }
+
+        .nav-link {
+            padding: 10px 14px;
+            width: 100%;
+            font-size: 0.85rem;
+        }
+
+        .nav-link.active::after {
+            display: none;
+        }
+
+        .nav-link.active {
+            border-right: 2px solid #00d4ff;
+        }
+
+        .nav-divider {
+            width: 100%;
+            height: 1px;
+            margin: 4px 0;
+        }
+
+        .navbar-status {
+            gap: 10px;
+        }
+
+        .status-item.uptime {
+            display: none;
+        }
+
+        .status-item.user span {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .navbar {
+            height: 48px;
+            padding: 0 10px;
+        }
+
+        .navbar-brand {
+            font-size: 0.9rem;
+        }
+
+        .navbar-brand .brand-version {
+            display: none;
+        }
+
+        .navbar-menu {
+            top: 48px;
+        }
+
+        .nav-link {
+            font-size: 0.8rem;
+            padding: 8px 12px;
+        }
+    }
+</style>
 
 <script>
-// بارگذاری منو در همه صفحات
-document.addEventListener('DOMContentLoaded', function() {
-    const toggle = document.getElementById('menuToggle');
-    const menu = document.getElementById('navbarMenu');
-    
-    if (toggle && menu) {
-        toggle.addEventListener('click', function() {
-            menu.classList.toggle('open');
-        });
-    }
-    
-    // خروج از حساب
-    document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        fetch('/logout', { method: 'POST', credentials: 'include' })
-            .then(() => window.location.href = '/');
-    });
-    
-    // علامت‌گذاری صفحه فعلی
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.navbar-menu a').forEach(link => {
-        if (link.getAttribute('href') === currentPath) {
-            link.classList.add('active');
+    // ============================================================
+    // NAVBAR SCRIPT
+    // ============================================================
+    (function() {
+        'use strict';
+
+        // 1. منوی همبرگری
+        const toggle = document.getElementById('navbarToggle');
+        const menu = document.getElementById('navbarMenu');
+
+        if (toggle && menu) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isOpen = menu.classList.toggle('open');
+                toggle.classList.toggle('active', isOpen);
+            });
+
+            // بستن منو با کلیک خارج
+            document.addEventListener('click', function(e) {
+                if (menu.classList.contains('open')) {
+                    if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                        menu.classList.remove('open');
+                        toggle.classList.remove('active');
+                    }
+                }
+            });
+
+            // بستن منو با کلیک روی لینک
+            menu.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    menu.classList.remove('open');
+                    toggle.classList.remove('active');
+                });
+            });
         }
-    });
-});
+
+        // 2. علامت‌گذاری صفحه فعال
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.nav-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href !== '#' && currentPath.startsWith(href) && href !== '/') {
+                link.classList.add('active');
+            } else if (href === '/' && currentPath === '/') {
+                link.classList.add('active');
+            }
+        });
+
+        // 3. خروج
+        document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) {
+                fetch('/logout', { method: 'POST', credentials: 'include' })
+                    .then(() => window.location.href = '/');
+            }
+        });
+
+        // 4. دریافت اطلاعات کاربر
+        fetch('/api/user', { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const display = document.getElementById('userDisplay');
+                    if (display) {
+                        const roleMap = { 'admin': '👑 ادمین', 'vip': '⭐ VIP', 'guest': '👤 مهمان' };
+                        display.textContent = roleMap[data.data.role] || data.data.username;
+                    }
+                }
+            })
+            .catch(() => {});
+
+        // 5. آپتایم
+        function fetchUptime() {
+            fetch('/stats', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.uptime) {
+                        const el = document.getElementById('uptimeDisplay');
+                        if (el) el.textContent = data.uptime;
+                    }
+                })
+                .catch(() => {});
+        }
+        fetchUptime();
+        setInterval(fetchUptime, 30000);
+
+        // 6. وضعیت سیستم
+        function updateStatus() {
+            fetch('/api/metrics', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const metrics = data.data.metrics || {};
+                        const api = metrics.api_status?.value || 'unknown';
+                        const dot = document.querySelector('.status-indicator');
+                        const text = document.getElementById('statusText');
+
+                        if (dot && text) {
+                            dot.className = 'status-indicator';
+                            if (api === 'ok') {
+                                dot.classList.add('online');
+                                text.textContent = 'پایدار';
+                            } else if (api === 'degraded') {
+                                dot.classList.add('warning');
+                                text.textContent = 'ضعیف';
+                            } else {
+                                dot.classList.add('offline');
+                                text.textContent = 'قطع';
+                            }
+                        }
+
+                        // تعداد هشدارها
+                        fetch('/api/alerts?limit=1&resolved=false', { credentials: 'include' })
+                            .then(r => r.json())
+                            .then(d => {
+                                const badge = document.getElementById('alertBadge');
+                                if (badge && d.data) {
+                                    const count = d.data.length || 0;
+                                    badge.textContent = count;
+                                    badge.style.display = count > 0 ? 'inline' : 'none';
+                                }
+                            })
+                            .catch(() => {});
+                    }
+                })
+                .catch(() => {});
+        }
+        updateStatus();
+        setInterval(updateStatus, 15000);
+
+        console.log('✅ Navbar v3.0 loaded');
+    })();
 </script>
