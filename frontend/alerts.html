@@ -2,61 +2,250 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>هشدارها</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .alerts-container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
-        .alert-filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-        .alert-filters button { padding: 6px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease; }
-        .alert-filters button:hover, .alert-filters button.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,212,255,0.05); }
-        .alert-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 8px; transition: all 0.3s ease; border-right: 4px solid transparent; }
-        .alert-item:hover { border-color: rgba(0,212,255,0.15); }
+        .alerts-container { max-width: 1200px; margin: 0 auto; padding: 16px 20px; }
+
+        .alerts-filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+        }
+
+        .alerts-filters .filter-btn {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-glow);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .alerts-filters .filter-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+
+        .alerts-filters .filter-btn.active {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            transition: var(--transition);
+            border-right: 4px solid transparent;
+        }
+
+        .alert-item:hover {
+            border-color: rgba(0, 212, 255, 0.12);
+        }
+
         .alert-item.critical { border-right-color: var(--accent-red); }
         .alert-item.warning { border-right-color: var(--accent-orange); }
         .alert-item.info { border-right-color: var(--accent-cyan); }
-        .alert-item.resolved { opacity: 0.5; border-right-color: var(--accent-green); }
-        .alert-item .alert-icon { font-size: 1.2rem; }
+        .alert-item.resolved {
+            border-right-color: var(--accent-green);
+            opacity: 0.5;
+        }
+
+        .alert-item .alert-icon { font-size: 1.1rem; }
         .alert-item .alert-content { flex: 1; }
-        .alert-item .alert-content .title { font-size: 0.9rem; }
-        .alert-item .alert-content .source { font-size: 0.7rem; color: var(--text-secondary); }
-        .alert-item .alert-time { font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; }
-        .alert-item .alert-action { background: none; border: none; color: var(--accent-cyan); cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease; }
-        .alert-item .alert-action:hover { color: var(--accent-green); }
-        .no-alerts { text-align: center; color: var(--text-secondary); padding: 30px; }
-        .badge-count { background: rgba(0,212,255,0.1); color: var(--accent-cyan); padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; }
+        .alert-item .alert-title { font-size: 0.85rem; }
+        .alert-item .alert-source { font-size: 0.65rem; color: var(--text-muted); }
+        .alert-item .alert-time { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; }
+
+        .alert-item .alert-action {
+            background: none;
+            border: none;
+            color: var(--accent-cyan);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .alert-item .alert-action:hover {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-green);
+        }
+
+        .no-alerts {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 30px;
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
-            .alert-item { flex-wrap: wrap; }
+            .alerts-container { padding: 10px 12px; }
+            .alerts-filters { flex-wrap: nowrap; overflow-x: auto; }
+            .alerts-filters .filter-btn { font-size: 0.65rem; padding: 4px 10px; white-space: nowrap; }
+            .alert-item { flex-wrap: wrap; gap: 6px; }
             .alert-item .alert-time { width: 100%; text-align: left; }
         }
     </style>
 </head>
 <body>
+
     <div id="navContainer"></div>
-    
-    <main class="alerts-container">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-            <h1>🔔 هشدارها</h1>
-            <span class="badge-count" id="alertCount">۰ هشدار</span>
+
+    <div class="alerts-container">
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-bell" style="color:var(--accent-pink);"></i> هشدارها</h1>
+                <span class="subtitle">مدیریت هشدارهای سیستم</span>
+            </div>
+            <span class="badge-count" id="alertTotal">۰</span>
         </div>
-        
-        <div class="alert-filters">
-            <button class="active" data-filter="all">همه</button>
-            <button data-filter="critical">🚨 بحرانی</button>
-            <button data-filter="warning">⚠️ هشدار</button>
-            <button data-filter="info">ℹ️ اطلاع</button>
-            <button data-filter="resolved">✅ حل شده</button>
-            <button data-filter="unresolved">⏳ حل نشده</button>
+
+        <div class="alerts-filters" id="filterContainer">
+            <button class="filter-btn active" data-filter="all">همه</button>
+            <button class="filter-btn" data-filter="critical">🚨 بحرانی</button>
+            <button class="filter-btn" data-filter="warning">⚠️ هشدار</button>
+            <button class="filter-btn" data-filter="info">ℹ️ اطلاع</button>
+            <button class="filter-btn" data-filter="resolved">✅ حل شده</button>
+            <button class="filter-btn" data-filter="unresolved">⏳ حل نشده</button>
+            <button class="filter-btn" style="margin-right:auto;color:var(--accent-cyan);" onclick="loadAlerts()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
         </div>
-        
+
         <div id="alertsList">
             <div class="no-alerts">⏳ در حال بارگذاری...</div>
         </div>
-    </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
 
     <script src="/js/script.js"></script>
-    <script src="/js/menu.js"></script>
-    <script src="/js/alerts.js"></script>
+    <script>
+        let currentFilter = 'all';
+
+        document.querySelectorAll('#filterContainer .filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('#filterContainer .filter-btn').forEach(b => b.classList.remove(
+                'active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                loadAlerts();
+            });
+        });
+
+        function loadAlerts() {
+            const container = document.getElementById('alertsList');
+            const totalEl = document.getElementById('alertTotal');
+
+            let url = '/api/alerts?limit=50';
+            if (currentFilter === 'resolved') url += '&resolved=true';
+            else if (currentFilter === 'unresolved') url += '&resolved=false';
+
+            fetch(url, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const alerts = data.data;
+                        totalEl.textContent = alerts.length;
+
+                        if (alerts.length === 0) {
+                            container.innerHTML = '<div class="no-alerts">✅ همه چیز خوب است! هشدار جدیدی وجود ندارد.</div>';
+                            return;
+                        }
+
+                        let html = '';
+                        alerts.forEach(a => {
+                            const level = a.level?.toLowerCase() || 'info';
+                            const isResolved = a.resolved || false;
+                            const levelClass = isResolved ? 'resolved' : level;
+                            const icon = level === 'critical' ? '🚨' : level === 'warning' ? '⚠️' : 'ℹ️';
+                            const time = new Date(a.timestamp).toLocaleString('fa-IR');
+
+                            html += `
+                                    <div class="alert-item ${levelClass}">
+                                        <span class="alert-icon">${icon}</span>
+                                        <div class="alert-content">
+                                            <div class="alert-title">${a.message || 'بدون پیام'}</div>
+                                            <div class="alert-source">${a.source || 'system'} • ${a.level || 'info'}</div>
+                                        </div>
+                                        <span class="alert-time">${time}</span>
+                                        ${!isResolved ? `<button class="alert-action" onclick="resolveAlert(${a.id})"><i class="fas fa-check-circle"></i></button>` : '<span style="color:var(--accent-green);font-size:0.7rem;">✅ حل شد</span>'}
+                                    </div>
+                                `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<div class="no-alerts" style="color:var(--accent-red);">❌ خطا در دریافت هشدارها</div>';
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="no-alerts" style="color:var(--accent-red);">❌ خطا در ارتباط</div>';
+                });
+        }
+
+        function resolveAlert(id) {
+            fetch(`/api/alerts/${id}/resolve`, { method: 'POST', credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('✅ هشدار بسته شد', 'success');
+                        loadAlerts();
+                    } else {
+                        showToast('❌ خطا', 'error');
+                    }
+                })
+                .catch(() => showToast('❌ خطا', 'error'));
+        }
+
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            fetch('/nav.html')
+                .then(res => res.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                })
+                .catch(() => {
+                    container.innerHTML = `
+                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
+                                ⚠️ خطا در بارگذاری منو
+                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                            </div>
+                        `;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNav();
+            loadAlerts();
+            setInterval(loadAlerts, 30000);
+            console.log('🚀 Alerts page ready');
+        });
+    </script>
 </body>
 </html>
