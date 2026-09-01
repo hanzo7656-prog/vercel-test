@@ -1,16 +1,20 @@
 // ============================================================
-// utils.js - Utility Functions
+// utils.js - Utility Functions v4.0
 // ============================================================
 
-// ===== TOAST =====
+// ============================================================
+// TOAST SYSTEM
+// ============================================================
+
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer') || (() => {
-        const el = document.createElement('div');
-        el.id = 'toastContainer';
-        el.className = 'toast-container';
-        document.body.appendChild(el);
-        return el;
-    })();
+    // پیدا کردن یا ایجاد container
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
     
     const colors = {
         info: 'var(--accent-cyan)',
@@ -42,19 +46,25 @@ function showToast(message, type = 'info', duration = 3000) {
         toast.style.transform = 'translateY(0)';
     });
     
+    // حذف خودکار
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(-20px)';
         setTimeout(() => {
-            if (toast.parentNode) toast.parentNode.removeChild(toast);
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
         }, 300);
     }, duration);
 }
 
-// ===== FORMATTERS =====
+// ============================================================
+// FORMATTERS
+// ============================================================
+
 function formatCurrency(value, currency = '$') {
     if (value === undefined || value === null || isNaN(value)) return '—';
-    return `${currency}${value.toLocaleString('en-US', {
+    return `${currency}${Number(value).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     })}`;
@@ -62,21 +72,24 @@ function formatCurrency(value, currency = '$') {
 
 function formatNumber(value) {
     if (value === undefined || value === null || isNaN(value)) return '—';
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-    return value.toString();
+    const num = Number(value);
+    if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`;
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+    return num.toString();
 }
 
 function formatPercent(value) {
     if (value === undefined || value === null || isNaN(value)) return '—';
     const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
+    return `${sign}${Number(value).toFixed(2)}%`;
 }
 
 function formatDate(date, locale = 'fa-IR') {
     if (!date) return '—';
     try {
         const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '—';
         return d.toLocaleDateString(locale, {
             year: 'numeric',
             month: 'short',
@@ -106,7 +119,27 @@ function formatDuration(seconds) {
     return parts.join(' ');
 }
 
-// ===== DOM HELPERS =====
+function formatTimeAgo(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        
+        if (diff < 60) return `${diff} ثانیه پیش`;
+        if (diff < 3600) return `${Math.floor(diff / 60)} دقیقه پیش`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} ساعت پیش`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} روز پیش`;
+        return formatDate(date);
+    } catch {
+        return '—';
+    }
+}
+
+// ============================================================
+// DOM HELPERS
+// ============================================================
+
 function $(selector, context = document) {
     return context.querySelector(selector);
 }
@@ -134,8 +167,12 @@ function createElement(tag, className = '', attributes = {}, children = []) {
     return el;
 }
 
-// ===== LOADING =====
+// ============================================================
+// LOADING
+// ============================================================
+
 function showLoading(container, message = 'در حال بارگذاری...') {
+    if (!container) return;
     container.innerHTML = `
         <div class="loading-container">
             <div class="loading-spinner"></div>
@@ -145,11 +182,20 @@ function showLoading(container, message = 'در حال بارگذاری...') {
 }
 
 function hideLoading(container) {
+    if (!container) return;
     container.innerHTML = '';
 }
 
-// ===== CLIPBOARD =====
+// ============================================================
+// CLIPBOARD
+// ============================================================
+
 async function copyToClipboard(text) {
+    if (!text) {
+        showToast('❌ چیزی برای کپی وجود ندارد', 'error');
+        return;
+    }
+    
     try {
         await navigator.clipboard.writeText(text);
         showToast('📋 کپی شد!', 'success');
@@ -157,8 +203,7 @@ async function copyToClipboard(text) {
         // Fallback
         const textarea = document.createElement('textarea');
         textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
+        textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
         document.body.appendChild(textarea);
         textarea.select();
         try {
@@ -171,18 +216,41 @@ async function copyToClipboard(text) {
     }
 }
 
-// ===== EXPORT =====
+// ============================================================
+// VALIDATION
+// ============================================================
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+
 window.showToast = showToast;
 window.formatCurrency = formatCurrency;
 window.formatNumber = formatNumber;
 window.formatPercent = formatPercent;
 window.formatDate = formatDate;
 window.formatDuration = formatDuration;
+window.formatTimeAgo = formatTimeAgo;
 window.$ = $;
 window.$$ = $$;
 window.createElement = createElement;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.copyToClipboard = copyToClipboard;
+window.isValidEmail = isValidEmail;
+window.isValidUrl = isValidUrl;
 
-console.log('✅ Utils loaded');
+console.log('✅ Utils v4.0 loaded');
