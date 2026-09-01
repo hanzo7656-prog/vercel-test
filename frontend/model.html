@@ -2,100 +2,795 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>مدیریت مدل</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .model-container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
-        .model-status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-        .status-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px 18px; text-align: center; }
-        .status-item .label { color: var(--text-secondary); font-size: 0.7rem; }
-        .status-item .value { font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
-        .status-item .value.active { color: var(--accent-green); }
-        .status-item .value.inactive { color: var(--accent-orange); }
-        .model-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
-        .model-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .btn-train { background: linear-gradient(135deg, var(--accent-green), #00cc66); color: #fff; }
-        .btn-train:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 255, 136, 0.25); }
-        .btn-stop { background: linear-gradient(135deg, var(--accent-red), #cc0000); color: #fff; }
-        .btn-stop:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 68, 68, 0.25); }
-        .btn-export { background: linear-gradient(135deg, var(--accent-cyan), #0099cc); color: #fff; }
-        .btn-export:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25); }
-        .history-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .history-table th { text-align: right; padding: 10px 12px; border-bottom: 2px solid var(--border-color); color: var(--text-secondary); }
-        .history-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        /* ============================================================
+           MODEL PAGE - استایل‌های اختصاصی
+           ============================================================ */
+        .model-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 20px;
+        }
+
+        /* ===== STATUS CARDS ===== */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .status-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .status-card:hover {
+            border-color: rgba(0, 212, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .status-card .status-icon {
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .status-card .status-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-card .status-value.active { color: var(--accent-green); }
+        .status-card .status-value.inactive { color: var(--accent-orange); }
+        .status-card .status-value.error { color: var(--accent-red); }
+        .status-card .status-value.cyan { color: var(--accent-cyan); }
+
+        .status-card .status-label {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 4px;
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+        }
+
+        .action-bar .btn {
+            padding: 8px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-bar .btn-train {
+            background: linear-gradient(135deg, var(--accent-green), #00cc66);
+            color: var(--bg-primary);
+        }
+
+        .action-bar .btn-train:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.25);
+        }
+
+        .action-bar .btn-train:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .action-bar .btn-stop {
+            background: linear-gradient(135deg, var(--accent-red), #cc0000);
+            color: #fff;
+        }
+
+        .action-bar .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.25);
+        }
+
+        .action-bar .btn-export {
+            background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
+            color: #fff;
+        }
+
+        .action-bar .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25);
+        }
+
+        .action-bar .btn-schedule {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 212, 255, 0.12);
+        }
+
+        .action-bar .btn-schedule:hover {
+            background: rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .action-bar .btn-schedule.active {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        /* ===== TABS ===== */
+        .model-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            border: 1px solid var(--border-glow);
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .model-tabs button {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.8rem;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .model-tabs button:hover {
+            color: var(--text-primary);
+            background: rgba(0, 212, 255, 0.04);
+        }
+
+        .model-tabs button.active {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-cyan);
+        }
+
+        /* ===== TAB CONTENT ===== */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ===== HISTORY TABLE ===== */
+        .history-table-wrap {
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .history-table th {
+            text-align: right;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid var(--border-glow);
+        }
+
+        .history-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .history-table tr:hover td {
+            background: rgba(0, 212, 255, 0.02);
+        }
+
+        .history-table .status-badge {
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 500;
+        }
+
+        .history-table .status-badge.active {
+            background: rgba(0, 255, 136, 0.08);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 255, 136, 0.12);
+        }
+
+        .history-table .status-badge.inactive {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        /* ===== FEATURES ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 8px;
+        }
+
+        .feature-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glow);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .feature-item .feature-icon {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.9rem;
+        }
+
+        .feature-item .feature-name {
+            color: var(--text-primary);
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
-            .model-status-grid { grid-template-columns: 1fr 1fr; }
-            .model-actions { flex-direction: column; }
-            .model-actions button { width: 100%; }
+            .model-container { padding: 10px 12px; }
+            .status-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .status-card { padding: 10px 12px; }
+            .status-card .status-value { font-size: 0.9rem; }
+            .action-bar { flex-direction: column; }
+            .action-bar .btn { justify-content: center; width: 100%; }
+            .model-tabs { flex-wrap: nowrap; overflow-x: auto; }
+            .model-tabs button { font-size: 0.7rem; padding: 6px 12px; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            .status-grid { grid-template-columns: 1fr 1fr; }
+            .status-card .status-value { font-size: 0.8rem; }
         }
     </style>
 </head>
 <body>
-    <div id="navContainer"></div>
-    
-    <main class="model-container">
-        <h1>🤖 مدیریت مدل</h1>
-        <p class="subtitle">مدیریت و آموزش مدل XGBoost</p>
-        
-        <div class="model-status-grid" id="modelStatusGrid">
-            <div class="status-item">
-                <div class="label">🧠 وضعیت</div>
-                <div class="value" id="statusLoaded">⏳ در حال بارگذاری...</div>
-            </div>
-            <div class="status-item">
-                <div class="label">📌 نسخه</div>
-                <div class="value" id="statusVersion">—</div>
-            </div>
-            <div class="status-item">
-                <div class="label">🎯 دقت</div>
-                <div class="value" id="statusAccuracy">—</div>
-            </div>
-            <div class="status-item">
-                <div class="label">📊 آموزش‌ها</div>
-                <div class="value" id="statusTrainings">—</div>
-            </div>
-            <div class="status-item">
-                <div class="label">⏳ وضعیت آموزش</div>
-                <div class="value" id="statusTraining">⏹️ غیرفعال</div>
-            </div>
-            <div class="status-item">
-                <div class="label">🔄 زمان‌بندی</div>
-                <div class="value" id="statusSchedule">⏹️ غیرفعال</div>
-            </div>
-        </div>
-        
-        <div class="model-actions">
-            <button class="btn-train" id="trainBtn">🚀 آموزش دستی</button>
-            <button class="btn-stop" id="stopBtn">⏹️ توقف آموزش</button>
-            <button class="btn-export" id="exportBtn">📥 دانلود مدل</button>
-            <button class="btn-export" id="scheduleBtn">⏰ تنظیم زمان‌بندی</button>
-        </div>
-        
-        <div style="margin-top: 20px;">
-            <h3>📋 تاریخچه نسخه‌ها</h3>
-            <div class="history-wrapper" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:16px;overflow-x:auto;">
-                <table class="history-table" id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>نسخه</th>
-                            <th>دقت</th>
-                            <th>بازه</th>
-                            <th>تاریخ</th>
-                            <th>وضعیت</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyBody">
-                        <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);">در حال بارگذاری...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
 
+    <!-- ===== NAV ===== -->
+    <div id="navContainer"></div>
+
+    <!-- ===== MODEL ===== -->
+    <div class="model-container">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-brain" style="color:var(--accent-purple);"></i> مدیریت مدل</h1>
+                <span class="subtitle">مدیریت و آموزش مدل XGBoost</span>
+            </div>
+            <span class="timestamp" id="pageTimestamp"></span>
+        </div>
+
+        <!-- ===== STATUS CARDS ===== -->
+        <div class="status-grid" id="statusGrid">
+            <div class="status-card">
+                <span class="status-icon">🧠</span>
+                <div class="status-value" id="modelStatusValue">⏳</div>
+                <div class="status-label">وضعیت مدل</div>
+            </div>
+            <div class="status-card">
+                <span class="status-icon">📌</span>
+                <div class="status-value cyan" id="modelVersion">—</div>
+                <div class="status-label">نسخه</div>
+            </div>
+            <div class="status-card">
+                <span class="status-icon">🎯</span>
+                <div class="status-value" id="modelAccuracy">—</div>
+                <div class="status-label">دقت</div>
+            </div>
+            <div class="status-card">
+                <span class="status-icon">📊</span>
+                <div class="status-value cyan" id="modelTrainings">—</div>
+                <div class="status-label">تعداد آموزش</div>
+            </div>
+        </div>
+
+        <!-- ===== ACTION BAR ===== -->
+        <div class="action-bar">
+            <button class="btn btn-train" id="trainBtn">
+                <i class="fas fa-play"></i> آموزش
+            </button>
+            <button class="btn btn-stop" id="stopBtn">
+                <i class="fas fa-stop"></i> توقف
+            </button>
+            <button class="btn btn-export" id="exportBtn">
+                <i class="fas fa-download"></i> دانلود
+            </button>
+            <button class="btn btn-schedule" id="scheduleBtn">
+                <i class="fas fa-clock"></i> زمان‌بندی
+            </button>
+            <button class="btn btn-outline" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> بروزرسانی
+            </button>
+        </div>
+
+        <!-- ===== TABS ===== -->
+        <div class="model-tabs" id="modelTabs">
+            <button class="active" data-tab="status">📊 وضعیت</button>
+            <button data-tab="history">📋 تاریخچه</button>
+            <button data-tab="features">🔧 ویژگی‌ها</button>
+            <button data-tab="schedule">⏰ زمان‌بندی</button>
+        </div>
+
+        <!-- ===== TAB: STATUS ===== -->
+        <div class="tab-content active" id="tab-status">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-info-circle"></i> اطلاعات مدل</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;">
+                    <div class="info-item"><span class="label">وضعیت</span><span class="value" id="detailStatus">—</span></div>
+                    <div class="info-item"><span class="label">نسخه</span><span class="value" id="detailVersion">—</span></div>
+                    <div class="info-item"><span class="label">دقت</span><span class="value" id="detailAccuracy">—</span></div>
+                    <div class="info-item"><span class="label">آموزش</span><span class="value" id="detailTrainings">—</span></div>
+                    <div class="info-item"><span class="label">در حال آموزش</span><span class="value" id="detailTraining">—</span></div>
+                    <div class="info-item"><span class="label">حالت</span><span class="value" id="detailMode">—</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: HISTORY ===== -->
+        <div class="tab-content" id="tab-history">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-history"></i> تاریخچه نسخه‌ها
+                    <span class="badge-count" id="historyCount">۰</span>
+                </div>
+                <div class="history-table-wrap">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>نسخه</th>
+                                <th>دقت</th>
+                                <th>بازه</th>
+                                <th>نمونه</th>
+                                <th>تاریخ</th>
+                                <th>وضعیت</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: FEATURES ===== -->
+        <div class="tab-content" id="tab-features">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-cubes"></i> ویژگی‌های مدل</div>
+                <div class="features-grid" id="featuresGrid">
+                    <div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: SCHEDULE ===== -->
+        <div class="tab-content" id="tab-schedule">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-clock"></i> زمان‌بندی آموزش خودکار</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">
+                    <div class="info-item"><span class="label">وضعیت</span><span class="value" id="scheduleStatus">⏹️ غیرفعال</span></div>
+                    <div class="info-item"><span class="label">فاصله</span><span class="value" id="scheduleInterval">—</span></div>
+                    <div class="info-item"><span class="label">بازه داده</span><span class="value" id="schedulePeriod">—</span></div>
+                    <div class="info-item"><span class="label">آخرین آموزش</span><span class="value" id="scheduleLast">—</span></div>
+                    <div class="info-item" style="grid-column:1/-1;">
+                        <span class="label">ارزها</span>
+                        <span class="value" id="scheduleCoins">—</span>
+                    </div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-success btn-sm" id="scheduleEnableBtn">
+                        <i class="fas fa-play"></i> فعال‌سازی
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="scheduleDisableBtn">
+                        <i class="fas fa-stop"></i> غیرفعال‌سازی
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/js/script.js"></script>
-    <script src="/js/menu.js"></script>
-    <script src="/js/model.js"></script>
+    <script>
+        // ============================================================
+        // TABS
+        // ============================================================
+        document.querySelectorAll('#modelTabs button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('#modelTabs button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const tab = this.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab-' + tab).classList.add('active');
+
+                if (tab === 'history') loadHistory();
+                if (tab === 'features') loadFeatures();
+                if (tab === 'schedule') loadSchedule();
+            });
+        });
+
+        // ============================================================
+        // UPDATE STATUS
+        // ============================================================
+        function updateStatus() {
+            fetch('/api/model?section=status', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const s = data.data;
+                        const loaded = s.loaded || false;
+                        const isTraining = s.is_training || false;
+                        const accuracy = s.last_score || null;
+
+                        // Status Cards
+                        const statusEl = document.getElementById('modelStatusValue');
+                        if (isTraining) {
+                            statusEl.textContent = '⏳ در حال آموزش...';
+                            statusEl.className = 'status-value active';
+                        } else if (loaded) {
+                            statusEl.textContent = '✅ فعال';
+                            statusEl.className = 'status-value active';
+                        } else {
+                            statusEl.textContent = '📦 دمو';
+                            statusEl.className = 'status-value inactive';
+                        }
+
+                        document.getElementById('modelVersion').textContent = s.version || 'N/A';
+                        document.getElementById('modelAccuracy').textContent = accuracy !== null ? (accuracy * 100)
+                            .toFixed(1) + '%' : '—';
+                        document.getElementById('modelAccuracy').className = 'status-value ' +
+                            (accuracy !== null && accuracy > 0.6 ? 'active' : 'inactive');
+                        document.getElementById('modelTrainings').textContent = s.total_trainings || 0;
+
+                        // Detail Status
+                        document.getElementById('detailStatus').textContent = isTraining ? '⏳ در حال آموزش...' :
+                            loaded ? '✅ فعال' : '📦 دمو';
+                        document.getElementById('detailStatus').className = 'value ' +
+                            (isTraining ? 'orange' : loaded ? 'green' : 'orange');
+                        document.getElementById('detailVersion').textContent = s.version || 'N/A';
+                        document.getElementById('detailAccuracy').textContent = accuracy !== null ? (accuracy *
+                            100).toFixed(1) + '%' : '—';
+                        document.getElementById('detailAccuracy').className = 'value ' +
+                            (accuracy !== null && accuracy > 0.6 ? 'green' : 'orange');
+                        document.getElementById('detailTrainings').textContent = s.total_trainings || 0;
+                        document.getElementById('detailTraining').textContent = isTraining ? '🔄 در حال اجرا' :
+                        '⏹️ غیرفعال';
+                        document.getElementById('detailTraining').className = 'value ' + (isTraining ? 'orange' :
+                            '');
+                        document.getElementById('detailMode').textContent = loaded ? 'PRODUCTION' : 'DEMO';
+                        document.getElementById('detailMode').className = 'value ' + (loaded ? 'green' : 'orange');
+
+                        // Update training button
+                        const trainBtn = document.getElementById('trainBtn');
+                        if (isTraining) {
+                            trainBtn.disabled = true;
+                            trainBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال آموزش...';
+                        } else {
+                            trainBtn.disabled = false;
+                            trainBtn.innerHTML = '<i class="fas fa-play"></i> آموزش';
+                        }
+                    }
+                })
+                .catch(err => console.error('Status error:', err));
+        }
+
+        // ============================================================
+        // LOAD HISTORY
+        // ============================================================
+        function loadHistory() {
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr>';
+
+            fetch('/api/model?section=history', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.length > 0) {
+                        document.getElementById('historyCount').textContent = data.data.length;
+                        let html = '';
+                        data.data.slice(0, 20).forEach(item => {
+                            const statusBadge = item.is_active ?
+                                '<span class="status-badge active">✅ فعال</span>' :
+                                '<span class="status-badge inactive">📦 غیرفعال</span>';
+                            html += `
+                                    <tr>
+                                        <td><strong>${item.version || '—'}</strong></td>
+                                        <td style="color:${(item.accuracy || 0) > 0.6 ? 'var(--accent-green)' : 'var(--accent-orange)'};">${((item.accuracy || 0) * 100).toFixed(1)}%</td>
+                                        <td>${item.period || '—'}</td>
+                                        <td>${item.training_samples || 0}</td>
+                                        <td style="color:var(--text-muted);font-size:0.7rem;">${new Date(item.training_date).toLocaleString('fa-IR')}</td>
+                                        <td>${statusBadge}</td>
+                                    </tr>
+                                `;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        document.getElementById('historyCount').textContent = '۰';
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">📭 هیچ نسخه‌ای یافت نشد</td></tr>';
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت تاریخچه</td></tr>';
+                });
+        }
+
+        // ============================================================
+        // LOAD FEATURES
+        // ============================================================
+        function loadFeatures() {
+            const grid = document.getElementById('featuresGrid');
+            grid.innerHTML = '<div class="loading"><div class="spinner"></div><p>در حال بارگذاری...</p></div>';
+
+            fetch('/api/model?section=features', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const features = data.data;
+                        let html = '';
+                        const icons = ['📈', '📊', '📉', '📊', '📈', '📉', '📊', '📈', '📉', '📊', '📈', '📉', '📊'];
+                        features.forEach((f, i) => {
+                            html += `
+                                    <div class="feature-item">
+                                        <span class="feature-icon">${icons[i % icons.length]}</span>
+                                        <span class="feature-name">${f}</span>
+                                    </div>
+                                `;
+                        });
+                        grid.innerHTML = html || '<p style="color:var(--text-muted);text-align:center;padding:20px;">📭 ویژگی‌ای یافت نشد</p>';
+                    } else {
+                        grid.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">📭 ویژگی‌ای یافت نشد</p>';
+                    }
+                })
+                .catch(() => {
+                    grid.innerHTML = '<p style="color:var(--accent-red);text-align:center;padding:20px;">❌ خطا در دریافت ویژگی‌ها</p>';
+                });
+        }
+
+        // ============================================================
+        // LOAD SCHEDULE
+        // ============================================================
+        function loadSchedule() {
+            fetch('/api/model/schedule', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const s = data.data;
+                        document.getElementById('scheduleStatus').textContent = s.is_running ? '✅ فعال' : '⏹️ غیرفعال';
+                        document.getElementById('scheduleStatus').className = 'value ' + (s.is_running ? 'green' :
+                            'orange');
+                        document.getElementById('scheduleInterval').textContent = s.interval_hours ? s.interval_hours +
+                            ' ساعت' : '—';
+                        document.getElementById('schedulePeriod').textContent = s.period || '—';
+                        document.getElementById('scheduleLast').textContent = s.last_training ? new Date(s
+                            .last_training).toLocaleString('fa-IR') : '—';
+                        document.getElementById('scheduleCoins').textContent = (s.coins || []).join(', ') || '—';
+
+                        // Update schedule button
+                        const scheduleBtn = document.getElementById('scheduleBtn');
+                        if (s.is_running) {
+                            scheduleBtn.textContent = '⏰ زمان‌بندی فعال';
+                            scheduleBtn.className = 'btn btn-schedule active';
+                        } else {
+                            scheduleBtn.textContent = '⏰ زمان‌بندی';
+                            scheduleBtn.className = 'btn btn-schedule';
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ============================================================
+        // ACTIONS
+        // ============================================================
+        document.getElementById('trainBtn').addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال آموزش...';
+
+            fetch('/api/model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        action: 'train',
+                        period: '1m',
+                        coins: ['bitcoin', 'ethereum']
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('✅ آموزش شروع شد', 'success');
+                        updateStatus();
+                    } else {
+                        showToast('❌ ' + (data.message || 'خطا'), 'error');
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fas fa-play"></i> آموزش';
+                    }
+                })
+                .catch(() => {
+                    showToast('❌ خطا', 'error');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-play"></i> آموزش';
+                });
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', function() {
+            if (!confirm('آیا از توقف آموزش اطمینان دارید؟')) return;
+
+            fetch('/api/model/schedule', {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('✅ آموزش متوقف شد', 'success');
+                        updateStatus();
+                        loadSchedule();
+                    } else {
+                        showToast('❌ ' + (data.message || 'خطا'), 'error');
+                    }
+                })
+                .catch(() => showToast('❌ خطا', 'error'));
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            window.open('/api/model/export', '_blank');
+            showToast('📥 دانلود شروع شد', 'success');
+        });
+
+        document.getElementById('scheduleBtn').addEventListener('click', function() {
+            const isActive = this.classList.contains('active');
+
+            fetch('/api/model/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        enabled: !isActive,
+                        interval: 6,
+                        period: '1m',
+                        coins: ['bitcoin', 'ethereum']
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(isActive ? '⏹️ زمان‌بندی غیرفعال شد' : '✅ زمان‌بندی فعال شد', 'success');
+                        loadSchedule();
+                    } else {
+                        showToast('❌ ' + (data.message || 'خطا'), 'error');
+                    }
+                })
+                .catch(() => showToast('❌ خطا', 'error'));
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            updateStatus();
+            showToast('🔄 بروزرسانی شد', 'info');
+        });
+
+        // ============================================================
+        // LOAD NAV
+        // ============================================================
+        function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+
+            fetch('/nav.html')
+                .then(res => {
+                    if (!res.ok) throw new Error('nav.html not found');
+                    return res.text();
+                })
+                .then(html => {
+                    container.innerHTML = html;
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                })
+                .catch(err => {
+                    console.error('❌ Nav error:', err);
+                    container.innerHTML = `
+                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
+                                ⚠️ خطا در بارگذاری منو
+                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                            </div>
+                        `;
+                });
+        }
+
+        // ============================================================
+        // TIMESTAMP
+        // ============================================================
+        function updateTimestamp() {
+            const el = document.getElementById('pageTimestamp');
+            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
+        }
+        setInterval(updateTimestamp, 1000);
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Model page initializing...');
+
+            loadNav();
+            updateStatus();
+
+            // بارگذاری اولیه تب‌ها
+            setTimeout(() => {
+                loadHistory();
+                loadFeatures();
+                loadSchedule();
+            }, 300);
+
+            // بروزرسانی خودکار
+            setInterval(updateStatus, 15000);
+
+            console.log('🚀 Model page ready');
+        });
+    </script>
+
 </body>
 </html>
