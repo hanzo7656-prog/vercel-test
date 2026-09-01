@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - Core Application
+// app.js - Core Application v4.0
 // ============================================================
 
 class App {
@@ -13,11 +13,14 @@ class App {
         };
         
         this.listeners = [];
+        this.isInitialized = false;
         this.init();
     }
     
     async init() {
-        // بارگذاری تم
+        if (this.isInitialized) return;
+        
+        // اعمال تم
         this.applyTheme(this.state.theme);
         
         // دریافت اطلاعات کاربر
@@ -32,9 +35,7 @@ class App {
         // راه‌اندازی آپدیت خودکار
         this.startAutoUpdate();
         
-        // راه‌اندازی event listeners
-        this.setupEventListeners();
-        
+        this.isInitialized = true;
         console.log('🚀 App initialized');
     }
     
@@ -52,14 +53,19 @@ class App {
     }
     
     notifyListeners() {
-        this.listeners.forEach(listener => listener(this.state));
+        this.listeners.forEach(listener => {
+            try {
+                listener(this.state);
+            } catch (err) {
+                console.error('Listener error:', err);
+            }
+        });
     }
     
     // ===== API CALLS =====
     async loadUser() {
         try {
-            const res = await fetch('/api/user', { credentials: 'include' });
-            const data = await res.json();
+            const data = await api.getUser();
             if (data.success) {
                 this.setState({ user: data.data });
                 return data.data;
@@ -72,8 +78,7 @@ class App {
     
     async loadMetrics() {
         try {
-            const res = await fetch('/api/metrics', { credentials: 'include' });
-            const data = await res.json();
+            const data = await api.getMetrics();
             if (data.success) {
                 this.setState({ metrics: data.data });
                 return data.data;
@@ -86,8 +91,7 @@ class App {
     
     async loadAlerts() {
         try {
-            const res = await fetch('/api/alerts?limit=5', { credentials: 'include' });
-            const data = await res.json();
+            const data = await api.getAlerts(5);
             if (data.success) {
                 this.setState({ alerts: data.data || [] });
                 return data.data;
@@ -109,35 +113,25 @@ class App {
         const newTheme = this.state.theme === 'dark' ? 'light' : 'dark';
         this.applyTheme(newTheme);
         this.notifyListeners();
+        return newTheme;
     }
     
     // ===== AUTO UPDATE =====
     startAutoUpdate() {
         // آپدیت متریک‌ها هر ۱۰ ثانیه
-        setInterval(() => this.loadMetrics(), 10000);
+        setInterval(() => {
+            this.loadMetrics();
+        }, 10000);
         
         // آپدیت هشدارها هر ۳۰ ثانیه
-        setInterval(() => this.loadAlerts(), 30000);
+        setInterval(() => {
+            this.loadAlerts();
+        }, 30000);
     }
     
-    // ===== EVENT LISTENERS =====
-    setupEventListeners() {
-        // دکمه تغییر تم
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('[data-theme-toggle]')) {
-                this.toggleTheme();
-                e.preventDefault();
-            }
-        });
-        
-        // کلیدهای میانبر
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-                this.loadMetrics();
-                showToast('🔄 بروزرسانی شد', 'info');
-            }
-        });
+    // ===== UTILITY =====
+    getState() {
+        return this.state;
     }
 }
 
@@ -146,7 +140,9 @@ const app = new App();
 window.app = app;
 
 // ===== EXPOSE FOR OTHER SCRIPTS =====
-window.getState = () => app.state;
+window.getState = () => app.getState();
 window.loadMetrics = () => app.loadMetrics();
 window.loadAlerts = () => app.loadAlerts();
 window.toggleTheme = () => app.toggleTheme();
+
+console.log('✅ App v4.0 loaded');
