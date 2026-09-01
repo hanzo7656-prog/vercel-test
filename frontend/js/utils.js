@@ -1,5 +1,5 @@
 // ============================================================
-// utils.js - Utility Functions v4.0
+// utils.js - Utility Functions v10.0
 // ============================================================
 
 // ============================================================
@@ -7,7 +7,6 @@
 // ============================================================
 
 function showToast(message, type = 'info', duration = 3000) {
-    // پیدا کردن یا ایجاد container
     let container = document.getElementById('toastContainer');
     if (!container) {
         container = document.createElement('div');
@@ -15,21 +14,21 @@ function showToast(message, type = 'info', duration = 3000) {
         container.className = 'toast-container';
         document.body.appendChild(container);
     }
-    
+
     const colors = {
         info: 'var(--accent-cyan)',
         success: 'var(--accent-green)',
         error: 'var(--accent-red)',
         warning: 'var(--accent-orange)'
     };
-    
+
     const icons = {
         info: 'ℹ️',
         success: '✅',
         error: '❌',
         warning: '⚠️'
     };
-    
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `
@@ -37,23 +36,19 @@ function showToast(message, type = 'info', duration = 3000) {
         <span class="toast-message">${message}</span>
     `;
     toast.style.borderColor = colors[type] || colors.info;
-    
+
     container.appendChild(toast);
-    
-    // انیمیشن ورود
+
     requestAnimationFrame(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
     });
-    
-    // حذف خودکار
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(-20px)';
         setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
         }, 300);
     }, duration);
 }
@@ -95,7 +90,8 @@ function formatDate(date, locale = 'fa-IR') {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            second: '2-digit'
         });
     } catch {
         return '—';
@@ -200,7 +196,6 @@ async function copyToClipboard(text) {
         await navigator.clipboard.writeText(text);
         showToast('📋 کپی شد!', 'success');
     } catch {
-        // Fallback
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
@@ -217,20 +212,37 @@ async function copyToClipboard(text) {
 }
 
 // ============================================================
-// VALIDATION
+// TABLE HELPERS
 // ============================================================
 
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function isValidUrl(url) {
-    try {
-        new URL(url);
-        return true;
-    } catch {
-        return false;
+function renderTable(data, columns, container, options = {}) {
+    const { clickable = false, onRowClick = null } = options;
+    
+    let html = `<table class="table-modern"><thead><tr>`;
+    columns.forEach(col => {
+        html += `<th>${col.label || col.key}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    
+    if (!data || data.length === 0) {
+        html += `<tr><td colspan="${columns.length}" style="text-align:center;color:var(--text-muted);">📭 هیچ داده‌ای یافت نشد</td></tr>`;
+    } else {
+        data.forEach((row, index) => {
+            html += `<tr${clickable ? ' style="cursor:pointer;"' : ''}`;
+            if (clickable && onRowClick) {
+                html += ` onclick="(${onRowClick.toString()})(${index})"`;
+            }
+            html += `>`;
+            columns.forEach(col => {
+                const value = row[col.key];
+                html += `<td>${col.format ? col.format(value) : (value !== undefined && value !== null ? value : '—')}</td>`;
+            });
+            html += `</tr>`;
+        });
     }
+    
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
 // ============================================================
@@ -250,7 +262,6 @@ window.createElement = createElement;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.copyToClipboard = copyToClipboard;
-window.isValidEmail = isValidEmail;
-window.isValidUrl = isValidUrl;
+window.renderTable = renderTable;
 
-console.log('✅ Utils v4.0 loaded');
+console.log('✅ Utils v10.0 loaded');
