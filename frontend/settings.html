@@ -7,70 +7,88 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .settings-container { max-width: 900px; margin: 0 auto; padding: 16px 20px; }
-
+        /* ============================================================
+           SETTINGS - استایل‌های اختصاصی
+           ============================================================ */
+        
         .settings-group {
             background: var(--bg-card);
-            border: 1px solid var(--border-glow);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius);
             padding: 20px 24px;
             margin-bottom: 16px;
+            transition: var(--transition);
         }
-
+        
+        .settings-group:hover {
+            border-color: var(--border-hover);
+        }
+        
         .settings-group .group-title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--text-secondary);
             margin-bottom: 14px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
-
-        .settings-group .group-title i { color: var(--accent-cyan); }
-
+        
+        .settings-group .group-title i {
+            color: var(--accent-cyan);
+            font-size: 1rem;
+        }
+        
         .settings-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 0;
-            border-bottom: 1px solid rgba(0, 212, 255, 0.03);
+            border-bottom: 1px solid var(--border-color);
             flex-wrap: wrap;
             gap: 8px;
         }
-
-        .settings-row:last-child { border-bottom: none; }
-
+        
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+        
         .settings-row .label {
             color: var(--text-secondary);
             font-size: 0.85rem;
         }
-
+        
         .settings-row .value {
             color: var(--text-primary);
             font-weight: 500;
             font-size: 0.85rem;
         }
-
-        .settings-row input,
-        .settings-row select {
-            padding: 6px 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-glow);
+        
+        .settings-row .value.green { color: var(--accent-green); }
+        .settings-row .value.orange { color: var(--accent-orange); }
+        .settings-row .value.cyan { color: var(--accent-cyan); }
+        
+        .settings-row select,
+        .settings-row input {
+            padding: 6px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
             font-size: 0.8rem;
             font-family: inherit;
+            transition: var(--transition);
         }
-
-        .settings-row input:focus,
-        .settings-row select:focus {
+        
+        .settings-row select:focus,
+        .settings-row input:focus {
             outline: none;
             border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05);
         }
-
+        
         .settings-row .btn {
-            padding: 5px 14px;
+            padding: 6px 18px;
             border-radius: var(--radius-sm);
             border: none;
             font-size: 0.75rem;
@@ -79,76 +97,125 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
+        
         .settings-row .btn-primary {
             background: var(--accent-cyan);
-            color: var(--bg-primary);
+            color: var(--text-inverse);
         }
-
+        
         .settings-row .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
         }
-
+        
         .settings-row .btn-danger {
             background: var(--accent-red);
-            color: #fff;
+            color: white;
         }
-
+        
         .settings-row .btn-danger:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.25);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.2);
         }
-
-        .settings-row .toggle {
-            width: 44px;
-            height: 24px;
-            background: var(--border-color);
-            border-radius: 12px;
+        
+        .settings-row .btn-outline {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .settings-row .btn-outline:hover {
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+        
+        /* ===== TOGGLE ===== */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .toggle {
+            width: 48px;
+            height: 26px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
             cursor: pointer;
             transition: var(--transition);
             position: relative;
         }
-
-        .settings-row .toggle.active {
+        
+        .toggle.active {
             background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
         }
-
-        .settings-row .toggle .thumb {
-            width: 18px;
-            height: 18px;
-            background: #fff;
+        
+        .toggle .thumb {
+            width: 20px;
+            height: 20px;
+            background: white;
             border-radius: 50%;
             position: absolute;
-            top: 3px;
-            left: 3px;
+            top: 2px;
+            left: 2px;
             transition: var(--transition);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-
-        .settings-row .toggle.active .thumb { left: 23px; }
-
-        .settings-row .toggle-label {
+        
+        .toggle.active .thumb {
+            left: 24px;
+        }
+        
+        .toggle-label {
             font-size: 0.75rem;
             color: var(--text-secondary);
-            cursor: pointer;
         }
-
+        
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 768px) {
-            .settings-container { padding: 10px 12px; }
-            .settings-group { padding: 14px 16px; }
-            .settings-row { flex-direction: column; align-items: stretch; }
-            .settings-row .btn { width: 100%; justify-content: center; }
-            .settings-row input,
-            .settings-row select { width: 100%; }
-            .settings-row .toggle { align-self: center; }
+            .settings-group {
+                padding: 14px 16px;
+            }
+            .settings-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .settings-row .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .settings-row select,
+            .settings-row input {
+                width: 100%;
+            }
+            .toggle-wrapper {
+                justify-content: space-between;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .settings-row .label {
+                font-size: 0.8rem;
+            }
+            .settings-row .value {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
 
-    <div class="settings-container">
+    <!-- ===== SETTINGS ===== -->
+    <div class="container">
+
+        <!-- Page Header -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-cog" style="color:var(--accent-cyan);"></i> تنظیمات</h1>
@@ -157,7 +224,7 @@
             <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
-        <!-- Account -->
+        <!-- ===== ACCOUNT ===== -->
         <div class="settings-group">
             <div class="group-title"><i class="fas fa-user-circle"></i> حساب کاربری</div>
             <div class="settings-row">
@@ -178,7 +245,7 @@
             </div>
         </div>
 
-        <!-- Model -->
+        <!-- ===== MODEL ===== -->
         <div class="settings-group">
             <div class="group-title"><i class="fas fa-brain"></i> تنظیمات مدل</div>
             <div class="settings-row">
@@ -187,11 +254,12 @@
                     <option value="24h">۲۴ ساعت</option>
                     <option value="1w">۱ هفته</option>
                     <option value="1m" selected>۱ ماه</option>
+                    <option value="3m">۳ ماه</option>
                 </select>
             </div>
             <div class="settings-row">
                 <span class="label">آموزش خودکار</span>
-                <div style="display:flex;align-items:center;gap:10px;">
+                <div class="toggle-wrapper">
                     <span class="toggle-label" id="scheduleStatus">غیرفعال</span>
                     <div class="toggle" id="scheduleToggle" onclick="toggleSchedule()">
                         <div class="thumb"></div>
@@ -200,7 +268,7 @@
             </div>
         </div>
 
-        <!-- Appearance -->
+        <!-- ===== APPEARANCE ===== -->
         <div class="settings-group">
             <div class="group-title"><i class="fas fa-palette"></i> ظاهر</div>
             <div class="settings-row">
@@ -212,7 +280,7 @@
             </div>
         </div>
 
-        <!-- System -->
+        <!-- ===== SYSTEM ===== -->
         <div class="settings-group">
             <div class="group-title"><i class="fas fa-server"></i> اطلاعات سیستم</div>
             <div class="settings-row">
@@ -223,89 +291,192 @@
                 <span class="label">وضعیت</span>
                 <span class="value" id="systemStatus">⏳</span>
             </div>
+            <div class="settings-row">
+                <span class="label">آپتایم</span>
+                <span class="value" id="systemUptime">—</span>
+            </div>
         </div>
+
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="/js/script.js"></script>
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // USER INFO
+        // SETTINGS CONTROLLER
         // ============================================================
-        function loadUserInfo() {
-            fetch('/api/user', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
+        
+        class SettingsController {
+            constructor() {
+                this.init();
+            }
+            
+            async init() {
+                console.log('🚀 Settings initializing...');
+                
+                await this.loadNav();
+                await this.loadUserInfo();
+                await this.loadSchedule();
+                await this.loadSystemInfo();
+                
+                this.setupTheme();
+                this.setupEvents();
+                
+                console.log('🚀 Settings ready');
+            }
+            
+            // ===== NAV =====
+            async loadNav() {
+                const container = document.getElementById('navContainer');
+                if (!container) return;
+                
+                try {
+                    const res = await fetch('/nav.html');
+                    if (!res.ok) throw new Error('nav.html not found');
+                    const html = await res.text();
+                    container.innerHTML = html;
+                    
+                    const scripts = container.querySelectorAll('script');
+                    scripts.forEach(old => {
+                        const ns = document.createElement('script');
+                        ns.textContent = old.textContent;
+                        old.parentNode.replaceChild(ns, old);
+                    });
+                } catch (err) {
+                    console.error('❌ Nav error:', err);
+                    container.innerHTML = `
+                        <div style="background:var(--bg-secondary);padding:8px;text-align:center;border-bottom:1px solid var(--border-color);font-size:0.8rem;color:var(--accent-red);">
+                            ⚠️ خطا در بارگذاری منو
+                            <button onclick="location.reload()" style="background:var(--accent-cyan);color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // ===== USER INFO =====
+            async loadUserInfo() {
+                try {
+                    const data = await api.getUser();
                     if (data.success) {
                         document.getElementById('settingsUsername').textContent = data.data.username || '—';
                         document.getElementById('settingsRole').textContent = data.data.role || 'guest';
                     }
-                })
-                .catch(() => {});
-        }
-
-        // ============================================================
-        // SCHEDULE
-        // ============================================================
-        function loadScheduleStatus() {
-            fetch('/api/model/schedule', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
+                } catch (err) {
+                    console.error('User info error:', err);
+                }
+            }
+            
+            // ===== SCHEDULE =====
+            async loadSchedule() {
+                try {
+                    const data = await api.getModelSchedule();
                     if (data.success && data.data) {
                         const isRunning = data.data.is_running || false;
                         const toggle = document.getElementById('scheduleToggle');
                         const status = document.getElementById('scheduleStatus');
+                        
                         if (isRunning) {
                             toggle.classList.add('active');
-                            status.textContent = 'فعال (هر ' + (data.data.interval_hours || 6) + ' ساعت)';
+                            status.textContent = `فعال (هر ${data.data.interval_hours || 6} ساعت)`;
                         } else {
                             toggle.classList.remove('active');
                             status.textContent = 'غیرفعال';
                         }
                     }
-                })
-                .catch(() => {});
+                } catch (err) {
+                    console.error('Schedule error:', err);
+                }
+            }
+            
+            // ===== SYSTEM INFO =====
+            async loadSystemInfo() {
+                try {
+                    const health = await api.getHealth();
+                    const stats = await api.getStats();
+                    
+                    const statusEl = document.getElementById('systemStatus');
+                    if (health.status === 'ok') {
+                        statusEl.textContent = '✅ پایدار';
+                        statusEl.className = 'value green';
+                    } else {
+                        statusEl.textContent = '⚠️ ضعیف';
+                        statusEl.className = 'value orange';
+                    }
+                    
+                    document.getElementById('systemUptime').textContent = stats.uptime || '—';
+                } catch (err) {
+                    console.error('System info error:', err);
+                    document.getElementById('systemStatus').textContent = '❌ نامشخص';
+                    document.getElementById('systemStatus').className = 'value';
+                }
+            }
+            
+            // ===== THEME =====
+            setupTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.getElementById('themeSelect').value = savedTheme;
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                
+                document.getElementById('themeSelect').addEventListener('change', (e) => {
+                    const theme = e.target.value;
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                    showToast(`🌓 حالت ${theme === 'dark' ? 'تیره' : 'روشن'} فعال شد`, 'success');
+                });
+            }
+            
+            // ===== EVENTS =====
+            setupEvents() {
+                // تغییر بازه پیش‌فرض
+                document.getElementById('defaultPeriod').addEventListener('change', (e) => {
+                    localStorage.setItem('defaultPeriod', e.target.value);
+                    showToast('✅ بازه پیش‌فرض ذخیره شد', 'success');
+                });
+                
+                // بارگذاری بازه ذخیره شده
+                const savedPeriod = localStorage.getItem('defaultPeriod');
+                if (savedPeriod) {
+                    document.getElementById('defaultPeriod').value = savedPeriod;
+                }
+            }
         }
-
-        function toggleSchedule() {
+        
+        // ============================================================
+        // GLOBAL FUNCTIONS
+        // ============================================================
+        
+        async function toggleSchedule() {
             const toggle = document.getElementById('scheduleToggle');
             const status = document.getElementById('scheduleStatus');
             const isActive = toggle.classList.contains('active');
-
-            fetch('/api/model/schedule', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        enabled: !isActive,
-                        interval: 6,
-                        period: document.getElementById('defaultPeriod').value,
-                        coins: ['bitcoin', 'ethereum']
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        if (!isActive) {
-                            toggle.classList.add('active');
-                            status.textContent = 'فعال (هر ۶ ساعت)';
-                            showToast('✅ آموزش خودکار فعال شد', 'success');
-                        } else {
-                            toggle.classList.remove('active');
-                            status.textContent = 'غیرفعال';
-                            showToast('⏹️ آموزش خودکار غیرفعال شد', 'success');
-                        }
+            
+            try {
+                const data = await api.toggleSchedule(!isActive);
+                if (data.success) {
+                    if (!isActive) {
+                        toggle.classList.add('active');
+                        status.textContent = 'فعال (هر ۶ ساعت)';
+                        showToast('✅ آموزش خودکار فعال شد', 'success');
                     } else {
-                        showToast('❌ ' + data.message, 'error');
+                        toggle.classList.remove('active');
+                        status.textContent = 'غیرفعال';
+                        showToast('⏹️ آموزش خودکار غیرفعال شد', 'success');
                     }
-                })
-                .catch(() => showToast('❌ خطا', 'error'));
+                } else {
+                    showToast('❌ ' + (data.message || 'خطا'), 'error');
+                }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
         }
-
-        // ============================================================
-        // ACTIONS
-        // ============================================================
+        
         function changePassword() {
             const newPass = prompt('رمز عبور جدید را وارد کنید (حداقل ۶ کاراکتر):');
             if (!newPass) return;
@@ -315,87 +486,22 @@
             }
             showToast('🔧 این قابلیت در حال توسعه است', 'info');
         }
-
-        function logout() {
+        
+        async function logout() {
             if (!confirm('آیا از خروج از حساب کاربری اطمینان دارید؟')) return;
-            fetch('/logout', { method: 'POST', credentials: 'include' })
-                .then(() => window.location.href = '/');
+            try {
+                await api.logout();
+                window.location.href = '/';
+            } catch (err) {
+                showToast('❌ خطا در خروج', 'error');
+            }
         }
-
+        
         // ============================================================
-        // THEME
+        // INIT
         // ============================================================
-        document.getElementById('themeSelect').addEventListener('change', function() {
-            const theme = this.value;
-            document.body.className = theme;
-            localStorage.setItem('theme', theme);
-        });
-
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        document.getElementById('themeSelect').value = savedTheme;
-        document.body.className = savedTheme;
-
-        // ============================================================
-        // SYSTEM INFO
-        // ============================================================
-        function loadSystemInfo() {
-            fetch('/api/health', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    const status = document.getElementById('systemStatus');
-                    if (data.status === 'ok') {
-                        status.textContent = '✅ پایدار';
-                        status.className = 'value green';
-                    } else {
-                        status.textContent = '⚠️ ضعیف';
-                        status.className = 'value orange';
-                    }
-                })
-                .catch(() => {
-                    document.getElementById('systemStatus').textContent = '❌ نامشخص';
-                    document.getElementById('systemStatus').className = 'value red';
-                });
-        }
-
-        // ============================================================
-        // NAV & TIMESTAMP
-        // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
-            if (!container) return;
-            fetch('/nav.html')
-                .then(res => res.text())
-                .then(html => {
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                })
-                .catch(() => {
-                    container.innerHTML = `
-                            <div style="background:#111d2b;padding:8px;text-align:center;border-bottom:1px solid #1a2a3a;font-size:0.8rem;color:#ff4444;">
-                                ⚠️ خطا در بارگذاری منو
-                                <button onclick="loadNav()" style="background:#00d4ff;color:#000;border:none;padding:2px 10px;border-radius:4px;cursor:pointer;margin:4px;">🔄</button>
-                            </div>
-                        `;
-                });
-        }
-
-        function updateTimestamp() {
-            const el = document.getElementById('pageTimestamp');
-            if (el) el.textContent = '🔄 ' + new Date().toLocaleString('fa-IR');
-        }
-        setInterval(updateTimestamp, 1000);
-
         document.addEventListener('DOMContentLoaded', function() {
-            loadNav();
-            loadUserInfo();
-            loadScheduleStatus();
-            loadSystemInfo();
-            console.log('🚀 Settings page ready');
+            new SettingsController();
         });
     </script>
 </body>
