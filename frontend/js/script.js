@@ -1,64 +1,125 @@
-// js/script.js - توابع عمومی
+// static/js/script.js - توابع عمومی - نسخه ۳.۰
 
-// بارگذاری منو در همه صفحات
-function loadNav() {
-    const container = document.getElementById('navContainer');
-    if (!container) return;
-    
-    fetch('/nav.html')
-        .then(res => res.text())
-        .then(html => {
-            container.innerHTML = html;
-            // اجرای اسکریپت‌های داخل nav.html
-            const scripts = container.querySelectorAll('script');
-            scripts.forEach(old => {
-                const ns = document.createElement('script');
-                ns.textContent = old.textContent;
-                old.parentNode.replaceChild(ns, old);
-            });
-        })
-        .catch(err => console.error('❌ Nav error:', err));
-}
-
-// Toast notification
+// ============================================================
+// TOAST
+// ============================================================
 function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        const newContainer = document.createElement('div');
+        newContainer.id = 'toastContainer';
+        newContainer.className = 'toast-container';
+        document.body.appendChild(newContainer);
+        return showToast(message, type);
+    }
+
     const colors = {
         info: '#00d4ff',
         success: '#00ff88',
         error: '#ff4444',
         warning: '#ff8800'
     };
-    
+
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    toast.className = 'toast ' + type;
     toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        padding: 10px 24px; background: #0d1624; border: 2px solid ${colors[type] || colors.info};
-        border-radius: 10px; color: #e8eef7; font-size: 0.85rem;
-        z-index: 9999; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-        animation: slideUp 0.3s ease;
-    `;
-    document.body.appendChild(toast);
+    toast.style.borderColor = colors[type] || colors.info;
+
+    container.appendChild(toast);
+
     setTimeout(() => {
         toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
     }, 3000);
 }
 
-// Format number
+// ============================================================
+// FORMATTERS
+// ============================================================
 function formatNumber(num) {
-    if (!num) return '—';
-    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-    return num.toLocaleString();
+    if (num === undefined || num === null) return '—';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+    if (num >= 1_000) return (num / 1_000).toFixed(1) + 'K';
+    return num.toString();
 }
 
-// Format currency
-function formatCurrency(num) {
-    if (!num) return '$—';
-    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatCurrency(num, currency = '$') {
+    if (num === undefined || num === null) return '—';
+    return currency + num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
-// اجرا بعد از لود DOM
-document.addEventListener('DOMContentLoaded', loadNav);
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('fa-IR') + ' ' +
+            d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return dateStr;
+    }
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) return seconds + 's';
+    const days = Math.floor(seconds / 86400);
+    seconds -= days * 86400;
+    const hours = Math.floor(seconds / 3600);
+    seconds -= hours * 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds -= minutes * 60;
+
+    let parts = [];
+    if (days > 0) parts.push(days + 'd');
+    if (hours > 0 || days > 0) parts.push(hours + 'h');
+    if (minutes > 0 || hours > 0 || days > 0) parts.push(minutes + 'm');
+    parts.push(seconds + 's');
+    return parts.join(' ');
+}
+
+// ============================================================
+// CLIPBOARD
+// ============================================================
+function copyToClipboard(text) {
+    if (!text) { showToast('❌ چیزی برای کپی وجود ندارد', 'error'); return; }
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast('📋 کپی شد!', 'success'))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        showToast('📋 کپی شد!', 'success');
+    } catch {
+        showToast('❌ خطا در کپی', 'error');
+    }
+    document.body.removeChild(textarea);
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+window.showToast = showToast;
+window.formatNumber = formatNumber;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+window.formatDuration = formatDuration;
+window.copyToClipboard = copyToClipboard;
+
+console.log('✅ Script v3.0 loaded');
