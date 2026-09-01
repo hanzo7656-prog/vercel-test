@@ -1257,6 +1257,170 @@ def credits():
         logger.error(f"Credits error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================
+# ۱۶. اطلاعات کاربر (User Info)
+# ============================================================
+
+@api_bp.route('/user', methods=['GET'])
+@require_auth()
+def get_user_info():
+    """دریافت اطلاعات کاربر فعلی"""
+    try:
+        from infrastructure.auth.auth_manager import get_auth
+        auth = get_auth()
+        
+        # دریافت session_id از کوکی
+        session_id = request.cookies.get('session_id')
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'error': 'No session found'
+            }), 401
+        
+        # دریافت اطلاعات کاربر از session
+        user_data = auth.get_session(session_id)
+        if not user_data:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid session'
+            }), 401
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'username': user_data.get('username', 'guest'),
+                'role': user_data.get('role', 'guest')
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"User info error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۱۷. Redis Keys
+# ============================================================
+
+@api_bp.route('/db/redis/keys', methods=['GET'])
+@require_auth()
+def redis_keys():
+    """دریافت کلیدهای Redis با جزئیات کامل"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({
+                'success': False, 
+                'error': 'Redis not connected'
+            }), 503
+        
+        # دریافت همه کلیدها
+        keys = cache._client.keys('*')
+        result = []
+        
+        for key in keys[:100]:  # محدودیت 100 کلید
+            key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+            key_type = cache._client.type(key)
+            type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+            ttl = cache._client.ttl(key)
+            
+            result.append({
+                'key': key_str,
+                'type': type_str,
+                'ttl': f'{ttl}s' if ttl > 0 else '∞' if ttl == -1 else 'expired'
+            })
+        
+        # آمار Redis
+        info = cache._client.info()
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'stats': {
+                'memory': info.get('used_memory_human', '—'),
+                'clients': info.get('connected_clients', '—'),
+                'total_keys': len(keys)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Redis keys error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۱۸. SQLite Tables
+# ============================================================
+
+@api_bp.route('/db/sqlite/tables', methods=['GET'])
+@require_auth()
+def sqlite_tables():
+    """دریافت جدول‌های SQLite با تعداد رکوردها"""
+    try:
+        sqlite = get_backup()
+        if not sqlite or not sqlite.is_connected():
+            return jsonify({
+                'success': False, 
+                'error': 'SQLite not connected'
+            }), 503
+        
+        # دریافت لیست جدول‌ها (به جز جدول‌های سیستمی)
+        tables = sqlite.execute("""
+            SELECT name as table_name 
+            FROM sqlite_master 
+            WHERE type='table' 
+            AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+        """)
+        
+        # دریافت تعداد رکوردهای هر جدول
+        for table in tables:
+            try:
+                count = sqlite.execute(
+                    f"SELECT COUNT(*) as count FROM [{table['table_name']}]"
+                )
+                table['row_count'] = count[0]['count'] if count else 0
+            except:
+                table['row_count'] = 0
+        
+        return jsonify({
+            'success': True,
+            'data': tables
+        })
+        
+    except Exception as e:
+        logger.error(f"SQLite tables error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# ۱۹. Stats (Uptime)
+# ============================================================
+
+@api_bp.route('/stats', methods=['GET'])
+@require_auth()
+def stats():
+    """دریافت آمار خلاصه سیستم"""
+    try:
+        container = current_app.container
+        monitoring_service = container.monitoring_service()
+        metrics = monitoring_service.get_metrics()
+        
+        # استخراج uptime
+        uptime = metrics.get('data', {}).get('metrics', {}).get('uptime', {}).get('value', '0s')
+        
+        return jsonify({
+            'uptime': uptime,
+            'status': 'ok',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Stats error: {e}", exc_info=True)
+        return jsonify({
+            'uptime': '0s',
+            'status': 'error'
+        }), 500
 #====================
 # لاگین
 #====================
