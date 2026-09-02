@@ -8,6 +8,8 @@ class App {
         this.state = {
             user: null,
             metrics: null,
+            appStats: null,
+            dbHealth: null,
             alerts: [],
             isLoading: false,
             theme: localStorage.getItem('theme') || 'dark',
@@ -33,6 +35,12 @@ class App {
 
             // دریافت متریک‌ها
             await this.loadMetrics();
+
+            // دریافت آمار اپلیکیشن
+            await this.loadAppStats();
+
+            // دریافت وضعیت دیتابیس
+            await this.loadDatabaseHealth();
 
             // دریافت هشدارها
             await this.loadAlerts();
@@ -105,6 +113,32 @@ class App {
         return null;
     }
 
+    async loadAppStats() {
+        try {
+            const data = await api.getAppStats();
+            if (data.success) {
+                this.setState({ appStats: data.data });
+                return data.data;
+            }
+        } catch (err) {
+            console.error('Failed to load app stats:', err);
+        }
+        return null;
+    }
+
+    async loadDatabaseHealth() {
+        try {
+            const data = await api.getDatabaseHealth();
+            if (data.success) {
+                this.setState({ dbHealth: data.data });
+                return data.data;
+            }
+        } catch (err) {
+            console.error('Failed to load database health:', err);
+        }
+        return null;
+    }
+
     async loadAlerts() {
         try {
             const data = await api.getAlerts({ limit: 5, resolved: false });
@@ -118,12 +152,40 @@ class App {
         return [];
     }
 
+    async getRedisValue(key) {
+        try {
+            const data = await api.getRedisKey(key);
+            if (data.success) {
+                return data.data;
+            }
+        } catch (err) {
+            console.error('Failed to get Redis value:', err);
+        }
+        return null;
+    }
+
+    async getDashboardData() {
+        try {
+            const [metrics, appStats, dbHealth] = await Promise.all([
+                this.loadMetrics(),
+                this.loadAppStats(),
+                this.loadDatabaseHealth()
+            ]);
+            return { metrics, appStats, dbHealth };
+        } catch (err) {
+            console.error('Failed to get dashboard data:', err);
+            return null;
+        }
+    }
+
     async refresh() {
         this.setState({ isLoading: true });
         try {
             await Promise.all([
                 this.loadUser(),
                 this.loadMetrics(),
+                this.loadAppStats(),
+                this.loadDatabaseHealth(),
                 this.loadAlerts()
             ]);
             showToast('✅ بروزرسانی شد', 'success');
@@ -172,11 +234,23 @@ class App {
         }, 10000);
         this.updateIntervals.push(metricsInterval);
 
+        // آپدیت آمار اپلیکیشن هر ۳ ثانیه
+        const statsInterval = setInterval(() => {
+            this.loadAppStats();
+        }, 3000);
+        this.updateIntervals.push(statsInterval);
+
         // آپدیت هشدارها هر ۳۰ ثانیه
         const alertsInterval = setInterval(() => {
             this.loadAlerts();
         }, 30000);
         this.updateIntervals.push(alertsInterval);
+
+        // آپدیت وضعیت دیتابیس هر ۶۰ ثانیه
+        const dbInterval = setInterval(() => {
+            this.loadDatabaseHealth();
+        }, 60000);
+        this.updateIntervals.push(dbInterval);
     }
 
     stopAutoUpdate() {
@@ -203,6 +277,18 @@ class App {
     isAdmin() {
         return this.getUserRole() === 'admin';
     }
+
+    getAppStats() {
+        return this.state.appStats;
+    }
+
+    getMetrics() {
+        return this.state.metrics;
+    }
+
+    getAlerts() {
+        return this.state.alerts;
+    }
 }
 
 // ===== SINGLETON =====
@@ -212,8 +298,11 @@ window.app = app;
 // ===== EXPOSE FOR OTHER SCRIPTS =====
 window.getState = () => app.getState();
 window.loadMetrics = () => app.loadMetrics();
+window.loadAppStats = () => app.loadAppStats();
 window.loadAlerts = () => app.loadAlerts();
 window.toggleTheme = () => app.toggleTheme();
 window.refreshApp = () => app.refresh();
+window.getAppStats = () => app.getAppStats();
+window.getDashboardData = () => app.getDashboardData();
 
 console.log('✅ App v10.0 loaded');
