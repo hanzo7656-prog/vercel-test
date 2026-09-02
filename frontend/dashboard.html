@@ -623,58 +623,90 @@
             }
             
             // ===== LOAD APP STATS (هر ۲ ثانیه) =====
-            async loadAppStats() {
+            // ============================================================
+            // بارگذاری آمار واقعی از /api/app/stats با نرمالایز کردن
+            // ============================================================
+            async function loadAppStats() {
                 try {
-                    const res = await fetch('/api/app/stats', { credentials: 'include' });
-                    const data = await res.json();
-                    if (data.success && data.data) {
-                        const stats = data.data;
-                        
+                    const response = await fetch('/api/app/stats', {
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+
+                    if (result.success && result.data) {
+                        const stats = result.data;
+
+                        // ===== محدودیت‌های واقعی شما =====
+                        const RAM_LIMIT_MB = 512;
+                        const CPU_LIMIT_PERCENT = 0.15;
+
                         // ===== CPU =====
                         const cpuEl = document.getElementById('cpuValue');
                         const cpuBar = document.getElementById('cpuBar');
-                        const cpuPercent = stats.cpu.percent;
+            
+                        // درصد مصرف CPU نسبت به محدودیت
+                        const cpuPercent = stats.cpu.percent;  // خودش درسته
+                        // درصد مصرف نسبت به کل CPU سرور (برای نوار پیشرفت)
+                        const cpuSystemPercent = stats.cpu.system_percent || 0;
+            
                         if (cpuEl) {
                             cpuEl.textContent = cpuPercent + '%';
                             cpuEl.className = 'stat-value ' + getStatusColor(cpuPercent);
                         }
                         if (cpuBar) {
-                            cpuBar.style.width = Math.min(cpuPercent, 100) + '%';
+                        // نوار پیشرفت: مصرف CPU نسبت به محدودیت ۰.۱۵%
+                            const cpuBarPercent = Math.min((cpuPercent / CPU_LIMIT_PERCENT) * 100, 100);
+                            cpuBar.style.width = cpuBarPercent + '%';
                         }
-                        
-                        // ===== RAM (نسبت به 512MB) =====
-                        const ramEl = document.getElementById('ramValue');
-                        const ramBar = document.getElementById('ramBar');
-                        const ramLabel = document.getElementById('ramLabel');
-                        const ramPercent = stats.ram.percent;
-                        if (ramEl) {
-                            ramEl.textContent = stats.ram.used_mb + ' MB (' + ramPercent + '%)';
-                            ramEl.className = 'stat-value ' + getStatusColor(ramPercent);
-                        }
-                        if (ramBar) {
-                            ramBar.style.width = Math.min(ramPercent, 100) + '%';
-                            ramBar.style.background = getStatusColor(ramPercent) === 'red' ? 'var(--accent-red)' :
-                                                      getStatusColor(ramPercent) === 'orange' ? 'var(--accent-orange)' :
-                                                      'var(--accent-green)';
-                        }
-                        if (ramLabel) {
-                            ramLabel.textContent = stats.ram.used_mb + ' MB / ' + stats.ram.limit_mb + ' MB';
-                        }
-                        
-                        // ===== UPTIME =====
-                        const uptimeEl = document.getElementById('uptimeDisplay');
-                        if (uptimeEl) {
-                            uptimeEl.textContent = stats.uptime.app_formatted;
-                        }
-                        
-                        // ===== CHARTS =====
-                        this.updateCharts(stats);
-                    }
-                } catch (err) {
-                    console.error('Failed to load app stats:', err);
-                }
-            }
+
+                    // ===== RAM (نرمالایز شده) =====
+                    const ramEl = document.getElementById('ramValue');
+                    const ramBar = document.getElementById('ramBar');
+                    const ramLabel = document.getElementById('ramLabel');
             
+                    // مصرف RAM واقعی
+                    const ramUsed = stats.ram.used_mb;
+                    // درصد مصرف نسبت به محدودیت ۵۱۲ مگابایت
+                    const ramPercent = (ramUsed / RAM_LIMIT_MB) * 100;
+            
+                    if (ramEl) {
+                        ramEl.textContent = ramUsed.toFixed(1) + ' MB (' + ramPercent.toFixed(1) + '%)';
+                        ramEl.className = 'stat-value ' + getStatusColor(ramPercent);
+                    }
+                    if (ramBar) {
+                        const barPercent = Math.min(ramPercent, 100);
+                        ramBar.style.width = barPercent + '%';
+                        ramBar.style.background = getStatusColor(ramPercent) === 'red' ? 'var(--accent-red)' :
+                                                  getStatusColor(ramPercent) === 'orange' ? 'var(--accent-orange)' :
+                                                  'var(--accent-green)';
+                    }
+                    if (ramLabel) {
+                        ramLabel.textContent = ramUsed.toFixed(1) + ' MB / ' + RAM_LIMIT_MB + ' MB';
+                    }
+
+                    // ===== Uptime =====
+                    const uptimeEl = document.getElementById('uptimeDisplay');
+                    if (uptimeEl) {
+                        uptimeEl.textContent = stats.uptime.app_formatted;
+                    }
+
+                    // ===== به‌روزرسانی نمودارها =====
+                    updateCharts(stats);
+
+                }
+            } catch (error) {
+                console.error('خطا در دریافت آمار اپلیکیشن:', error);
+            }
+        }
+
+        // ============================================================
+        // تابع کمکی برای تعیین رنگ وضعیت
+        // ============================================================
+        function getStatusColor(percent) {
+            if (percent >= 80) return 'red';
+            if (percent >= 60) return 'orange';
+            return 'green';
+        }
             // ===== MARKET DATA (با مدیریت خطا برای داده‌های缺失) =====
             updateMarketData(metrics) {
                 const m = metrics?.metrics || {};
