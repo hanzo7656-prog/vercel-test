@@ -8,9 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        /* ============================================================
-           DASHBOARD - استایل‌های اختصاصی
-           ============================================================ */
         .welcome-card {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
             border: 1px solid rgba(0, 212, 255, 0.08);
@@ -415,7 +412,7 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD CONTROLLER - نسخه نهایی با نمودارهای اصلاح شده
+        // DASHBOARD CONTROLLER - نسخه نهایی (رفع کامل CPU, Uptime, بازار)
         // ============================================================
         
         let statsInterval = null;
@@ -423,6 +420,8 @@
         let chartData = { cpu: [], ram: [], api: [], labels: [] };
         const MAX_DATA = 20;
         let isChartsInitialized = false;
+        let marketDataRetryCount = 0;
+        const MAX_RETRY = 3;
 
         // ============================================================
         // تابع کمکی برای تعیین رنگ وضعیت
@@ -442,7 +441,6 @@
             const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
             const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
             
-            // CPU/RAM Chart
             const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
             if (ctx1) {
                 charts.cpuRam = new Chart(ctx1, {
@@ -510,7 +508,6 @@
                 });
             }
             
-            // API Chart
             const ctx2 = document.getElementById('apiChart')?.getContext('2d');
             if (ctx2) {
                 charts.api = new Chart(ctx2, {
@@ -572,22 +569,20 @@
             
             // ===== داده‌های نرمالایز شده =====
             const RAM_LIMIT_MB = 512;
-            const ramUsed = stats.ram?.used_mb || 0;
+            const ramUsed = stats?.ram?.used_mb || 0;
             const ramPercent = Math.min((ramUsed / RAM_LIMIT_MB) * 100, 100);
             
-            const cpuPercent = stats.cpu?.percent || 0;
+            // CPU از stats (که از /api/app/stats میاد)
+            const cpuPercent = stats?.cpu?.percent || 0;
             
-            // دریافت تعداد درخواست‌ها از المنت (برای نمودار API)
             const collectionsEl = document.getElementById('collectionsDisplay');
             const apiCount = parseInt(collectionsEl?.textContent) || 0;
             
-            // اضافه کردن داده‌های جدید
             chartData.cpu.push(cpuPercent);
             chartData.ram.push(ramPercent);
             chartData.api.push(apiCount);
             chartData.labels.push(now);
             
-            // محدود کردن داده‌ها به MAX_DATA
             if (chartData.cpu.length > MAX_DATA) {
                 chartData.cpu.shift();
                 chartData.ram.shift();
@@ -595,7 +590,6 @@
                 chartData.labels.shift();
             }
             
-            // به‌روزرسانی نمودارها
             if (charts.cpuRam) {
                 charts.cpuRam.data.labels = chartData.labels;
                 charts.cpuRam.data.datasets[0].data = chartData.cpu;
@@ -611,7 +605,7 @@
         }
 
         // ============================================================
-        // بارگذاری آمار واقعی از /api/app/stats با نرمالایز کردن
+        // بارگذاری آمار واقعی از /api/app/stats
         // ============================================================
         async function loadAppStats() {
             try {
@@ -641,7 +635,7 @@
                         cpuBar.style.width = cpuBarPercent + '%';
                     }
 
-                    // ===== RAM (نرمالایز شده) =====
+                    // ===== RAM =====
                     const ramEl = document.getElementById('ramValue');
                     const ramBar = document.getElementById('ramBar');
                     const ramLabel = document.getElementById('ramLabel');
@@ -668,7 +662,7 @@
                         uptimeEl.textContent = stats.uptime.app_formatted;
                     }
 
-                    // ===== به‌روزرسانی نمودارها با داده‌های نرمالایز شده =====
+                    // ===== به‌روزرسانی نمودارها =====
                     updateCharts(stats);
 
                 }
@@ -678,7 +672,7 @@
         }
 
         // ============================================================
-        // بارگذاری داده‌های بازار و سایر اطلاعات
+        // بارگذاری داده‌های بازار (با ریتای)
         // ============================================================
         async function loadMarketData() {
             try {
@@ -686,11 +680,11 @@
                 if (metrics) {
                     const m = metrics.metrics || {};
                     
-                    // BTC
+                    // ===== BTC =====
                     const btc = m.btc_price || {};
                     document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
                     const btcChange = document.getElementById('btcChange');
-                    if (btc.change_24h !== undefined && btc.change_24h !== null) {
+                    if (btc.change_24h !== undefined && btc.change_24h !== null && !isNaN(btc.change_24h)) {
                         btcChange.textContent = formatPercent(btc.change_24h);
                         btcChange.className = 'market-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
                     } else {
@@ -698,11 +692,11 @@
                         btcChange.className = 'market-change neutral';
                     }
                     
-                    // ETH
+                    // ===== ETH =====
                     const eth = m.eth_price || {};
                     document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
                     const ethChange = document.getElementById('ethChange');
-                    if (eth.change_24h !== undefined && eth.change_24h !== null) {
+                    if (eth.change_24h !== undefined && eth.change_24h !== null && !isNaN(eth.change_24h)) {
                         ethChange.textContent = formatPercent(eth.change_24h);
                         ethChange.className = 'market-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
                     } else {
@@ -710,25 +704,39 @@
                         ethChange.className = 'market-change neutral';
                     }
                     
-                    // Fear & Greed
+                    // ===== Fear & Greed =====
                     const fg = m.fear_greed || {};
-                    document.getElementById('fearGreedValue').textContent = (fg.value !== undefined && fg.value !== null) ? fg.value : '—';
-                    document.getElementById('fearGreedLabel').textContent = fg.classification || '—';
-                    document.getElementById('fearGreedLabel').className = 'market-change neutral';
+                    const fgValue = fg.value;
+                    const fgLabel = fg.classification;
                     
-                    // BTC Dominance
+                    if (fgValue !== undefined && fgValue !== null && !isNaN(fgValue)) {
+                        document.getElementById('fearGreedValue').textContent = fgValue;
+                        document.getElementById('fearGreedLabel').textContent = fgLabel || '—';
+                        document.getElementById('fearGreedLabel').className = 'market-change neutral';
+                    } else {
+                        document.getElementById('fearGreedValue').textContent = '—';
+                        document.getElementById('fearGreedLabel').textContent = '—';
+                        document.getElementById('fearGreedLabel').className = 'market-change neutral';
+                    }
+                    
+                    // ===== BTC Dominance =====
                     const dominance = m.btc_dominance || {};
-                    document.getElementById('btcDominance').textContent = (dominance.value !== undefined && dominance.value !== null) ? dominance.value + '%' : '—';
+                    const domValue = dominance.value;
+                    if (domValue !== undefined && domValue !== null && !isNaN(domValue)) {
+                        document.getElementById('btcDominance').textContent = domValue + '%';
+                    } else {
+                        document.getElementById('btcDominance').textContent = '—';
+                    }
                     
-                    // Collections
+                    // ===== Collections =====
                     const stats = metrics.stats || {};
                     document.getElementById('collectionsDisplay').textContent = stats.collections || 0;
                     
-                    // Model Status
+                    // ===== Model Status =====
                     const modelStatus = m.model_status?.value || {};
                     document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
                     
-                    // API Status
+                    // ===== API Status =====
                     const apiStatus = m.api_status?.value || 'unknown';
                     const dot = document.getElementById('statusDot');
                     const msg = document.getElementById('statusMessage');
@@ -743,9 +751,18 @@
                         dot.classList.add('offline');
                         msg.textContent = 'سیستم با مشکل مواجه است';
                     }
+                    
+                    // Reset retry count on success
+                    marketDataRetryCount = 0;
                 }
             } catch (error) {
                 console.error('خطا در دریافت داده‌های بازار:', error);
+                marketDataRetryCount++;
+                
+                // Retry if under max attempts
+                if (marketDataRetryCount < MAX_RETRY) {
+                    setTimeout(() => loadMarketData(), 2000);
+                }
             }
         }
 
@@ -862,14 +879,15 @@
         // ============================================================
         function startAutoUpdate() {
             // آپدیت آمار اپلیکیشن و نمودارها هر ۲ ثانیه
+            if (statsInterval) clearInterval(statsInterval);
             statsInterval = setInterval(() => {
                 loadAppStats();
             }, 2000);
             
-            // آپدیت داده‌های بازار هر ۱۰ ثانیه
+            // آپدیت داده‌های بازار هر ۱۵ ثانیه (بیشتر از قبل)
             setInterval(() => {
                 loadMarketData();
-            }, 10000);
+            }, 15000);
             
             // آپدیت فعالیت‌ها هر ۳۰ ثانیه
             setInterval(() => {
