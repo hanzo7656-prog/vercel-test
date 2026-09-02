@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* ============================================================
+           DASHBOARD - استایل‌های اختصاصی
+           ============================================================ */
         .welcome-card {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
             border: 1px solid rgba(0, 212, 255, 0.08);
@@ -412,270 +415,245 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD CONTROLLER - نسخه نهایی
+        // DASHBOARD CONTROLLER - نسخه نهایی با نمودارهای اصلاح شده
         // ============================================================
         
         let statsInterval = null;
         let charts = {};
         let chartData = { cpu: [], ram: [], api: [], labels: [] };
         const MAX_DATA = 20;
+        let isChartsInitialized = false;
 
-        class DashboardController {
-            constructor() {
-                this.init();
-            }
+        // ============================================================
+        // تابع کمکی برای تعیین رنگ وضعیت
+        // ============================================================
+        function getStatusColor(percent) {
+            if (percent >= 80) return 'red';
+            if (percent >= 60) return 'orange';
+            return 'green';
+        }
+
+        // ============================================================
+        // راه‌اندازی نمودارها
+        // ============================================================
+        function initCharts() {
+            if (isChartsInitialized) return;
             
-            async init() {
-                console.log('🚀 Dashboard initializing...');
-                await this.loadNav();
-                this.initCharts();
-                await this.loadAllData();
-                this.startAutoUpdate();
-                console.log('🚀 Dashboard ready');
-            }
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
             
-            async loadNav() {
-                const container = document.getElementById('navContainer');
-                if (!container) return;
-                try {
-                    const res = await fetch('/nav.html');
-                    if (!res.ok) throw new Error('nav.html not found');
-                    const html = await res.text();
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                } catch (err) {
-                    console.error('❌ Nav error:', err);
-                }
-            }
-            
-            // ===== CHARTS =====
-            initCharts() {
-                const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
-                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
-                
-                const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
-                if (ctx1) {
-                    charts.cpuRam = new Chart(ctx1, {
-                        type: 'line',
-                        data: {
-                            labels: chartData.labels,
-                            datasets: [
-                                {
-                                    label: 'CPU (%)',
-                                    data: chartData.cpu,
-                                    borderColor: '#00d4ff',
-                                    backgroundColor: 'rgba(0,212,255,0.08)',
-                                    borderWidth: 2,
-                                    pointRadius: 2,
-                                    pointBackgroundColor: '#00d4ff',
-                                    tension: 0.3,
-                                    fill: true
-                                },
-                                {
-                                    label: 'RAM (%)',
-                                    data: chartData.ram,
-                                    borderColor: '#f59e0b',
-                                    backgroundColor: 'rgba(245,158,11,0.08)',
-                                    borderWidth: 2,
-                                    pointRadius: 2,
-                                    pointBackgroundColor: '#f59e0b',
-                                    tension: 0.3,
-                                    fill: true
+            // CPU/RAM Chart
+            const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
+            if (ctx1) {
+                charts.cpuRam = new Chart(ctx1, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [
+                            {
+                                label: 'CPU (%)',
+                                data: chartData.cpu,
+                                borderColor: '#00d4ff',
+                                backgroundColor: 'rgba(0,212,255,0.08)',
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                pointBackgroundColor: '#00d4ff',
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: 'RAM (%)',
+                                data: chartData.ram,
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'rgba(245,158,11,0.08)',
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                pointBackgroundColor: '#f59e0b',
+                                tension: 0.3,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: textColor,
+                                    font: { size: 8, family: 'inherit' },
+                                    boxWidth: 10,
+                                    usePointStyle: true,
+                                    padding: 6
                                 }
-                            ]
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'top',
-                                    labels: {
-                                        color: textColor,
-                                        font: { size: 8, family: 'inherit' },
-                                        boxWidth: 10,
-                                        usePointStyle: true,
-                                        padding: 6
-                                    }
-                                }
+                        scales: {
+                            x: {
+                                grid: { color: gridColor },
+                                ticks: { color: textColor, font: { size: 6, family: 'inherit' } }
                             },
-                            scales: {
-                                x: {
-                                    grid: { color: gridColor },
-                                    ticks: { color: textColor, font: { size: 6, family: 'inherit' } }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    grid: { color: gridColor },
-                                    ticks: {
-                                        color: textColor,
-                                        font: { size: 6, family: 'inherit' },
-                                        callback: v => v + '%'
-                                    }
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: { color: gridColor },
+                                ticks: {
+                                    color: textColor,
+                                    font: { size: 6, family: 'inherit' },
+                                    callback: v => v + '%'
                                 }
-                            },
-                            animation: { duration: 300 }
-                        }
-                    });
-                }
-                
-                const ctx2 = document.getElementById('apiChart')?.getContext('2d');
-                if (ctx2) {
-                    charts.api = new Chart(ctx2, {
-                        type: 'bar',
-                        data: {
-                            labels: chartData.labels,
-                            datasets: [{
-                                label: 'درخواست‌ها',
-                                data: chartData.api,
-                                backgroundColor: 'rgba(236,72,153,0.5)',
-                                borderColor: '#ec4899',
-                                borderWidth: 1.5,
-                                borderRadius: 3
-                            }]
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        color: textColor,
-                                        font: { size: 8, family: 'inherit' }
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    grid: { color: gridColor },
-                                    ticks: { color: textColor, font: { size: 6, family: 'inherit' } }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    grid: { color: gridColor },
-                                    ticks: {
-                                        color: textColor,
-                                        font: { size: 6, family: 'inherit' }
-                                    }
-                                }
-                            },
-                            animation: { duration: 300 }
-                        }
-                    });
-                }
-            }
-            
-            updateCharts(stats) {
-                const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-                const cpu = stats?.cpu?.percent || 0;
-                const ram = stats?.ram?.percent || 0;
-                const apiCount = parseInt(document.getElementById('collectionsDisplay')?.textContent) || 0;
-                
-                chartData.cpu.push(cpu);
-                chartData.ram.push(ram);
-                chartData.api.push(apiCount);
-                chartData.labels.push(now);
-                
-                if (chartData.cpu.length > MAX_DATA) {
-                    chartData.cpu.shift();
-                    chartData.ram.shift();
-                    chartData.api.shift();
-                    chartData.labels.shift();
-                }
-                
-                if (charts.cpuRam) {
-                    charts.cpuRam.data.labels = chartData.labels;
-                    charts.cpuRam.data.datasets[0].data = chartData.cpu;
-                    charts.cpuRam.data.datasets[1].data = chartData.ram;
-                    charts.cpuRam.update('none');
-                }
-                
-                if (charts.api) {
-                    charts.api.data.labels = chartData.labels;
-                    charts.api.data.datasets[0].data = chartData.api;
-                    charts.api.update('none');
-                }
-            }
-            
-            // ===== LOAD DATA =====
-            async loadAllData() {
-                try {
-                    await this.loadAppStats();
-                    const metrics = await app.loadMetrics();
-                    if (metrics) {
-                        this.updateMarketData(metrics);
-                        this.updateCollections(metrics);
-                        this.updateModelStatus(metrics);
-                        this.updateApiStatus(metrics);
+                        animation: { duration: 300 }
                     }
-                    const user = await app.loadUser();
-                    if (user) document.getElementById('userName').textContent = user.username || 'کاربر';
-                    await this.loadActivities();
-                } catch (err) {
-                    console.error('Failed to load data:', err);
-                }
+                });
             }
             
-            // ===== LOAD APP STATS (هر ۲ ثانیه) =====
-            // ============================================================
-            // بارگذاری آمار واقعی از /api/app/stats با نرمالایز کردن
-            // ============================================================
-            async function loadAppStats() {
-                try {
-                    const response = await fetch('/api/app/stats', {
-                        credentials: 'include'
-                    });
-                    const result = await response.json();
-
-                    if (result.success && result.data) {
-                        const stats = result.data;
-
-                        // ===== محدودیت‌های واقعی شما =====
-                        const RAM_LIMIT_MB = 512;
-                        const CPU_LIMIT_PERCENT = 0.15;
-
-                        // ===== CPU =====
-                        const cpuEl = document.getElementById('cpuValue');
-                        const cpuBar = document.getElementById('cpuBar');
+            // API Chart
+            const ctx2 = document.getElementById('apiChart')?.getContext('2d');
+            if (ctx2) {
+                charts.api = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: 'درخواست‌ها',
+                            data: chartData.api,
+                            backgroundColor: 'rgba(236,72,153,0.5)',
+                            borderColor: '#ec4899',
+                            borderWidth: 1.5,
+                            borderRadius: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: textColor,
+                                    font: { size: 8, family: 'inherit' }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: gridColor },
+                                ticks: { color: textColor, font: { size: 6, family: 'inherit' } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: gridColor },
+                                ticks: {
+                                    color: textColor,
+                                    font: { size: 6, family: 'inherit' }
+                                }
+                            }
+                        },
+                        animation: { duration: 300 }
+                    }
+                });
+            }
             
-                        // درصد مصرف CPU نسبت به محدودیت
-                        const cpuPercent = stats.cpu.percent;  // خودش درسته
-                        // درصد مصرف نسبت به کل CPU سرور (برای نوار پیشرفت)
-                        const cpuSystemPercent = stats.cpu.system_percent || 0;
+            isChartsInitialized = true;
+            console.log('✅ Charts initialized');
+        }
+
+        // ============================================================
+        // به‌روزرسانی نمودارها با داده‌های نرمالایز شده
+        // ============================================================
+        function updateCharts(stats) {
+            if (!isChartsInitialized) {
+                initCharts();
+            }
             
-                        if (cpuEl) {
-                            cpuEl.textContent = cpuPercent + '%';
-                            cpuEl.className = 'stat-value ' + getStatusColor(cpuPercent);
-                        }
-                        if (cpuBar) {
-                        // نوار پیشرفت: مصرف CPU نسبت به محدودیت ۰.۱۵%
-                            const cpuBarPercent = Math.min((cpuPercent / CPU_LIMIT_PERCENT) * 100, 100);
-                            cpuBar.style.width = cpuBarPercent + '%';
-                        }
+            const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+            
+            // ===== داده‌های نرمالایز شده =====
+            const RAM_LIMIT_MB = 512;
+            const ramUsed = stats.ram?.used_mb || 0;
+            const ramPercent = Math.min((ramUsed / RAM_LIMIT_MB) * 100, 100);
+            
+            const cpuPercent = stats.cpu?.percent || 0;
+            
+            // دریافت تعداد درخواست‌ها از المنت (برای نمودار API)
+            const collectionsEl = document.getElementById('collectionsDisplay');
+            const apiCount = parseInt(collectionsEl?.textContent) || 0;
+            
+            // اضافه کردن داده‌های جدید
+            chartData.cpu.push(cpuPercent);
+            chartData.ram.push(ramPercent);
+            chartData.api.push(apiCount);
+            chartData.labels.push(now);
+            
+            // محدود کردن داده‌ها به MAX_DATA
+            if (chartData.cpu.length > MAX_DATA) {
+                chartData.cpu.shift();
+                chartData.ram.shift();
+                chartData.api.shift();
+                chartData.labels.shift();
+            }
+            
+            // به‌روزرسانی نمودارها
+            if (charts.cpuRam) {
+                charts.cpuRam.data.labels = chartData.labels;
+                charts.cpuRam.data.datasets[0].data = chartData.cpu;
+                charts.cpuRam.data.datasets[1].data = chartData.ram;
+                charts.cpuRam.update('none');
+            }
+            
+            if (charts.api) {
+                charts.api.data.labels = chartData.labels;
+                charts.api.data.datasets[0].data = chartData.api;
+                charts.api.update('none');
+            }
+        }
+
+        // ============================================================
+        // بارگذاری آمار واقعی از /api/app/stats با نرمالایز کردن
+        // ============================================================
+        async function loadAppStats() {
+            try {
+                const response = await fetch('/api/app/stats', {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const stats = result.data;
+
+                    // ===== محدودیت‌های واقعی =====
+                    const RAM_LIMIT_MB = 512;
+                    const CPU_LIMIT_PERCENT = 0.15;
+
+                    // ===== CPU =====
+                    const cpuEl = document.getElementById('cpuValue');
+                    const cpuBar = document.getElementById('cpuBar');
+                    const cpuPercent = stats.cpu.percent;
+                    
+                    if (cpuEl) {
+                        cpuEl.textContent = cpuPercent + '%';
+                        cpuEl.className = 'stat-value ' + getStatusColor(cpuPercent);
+                    }
+                    if (cpuBar) {
+                        const cpuBarPercent = Math.min((cpuPercent / CPU_LIMIT_PERCENT) * 100, 100);
+                        cpuBar.style.width = cpuBarPercent + '%';
+                    }
 
                     // ===== RAM (نرمالایز شده) =====
                     const ramEl = document.getElementById('ramValue');
                     const ramBar = document.getElementById('ramBar');
                     const ramLabel = document.getElementById('ramLabel');
-            
-                    // مصرف RAM واقعی
                     const ramUsed = stats.ram.used_mb;
-                    // درصد مصرف نسبت به محدودیت ۵۱۲ مگابایت
-                    const ramPercent = (ramUsed / RAM_LIMIT_MB) * 100;
-            
+                    const ramPercent = Math.min((ramUsed / RAM_LIMIT_MB) * 100, 100);
+                    
                     if (ramEl) {
                         ramEl.textContent = ramUsed.toFixed(1) + ' MB (' + ramPercent.toFixed(1) + '%)';
                         ramEl.className = 'stat-value ' + getStatusColor(ramPercent);
                     }
                     if (ramBar) {
-                        const barPercent = Math.min(ramPercent, 100);
-                        ramBar.style.width = barPercent + '%';
+                        ramBar.style.width = ramPercent + '%';
                         ramBar.style.background = getStatusColor(ramPercent) === 'red' ? 'var(--accent-red)' :
                                                   getStatusColor(ramPercent) === 'orange' ? 'var(--accent-orange)' :
                                                   'var(--accent-green)';
@@ -690,7 +668,7 @@
                         uptimeEl.textContent = stats.uptime.app_formatted;
                     }
 
-                    // ===== به‌روزرسانی نمودارها =====
+                    // ===== به‌روزرسانی نمودارها با داده‌های نرمالایز شده =====
                     updateCharts(stats);
 
                 }
@@ -700,185 +678,238 @@
         }
 
         // ============================================================
-        // تابع کمکی برای تعیین رنگ وضعیت
+        // بارگذاری داده‌های بازار و سایر اطلاعات
         // ============================================================
-        function getStatusColor(percent) {
-            if (percent >= 80) return 'red';
-            if (percent >= 60) return 'orange';
-            return 'green';
+        async function loadMarketData() {
+            try {
+                const metrics = await app.loadMetrics();
+                if (metrics) {
+                    const m = metrics.metrics || {};
+                    
+                    // BTC
+                    const btc = m.btc_price || {};
+                    document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
+                    const btcChange = document.getElementById('btcChange');
+                    if (btc.change_24h !== undefined && btc.change_24h !== null) {
+                        btcChange.textContent = formatPercent(btc.change_24h);
+                        btcChange.className = 'market-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
+                    } else {
+                        btcChange.textContent = '—';
+                        btcChange.className = 'market-change neutral';
+                    }
+                    
+                    // ETH
+                    const eth = m.eth_price || {};
+                    document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
+                    const ethChange = document.getElementById('ethChange');
+                    if (eth.change_24h !== undefined && eth.change_24h !== null) {
+                        ethChange.textContent = formatPercent(eth.change_24h);
+                        ethChange.className = 'market-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
+                    } else {
+                        ethChange.textContent = '—';
+                        ethChange.className = 'market-change neutral';
+                    }
+                    
+                    // Fear & Greed
+                    const fg = m.fear_greed || {};
+                    document.getElementById('fearGreedValue').textContent = (fg.value !== undefined && fg.value !== null) ? fg.value : '—';
+                    document.getElementById('fearGreedLabel').textContent = fg.classification || '—';
+                    document.getElementById('fearGreedLabel').className = 'market-change neutral';
+                    
+                    // BTC Dominance
+                    const dominance = m.btc_dominance || {};
+                    document.getElementById('btcDominance').textContent = (dominance.value !== undefined && dominance.value !== null) ? dominance.value + '%' : '—';
+                    
+                    // Collections
+                    const stats = metrics.stats || {};
+                    document.getElementById('collectionsDisplay').textContent = stats.collections || 0;
+                    
+                    // Model Status
+                    const modelStatus = m.model_status?.value || {};
+                    document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
+                    
+                    // API Status
+                    const apiStatus = m.api_status?.value || 'unknown';
+                    const dot = document.getElementById('statusDot');
+                    const msg = document.getElementById('statusMessage');
+                    dot.className = 'status-dot';
+                    if (apiStatus === 'ok') {
+                        dot.classList.add('online');
+                        msg.textContent = 'سیستم در وضعیت پایدار است';
+                    } else if (apiStatus === 'degraded') {
+                        dot.classList.add('warning');
+                        msg.textContent = 'سیستم با عملکرد کاهش یافته کار می‌کند';
+                    } else {
+                        dot.classList.add('offline');
+                        msg.textContent = 'سیستم با مشکل مواجه است';
+                    }
+                }
+            } catch (error) {
+                console.error('خطا در دریافت داده‌های بازار:', error);
+            }
         }
-            // ===== MARKET DATA (با مدیریت خطا برای داده‌های缺失) =====
-            updateMarketData(metrics) {
-                const m = metrics?.metrics || {};
+
+        // ============================================================
+        // بارگذاری فعالیت‌های اخیر
+        // ============================================================
+        async function loadActivities() {
+            const container = document.getElementById('activityList');
+            const countEl = document.getElementById('activityCount');
+            try {
+                const [alerts, history] = await Promise.all([
+                    api.getAlerts({ limit: 5, resolved: false }),
+                    api.getModelHistory(3)
+                ]);
                 
-                // BTC
-                const btc = m.btc_price || {};
-                document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
-                const btcChange = document.getElementById('btcChange');
-                if (btc.change_24h !== undefined && btc.change_24h !== null) {
-                    btcChange.textContent = formatPercent(btc.change_24h);
-                    btcChange.className = 'market-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
-                } else {
-                    btcChange.textContent = '—';
-                    btcChange.className = 'market-change neutral';
-                }
+                let activities = [];
                 
-                // ETH
-                const eth = m.eth_price || {};
-                document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
-                const ethChange = document.getElementById('ethChange');
-                if (eth.change_24h !== undefined && eth.change_24h !== null) {
-                    ethChange.textContent = formatPercent(eth.change_24h);
-                    ethChange.className = 'market-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
-                } else {
-                    ethChange.textContent = '—';
-                    ethChange.className = 'market-change neutral';
-                }
-                
-                // Fear & Greed
-                const fg = m.fear_greed || {};
-                const fgValue = fg.value;
-                const fgLabel = fg.classification;
-                document.getElementById('fearGreedValue').textContent = (fgValue !== undefined && fgValue !== null) ? fgValue : '—';
-                document.getElementById('fearGreedLabel').textContent = fgLabel || '—';
-                document.getElementById('fearGreedLabel').className = 'market-change neutral';
-                
-                // BTC Dominance
-                const dominance = m.btc_dominance || {};
-                const domValue = dominance.value;
-                document.getElementById('btcDominance').textContent = (domValue !== undefined && domValue !== null) ? domValue + '%' : '—';
-            }
-            
-            // ===== COLLECTIONS =====
-            updateCollections(metrics) {
-                const stats = metrics?.stats || {};
-                document.getElementById('collectionsDisplay').textContent = stats.collections || 0;
-            }
-            
-            // ===== MODEL STATUS =====
-            updateModelStatus(metrics) {
-                const m = metrics?.metrics || {};
-                const modelStatus = m.model_status?.value || {};
-                document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
-            }
-            
-            // ===== API STATUS =====
-            updateApiStatus(metrics) {
-                const m = metrics?.metrics || {};
-                const apiStatus = m.api_status?.value || 'unknown';
-                const dot = document.getElementById('statusDot');
-                const msg = document.getElementById('statusMessage');
-                dot.className = 'status-dot';
-                if (apiStatus === 'ok') {
-                    dot.classList.add('online');
-                    msg.textContent = 'سیستم در وضعیت پایدار است';
-                } else if (apiStatus === 'degraded') {
-                    dot.classList.add('warning');
-                    msg.textContent = 'سیستم با عملکرد کاهش یافته کار می‌کند';
-                } else {
-                    dot.classList.add('offline');
-                    msg.textContent = 'سیستم با مشکل مواجه است';
-                }
-            }
-            
-            // ===== ACTIVITIES =====
-            async loadActivities() {
-                const container = document.getElementById('activityList');
-                const countEl = document.getElementById('activityCount');
-                try {
-                    const [alerts, history] = await Promise.all([
-                        api.getAlerts({ limit: 5, resolved: false }),
-                        api.getModelHistory(3)
-                    ]);
-                    
-                    let activities = [];
-                    
-                    if (alerts.success && alerts.data && alerts.data.length > 0) {
-                        alerts.data.forEach(a => {
-                            activities.push({
-                                icon: a.level === 'CRITICAL' ? '🚨' : a.level === 'WARNING' ? '⚠️' : 'ℹ️',
-                                iconClass: a.level === 'CRITICAL' ? 'red' : a.level === 'WARNING' ? 'orange' : 'cyan',
-                                text: a.message || 'هشدار جدید',
-                                time: new Date(a.timestamp),
-                                type: 'alert'
-                            });
+                if (alerts.success && alerts.data && alerts.data.length > 0) {
+                    alerts.data.forEach(a => {
+                        activities.push({
+                            icon: a.level === 'CRITICAL' ? '🚨' : a.level === 'WARNING' ? '⚠️' : 'ℹ️',
+                            iconClass: a.level === 'CRITICAL' ? 'red' : a.level === 'WARNING' ? 'orange' : 'cyan',
+                            text: a.message || 'هشدار جدید',
+                            time: new Date(a.timestamp),
+                            type: 'alert'
                         });
-                    }
-                    
-                    if (history.success && history.data && history.data.length > 0) {
-                        history.data.slice(0, 3).forEach(h => {
-                            activities.push({
-                                icon: '🧠',
-                                iconClass: 'purple',
-                                text: `مدل جدید <span class="highlight">${h.version || 'v1'}</span> با دقت ${((h.accuracy || 0) * 100).toFixed(1)}% آموزش دید`,
-                                time: new Date(h.training_date),
-                                type: 'model'
-                            });
-                        });
-                    }
-                    
-                    activities.sort((a, b) => b.time - a.time);
-                    activities = activities.slice(0, 10);
-                    
-                    countEl.textContent = activities.length + ' رویداد';
-                    
-                    if (activities.length === 0) {
-                        container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.75rem;">📭 هیچ فعالیتی ثبت نشده است</div>`;
-                        return;
-                    }
-                    
-                    container.innerHTML = activities.map(a => `
-                        <div class="activity-item">
-                            <div class="activity-icon ${a.iconClass}">${a.icon}</div>
-                            <div class="activity-content"><div class="activity-text">${a.text}</div></div>
-                            <div class="activity-time">${formatTimeAgo(a.time)}</div>
-                        </div>
-                    `).join('');
-                    
-                } catch (err) {
-                    console.error('Failed to load activities:', err);
-                    container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--accent-red);font-size:0.75rem;">❌ خطا در دریافت فعالیت‌ها</div>`;
+                    });
                 }
+                
+                if (history.success && history.data && history.data.length > 0) {
+                    history.data.slice(0, 3).forEach(h => {
+                        activities.push({
+                            icon: '🧠',
+                            iconClass: 'purple',
+                            text: `مدل جدید <span class="highlight">${h.version || 'v1'}</span> با دقت ${((h.accuracy || 0) * 100).toFixed(1)}% آموزش دید`,
+                            time: new Date(h.training_date),
+                            type: 'model'
+                        });
+                    });
+                }
+                
+                activities.sort((a, b) => b.time - a.time);
+                activities = activities.slice(0, 10);
+                
+                countEl.textContent = activities.length + ' رویداد';
+                
+                if (activities.length === 0) {
+                    container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.75rem;">📭 هیچ فعالیتی ثبت نشده است</div>`;
+                    return;
+                }
+                
+                container.innerHTML = activities.map(a => `
+                    <div class="activity-item">
+                        <div class="activity-icon ${a.iconClass}">${a.icon}</div>
+                        <div class="activity-content"><div class="activity-text">${a.text}</div></div>
+                        <div class="activity-time">${formatTimeAgo(a.time)}</div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('خطا در دریافت فعالیت‌ها:', error);
+                container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--accent-red);font-size:0.75rem;">❌ خطا در دریافت فعالیت‌ها</div>`;
             }
+        }
+
+        // ============================================================
+        // بارگذاری اطلاعات کاربر
+        // ============================================================
+        async function loadUser() {
+            try {
+                const user = await app.loadUser();
+                if (user) {
+                    document.getElementById('userName').textContent = user.username || 'کاربر';
+                }
+            } catch (error) {
+                console.error('خطا در دریافت اطلاعات کاربر:', error);
+            }
+        }
+
+        // ============================================================
+        // بارگذاری همه داده‌ها
+        // ============================================================
+        async function loadAllData() {
+            await loadUser();
+            await loadAppStats();
+            await loadMarketData();
+            await loadActivities();
+        }
+
+        // ============================================================
+        // نویگیشن
+        // ============================================================
+        async function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            try {
+                const res = await fetch('/nav.html');
+                if (!res.ok) throw new Error('nav.html not found');
+                const html = await res.text();
+                container.innerHTML = html;
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(old => {
+                    const ns = document.createElement('script');
+                    ns.textContent = old.textContent;
+                    old.parentNode.replaceChild(ns, old);
+                });
+            } catch (err) {
+                console.error('❌ Nav error:', err);
+            }
+        }
+
+        // ============================================================
+        // بروزرسانی خودکار
+        // ============================================================
+        function startAutoUpdate() {
+            // آپدیت آمار اپلیکیشن و نمودارها هر ۲ ثانیه
+            statsInterval = setInterval(() => {
+                loadAppStats();
+            }, 2000);
             
-            // ===== AUTO UPDATE =====
-            startAutoUpdate() {
-                // آپدیت آمار اپلیکیشن هر ۲ ثانیه
-                statsInterval = setInterval(() => this.loadAppStats(), 2000);
-                // آپدیت متریک‌ها هر ۱۰ ثانیه
-                setInterval(() => { app.loadMetrics(); }, 10000);
-                // آپدیت فعالیت‌ها هر ۳۰ ثانیه
-                setInterval(() => { this.loadActivities(); }, 30000);
-            }
+            // آپدیت داده‌های بازار هر ۱۰ ثانیه
+            setInterval(() => {
+                loadMarketData();
+            }, 10000);
             
-            // ===== REFRESH =====
-            async refresh() {
-                showToast('🔄 بروزرسانی...', 'info');
-                await this.loadAllData();
-                showToast('✅ بروزرسانی شد', 'success');
-            }
+            // آپدیت فعالیت‌ها هر ۳۰ ثانیه
+            setInterval(() => {
+                loadActivities();
+            }, 30000);
         }
-        
+
         // ============================================================
-        // توابع کمکی
+        // رفرش دستی
         // ============================================================
-        function getStatusColor(percent) {
-            if (percent >= 80) return 'red';
-            if (percent >= 60) return 'orange';
-            return 'green';
+        async function refreshDashboard() {
+            showToast('🔄 بروزرسانی...', 'info');
+            await loadAllData();
+            showToast('✅ بروزرسانی شد', 'success');
         }
-        
-        function refreshDashboard() {
-            if (window.dashboard) dashboard.refresh();
-            else location.reload();
-        }
-        
+
         // ============================================================
-        // INIT
+        // مقداردهی اولیه
+        // ============================================================
+        async function init() {
+            console.log('🚀 Dashboard initializing...');
+            await loadNav();
+            initCharts();
+            await loadAllData();
+            startAutoUpdate();
+            console.log('🚀 Dashboard ready');
+        }
+
+        // ============================================================
+        // اجرا
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            window.dashboard = new DashboardController();
+            init();
         });
+
+        // ============================================================
+        // توابع قابل دسترس از خارج
+        // ============================================================
+        window.refreshDashboard = refreshDashboard;
+        window.loadAppStats = loadAppStats;
     </script>
 </body>
 </html>
