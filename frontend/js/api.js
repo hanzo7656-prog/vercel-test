@@ -1,6 +1,6 @@
 // ============================================================
 // api.js - Unified API Client v10.0
-// کاملاً هماهنگ با اندپوینت‌های تفکیک شده
+// کاملاً هماهنگ با اندپوینت‌های تفکیک شده بک‌اند
 // ============================================================
 
 class ApiClient {
@@ -73,7 +73,15 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲. دیتابیس - PostgreSQL
+    // ۲. آمار واقعی اپلیکیشن (جدید)
+    // ============================================================
+
+    getAppStats() {
+        return this.request('/api/app/stats');
+    }
+
+    // ============================================================
+    // ۳. دیتابیس - PostgreSQL
     // ============================================================
 
     getPostgreSQLTables() {
@@ -82,14 +90,7 @@ class ApiClient {
 
     getPostgreSQLTableData(tableName, options = {}) {
         const { limit = 100, offset = 0, search = '', sort_by = 'id', sort_order = 'DESC', format = 'json' } = options;
-        const params = new URLSearchParams({
-            limit,
-            offset,
-            search,
-            sort_by,
-            sort_order,
-            format
-        });
+        const params = new URLSearchParams({ limit, offset, search, sort_by, sort_order, format });
         return this.request(`/api/db/postgresql/table/${tableName}?${params}`);
     }
 
@@ -101,12 +102,20 @@ class ApiClient {
         return this.request(`/api/db/postgresql/export/${tableName}?format=${format}&limit=${limit}`);
     }
 
+    exportPostgreSQLTableCSV(tableName) {
+        window.open(`/api/db/postgresql/export/${tableName}?format=csv`, '_blank');
+    }
+
     backupPostgreSQL() {
         window.open('/api/db/postgresql/backup', '_blank');
     }
 
+    getPostgreSQLFullBackup() {
+        window.open('/api/db/postgresql/backup', '_blank');
+    }
+
     // ============================================================
-    // ۳. دیتابیس - Redis
+    // ۴. دیتابیس - Redis
     // ============================================================
 
     getRedisKeys(options = {}) {
@@ -125,8 +134,13 @@ class ApiClient {
         });
     }
 
+    // ===== جدید: دریافت مقدار یک کلید Redis =====
+    getRedisKey(key) {
+        return this.request(`/api/db/redis/key/${encodeURIComponent(key)}`);
+    }
+
     // ============================================================
-    // ۴. دیتابیس - SQLite
+    // ۵. دیتابیس - SQLite
     // ============================================================
 
     getSQLiteTables() {
@@ -147,8 +161,12 @@ class ApiClient {
         return this.request(`/api/db/sqlite/export/${tableName}?format=${format}&limit=${limit}`);
     }
 
+    exportSQLiteTableCSV(tableName) {
+        window.open(`/api/db/sqlite/export/${tableName}?format=csv`, '_blank');
+    }
+
     // ============================================================
-    // ۵. دیتابیس - عمومی
+    // ۶. دیتابیس - عمومی
     // ============================================================
 
     searchDatabase(query, tables = '') {
@@ -164,8 +182,12 @@ class ApiClient {
         });
     }
 
+    getDatabaseHealth() {
+        return this.request('/api/db/health');
+    }
+
     // ============================================================
-    // ۶. مدل (MODEL)
+    // ۷. مدل (MODEL)
     // ============================================================
 
     getModelStatus() {
@@ -221,7 +243,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۷. زمان‌بندی (SCHEDULE)
+    // ۸. زمان‌بندی (SCHEDULE)
     // ============================================================
 
     getScheduleStatus() {
@@ -243,7 +265,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۸. پیش‌بینی (PREDICTIONS)
+    // ۹. پیش‌بینی (PREDICTIONS)
     // ============================================================
 
     predictSingle(coin, period = '24h') {
@@ -262,7 +284,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۹. کوین‌استتس (COINSTATS)
+    // ۱۰. کوین‌استتس (COINSTATS)
     // ============================================================
 
     getCoinPrice(coin) {
@@ -286,7 +308,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۰. هشدارها (ALERTS)
+    // ۱۱. هشدارها (ALERTS)
     // ============================================================
 
     getAlerts(options = {}) {
@@ -312,7 +334,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۱. کاربر (USER)
+    // ۱۲. کاربر (USER)
     // ============================================================
 
     getUserInfo() {
@@ -324,7 +346,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۲. احراز هویت (AUTH)
+    // ۱۳. احراز هویت (AUTH)
     // ============================================================
 
     login(username, password) {
@@ -339,7 +361,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۳. دیباگ (DEBUG)
+    // ۱۴. دیباگ (DEBUG)
     // ============================================================
 
     getDebugStatus() {
@@ -393,6 +415,29 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({ level })
         });
+    }
+
+    // ============================================================
+    // ۱۵. دیتابیس - کوئری مستقیم (جدید)
+    // ============================================================
+
+    executeDBQuery(query) {
+        return this.request('/api/db/query', {
+            method: 'POST',
+            body: JSON.stringify({ query })
+        });
+    }
+
+    getPostgreSQLTableFull(tableName, options = {}) {
+        const { limit = 100, offset = 0, search = '', sort_by = 'id', sort_order = 'DESC', format = 'json' } = options;
+        const params = new URLSearchParams({ limit, offset, search, sort_by, sort_order, format });
+        return this.request(`/api/db/postgresql/table/${tableName}?${params}`);
+    }
+
+    getSQLiteTableFull(tableName, options = {}) {
+        const { limit = 100, offset = 0, search = '', format = 'json' } = options;
+        const params = new URLSearchParams({ limit, offset, search, format });
+        return this.request(`/api/db/sqlite/table/${tableName}?${params}`);
     }
 }
 
