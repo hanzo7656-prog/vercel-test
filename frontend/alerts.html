@@ -25,7 +25,7 @@
         
         .alert-filters .filter-btn {
             padding: 5px 16px;
-            border-radius: 20px;
+            border-radius: var(--radius-full);
             border: 1px solid var(--border-color);
             background: transparent;
             color: var(--text-secondary);
@@ -49,7 +49,7 @@
         .alert-filters .filter-btn .count {
             background: var(--bg-input);
             padding: 0 6px;
-            border-radius: 10px;
+            border-radius: var(--radius-full);
             font-size: 0.6rem;
             color: var(--text-muted);
         }
@@ -69,6 +69,23 @@
         .alert-filters .refresh-btn:hover {
             color: var(--accent-cyan);
             background: rgba(0, 212, 255, 0.05);
+        }
+        
+        .alert-filters .resolve-all-btn {
+            padding: 4px 14px;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--accent-red);
+            background: transparent;
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        
+        .alert-filters .resolve-all-btn:hover {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: var(--accent-rose);
         }
         
         /* ===== ALERT ITEMS ===== */
@@ -130,7 +147,7 @@
             font-size: 0.65rem;
             color: var(--text-muted);
             white-space: nowrap;
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
         }
         
         .alert-item .alert-action {
@@ -153,7 +170,7 @@
         .alert-item .alert-resolved-badge {
             font-size: 0.6rem;
             padding: 2px 12px;
-            border-radius: 20px;
+            border-radius: var(--radius-full);
             background: rgba(34, 211, 238, 0.08);
             color: var(--accent-green);
             border: 1px solid rgba(34, 211, 238, 0.12);
@@ -214,13 +231,10 @@
 </head>
 <body>
 
-    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
 
-    <!-- ===== ALERTS ===== -->
     <div class="container">
 
-        <!-- Page Header -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-bell" style="color:var(--accent-pink);"></i> هشدارها</h1>
@@ -240,6 +254,9 @@
             <button class="refresh-btn" onclick="loadAlerts()" title="بروزرسانی">
                 <i class="fas fa-sync-alt"></i>
             </button>
+            <button class="resolve-all-btn" onclick="resolveAllAlerts()">
+                <i class="fas fa-check-double"></i> حل همه
+            </button>
         </div>
 
         <!-- Alerts List -->
@@ -252,12 +269,8 @@
 
     </div>
 
-    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
@@ -275,28 +288,21 @@
             
             async init() {
                 console.log('🚀 Alerts initializing...');
-                
                 await this.loadNav();
                 this.setupFilters();
                 await this.loadAlerts();
-                
-                // آپدیت خودکار هر ۳۰ ثانیه
                 this.updateInterval = setInterval(() => this.loadAlerts(), 30000);
-                
                 console.log('🚀 Alerts ready');
             }
             
-            // ===== NAV =====
             async loadNav() {
                 const container = document.getElementById('navContainer');
                 if (!container) return;
-                
                 try {
                     const res = await fetch('/nav.html');
                     if (!res.ok) throw new Error('nav.html not found');
                     const html = await res.text();
                     container.innerHTML = html;
-                    
                     const scripts = container.querySelectorAll('script');
                     scripts.forEach(old => {
                         const ns = document.createElement('script');
@@ -314,7 +320,6 @@
                 }
             }
             
-            // ===== FILTERS =====
             setupFilters() {
                 document.querySelectorAll('#filterContainer .filter-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -326,7 +331,6 @@
                 });
             }
             
-            // ===== LOAD ALERTS =====
             async loadAlerts() {
                 const container = document.getElementById('alertsList');
                 const totalEl = document.getElementById('alertTotal');
@@ -336,20 +340,18 @@
                     if (this.currentFilter === 'resolved') resolved = true;
                     else if (this.currentFilter === 'unresolved') resolved = false;
                     
-                    const data = await api.getAlerts(50, resolved);
+                    const data = await api.getAlerts({ limit: 50, resolved });
                     
                     if (data.success && data.data) {
-                        const alerts = data.data;
+                        let alerts = data.data;
                         
-                        // فیلتر بر اساس سطح
-                        let filtered = alerts;
                         if (['critical', 'warning', 'info'].includes(this.currentFilter)) {
-                            filtered = alerts.filter(a => a.level?.toLowerCase() === this.currentFilter);
+                            alerts = alerts.filter(a => a.level?.toLowerCase() === this.currentFilter);
                         }
                         
-                        totalEl.textContent = filtered.length;
+                        totalEl.textContent = alerts.length;
                         
-                        if (filtered.length === 0) {
+                        if (alerts.length === 0) {
                             container.innerHTML = `
                                 <div class="no-alerts">
                                     <span class="icon">✅</span>
@@ -360,12 +362,11 @@
                             return;
                         }
                         
-                        container.innerHTML = filtered.map(a => {
+                        container.innerHTML = alerts.map(a => {
                             const level = a.level?.toLowerCase() || 'info';
                             const isResolved = a.resolved || false;
                             const levelClass = isResolved ? 'resolved' : level;
                             const icon = level === 'critical' ? '🚨' : level === 'warning' ? '⚠️' : 'ℹ️';
-                            
                             return `
                                 <div class="alert-item ${levelClass}">
                                     <span class="alert-icon">${icon}</span>
@@ -375,9 +376,10 @@
                                             <span class="source">${a.source || 'system'}</span>
                                             <span>•</span>
                                             <span>${level.toUpperCase()}</span>
+                                            ${a.details ? `<span>• ${a.details}</span>` : ''}
                                         </div>
                                     </div>
-                                    <span class="alert-time">${formatDate(a.timestamp)}</span>
+                                    <span class="alert-time">${formatTimeAgo(a.timestamp)}</span>
                                     ${isResolved 
                                         ? '<span class="alert-resolved-badge">✅ حل شد</span>'
                                         : `<button class="alert-action" onclick="resolveAlert(${a.id})"><i class="fas fa-check-circle"></i></button>`
@@ -385,20 +387,13 @@
                                 </div>
                             `;
                         }).join('');
-                    } else {
-                        container.innerHTML = `
-                            <div class="no-alerts">
-                                <span class="icon">❌</span>
-                                <p style="color:var(--accent-red);">خطا در دریافت هشدارها</p>
-                            </div>
-                        `;
                     }
                 } catch (err) {
                     console.error('Alerts error:', err);
                     container.innerHTML = `
                         <div class="no-alerts">
                             <span class="icon">❌</span>
-                            <p style="color:var(--accent-red);">خطا در ارتباط با سرور</p>
+                            <p style="color:var(--accent-red);">خطا در دریافت هشدارها</p>
                         </div>
                     `;
                 }
@@ -406,7 +401,7 @@
         }
         
         // ============================================================
-        // RESOLVE ALERT (Global)
+        // GLOBAL FUNCTIONS
         // ============================================================
         
         async function resolveAlert(id) {
@@ -414,23 +409,32 @@
                 const data = await api.resolveAlert(id);
                 if (data.success) {
                     showToast('✅ هشدار بسته شد', 'success');
-                    if (window.alertsController) {
-                        window.alertsController.loadAlerts();
-                    }
-                } else {
-                    showToast('❌ خطا در بستن هشدار', 'error');
+                    if (window.alertsController) window.alertsController.loadAlerts();
                 }
             } catch (err) {
-                showToast('❌ خطا', 'error');
+                showToast('❌ خطا در بستن هشدار', 'error');
             }
         }
         
-        // ============================================================
-        // INIT
-        // ============================================================
+        async function resolveAllAlerts() {
+            if (!confirm('⚠️ آیا از حل کردن همه هشدارها اطمینان دارید؟')) return;
+            try {
+                const data = await api.resolveAllAlerts();
+                if (data.success) {
+                    showToast(`✅ ${data.count || 0} هشدار حل شد`, 'success');
+                    if (window.alertsController) window.alertsController.loadAlerts();
+                }
+            } catch (err) {
+                showToast('❌ خطا در حل کردن هشدارها', 'error');
+            }
+        }
+        
+        function loadAlerts() {
+            if (window.alertsController) window.alertsController.loadAlerts();
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
-            const controller = new AlertsController();
-            window.alertsController = controller;
+            window.alertsController = new AlertsController();
         });
     </script>
 </body>
