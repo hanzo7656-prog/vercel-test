@@ -1286,7 +1286,159 @@ def db_stats():
         logger.error(f"DB stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================
+# اضافه کردن به api_routes.py - بخش دیتابیس
+# ============================================================
 
+@api_bp.route('/db/postgresql/table/<table_name>/export/row/<int:row_id>', methods=['GET'])
+@require_auth()
+def export_postgresql_row(table_name, row_id):
+    """خروجی یک رکورد خاص از جدول PostgreSQL (JSON/CSV)"""
+    try:
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
+        
+        format_type = request.args.get('format', 'json')
+        
+        # دریافت ستون‌ها
+        columns = db.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = %s
+            ORDER BY ordinal_position
+        """, (table_name,))
+        
+        if not columns:
+            return jsonify({'success': False, 'error': 'Table not found'}), 404
+        
+        col_names = [c['column_name'] for c in columns]
+        
+        # دریافت رکورد
+        row = db.execute(f'SELECT * FROM "{table_name}" WHERE id = %s', (row_id,))
+        if not row:
+            return jsonify({'success': False, 'error': 'Row not found'}), 404
+        
+        if format_type == 'csv':
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=col_names)
+            writer.writeheader()
+            writer.writerow(row[0])
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.getvalue().encode('utf-8')),
+                as_attachment=True,
+                download_name=f'{table_name}_row_{row_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                mimetype='text/csv'
+            )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'table': table_name,
+                'row_id': row_id,
+                'columns': col_names,
+                'row': row[0]
+            }
+        })
+    except Exception as e:
+        logger.error(f"Export PostgreSQL row error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/sqlite/table/<table_name>/export/row/<int:row_id>', methods=['GET'])
+@require_auth()
+def export_sqlite_row(table_name, row_id):
+    """خروجی یک رکورد خاص از جدول SQLite (JSON/CSV)"""
+    try:
+        sqlite = get_backup()
+        if not sqlite or not sqlite.is_connected():
+            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
+        
+        format_type = request.args.get('format', 'json')
+        
+        # دریافت ستون‌ها
+        pragma = sqlite.execute(f"PRAGMA table_info({table_name})")
+        if not pragma:
+            return jsonify({'success': False, 'error': 'Table not found'}), 404
+        
+        col_names = [c['name'] for c in pragma]
+        
+        # دریافت رکورد
+        row = sqlite.execute(f'SELECT * FROM [{table_name}] WHERE id = %s', (row_id,))
+        if not row:
+            return jsonify({'success': False, 'error': 'Row not found'}), 404
+        
+        if format_type == 'csv':
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=col_names)
+            writer.writeheader()
+            writer.writerow(row[0])
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.getvalue().encode('utf-8')),
+                as_attachment=True,
+                download_name=f'{table_name}_row_{row_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                mimetype='text/csv'
+            )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'table': table_name,
+                'row_id': row_id,
+                'columns': col_names,
+                'row': row[0]
+            }
+        })
+    except Exception as e:
+        logger.error(f"Export SQLite row error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/redis/key/<path:key>/export', methods=['GET'])
+@require_auth()
+def export_redis_key(key):
+    """خروجی یک کلید Redis به صورت JSON"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        key_type = cache._client.type(key)
+        type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+        
+        value = None
+        if type_str == 'string':
+            val = cache._client.get(key)
+            value = val.decode('utf-8') if isinstance(val, bytes) else val
+        elif type_str == 'hash':
+            val = cache._client.hgetall(key)
+            value = {k.decode('utf-8') if isinstance(k, bytes) else k: 
+                    v.decode('utf-8') if isinstance(v, bytes) else v 
+                    for k, v in val.items()}
+        elif type_str == 'list':
+            val = cache._client.lrange(key, 0, -1)
+            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in val]
+        elif type_str == 'set':
+            val = cache._client.smembers(key)
+            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)]
+        else:
+            value = 'Unsupported type'
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'key': key,
+                'type': type_str,
+                'value': value,
+                'exported_at': datetime.now().isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Export Redis key error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # ۹. مدل (MODEL)
 # ============================================================
