@@ -12,22 +12,6 @@
            DASHBOARD - استایل‌های اختصاصی
            ============================================================ */
         
-        /* ===== LAYOUT ===== */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        
-        .dashboard-grid .full-width {
-            grid-column: 1 / -1;
-        }
-        
-        .dashboard-grid .half-width {
-            grid-column: span 2;
-        }
-        
         /* ===== WELCOME CARD ===== */
         .welcome-card {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
@@ -37,6 +21,11 @@
             margin-bottom: 20px;
             position: relative;
             overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        .welcome-card:hover {
+            border-color: rgba(0, 212, 255, 0.15);
         }
         
         .welcome-card::before {
@@ -69,6 +58,9 @@
             color: var(--text-secondary);
             font-size: 0.9rem;
             margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .welcome-card .quick-stats {
@@ -84,15 +76,19 @@
             gap: 8px;
             font-size: 0.8rem;
             color: var(--text-secondary);
+            background: var(--bg-input);
+            padding: 4px 14px;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border-color);
         }
         
         .welcome-card .quick-stat .num {
             color: var(--text-primary);
             font-weight: 600;
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
         }
         
-        /* ===== MARKET CARDS ===== */
+        /* ===== MARKET GRID ===== */
         .market-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -120,11 +116,11 @@
         
         .market-card .market-icon {
             font-size: 1.4rem;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         
         .market-card .market-name {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -133,7 +129,7 @@
         .market-card .market-price {
             font-size: 1.1rem;
             font-weight: 700;
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
             margin: 2px 0;
         }
         
@@ -146,42 +142,21 @@
         .market-card .market-change.down { color: var(--accent-red); }
         .market-card .market-change.neutral { color: var(--text-muted); }
         
-        .market-card .market-change::before {
-            content: '';
-            display: inline-block;
-            width: 0;
-            height: 0;
-            margin-left: 4px;
+        .market-card .market-change.up::before { content: '▲ '; }
+        .market-card .market-change.down::before { content: '▼ '; }
+        
+        /* ===== DASHBOARD GRID ===== */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
         }
         
-        .market-card .market-change.up::before {
-            content: '▲';
-        }
+        .dashboard-grid .full-width { grid-column: 1 / -1; }
+        .dashboard-grid .half-width { grid-column: span 2; }
         
-        .market-card .market-change.down::before {
-            content: '▼';
-        }
-        
-        /* ===== STATUS INDICATOR ===== */
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse-dot 2s infinite;
-        }
-        
-        .status-dot.online { background: var(--accent-green); }
-        .status-dot.warning { background: var(--accent-orange); }
-        .status-dot.offline { background: var(--accent-red); }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-        
-        /* ===== CHART CARDS ===== */
+        /* ===== CHART CARD ===== */
         .chart-card {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -211,14 +186,12 @@
             gap: 8px;
         }
         
-        .chart-card .chart-title i {
-            color: var(--accent-cyan);
-        }
+        .chart-card .chart-title i { color: var(--accent-cyan); }
         
         .chart-card .chart-badge {
             font-size: 0.55rem;
             padding: 2px 12px;
-            border-radius: 20px;
+            border-radius: var(--radius-full);
             background: rgba(34, 211, 238, 0.08);
             color: var(--accent-green);
             border: 1px solid rgba(34, 211, 238, 0.12);
@@ -291,7 +264,7 @@
         .activity-item .activity-time {
             font-size: 0.6rem;
             color: var(--text-muted);
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
             flex-shrink: 0;
         }
         
@@ -313,76 +286,38 @@
            RESPONSIVE
            ============================================================ */
         @media (max-width: 1200px) {
-            .market-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .market-grid { grid-template-columns: repeat(2, 1fr); }
         }
         
         @media (max-width: 1024px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            .dashboard-grid .half-width {
-                grid-column: span 1;
-            }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
+            .dashboard-grid .half-width { grid-column: span 1; }
         }
         
         @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-            .market-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            .welcome-card {
-                padding: 18px 20px;
-            }
-            .welcome-card .greeting {
-                font-size: 1.1rem;
-            }
-            .welcome-card .quick-stats {
-                gap: 12px;
-            }
-            .welcome-card .quick-stat {
-                font-size: 0.7rem;
-            }
-            .chart-card .chart-wrapper {
-                height: 160px;
-            }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .market-grid { grid-template-columns: 1fr 1fr; }
+            .welcome-card { padding: 18px 20px; }
+            .welcome-card .greeting { font-size: 1.1rem; }
+            .welcome-card .quick-stats { gap: 12px; }
+            .welcome-card .quick-stat { font-size: 0.7rem; }
+            .chart-card .chart-wrapper { height: 160px; }
         }
         
         @media (max-width: 480px) {
-            .market-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-            .market-card {
-                padding: 12px 14px;
-            }
-            .market-card .market-price {
-                font-size: 0.9rem;
-            }
-            .activity-item {
-                padding: 6px 10px;
-                flex-wrap: wrap;
-            }
-            .activity-item .activity-time {
-                width: 100%;
-                text-align: left;
-            }
-            .quick-actions .btn {
-                width: 100%;
-                justify-content: center;
-            }
+            .market-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .market-card { padding: 12px 14px; }
+            .market-card .market-price { font-size: 0.9rem; }
+            .activity-item { padding: 6px 10px; flex-wrap: wrap; }
+            .activity-item .activity-time { width: 100%; text-align: left; }
+            .quick-actions .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== NAV ===== -->
     <div id="navContainer"></div>
 
-    <!-- ===== DASHBOARD ===== -->
     <div class="container">
 
         <!-- ===== WELCOME ===== -->
@@ -391,9 +326,9 @@
                 <div class="greeting">
                     👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span>
                 </div>
-                <div class="sub-greeting" id="statusMessage">
+                <div class="sub-greeting">
                     <span class="status-dot online" id="statusDot"></span>
-                    سیستم در وضعیت پایدار است
+                    <span id="statusMessage">سیستم در وضعیت پایدار است</span>
                 </div>
                 <div class="quick-stats">
                     <div class="quick-stat">
@@ -440,38 +375,25 @@
         <!-- ===== CHARTS & ACTIVITY ===== -->
         <div class="dashboard-grid">
 
-            <!-- CPU/RAM Chart -->
             <div class="chart-card half-width">
                 <div class="chart-header">
-                    <div class="chart-title">
-                        <i class="fas fa-microchip"></i> منابع سیستم
-                    </div>
+                    <div class="chart-title"><i class="fas fa-microchip"></i> منابع سیستم</div>
                     <span class="chart-badge">● LIVE</span>
                 </div>
-                <div class="chart-wrapper">
-                    <canvas id="cpuRamChart"></canvas>
-                </div>
+                <div class="chart-wrapper"><canvas id="cpuRamChart"></canvas></div>
             </div>
 
-            <!-- API Requests Chart -->
             <div class="chart-card">
                 <div class="chart-header">
-                    <div class="chart-title">
-                        <i class="fas fa-plug"></i> درخواست‌ها
-                    </div>
+                    <div class="chart-title"><i class="fas fa-plug"></i> درخواست‌ها</div>
                     <span class="chart-badge">● LIVE</span>
                 </div>
-                <div class="chart-wrapper">
-                    <canvas id="apiChart"></canvas>
-                </div>
+                <div class="chart-wrapper"><canvas id="apiChart"></canvas></div>
             </div>
 
-            <!-- Activity Feed -->
             <div class="chart-card full-width">
                 <div class="chart-header">
-                    <div class="chart-title">
-                        <i class="fas fa-bolt"></i> فعالیت‌های اخیر
-                    </div>
+                    <div class="chart-title"><i class="fas fa-bolt"></i> فعالیت‌های اخیر</div>
                     <span class="chart-badge" id="activityCount">۰ رویداد</span>
                 </div>
                 <div class="activity-list" id="activityList">
@@ -486,31 +408,17 @@
 
         <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
-            <a href="/analyzer" class="btn btn-primary">
-                <i class="fas fa-robot"></i> تحلیلگر
-            </a>
-            <a href="/model" class="btn btn-outline">
-                <i class="fas fa-brain"></i> مدل
-            </a>
-            <a href="/database" class="btn btn-outline">
-                <i class="fas fa-database"></i> دیتابیس
-            </a>
-            <a href="/chart" class="btn btn-outline">
-                <i class="fas fa-chart-line"></i> نمودار
-            </a>
-            <button class="btn btn-outline" onclick="refreshDashboard()">
-                <i class="fas fa-sync-alt"></i> بروزرسانی
-            </button>
+            <a href="/analyzer" class="btn btn-primary"><i class="fas fa-robot"></i> تحلیلگر</a>
+            <a href="/model" class="btn btn-outline"><i class="fas fa-brain"></i> مدل</a>
+            <a href="/database" class="btn btn-outline"><i class="fas fa-database"></i> دیتابیس</a>
+            <a href="/chart" class="btn btn-outline"><i class="fas fa-chart-line"></i> نمودار</a>
+            <button class="btn btn-outline" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> بروزرسانی</button>
         </div>
 
     </div>
 
-    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
@@ -522,34 +430,19 @@
         class DashboardController {
             constructor() {
                 this.charts = {};
-                this.chartData = {
-                    cpu: [],
-                    ram: [],
-                    api: [],
-                    labels: []
-                };
+                this.chartData = { cpu: [], ram: [], api: [], labels: [] };
                 this.maxDataPoints = 30;
-                this.updateInterval = null;
-                
                 this.init();
             }
             
             async init() {
                 console.log('🚀 Dashboard initializing...');
                 
-                // بارگذاری منو
                 await this.loadNav();
-                
-                // راه‌اندازی نمودارها
                 this.initCharts();
-                
-                // بارگذاری اولیه داده‌ها
                 await this.loadAllData();
-                
-                // شروع آپدیت خودکار
                 this.startAutoUpdate();
                 
-                // گوش دادن به تغییرات state
                 app.subscribe((state) => {
                     if (state.metrics) {
                         this.updateUI(state.metrics);
@@ -570,8 +463,6 @@
                     if (!res.ok) throw new Error('nav.html not found');
                     const html = await res.text();
                     container.innerHTML = html;
-                    
-                    // اجرای اسکریپت‌های داخل nav
                     const scripts = container.querySelectorAll('script');
                     scripts.forEach(old => {
                         const ns = document.createElement('script');
@@ -591,7 +482,6 @@
             
             // ===== CHARTS =====
             initCharts() {
-                // CPU/RAM Chart
                 const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
                 if (ctx1) {
                     this.charts.cpuRam = new Chart(ctx1, {
@@ -599,26 +489,8 @@
                         data: {
                             labels: this.chartData.labels,
                             datasets: [
-                                {
-                                    label: 'CPU',
-                                    data: this.chartData.cpu,
-                                    borderColor: '#00d4ff',
-                                    backgroundColor: 'rgba(0,212,255,0.05)',
-                                    borderWidth: 2,
-                                    pointRadius: 2,
-                                    tension: 0.3,
-                                    fill: true
-                                },
-                                {
-                                    label: 'RAM',
-                                    data: this.chartData.ram,
-                                    borderColor: '#f59e0b',
-                                    backgroundColor: 'rgba(245,158,11,0.05)',
-                                    borderWidth: 2,
-                                    pointRadius: 2,
-                                    tension: 0.3,
-                                    fill: true
-                                }
+                                { label: 'CPU', data: this.chartData.cpu, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true },
+                                { label: 'RAM', data: this.chartData.ram, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true }
                             ]
                         },
                         options: {
@@ -627,70 +499,33 @@
                             plugins: {
                                 legend: {
                                     position: 'top',
-                                    labels: {
-                                        color: 'var(--text-secondary)',
-                                        font: { size: 9 },
-                                        boxWidth: 12,
-                                        usePointStyle: true
-                                    }
+                                    labels: { color: 'var(--text-secondary)', font: { size: 9 }, boxWidth: 12, usePointStyle: true }
                                 }
                             },
                             scales: {
-                                x: {
-                                    grid: { color: 'var(--border-color)' },
-                                    ticks: { color: 'var(--text-muted)', font: { size: 7 } }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    grid: { color: 'var(--border-color)' },
-                                    ticks: {
-                                        color: 'var(--text-muted)',
-                                        font: { size: 7 },
-                                        callback: v => v + '%'
-                                    }
-                                }
+                                x: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } },
+                                y: { beginAtZero: true, max: 100, grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 }, callback: v => v + '%' } }
                             },
                             animation: { duration: 400 }
                         }
                     });
                 }
                 
-                // API Chart
                 const ctx2 = document.getElementById('apiChart')?.getContext('2d');
                 if (ctx2) {
                     this.charts.api = new Chart(ctx2, {
                         type: 'bar',
                         data: {
                             labels: this.chartData.labels,
-                            datasets: [{
-                                label: 'درخواست‌ها',
-                                data: this.chartData.api,
-                                backgroundColor: 'rgba(236,72,153,0.5)',
-                                borderColor: '#ec4899',
-                                borderWidth: 1.5,
-                                borderRadius: 4
-                            }]
+                            datasets: [{ label: 'درخواست‌ها', data: this.chartData.api, backgroundColor: 'rgba(236,72,153,0.5)', borderColor: '#ec4899', borderWidth: 1.5, borderRadius: 4 }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
+                            plugins: { legend: { display: false } },
                             scales: {
-                                x: {
-                                    grid: { color: 'var(--border-color)' },
-                                    ticks: { color: 'var(--text-muted)', font: { size: 7 } }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    grid: { color: 'var(--border-color)' },
-                                    ticks: {
-                                        color: 'var(--text-muted)',
-                                        font: { size: 7 }
-                                    }
-                                }
+                                x: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } },
+                                y: { beginAtZero: true, grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } }
                             },
                             animation: { duration: 400 }
                         }
@@ -699,11 +534,7 @@
             }
             
             updateCharts(metrics) {
-                const now = new Date().toLocaleTimeString('fa-IR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
+                const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
                 const cpu = metrics?.metrics?.cpu?.value || 0;
                 const ram = metrics?.metrics?.ram?.value || 0;
                 const apiCount = metrics?.stats?.collections || 0;
@@ -738,18 +569,12 @@
             async loadAllData() {
                 try {
                     const metrics = await app.loadMetrics();
-                    if (metrics) {
-                        this.updateUI(metrics);
-                        this.updateCharts(metrics);
-                    }
+                    if (metrics) { this.updateUI(metrics); this.updateCharts(metrics); }
                     
                     const user = await app.loadUser();
-                    if (user) {
-                        document.getElementById('userName').textContent = user.username || 'کاربر';
-                    }
+                    if (user) { document.getElementById('userName').textContent = user.username || 'کاربر'; }
                     
                     await this.loadActivities();
-                    
                 } catch (err) {
                     console.error('Failed to load data:', err);
                 }
@@ -760,64 +585,49 @@
                 const m = metrics?.metrics || {};
                 const stats = metrics?.stats || {};
                 
-                // Uptime
                 document.getElementById('uptimeDisplay').textContent = m.uptime?.value || '0s';
-                
-                // Collections
                 document.getElementById('collectionsCount').textContent = stats.collections || 0;
                 
-                // Model Status
                 const modelStatus = m.model_status?.value || {};
                 document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
                 
-                // Bitcoin
                 const btc = m.btc_price || {};
                 document.getElementById('btcPrice').textContent = formatCurrency(btc.value);
                 const btcChange = document.getElementById('btcChange');
                 if (btc.change_24h !== undefined) {
                     btcChange.textContent = formatPercent(btc.change_24h);
                     btcChange.className = 'market-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
-                } else {
-                    btcChange.textContent = '—';
-                    btcChange.className = 'market-change neutral';
-                }
+                } else { btcChange.textContent = '—'; btcChange.className = 'market-change neutral'; }
                 
-                // Ethereum
                 const eth = m.eth_price || {};
                 document.getElementById('ethPrice').textContent = formatCurrency(eth.value);
                 const ethChange = document.getElementById('ethChange');
                 if (eth.change_24h !== undefined) {
                     ethChange.textContent = formatPercent(eth.change_24h);
                     ethChange.className = 'market-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
-                } else {
-                    ethChange.textContent = '—';
-                    ethChange.className = 'market-change neutral';
-                }
+                } else { ethChange.textContent = '—'; ethChange.className = 'market-change neutral'; }
                 
-                // Fear & Greed
                 const fg = m.fear_greed || {};
                 document.getElementById('fearGreedValue').textContent = fg.value || '—';
                 document.getElementById('fearGreedLabel').textContent = fg.classification || '—';
                 document.getElementById('fearGreedLabel').className = 'market-change neutral';
                 
-                // BTC Dominance
                 const dominance = m.btc_dominance || {};
                 document.getElementById('btcDominance').textContent = dominance.value ? dominance.value + '%' : '—';
                 
-                // Status dot
                 const apiStatus = m.api_status?.value || 'unknown';
                 const dot = document.getElementById('statusDot');
                 const msg = document.getElementById('statusMessage');
                 dot.className = 'status-dot';
                 if (apiStatus === 'ok') {
                     dot.classList.add('online');
-                    msg.innerHTML = `<span class="status-dot online"></span> سیستم در وضعیت پایدار است`;
+                    msg.textContent = 'سیستم در وضعیت پایدار است';
                 } else if (apiStatus === 'degraded') {
                     dot.classList.add('warning');
-                    msg.innerHTML = `<span class="status-dot warning"></span> سیستم با عملکرد کاهش یافته کار می‌کند`;
+                    msg.textContent = 'سیستم با عملکرد کاهش یافته کار می‌کند';
                 } else {
                     dot.classList.add('offline');
-                    msg.innerHTML = `<span class="status-dot offline"></span> سیستم با مشکل مواجه است`;
+                    msg.textContent = 'سیستم با مشکل مواجه است';
                 }
             }
             
@@ -827,12 +637,11 @@
                 const countEl = document.getElementById('activityCount');
                 
                 try {
-                    const alerts = await api.getAlerts(5);
+                    const alerts = await api.getAlerts({ limit: 5, resolved: false });
                     const history = await api.getModelHistory(3);
                     
                     let activities = [];
                     
-                    // اضافه کردن هشدارها به فعالیت‌ها
                     if (alerts.success && alerts.data) {
                         alerts.data.forEach(a => {
                             activities.push({
@@ -845,7 +654,6 @@
                         });
                     }
                     
-                    // اضافه کردن تاریخچه مدل
                     if (history.success && history.data) {
                         history.data.slice(0, 3).forEach(h => {
                             activities.push({
@@ -858,52 +666,33 @@
                         });
                     }
                     
-                    // مرتب‌سازی بر اساس زمان (جدیدترین اول)
                     activities.sort((a, b) => b.time - a.time);
                     activities = activities.slice(0, 10);
                     
                     countEl.textContent = `${activities.length} رویداد`;
                     
                     if (activities.length === 0) {
-                        container.innerHTML = `
-                            <div class="activity-item" style="justify-content:center;color:var(--text-muted);padding:20px;">
-                                📭 هیچ فعالیتی ثبت نشده است
-                            </div>
-                        `;
+                        container.innerHTML = `<div class="activity-item" style="justify-content:center;color:var(--text-muted);padding:20px;">📭 هیچ فعالیتی ثبت نشده است</div>`;
                         return;
                     }
                     
                     container.innerHTML = activities.map(a => `
                         <div class="activity-item">
                             <div class="activity-icon ${a.iconClass}">${a.icon}</div>
-                            <div class="activity-content">
-                                <div class="activity-text">${a.text}</div>
-                            </div>
-                            <div class="activity-time">${formatDate(a.time)}</div>
+                            <div class="activity-content"><div class="activity-text">${a.text}</div></div>
+                            <div class="activity-time">${formatTimeAgo(a.time)}</div>
                         </div>
                     `).join('');
-                    
                 } catch (err) {
                     console.error('Failed to load activities:', err);
-                    container.innerHTML = `
-                        <div class="activity-item" style="justify-content:center;color:var(--accent-red);padding:20px;">
-                            ❌ خطا در دریافت فعالیت‌ها
-                        </div>
-                    `;
+                    container.innerHTML = `<div class="activity-item" style="justify-content:center;color:var(--accent-red);padding:20px;">❌ خطا در دریافت فعالیت‌ها</div>`;
                 }
             }
             
             // ===== AUTO UPDATE =====
             startAutoUpdate() {
-                // بروزرسانی هر ۱۰ ثانیه
-                this.updateInterval = setInterval(() => {
-                    app.loadMetrics();
-                }, 10000);
-                
-                // بروزرسانی فعالیت‌ها هر ۳۰ ثانیه
-                setInterval(() => {
-                    this.loadActivities();
-                }, 30000);
+                setInterval(() => { app.loadMetrics(); }, 10000);
+                setInterval(() => { this.loadActivities(); }, 30000);
             }
             
             // ===== REFRESH =====
@@ -914,25 +703,13 @@
             }
         }
         
-        // ============================================================
-        // REFRESH FUNCTION
-        // ============================================================
         function refreshDashboard() {
-            if (window.dashboard) {
-                dashboard.refresh();
-            } else {
-                location.reload();
-            }
+            if (window.dashboard) dashboard.refresh();
+            else location.reload();
         }
         
-        // ============================================================
-        // INIT
-        // ============================================================
-        let dashboard;
-        
         document.addEventListener('DOMContentLoaded', function() {
-            dashboard = new DashboardController();
-            window.dashboard = dashboard;
+            window.dashboard = new DashboardController();
         });
     </script>
 </body>
