@@ -8,69 +8,376 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        .db-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-        .db-stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px 16px; text-align: center; transition: var(--transition); }
-        .db-stat-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+        /* ============================================================
+           DATABASE - استایل‌های اختصاصی
+           ============================================================ */
+        
+        .db-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .db-stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            text-align: center;
+            transition: var(--transition);
+        }
+        .db-stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
         .db-stat-card .stat-icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
         .db-stat-card .stat-value { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); }
         .db-stat-card .stat-value.cyan { color: var(--accent-cyan); }
         .db-stat-card .stat-value.green { color: var(--accent-green); }
         .db-stat-card .stat-value.pink { color: var(--accent-pink); }
         .db-stat-card .stat-value.orange { color: var(--accent-orange); }
-        .db-stat-card .stat-label { font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .db-stat-card .stat-label {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
 
-        .db-search { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-        .db-search input { flex: 1; padding: 10px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; font-family: inherit; min-width: 150px; transition: var(--transition); }
-        .db-search input:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05); }
-        .db-search input::placeholder { color: var(--text-muted); opacity: 0.5; }
-        .db-search .btn { padding: 10px 20px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; transition: var(--transition); font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-        .db-search .btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
-        .db-search .btn-primary { background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(139, 92, 246, 0.1)); border-color: rgba(0, 212, 255, 0.1); color: var(--accent-cyan); }
-        .db-search .btn-primary:hover { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.05); }
+        /* ===== DB HEADER ===== */
+        .db-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .db-header .db-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .db-header .db-title i { font-size: 1.2rem; }
+        .db-header .db-stats-mini {
+            display: flex;
+            gap: 16px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+        .db-header .db-stats-mini .num {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+        .db-header .db-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .db-header .db-actions .btn-xs {
+            padding: 3px 10px;
+            font-size: 0.6rem;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .db-header .db-actions .btn-xs:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        .db-header .db-actions .btn-xs.primary {
+            background: var(--accent-cyan);
+            color: var(--text-inverse);
+            border-color: var(--accent-cyan);
+        }
+        .db-header .db-actions .btn-xs.primary:hover {
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2);
+        }
 
-        .db-result-item { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; transition: var(--transition); }
-        .db-result-item:hover { background: var(--bg-hover); }
-        .db-result-item .result-table { color: var(--accent-cyan); font-weight: 600; font-size: 0.85rem; }
-        .db-result-item .result-count { color: var(--text-muted); font-size: 0.7rem; }
-        .db-result-item .result-preview { font-size: 0.7rem; color: var(--text-secondary); max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: left; font-family: var(--font-mono); }
-        .db-result-item .result-actions { display: flex; gap: 6px; }
-        .db-result-item .result-actions .btn-xs { padding: 2px 8px; font-size: 0.6rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); }
-        .db-result-item .result-actions .btn-xs:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        /* ===== DB TOOLBAR ===== */
+        .db-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+        .db-toolbar .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .db-toolbar .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .db-toolbar input[type="text"] {
+            padding: 4px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.7rem;
+            font-family: inherit;
+            min-width: 150px;
+            transition: var(--transition);
+        }
+        .db-toolbar input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05);
+        }
+        .db-toolbar select {
+            padding: 4px 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.65rem;
+            font-family: inherit;
+        }
+        .db-toolbar select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        .db-toolbar .btn-xs {
+            padding: 3px 10px;
+            font-size: 0.6rem;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .db-toolbar .btn-xs:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        .db-toolbar .btn-xs.primary {
+            background: var(--accent-cyan);
+            color: var(--text-inverse);
+            border-color: var(--accent-cyan);
+        }
+        .db-toolbar .btn-xs.danger {
+            color: var(--accent-red);
+            border-color: var(--accent-red);
+        }
+        .db-toolbar .btn-xs.danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
 
-        .table-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding: 8px 12px; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
-        .table-toolbar .btn-xs { padding: 3px 10px; font-size: 0.65rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); }
-        .table-toolbar .btn-xs:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
-        .table-toolbar .btn-xs.primary { background: var(--accent-cyan); color: var(--text-inverse); border-color: var(--accent-cyan); }
-        .table-toolbar .btn-xs.primary:hover { box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2); }
-        .table-toolbar .search-input { padding: 4px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.75rem; font-family: inherit; min-width: 150px; }
-        .table-toolbar .search-input:focus { outline: none; border-color: var(--accent-cyan); }
+        /* ===== TABLE ===== */
+        .db-table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+        .db-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            min-width: 600px;
+        }
+        .db-table th {
+            text-align: right;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            background: var(--bg-input);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            white-space: nowrap;
+        }
+        .db-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+        .db-table tr:hover td {
+            background: var(--bg-hover);
+        }
+        .db-table .clickable {
+            cursor: pointer;
+        }
+        .db-table .clickable:hover {
+            background: var(--bg-input);
+        }
+        .db-table .row-actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .db-table .row-actions .btn-icon {
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .db-table .row-actions .btn-icon:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        .db-table .row-actions .btn-icon.copy:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+        .db-table .row-actions .btn-icon.download:hover {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+        }
+        .db-table .row-actions .btn-icon.delete:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+        .db-table .size-bar {
+            display: inline-block;
+            height: 4px;
+            border-radius: var(--radius-full);
+            background: var(--accent-cyan);
+            transition: width 0.5s ease;
+        }
+        .db-table .badge-type {
+            padding: 1px 8px;
+            border-radius: var(--radius-full);
+            font-size: 0.55rem;
+            font-weight: 500;
+        }
+        .db-table .badge-type.string { background: rgba(0, 212, 255, 0.1); color: var(--accent-cyan); }
+        .db-table .badge-type.hash { background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
+        .db-table .badge-type.list { background: rgba(34, 211, 238, 0.1); color: var(--accent-green); }
+        .db-table .badge-type.set { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); }
+        .db-table .badge-type.zset { background: rgba(236, 72, 153, 0.1); color: var(--accent-pink); }
 
-        .monitor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
-        .monitor-card { background: var(--bg-input); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center; }
-        .monitor-card .m-value { font-size: 1.8rem; font-weight: 700; font-family: var(--font-mono); }
-        .monitor-card .m-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        /* ===== NO DATA ===== */
+        .db-no-data {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+        }
+        .db-no-data .icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+
+        /* ===== MONITOR ===== */
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .monitor-card {
+            background: var(--bg-input);
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: var(--transition);
+        }
+        .monitor-card:hover { border-color: var(--border-hover); }
+        .monitor-card .m-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+        .monitor-card .m-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
         .monitor-card .m-value.green { color: var(--accent-green); }
         .monitor-card .m-value.red { color: var(--accent-red); }
         .monitor-card .m-value.orange { color: var(--accent-orange); }
         .monitor-card .m-value.cyan { color: var(--accent-cyan); }
 
-        .monitor-chart-wrapper { height: 160px; position: relative; margin-top: 12px; }
+        .monitor-chart-wrapper {
+            height: 160px;
+            position: relative;
+            margin-top: 12px;
+        }
 
-        @media (max-width: 1024px) { .db-stats-grid { grid-template-columns: repeat(2, 1fr); } .monitor-grid { grid-template-columns: repeat(2, 1fr); } }
+        .monitor-status-list {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .monitor-status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        .monitor-status-item:hover { border-color: var(--border-hover); }
+        .monitor-status-item .name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .monitor-status-item .name .icon { font-size: 1.1rem; }
+        .monitor-status-item .status {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .monitor-status-item .status.online { color: var(--accent-green); }
+        .monitor-status-item .status.offline { color: var(--accent-red); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .monitor-grid { grid-template-columns: repeat(2, 1fr); }
+        }
         @media (max-width: 768px) {
             .db-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
             .db-stat-card { padding: 10px 12px; }
             .db-stat-card .stat-value { font-size: 0.9rem; }
-            .db-search { flex-direction: column; }
-            .db-search input { width: 100%; }
-            .db-search .btn { width: 100%; justify-content: center; }
-            .db-result-item { flex-direction: column; align-items: stretch; }
-            .db-result-item .result-preview { max-width: 100%; white-space: normal; }
-            .table-toolbar { flex-direction: column; align-items: stretch; }
-            .table-toolbar .search-input { width: 100%; }
+            .db-header { flex-direction: column; align-items: stretch; }
+            .db-header .db-actions { justify-content: flex-start; }
+            .db-toolbar { flex-direction: column; align-items: stretch; }
+            .db-toolbar .toolbar-left { flex-direction: column; align-items: stretch; }
+            .db-toolbar input[type="text"] { width: 100%; }
+            .db-table { font-size: 0.65rem; min-width: 400px; }
+            .db-table th, .db-table td { padding: 4px 8px; }
             .monitor-grid { grid-template-columns: 1fr; }
+            .monitor-chart-wrapper { height: 120px; }
         }
-        @media (max-width: 480px) { .db-stats-grid { grid-template-columns: 1fr 1fr; } .db-stat-card .stat-value { font-size: 0.8rem; } }
+        @media (max-width: 480px) {
+            .db-stats-grid { grid-template-columns: 1fr 1fr; }
+            .db-stat-card .stat-value { font-size: 0.8rem; }
+            .db-table { font-size: 0.6rem; min-width: 300px; }
+            .db-table th, .db-table td { padding: 3px 6px; }
+            .db-table .row-actions .btn-icon { padding: 1px 4px; font-size: 0.5rem; }
+        }
     </style>
 </head>
 <body>
@@ -101,7 +408,7 @@
             <button class="tab-btn" data-tab="monitor">📈 مانیتورینگ</button>
         </div>
 
-        <!-- Tab: Overview -->
+        <!-- ===== TAB: OVERVIEW ===== -->
         <div class="tab-content active" id="tab-overview">
             <div class="card">
                 <div class="card-title"><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</div>
@@ -109,80 +416,170 @@
             </div>
         </div>
 
-        <!-- Tab: PostgreSQL -->
+        <!-- ===== TAB: POSTGRESQL ===== -->
         <div class="tab-content" id="tab-postgresql">
             <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL
-                    <div style="margin-right:auto;display:flex;gap:6px;">
-                        <input class="search-input" id="pgSearch" placeholder="جستجو در جدول‌ها..." onkeyup="filterPGTables()">
-                        <button class="btn btn-xs btn-outline" onclick="refreshPostgreSQL()"><i class="fas fa-sync-alt"></i></button>
-                        <button class="btn btn-xs btn-outline" onclick="backupPostgreSQL()"><i class="fas fa-download"></i> بک‌آپ</button>
+                <div class="db-header">
+                    <div class="db-title"><i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL</div>
+                    <div class="db-stats-mini" id="pgStats">
+                        <span>📊 جدول‌ها: <span class="num" id="pgTableCount">—</span></span>
+                        <span>💾 حجم: <span class="num" id="pgSize">—</span></span>
+                        <span>📝 رکوردها: <span class="num" id="pgRows">—</span></span>
+                    </div>
+                    <div class="db-actions">
+                        <button class="btn-xs" onclick="refreshPostgreSQL()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn-xs primary" onclick="backupPostgreSQL()"><i class="fas fa-download"></i> بک‌آپ</button>
                     </div>
                 </div>
-                <div class="table-wrap">
-                    <table class="table-modern">
-                        <thead><tr><th>نام جدول</th><th>رکوردها</th><th>حجم (MB)</th><th>عملیات</th></tr></thead>
-                        <tbody id="pgTableBody"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr></tbody>
+
+                <div class="db-toolbar">
+                    <div class="toolbar-left">
+                        <input type="text" id="pgSearch" placeholder="🔍 جستجو در جدول‌ها..." onkeyup="filterPGTables()">
+                        <select id="pgFilter" onchange="filterPGTables()">
+                            <option value="all">همه</option>
+                            <option value="large">بزرگ (>۱۰MB)</option>
+                            <option value="medium">متوسط (۱-۱۰MB)</option>
+                            <option value="small">کوچک (&lt;۱MB)</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn-xs" onclick="copyPGTable()"><i class="fas fa-copy"></i> کپی همه</button>
+                        <button class="btn-xs" onclick="exportPGTable()"><i class="fas fa-download"></i> خروجی</button>
+                    </div>
+                </div>
+
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>نام جدول</th>
+                                <th>رکوردها</th>
+                                <th>حجم (MB)</th>
+                                <th>درصد</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pgTableBody">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">در حال بارگذاری...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Redis -->
+        <!-- ===== TAB: REDIS ===== -->
         <div class="tab-content" id="tab-redis">
             <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-bolt" style="color:#ff4444;"></i> Redis
-                    <div style="margin-right:auto;display:flex;gap:6px;">
-                        <input class="search-input" id="redisSearch" placeholder="جستجو در کلیدها..." onkeyup="filterRedisKeys()">
-                        <button class="btn btn-xs btn-outline" onclick="refreshRedis()"><i class="fas fa-sync-alt"></i></button>
-                        <button class="btn btn-xs btn-danger" onclick="clearRedis()"><i class="fas fa-trash"></i> پاک کردن</button>
+                <div class="db-header">
+                    <div class="db-title"><i class="fas fa-bolt" style="color:#ff4444;"></i> Redis</div>
+                    <div class="db-stats-mini" id="redisStats">
+                        <span>🔑 کلیدها: <span class="num" id="redisKeyCount">—</span></span>
+                        <span>💾 حافظه: <span class="num" id="redisMemory">—</span></span>
+                        <span>👥 کلاینت‌ها: <span class="num" id="redisClients">—</span></span>
+                    </div>
+                    <div class="db-actions">
+                        <button class="btn-xs" onclick="refreshRedis()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn-xs danger" onclick="clearRedis()"><i class="fas fa-trash"></i> پاک کردن</button>
                     </div>
                 </div>
-                <div class="db-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
-                    <div class="db-stat-card"><span class="stat-icon">🔑</span><div class="stat-value cyan" id="redisKeys">—</div><div class="stat-label">کلیدها</div></div>
-                    <div class="db-stat-card"><span class="stat-icon">💾</span><div class="stat-value green" id="redisMemory">—</div><div class="stat-label">حافظه</div></div>
-                    <div class="db-stat-card"><span class="stat-icon">👥</span><div class="stat-value orange" id="redisClients">—</div><div class="stat-label">کلاینت‌ها</div></div>
+
+                <div class="db-toolbar">
+                    <div class="toolbar-left">
+                        <input type="text" id="redisSearch" placeholder="🔍 جستجو در کلیدها..." onkeyup="filterRedisKeys()">
+                        <select id="redisTypeFilter" onchange="filterRedisKeys()">
+                            <option value="all">همه</option>
+                            <option value="string">String</option>
+                            <option value="hash">Hash</option>
+                            <option value="list">List</option>
+                            <option value="set">Set</option>
+                            <option value="zset">ZSet</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn-xs" onclick="copyRedisKeys()"><i class="fas fa-copy"></i> کپی همه</button>
+                        <button class="btn-xs" onclick="exportRedisKeys()"><i class="fas fa-download"></i> خروجی</button>
+                    </div>
                 </div>
-                <div class="table-wrap">
-                    <table class="table-modern">
-                        <thead><tr><th>کلید</th><th>نوع</th><th>TTL</th><th>مقدار (پیش‌نمایش)</th></tr></thead>
-                        <tbody id="redisTableBody"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr></tbody>
+
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>کلید</th>
+                                <th>نوع</th>
+                                <th>TTL</th>
+                                <th>مقدار (پیش‌نمایش)</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="redisTableBody">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">در حال بارگذاری...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: SQLite -->
+        <!-- ===== TAB: SQLITE ===== -->
         <div class="tab-content" id="tab-sqlite">
             <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-file" style="color:#84cc16;"></i> SQLite
-                    <div style="margin-right:auto;display:flex;gap:6px;">
-                        <input class="search-input" id="sqliteSearch" placeholder="جستجو در جدول‌ها..." onkeyup="filterSQLiteTables()">
-                        <button class="btn btn-xs btn-outline" onclick="refreshSQLite()"><i class="fas fa-sync-alt"></i></button>
+                <div class="db-header">
+                    <div class="db-title"><i class="fas fa-file" style="color:#84cc16;"></i> SQLite</div>
+                    <div class="db-stats-mini" id="sqliteStats">
+                        <span>📊 جدول‌ها: <span class="num" id="sqliteTableCount">—</span></span>
+                        <span>💾 حجم: <span class="num" id="sqliteSize">—</span></span>
+                        <span>📝 رکوردها: <span class="num" id="sqliteRows">—</span></span>
+                    </div>
+                    <div class="db-actions">
+                        <button class="btn-xs" onclick="refreshSQLite()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn-xs primary" onclick="downloadSQLite()"><i class="fas fa-download"></i> دانلود</button>
                     </div>
                 </div>
-                <div class="table-wrap">
-                    <table class="table-modern">
-                        <thead><tr><th>نام جدول</th><th>رکوردها</th><th>عملیات</th></tr></thead>
-                        <tbody id="sqliteTableBody"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);">در حال بارگذاری...</td></tr></tbody>
+
+                <div class="db-toolbar">
+                    <div class="toolbar-left">
+                        <input type="text" id="sqliteSearch" placeholder="🔍 جستجو در جدول‌ها..." onkeyup="filterSQLiteTables()">
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn-xs" onclick="copySQLiteTable()"><i class="fas fa-copy"></i> کپی همه</button>
+                        <button class="btn-xs" onclick="exportSQLiteTable()"><i class="fas fa-download"></i> خروجی</button>
+                    </div>
+                </div>
+
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>نام جدول</th>
+                                <th>رکوردها</th>
+                                <th>حجم</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sqliteTableBody">
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">در حال بارگذاری...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Monitor -->
+        <!-- ===== TAB: MONITOR ===== -->
         <div class="tab-content" id="tab-monitor">
             <div class="card">
                 <div class="card-title"><i class="fas fa-chart-line"></i> مانیتورینگ دیتابیس</div>
-                <div id="monitorContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div>
+                <div id="monitorContent">
+                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
+                </div>
             </div>
         </div>
 
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="/js/utils.js"></script>
@@ -190,13 +587,14 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DATABASE CONTROLLER - نسخه کامل
+        // DATABASE CONTROLLER - نسخه کامل نهایی
         // ============================================================
         
         let pgData = [];
         let redisData = [];
         let sqliteData = [];
         let monitorChart = null;
+        let monitorInterval = null;
 
         class DatabaseController {
             constructor() {
@@ -207,8 +605,10 @@
                 await this.loadNav();
                 this.setupTabs();
                 await this.loadAll();
+                this.startMonitorUpdate();
                 console.log('🚀 Database ready');
             }
+
             async loadNav() {
                 const container = document.getElementById('navContainer');
                 if (!container) return;
@@ -225,6 +625,7 @@
                     });
                 } catch (err) { console.error('❌ Nav error:', err); }
             }
+
             setupTabs() {
                 document.querySelectorAll('#dbTabs .tab-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -244,6 +645,7 @@
                     });
                 });
             }
+
             async loadAll() {
                 await this.loadOverview();
                 await this.loadPostgreSQL();
@@ -264,16 +666,34 @@
                         document.getElementById('dbTotal').textContent = entries.length;
                         document.getElementById('dbOnline').textContent = online;
                         document.getElementById('dbOffline').textContent = offline;
+
                         const icons = { postgresql: '🐘', redis: '⚡', sqlite: '📄' };
-                        container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">${entries.map(([name, info]) => `
-                            <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
-                                    <span style="font-weight:600;">${icons[info.type] || '📦'} ${name}</span>
-                                    <span style="color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};font-size:0.8rem;">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span>
-                                </div>
-                                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">نسخه: ${info.version || 'unknown'} • ${info.type || 'unknown'}</div>
+                        const healthColors = { postgresql: '#3366ff', redis: '#ff4444', sqlite: '#84cc16' };
+
+                        container.innerHTML = `
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+                                ${entries.map(([name, info]) => `
+                                    <div style="background:var(--bg-input);padding:16px 18px;border-radius:var(--radius-sm);border:1px solid ${info.connected ? 'var(--border-color)' : 'var(--accent-red)'};transition:var(--transition);">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                                            <div style="display:flex;align-items:center;gap:10px;">
+                                                <span style="font-size:1.5rem;">${icons[info.type] || '📦'}</span>
+                                                <div>
+                                                    <div style="font-weight:600;font-size:0.95rem;">${name}</div>
+                                                    <div style="font-size:0.65rem;color:var(--text-muted);">${info.type || 'unknown'} • v${info.version || '?'}</div>
+                                                </div>
+                                            </div>
+                                            <div style="text-align:center;">
+                                                <div style="font-size:1.3rem;font-weight:700;color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};">${info.connected ? '🟢' : '🔴'}</div>
+                                                <div style="font-size:0.55rem;color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};">${info.connected ? 'متصل' : 'قطع'}</div>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top:10px;display:flex;gap:12px;font-size:0.7rem;color:var(--text-secondary);border-top:1px solid var(--border-color);padding-top:8px;">
+                                            <span>🕐 آخرین بروزرسانی: ${info.last_check ? formatTimeAgo(info.last_check) : '—'}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
-                        `).join('')}</div>`;
+                        `;
                     }
                 } catch (err) { console.error('Overview error:', err); }
             }
@@ -285,34 +705,57 @@
                     const data = await api.getPostgreSQLTables();
                     if (data.success && data.data) {
                         pgData = data.data;
+                        document.getElementById('pgTableCount').textContent = pgData.length;
+                        // محاسبه آمار
+                        let totalSize = 0, totalRows = 0;
+                        pgData.forEach(t => { totalSize += t.size_mb || 0; totalRows += t.row_count || 0; });
+                        document.getElementById('pgSize').textContent = totalSize.toFixed(1) + ' MB';
+                        document.getElementById('pgRows').textContent = totalRows.toLocaleString();
                         document.getElementById('dbTables').textContent = pgData.length;
                         this.renderPGTable(pgData);
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در دریافت داده‌ها</td></tr>`;
                     }
                 } catch (err) {
                     console.error('PostgreSQL error:', err);
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در ارتباط با سرور</td></tr>`;
                 }
             }
 
             renderPGTable(data) {
                 const tbody = document.getElementById('pgTableBody');
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;"><span class="icon" style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>هیچ جدولی یافت نشد</td></tr>`;
                     return;
                 }
-                tbody.innerHTML = data.map(t => `
-                    <tr>
-                        <td><strong>${t.table_name}</strong></td>
-                        <td>${(t.row_count || 0).toLocaleString()}</td>
-                        <td>${(t.size_mb || 0).toFixed(2)}</td>
-                        <td>
-                            <button class="btn btn-xs btn-outline" onclick="viewTable('${t.table_name}')"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-xs btn-outline" onclick="exportTable('${t.table_name}')"><i class="fas fa-download"></i></button>
-                        </td>
-                    </tr>
-                `).join('');
+                // محاسبه بزرگترین حجم برای نوار پیشرفت
+                const maxSize = Math.max(...data.map(t => t.size_mb || 0), 1);
+                tbody.innerHTML = data.map((t, i) => {
+                    const sizePercent = ((t.size_mb || 0) / maxSize) * 100;
+                    return `
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:0.65rem;">${i + 1}</td>
+                            <td><strong>${t.table_name}</strong></td>
+                            <td>${(t.row_count || 0).toLocaleString()}</td>
+                            <td>${(t.size_mb || 0).toFixed(2)}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-size:0.6rem;color:var(--text-muted);min-width:35px;">${Math.round(sizePercent)}%</span>
+                                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;">
+                                        <div class="size-bar" style="width:${sizePercent}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn-icon copy" onclick="copyPGRow('${t.table_name}', ${i})" title="کپی رکورد"><i class="fas fa-copy"></i></button>
+                                    <button class="btn-icon download" onclick="downloadPGRow('${t.table_name}', ${i})" title="دانلود رکورد"><i class="fas fa-download"></i></button>
+                                    <button class="btn-icon" onclick="viewPGTable('${t.table_name}')" title="مشاهده"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
             // ===== REDIS =====
@@ -323,33 +766,46 @@
                     if (data.success && data.data) {
                         redisData = data.data;
                         const stats = data.stats || {};
-                        document.getElementById('redisKeys').textContent = stats.total_keys || redisData.length;
+                        document.getElementById('redisKeyCount').textContent = stats.total_keys || redisData.length;
                         document.getElementById('redisMemory').textContent = stats.memory || '—';
                         document.getElementById('redisClients').textContent = stats.clients || '—';
                         this.renderRedisTable(redisData);
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در دریافت داده‌ها</td></tr>`;
                     }
                 } catch (err) {
                     console.error('Redis error:', err);
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در ارتباط با سرور</td></tr>`;
                 }
             }
 
             renderRedisTable(data) {
                 const tbody = document.getElementById('redisTableBody');
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">🔑 هیچ کلیدی یافت نشد</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;"><span class="icon" style="font-size:2rem;display:block;margin-bottom:8px;">🔑</span>هیچ کلیدی یافت نشد</td></tr>`;
                     return;
                 }
-                tbody.innerHTML = data.slice(0, 100).map(k => `
-                    <tr onclick="showRedisValue('${k.key}')" style="cursor:pointer;">
-                        <td style="font-family:var(--font-mono);font-size:0.7rem;">${k.key}</td>
-                        <td><span class="badge badge-cyan">${k.type}</span></td>
-                        <td>${k.ttl}</td>
-                        <td style="font-size:0.65rem;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${k.value ? (typeof k.value === 'object' ? JSON.stringify(k.value).slice(0, 50) : String(k.value).slice(0, 50)) : '—'}</td>
-                    </tr>
-                `).join('');
+                const typeClasses = { string: 'string', hash: 'hash', list: 'list', set: 'set', zset: 'zset' };
+                tbody.innerHTML = data.slice(0, 100).map((k, i) => {
+                    const typeClass = typeClasses[k.type] || 'string';
+                    const preview = k.value ? (typeof k.value === 'object' ? JSON.stringify(k.value).slice(0, 40) : String(k.value).slice(0, 40)) : '—';
+                    return `
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:0.65rem;">${i + 1}</td>
+                            <td style="font-family:var(--font-mono);font-size:0.7rem;">${k.key}</td>
+                            <td><span class="badge-type ${typeClass}">${k.type}</span></td>
+                            <td>${k.ttl}</td>
+                            <td style="font-size:0.65rem;color:var(--text-secondary);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn-icon copy" onclick="copyRedisKey('${k.key}')" title="کپی کلید"><i class="fas fa-copy"></i></button>
+                                    <button class="btn-icon download" onclick="downloadRedisKey('${k.key}')" title="دانلود کلید"><i class="fas fa-download"></i></button>
+                                    <button class="btn-icon" onclick="viewRedisKey('${k.key}')" title="مشاهده مقدار"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
             // ===== SQLITE =====
@@ -359,32 +815,49 @@
                     const data = await api.getSQLiteTables();
                     if (data.success && data.data) {
                         sqliteData = data.data;
+                        document.getElementById('sqliteTableCount').textContent = sqliteData.length;
+                        let totalRows = 0;
+                        sqliteData.forEach(t => { totalRows += t.row_count || 0; });
+                        document.getElementById('sqliteRows').textContent = totalRows.toLocaleString();
+                        // حجم تقریبی
+                        const sizeResult = await api.getSQLiteStats();
+                        if (sizeResult.success && sizeResult.data) {
+                            document.getElementById('sqliteSize').textContent = sizeResult.data.size_mb + ' MB';
+                        }
                         this.renderSQLiteTable(sqliteData);
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
+                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در دریافت داده‌ها</td></tr>`;
                     }
                 } catch (err) {
                     console.error('SQLite error:', err);
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--accent-red);padding:20px;">❌ خطا در ارتباط با سرور</td></tr>`;
                 }
             }
 
             renderSQLiteTable(data) {
                 const tbody = document.getElementById('sqliteTableBody');
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;"><span class="icon" style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>هیچ جدولی یافت نشد</td></tr>`;
                     return;
                 }
-                tbody.innerHTML = data.map(t => `
-                    <tr>
-                        <td><strong>${t.table_name}</strong></td>
-                        <td>${(t.row_count || 0).toLocaleString()}</td>
-                        <td>
-                            <button class="btn btn-xs btn-outline" onclick="viewSQLiteTable('${t.table_name}')"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-xs btn-outline" onclick="exportSQLiteTable('${t.table_name}')"><i class="fas fa-download"></i></button>
-                        </td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = data.map((t, i) => {
+                    const size = t.size_mb ? t.size_mb.toFixed(2) : '—';
+                    return `
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:0.65rem;">${i + 1}</td>
+                            <td><strong>${t.table_name}</strong></td>
+                            <td>${(t.row_count || 0).toLocaleString()}</td>
+                            <td>${size} MB</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn-icon copy" onclick="copySQLiteRow('${t.table_name}', ${i})" title="کپی رکورد"><i class="fas fa-copy"></i></button>
+                                    <button class="btn-icon download" onclick="downloadSQLiteRow('${t.table_name}', ${i})" title="دانلود رکورد"><i class="fas fa-download"></i></button>
+                                    <button class="btn-icon" onclick="viewSQLiteTable('${t.table_name}')" title="مشاهده"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
             // ===== MONITOR =====
@@ -396,7 +869,9 @@
                         const entries = Object.entries(data.data);
                         let online = 0;
                         entries.forEach(([_, info]) => { if (info.connected) online++; });
-                        
+
+                        const icons = { postgresql: '🐘', redis: '⚡', sqlite: '📄' };
+
                         let html = `
                             <div class="monitor-grid">
                                 <div class="monitor-card">
@@ -412,21 +887,29 @@
                                     <div class="m-label">📊 کل</div>
                                 </div>
                             </div>
-                            <div style="display:grid;gap:6px;margin-bottom:16px;">
+
+                            <div class="monitor-status-list">
                                 ${entries.map(([name, info]) => `
-                                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                        <span><strong>${name}</strong> <span style="color:var(--text-muted);font-size:0.65rem;">${info.type || ''}</span></span>
-                                        <span style="color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span>
+                                    <div class="monitor-status-item">
+                                        <div class="name">
+                                            <span class="icon">${icons[info.type] || '📦'}</span>
+                                            ${name}
+                                            <span style="font-size:0.55rem;color:var(--text-muted);">${info.type || ''}</span>
+                                        </div>
+                                        <div class="status ${info.connected ? 'online' : 'offline'}">
+                                            ${info.connected ? '🟢 متصل' : '🔴 قطع'}
+                                            ${info.version ? `• v${info.version}` : ''}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
+
                             <div class="monitor-chart-wrapper">
                                 <canvas id="monitorChart"></canvas>
                             </div>
                         `;
                         container.innerHTML = html;
-                        
-                        // رسم نمودار
+
                         this.initMonitorChart(entries);
                     }
                 } catch (err) { console.error('Monitor error:', err); }
@@ -435,15 +918,13 @@
             initMonitorChart(entries) {
                 const ctx = document.getElementById('monitorChart')?.getContext('2d');
                 if (!ctx) return;
-                
-                if (monitorChart) {
-                    monitorChart.destroy();
-                }
-                
+                if (monitorChart) { monitorChart.destroy(); }
+
                 const labels = entries.map(([name]) => name);
                 const data = entries.map(([_, info]) => info.connected ? 1 : 0);
                 const colors = data.map(v => v === 1 ? '#22d3ee' : '#ef4444');
-                
+                const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
+
                 monitorChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -462,10 +943,7 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                labels: {
-                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
-                                    font: { size: 10 }
-                                }
+                                labels: { color: textColor, font: { size: 10 } }
                             }
                         },
                         scales: {
@@ -475,34 +953,74 @@
                                 ticks: {
                                     stepSize: 1,
                                     callback: v => v === 1 ? '✅ متصل' : '❌ قطع',
-                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8'
+                                    color: textColor
                                 },
                                 grid: { color: 'rgba(255,255,255,0.05)' }
                             },
                             x: {
-                                ticks: {
-                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8'
-                                },
+                                ticks: { color: textColor },
                                 grid: { display: false }
                             }
                         }
                     }
                 });
             }
+
+            startMonitorUpdate() {
+                if (monitorInterval) clearInterval(monitorInterval);
+                monitorInterval = setInterval(() => {
+                    // فقط اگر تب مانیتورینگ فعال باشه
+                    const activeTab = document.querySelector('#dbTabs .tab-btn.active');
+                    if (activeTab && activeTab.dataset.tab === 'monitor') {
+                        this.loadMonitor();
+                    }
+                }, 10000);
+            }
         }
 
         // ============================================================
-        // GLOBAL FUNCTIONS
+        // FILTER FUNCTIONS
         // ============================================================
 
-        // ===== PostgreSQL =====
         function filterPGTables() {
             const search = document.getElementById('pgSearch').value.toLowerCase();
-            const filtered = pgData.filter(t => t.table_name.toLowerCase().includes(search));
+            const filter = document.getElementById('pgFilter').value;
+            let filtered = pgData.filter(t => t.table_name.toLowerCase().includes(search));
+            
+            if (filter === 'large') {
+                filtered = filtered.filter(t => (t.size_mb || 0) > 10);
+            } else if (filter === 'medium') {
+                filtered = filtered.filter(t => (t.size_mb || 0) >= 1 && (t.size_mb || 0) <= 10);
+            } else if (filter === 'small') {
+                filtered = filtered.filter(t => (t.size_mb || 0) < 1);
+            }
+            
             if (window.dbController) window.dbController.renderPGTable(filtered);
         }
 
-        async function viewTable(tableName) {
+        function filterRedisKeys() {
+            const search = document.getElementById('redisSearch').value.toLowerCase();
+            const typeFilter = document.getElementById('redisTypeFilter').value;
+            let filtered = redisData.filter(k => k.key.toLowerCase().includes(search));
+            
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(k => k.type === typeFilter);
+            }
+            
+            if (window.dbController) window.dbController.renderRedisTable(filtered);
+        }
+
+        function filterSQLiteTables() {
+            const search = document.getElementById('sqliteSearch').value.toLowerCase();
+            const filtered = sqliteData.filter(t => t.table_name.toLowerCase().includes(search));
+            if (window.dbController) window.dbController.renderSQLiteTable(filtered);
+        }
+
+        // ============================================================
+        // POSTGRESQL ACTIONS
+        // ============================================================
+
+        async function viewPGTable(tableName) {
             try {
                 const data = await api.getPostgreSQLTableData(tableName, { limit: 20 });
                 if (data.success && data.data) {
@@ -519,10 +1037,23 @@
             } catch (err) { showToast('❌ خطا در دریافت داده‌ها', 'error'); }
         }
 
-        async function exportTable(tableName) {
+        async function copyPGRow(tableName, index) {
+            const row = pgData[index];
+            if (!row) return;
             try {
-                api.exportPostgreSQLTable(tableName);
-                showToast(`📥 دانلود ${tableName} شروع شد`, 'success');
+                const data = await api.exportPostgreSQLRow(tableName, row.row_id || 1);
+                if (data.success && data.data) {
+                    copyToClipboard(JSON.stringify(data.data.row, null, 2));
+                }
+            } catch (err) { showToast('❌ خطا در کپی', 'error'); }
+        }
+
+        async function downloadPGRow(tableName, index) {
+            const row = pgData[index];
+            if (!row) return;
+            try {
+                api.exportPostgreSQLRow(tableName, row.row_id || 1, 'csv');
+                showToast(`📥 دانلود شروع شد`, 'success');
             } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
         }
 
@@ -535,14 +1066,30 @@
             showToast('📥 دانلود بک‌آپ شروع شد', 'success');
         }
 
-        // ===== Redis =====
-        function filterRedisKeys() {
-            const search = document.getElementById('redisSearch').value.toLowerCase();
-            const filtered = redisData.filter(k => k.key.toLowerCase().includes(search));
-            if (window.dbController) window.dbController.renderRedisTable(filtered);
+        function copyPGTable() {
+            const text = pgData.map(t => `${t.table_name}\t${t.row_count || 0}\t${(t.size_mb || 0).toFixed(2)}`).join('\n');
+            copyToClipboard('نام جدول\tرکوردها\tحجم (MB)\n' + text);
         }
 
-        async function showRedisValue(key) {
+        function exportPGTable() {
+            const headers = ['نام جدول', 'رکوردها', 'حجم (MB)'];
+            const rows = pgData.map(t => [t.table_name, t.row_count || 0, (t.size_mb || 0).toFixed(2)]);
+            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `postgresql_tables_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('📥 دانلود شروع شد', 'success');
+        }
+
+        // ============================================================
+        // REDIS ACTIONS
+        // ============================================================
+
+        async function viewRedisKey(key) {
             try {
                 const data = await api.getRedisKey(key);
                 if (data.success) {
@@ -554,6 +1101,26 @@
                     alert(`❌ خطا: ${data.error || 'مشخص نیست'}`);
                 }
             } catch (err) { alert(`❌ خطا: ${err.message}`); }
+        }
+
+        function copyRedisKey(key) {
+            copyToClipboard(key);
+        }
+
+        async function downloadRedisKey(key) {
+            try {
+                const data = await api.exportRedisKey(key);
+                if (data.success) {
+                    const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `redis_${key}_${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('📥 دانلود شروع شد', 'success');
+                }
+            } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
         }
 
         function refreshRedis() {
@@ -571,12 +1138,25 @@
             } catch (err) { showToast('❌ خطا در پاک کردن کش', 'error'); }
         }
 
-        // ===== SQLite =====
-        function filterSQLiteTables() {
-            const search = document.getElementById('sqliteSearch').value.toLowerCase();
-            const filtered = sqliteData.filter(t => t.table_name.toLowerCase().includes(search));
-            if (window.dbController) window.dbController.renderSQLiteTable(filtered);
+        function copyRedisKeys() {
+            const text = redisData.map(k => `${k.key}\t${k.type}\t${k.ttl}`).join('\n');
+            copyToClipboard('کلید\tنوع\tTTL\n' + text);
         }
+
+        function exportRedisKeys() {
+            const blob = new Blob([JSON.stringify(redisData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `redis_keys_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('📥 دانلود شروع شد', 'success');
+        }
+
+        // ============================================================
+        // SQLITE ACTIONS
+        // ============================================================
 
         async function viewSQLiteTable(tableName) {
             try {
@@ -595,15 +1175,52 @@
             } catch (err) { showToast('❌ خطا در دریافت داده‌ها', 'error'); }
         }
 
-        async function exportSQLiteTable(tableName) {
+        async function copySQLiteRow(tableName, index) {
+            const row = sqliteData[index];
+            if (!row) return;
             try {
-                api.exportSQLiteTable(tableName);
-                showToast(`📥 دانلود ${tableName} شروع شد`, 'success');
+                const data = await api.exportSQLiteRow(tableName, row.row_id || 1);
+                if (data.success && data.data) {
+                    copyToClipboard(JSON.stringify(data.data.row, null, 2));
+                }
+            } catch (err) { showToast('❌ خطا در کپی', 'error'); }
+        }
+
+        async function downloadSQLiteRow(tableName, index) {
+            const row = sqliteData[index];
+            if (!row) return;
+            try {
+                api.exportSQLiteRow(tableName, row.row_id || 1, 'csv');
+                showToast(`📥 دانلود شروع شد`, 'success');
             } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
         }
 
         function refreshSQLite() {
             if (window.dbController) window.dbController.loadSQLite();
+        }
+
+        function downloadSQLite() {
+            // دانلود فایل SQLite
+            showToast('🔧 در حال توسعه', 'info');
+        }
+
+        function copySQLiteTable() {
+            const text = sqliteData.map(t => `${t.table_name}\t${t.row_count || 0}`).join('\n');
+            copyToClipboard('نام جدول\tرکوردها\n' + text);
+        }
+
+        function exportSQLiteTable() {
+            const headers = ['نام جدول', 'رکوردها'];
+            const rows = sqliteData.map(t => [t.table_name, t.row_count || 0]);
+            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sqlite_tables_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('📥 دانلود شروع شد', 'success');
         }
 
         // ============================================================
