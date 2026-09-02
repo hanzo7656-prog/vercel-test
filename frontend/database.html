@@ -6,6 +6,7 @@
     <title>مدیریت دیتابیس</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .db-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
         .db-stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px 16px; text-align: center; transition: var(--transition); }
@@ -44,7 +45,18 @@
         .table-toolbar .search-input { padding: 4px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.75rem; font-family: inherit; min-width: 150px; }
         .table-toolbar .search-input:focus { outline: none; border-color: var(--accent-cyan); }
 
-        @media (max-width: 1024px) { .db-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        .monitor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+        .monitor-card { background: var(--bg-input); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center; }
+        .monitor-card .m-value { font-size: 1.8rem; font-weight: 700; font-family: var(--font-mono); }
+        .monitor-card .m-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .monitor-card .m-value.green { color: var(--accent-green); }
+        .monitor-card .m-value.red { color: var(--accent-red); }
+        .monitor-card .m-value.orange { color: var(--accent-orange); }
+        .monitor-card .m-value.cyan { color: var(--accent-cyan); }
+
+        .monitor-chart-wrapper { height: 160px; position: relative; margin-top: 12px; }
+
+        @media (max-width: 1024px) { .db-stats-grid { grid-template-columns: repeat(2, 1fr); } .monitor-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) {
             .db-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
             .db-stat-card { padding: 10px 12px; }
@@ -56,6 +68,7 @@
             .db-result-item .result-preview { max-width: 100%; white-space: normal; }
             .table-toolbar { flex-direction: column; align-items: stretch; }
             .table-toolbar .search-input { width: 100%; }
+            .monitor-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 480px) { .db-stats-grid { grid-template-columns: 1fr 1fr; } .db-stat-card .stat-value { font-size: 0.8rem; } }
     </style>
@@ -71,6 +84,7 @@
             <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
+        <!-- Stats -->
         <div class="db-stats-grid" id="dbStats">
             <div class="db-stat-card"><span class="stat-icon">🗄️</span><div class="stat-value cyan" id="dbTotal">—</div><div class="stat-label">کل دیتابیس‌ها</div></div>
             <div class="db-stat-card"><span class="stat-icon">🟢</span><div class="stat-value green" id="dbOnline">—</div><div class="stat-label">متصل</div></div>
@@ -78,22 +92,34 @@
             <div class="db-stat-card"><span class="stat-icon">📊</span><div class="stat-value orange" id="dbTables">—</div><div class="stat-label">جدول‌ها</div></div>
         </div>
 
+        <!-- Tabs -->
         <div class="tabs" id="dbTabs">
             <button class="tab-btn active" data-tab="overview">📊 نمای کلی</button>
             <button class="tab-btn" data-tab="postgresql">🐘 PostgreSQL</button>
             <button class="tab-btn" data-tab="redis">⚡ Redis</button>
             <button class="tab-btn" data-tab="sqlite">📄 SQLite</button>
-            <button class="tab-btn" data-tab="explorer">🔍 کاوشگر</button>
             <button class="tab-btn" data-tab="monitor">📈 مانیتورینگ</button>
         </div>
 
+        <!-- Tab: Overview -->
         <div class="tab-content active" id="tab-overview">
-            <div class="card"><div class="card-title"><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</div><div id="overviewContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div></div>
+            <div class="card">
+                <div class="card-title"><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</div>
+                <div id="overviewContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div>
+            </div>
         </div>
 
+        <!-- Tab: PostgreSQL -->
         <div class="tab-content" id="tab-postgresql">
             <div class="card">
-                <div class="card-title"><i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL<div style="margin-right:auto;display:flex;gap:6px;"><button class="btn btn-xs btn-outline" onclick="refreshPostgreSQL()"><i class="fas fa-sync-alt"></i></button><button class="btn btn-xs btn-outline" onclick="backupPostgreSQL()"><i class="fas fa-download"></i> بک‌آپ</button></div></div>
+                <div class="card-title">
+                    <i class="fas fa-database" style="color:#3366ff;"></i> PostgreSQL
+                    <div style="margin-right:auto;display:flex;gap:6px;">
+                        <input class="search-input" id="pgSearch" placeholder="جستجو در جدول‌ها..." onkeyup="filterPGTables()">
+                        <button class="btn btn-xs btn-outline" onclick="refreshPostgreSQL()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn btn-xs btn-outline" onclick="backupPostgreSQL()"><i class="fas fa-download"></i> بک‌آپ</button>
+                    </div>
+                </div>
                 <div class="table-wrap">
                     <table class="table-modern">
                         <thead><tr><th>نام جدول</th><th>رکوردها</th><th>حجم (MB)</th><th>عملیات</th></tr></thead>
@@ -103,9 +129,17 @@
             </div>
         </div>
 
+        <!-- Tab: Redis -->
         <div class="tab-content" id="tab-redis">
             <div class="card">
-                <div class="card-title"><i class="fas fa-bolt" style="color:#ff4444;"></i> Redis<div style="margin-right:auto;display:flex;gap:6px;"><button class="btn btn-xs btn-outline" onclick="refreshRedis()"><i class="fas fa-sync-alt"></i></button><button class="btn btn-xs btn-danger" onclick="clearRedis()"><i class="fas fa-trash"></i> پاک کردن</button></div></div>
+                <div class="card-title">
+                    <i class="fas fa-bolt" style="color:#ff4444;"></i> Redis
+                    <div style="margin-right:auto;display:flex;gap:6px;">
+                        <input class="search-input" id="redisSearch" placeholder="جستجو در کلیدها..." onkeyup="filterRedisKeys()">
+                        <button class="btn btn-xs btn-outline" onclick="refreshRedis()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn btn-xs btn-danger" onclick="clearRedis()"><i class="fas fa-trash"></i> پاک کردن</button>
+                    </div>
+                </div>
                 <div class="db-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
                     <div class="db-stat-card"><span class="stat-icon">🔑</span><div class="stat-value cyan" id="redisKeys">—</div><div class="stat-label">کلیدها</div></div>
                     <div class="db-stat-card"><span class="stat-icon">💾</span><div class="stat-value green" id="redisMemory">—</div><div class="stat-label">حافظه</div></div>
@@ -120,9 +154,16 @@
             </div>
         </div>
 
+        <!-- Tab: SQLite -->
         <div class="tab-content" id="tab-sqlite">
             <div class="card">
-                <div class="card-title"><i class="fas fa-file" style="color:#84cc16;"></i> SQLite<div style="margin-right:auto;display:flex;gap:6px;"><button class="btn btn-xs btn-outline" onclick="refreshSQLite()"><i class="fas fa-sync-alt"></i></button></div></div>
+                <div class="card-title">
+                    <i class="fas fa-file" style="color:#84cc16;"></i> SQLite
+                    <div style="margin-right:auto;display:flex;gap:6px;">
+                        <input class="search-input" id="sqliteSearch" placeholder="جستجو در جدول‌ها..." onkeyup="filterSQLiteTables()">
+                        <button class="btn btn-xs btn-outline" onclick="refreshSQLite()"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
                 <div class="table-wrap">
                     <table class="table-modern">
                         <thead><tr><th>نام جدول</th><th>رکوردها</th><th>عملیات</th></tr></thead>
@@ -132,18 +173,7 @@
             </div>
         </div>
 
-        <div class="tab-content" id="tab-explorer">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-search"></i> کاوشگر دیتابیس</div>
-                <div class="db-search">
-                    <input type="text" id="explorerSearch" placeholder="جستجو در دیتابیس..." onkeypress="if(event.key==='Enter') searchExplorer()">
-                    <button class="btn btn-primary" onclick="searchExplorer()"><i class="fas fa-search"></i> جستجو</button>
-                    <button class="btn" onclick="clearExplorer()"><i class="fas fa-times"></i> پاک کردن</button>
-                </div>
-                <div id="explorerResults"><div style="text-align:center;padding:20px;color:var(--text-muted);">🔍 عبارت مورد نظر را وارد کنید</div></div>
-            </div>
-        </div>
-
+        <!-- Tab: Monitor -->
         <div class="tab-content" id="tab-monitor">
             <div class="card">
                 <div class="card-title"><i class="fas fa-chart-line"></i> مانیتورینگ دیتابیس</div>
@@ -159,6 +189,15 @@
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
     <script>
+        // ============================================================
+        // DATABASE CONTROLLER - نسخه کامل
+        // ============================================================
+        
+        let pgData = [];
+        let redisData = [];
+        let sqliteData = [];
+        let monitorChart = null;
+
         class DatabaseController {
             constructor() {
                 this.init();
@@ -212,6 +251,8 @@
                 await this.loadSQLite();
                 await this.loadMonitor();
             }
+
+            // ===== OVERVIEW =====
             async loadOverview() {
                 const container = document.getElementById('overviewContent');
                 try {
@@ -236,64 +277,117 @@
                     }
                 } catch (err) { console.error('Overview error:', err); }
             }
+
+            // ===== POSTGRESQL =====
             async loadPostgreSQL() {
                 const tbody = document.getElementById('pgTableBody');
                 try {
                     const data = await api.getPostgreSQLTables();
                     if (data.success && data.data) {
-                        const tables = data.data;
-                        document.getElementById('dbTables').textContent = tables.length;
-                        if (tables.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>'; return; }
-                        tbody.innerHTML = tables.map(t => `
-                            <tr>
-                                <td><strong>${t.table_name}</strong></td>
-                                <td>${(t.row_count || 0).toLocaleString()}</td>
-                                <td>${(t.size_mb || 0).toFixed(2)}</td>
-                                <td><button class="btn btn-xs btn-outline" onclick="viewTable('${t.table_name}')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-outline" onclick="exportTable('${t.table_name}')"><i class="fas fa-download"></i></button></td>
-                            </tr>
-                        `).join('');
+                        pgData = data.data;
+                        document.getElementById('dbTables').textContent = pgData.length;
+                        this.renderPGTable(pgData);
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
                     }
-                } catch (err) { console.error('PostgreSQL error:', err); }
+                } catch (err) {
+                    console.error('PostgreSQL error:', err);
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                }
             }
+
+            renderPGTable(data) {
+                const tbody = document.getElementById('pgTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(t => `
+                    <tr>
+                        <td><strong>${t.table_name}</strong></td>
+                        <td>${(t.row_count || 0).toLocaleString()}</td>
+                        <td>${(t.size_mb || 0).toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-xs btn-outline" onclick="viewTable('${t.table_name}')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-xs btn-outline" onclick="exportTable('${t.table_name}')"><i class="fas fa-download"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // ===== REDIS =====
             async loadRedis() {
                 const tbody = document.getElementById('redisTableBody');
                 try {
                     const data = await api.getRedisKeys();
                     if (data.success && data.data) {
-                        const keys = data.data;
+                        redisData = data.data;
                         const stats = data.stats || {};
-                        document.getElementById('redisKeys').textContent = stats.total_keys || keys.length;
+                        document.getElementById('redisKeys').textContent = stats.total_keys || redisData.length;
                         document.getElementById('redisMemory').textContent = stats.memory || '—';
                         document.getElementById('redisClients').textContent = stats.clients || '—';
-                        if (keys.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">🔑 هیچ کلیدی یافت نشد</td></tr>'; return; }
-                        tbody.innerHTML = keys.slice(0, 50).map(k => `
-                            <tr onclick="showRedisValue('${k.key}')" style="cursor:pointer;">
-                                <td style="font-family:var(--font-mono);font-size:0.7rem;">${k.key}</td>
-                                <td><span class="badge badge-cyan">${k.type}</span></td>
-                                <td>${k.ttl}</td>
-                                <td style="font-size:0.65rem;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${k.value ? (typeof k.value === 'object' ? JSON.stringify(k.value).slice(0, 50) : String(k.value).slice(0, 50)) : '—'}</td>
-                            </tr>
-                        `).join('');
+                        this.renderRedisTable(redisData);
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
                     }
-                } catch (err) { console.error('Redis error:', err); }
+                } catch (err) {
+                    console.error('Redis error:', err);
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                }
             }
+
+            renderRedisTable(data) {
+                const tbody = document.getElementById('redisTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">🔑 هیچ کلیدی یافت نشد</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.slice(0, 100).map(k => `
+                    <tr onclick="showRedisValue('${k.key}')" style="cursor:pointer;">
+                        <td style="font-family:var(--font-mono);font-size:0.7rem;">${k.key}</td>
+                        <td><span class="badge badge-cyan">${k.type}</span></td>
+                        <td>${k.ttl}</td>
+                        <td style="font-size:0.65rem;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${k.value ? (typeof k.value === 'object' ? JSON.stringify(k.value).slice(0, 50) : String(k.value).slice(0, 50)) : '—'}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // ===== SQLITE =====
             async loadSQLite() {
                 const tbody = document.getElementById('sqliteTableBody');
                 try {
                     const data = await api.getSQLiteTables();
                     if (data.success && data.data) {
-                        const tables = data.data;
-                        if (tables.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>'; return; }
-                        tbody.innerHTML = tables.map(t => `
-                            <tr>
-                                <td><strong>${t.table_name}</strong></td>
-                                <td>${(t.row_count || 0).toLocaleString()}</td>
-                                <td><button class="btn btn-xs btn-outline" onclick="viewSQLiteTable('${t.table_name}')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-outline" onclick="exportSQLiteTable('${t.table_name}')"><i class="fas fa-download"></i></button></td>
-                            </tr>
-                        `).join('');
+                        sqliteData = data.data;
+                        this.renderSQLiteTable(sqliteData);
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا در دریافت داده‌ها</td></tr>';
                     }
-                } catch (err) { console.error('SQLite error:', err); }
+                } catch (err) {
+                    console.error('SQLite error:', err);
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-red);">❌ خطا در ارتباط</td></tr>';
+                }
             }
+
+            renderSQLiteTable(data) {
+                const tbody = document.getElementById('sqliteTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">📭 هیچ جدولی یافت نشد</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(t => `
+                    <tr>
+                        <td><strong>${t.table_name}</strong></td>
+                        <td>${(t.row_count || 0).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-xs btn-outline" onclick="viewSQLiteTable('${t.table_name}')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-xs btn-outline" onclick="exportSQLiteTable('${t.table_name}')"><i class="fas fa-download"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // ===== MONITOR =====
             async loadMonitor() {
                 const container = document.getElementById('monitorContent');
                 try {
@@ -302,28 +396,112 @@
                         const entries = Object.entries(data.data);
                         let online = 0;
                         entries.forEach(([_, info]) => { if (info.connected) online++; });
-                        container.innerHTML = `
-                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;">
-                                <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-color);"><div style="font-size:0.55rem;color:var(--text-muted);">🟢 متصل</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent-green);">${online}</div></div>
-                                <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-color);"><div style="font-size:0.55rem;color:var(--text-muted);">🔴 قطع</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent-red);">${entries.length - online}</div></div>
-                                <div style="background:var(--bg-input);padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-color);"><div style="font-size:0.55rem;color:var(--text-muted);">📊 کل</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent-cyan);">${entries.length}</div></div>
-                            </div>
-                            ${entries.map(([name, info]) => `
-                                <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:4px;">
-                                    <span><strong>${name}</strong> <span style="color:var(--text-muted);font-size:0.65rem;">${info.type || ''}</span></span>
-                                    <span style="color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span>
+                        
+                        let html = `
+                            <div class="monitor-grid">
+                                <div class="monitor-card">
+                                    <div class="m-value green">${online}</div>
+                                    <div class="m-label">🟢 متصل</div>
                                 </div>
-                            `).join('')}
+                                <div class="monitor-card">
+                                    <div class="m-value red">${entries.length - online}</div>
+                                    <div class="m-label">🔴 قطع</div>
+                                </div>
+                                <div class="monitor-card">
+                                    <div class="m-value cyan">${entries.length}</div>
+                                    <div class="m-label">📊 کل</div>
+                                </div>
+                            </div>
+                            <div style="display:grid;gap:6px;margin-bottom:16px;">
+                                ${entries.map(([name, info]) => `
+                                    <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                                        <span><strong>${name}</strong> <span style="color:var(--text-muted);font-size:0.65rem;">${info.type || ''}</span></span>
+                                        <span style="color:${info.connected ? 'var(--accent-green)' : 'var(--accent-red)'};">${info.connected ? '🟢 متصل' : '🔴 قطع'}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="monitor-chart-wrapper">
+                                <canvas id="monitorChart"></canvas>
+                            </div>
                         `;
+                        container.innerHTML = html;
+                        
+                        // رسم نمودار
+                        this.initMonitorChart(entries);
                     }
                 } catch (err) { console.error('Monitor error:', err); }
+            }
+
+            initMonitorChart(entries) {
+                const ctx = document.getElementById('monitorChart')?.getContext('2d');
+                if (!ctx) return;
+                
+                if (monitorChart) {
+                    monitorChart.destroy();
+                }
+                
+                const labels = entries.map(([name]) => name);
+                const data = entries.map(([_, info]) => info.connected ? 1 : 0);
+                const colors = data.map(v => v === 1 ? '#22d3ee' : '#ef4444');
+                
+                monitorChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'وضعیت اتصال',
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: colors.map(c => c),
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8',
+                                    font: { size: 10 }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 1.5,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: v => v === 1 ? '✅ متصل' : '❌ قطع',
+                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8'
+                                },
+                                grid: { color: 'rgba(255,255,255,0.05)' }
+                            },
+                            x: {
+                                ticks: {
+                                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8'
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
             }
         }
 
         // ============================================================
         // GLOBAL FUNCTIONS
         // ============================================================
-        
+
+        // ===== PostgreSQL =====
+        function filterPGTables() {
+            const search = document.getElementById('pgSearch').value.toLowerCase();
+            const filtered = pgData.filter(t => t.table_name.toLowerCase().includes(search));
+            if (window.dbController) window.dbController.renderPGTable(filtered);
+        }
+
         async function viewTable(tableName) {
             try {
                 const data = await api.getPostgreSQLTableData(tableName, { limit: 20 });
@@ -332,70 +510,41 @@
                     const columns = data.data.columns || [];
                     if (rows.length === 0) { showToast(`📭 جدول ${tableName} خالی است`, 'info'); return; }
                     let msg = `📋 جدول: ${tableName}\n📊 ${rows.length} رکورد\n\n${columns.join(' | ')}\n${'─'.repeat(50)}\n`;
-                    rows.slice(0, 5).forEach(row => {
+                    rows.slice(0, 10).forEach(row => {
                         msg += columns.map(c => String(row[c] || '').slice(0, 20)).join(' | ') + '\n';
                     });
-                    if (rows.length > 5) msg += `\n... و ${rows.length - 5} رکورد دیگر`;
+                    if (rows.length > 10) msg += `\n... و ${rows.length - 10} رکورد دیگر`;
                     alert(msg);
                 }
             } catch (err) { showToast('❌ خطا در دریافت داده‌ها', 'error'); }
         }
-        
+
         async function exportTable(tableName) {
             try {
                 api.exportPostgreSQLTable(tableName);
                 showToast(`📥 دانلود ${tableName} شروع شد`, 'success');
             } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
         }
-        
-        async function viewSQLiteTable(tableName) {
-            try {
-                const data = await api.getSQLiteTableData(tableName, { limit: 20 });
-                if (data.success && data.data) {
-                    const rows = data.data.rows || [];
-                    const columns = data.data.columns || [];
-                    if (rows.length === 0) { showToast(`📭 جدول ${tableName} خالی است`, 'info'); return; }
-                    let msg = `📋 جدول: ${tableName}\n📊 ${rows.length} رکورد\n\n${columns.join(' | ')}\n${'─'.repeat(50)}\n`;
-                    rows.slice(0, 5).forEach(row => {
-                        msg += columns.map(c => String(row[c] || '').slice(0, 20)).join(' | ') + '\n';
-                    });
-                    if (rows.length > 5) msg += `\n... و ${rows.length - 5} رکورد دیگر`;
-                    alert(msg);
-                }
-            } catch (err) { showToast('❌ خطا در دریافت داده‌ها', 'error'); }
+
+        function refreshPostgreSQL() {
+            if (window.dbController) window.dbController.loadPostgreSQL();
         }
-        
-        async function exportSQLiteTable(tableName) {
-            try {
-                api.exportSQLiteTable(tableName);
-                showToast(`📥 دانلود ${tableName} شروع شد`, 'success');
-            } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
-        }
-        
-        function refreshPostgreSQL() { if (window.dbController) window.dbController.loadPostgreSQL(); }
-        function refreshRedis() { if (window.dbController) window.dbController.loadRedis(); }
-        function refreshSQLite() { if (window.dbController) window.dbController.loadSQLite(); }
-        
+
         function backupPostgreSQL() {
             api.backupPostgreSQL();
             showToast('📥 دانلود بک‌آپ شروع شد', 'success');
         }
-        
-        async function clearRedis() {
-            if (!confirm('⚠️ آیا از پاک کردن همه کلیدهای Redis اطمینان دارید؟')) return;
-            try {
-                const data = await api.clearRedis(true);
-                if (data.success) {
-                    showToast('🗑️ کش Redis پاک شد', 'success');
-                    if (window.dbController) window.dbController.loadRedis();
-                }
-            } catch (err) { showToast('❌ خطا در پاک کردن کش', 'error'); }
+
+        // ===== Redis =====
+        function filterRedisKeys() {
+            const search = document.getElementById('redisSearch').value.toLowerCase();
+            const filtered = redisData.filter(k => k.key.toLowerCase().includes(search));
+            if (window.dbController) window.dbController.renderRedisTable(filtered);
         }
-        
+
         async function showRedisValue(key) {
             try {
-                const res = await fetch(`/api/db/redis/key/${encodeURIComponent(key)}`, { credentials: 'include' });
-                const data = await res.json();
+                const data = await api.getRedisKey(key);
                 if (data.success) {
                     const value = data.data.value;
                     let displayValue = value;
@@ -406,33 +555,60 @@
                 }
             } catch (err) { alert(`❌ خطا: ${err.message}`); }
         }
-        
-        async function searchExplorer() {
-            const q = document.getElementById('explorerSearch').value.trim();
-            const results = document.getElementById('explorerResults');
-            if (!q) { results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">🔍 عبارت مورد نظر را وارد کنید</div>'; return; }
-            results.innerHTML = `<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال جستجو...</p></div>`;
+
+        function refreshRedis() {
+            if (window.dbController) window.dbController.loadRedis();
+        }
+
+        async function clearRedis() {
+            if (!confirm('⚠️ آیا از پاک کردن همه کلیدهای Redis اطمینان دارید؟')) return;
             try {
-                const data = await api.searchDatabase(q);
-                if (data.success && data.data) {
-                    const items = data.data;
-                    if (items.length === 0) { results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">🔍 نتیجه‌ای یافت نشد</div>'; return; }
-                    results.innerHTML = items.map(item => `
-                        <div class="db-result-item">
-                            <div><span class="result-table">📋 ${item.table}</span><span class="result-count">${item.count} نتیجه</span></div>
-                            <div class="result-preview">${item.rows && item.rows.length > 0 ? JSON.stringify(item.rows[0]).slice(0, 150) : 'هیچ داده‌ای یافت نشد'}</div>
-                            <div class="result-actions"><button class="btn-xs" onclick="copyToClipboard('${JSON.stringify(item.rows).slice(0, 200)}')"><i class="fas fa-copy"></i></button></div>
-                        </div>
-                    `).join('');
+                const data = await api.clearRedis(true);
+                if (data.success) {
+                    showToast('🗑️ کش Redis پاک شد', 'success');
+                    if (window.dbController) window.dbController.loadRedis();
                 }
-            } catch (err) { results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در جستجو</div>'; }
+            } catch (err) { showToast('❌ خطا در پاک کردن کش', 'error'); }
         }
-        
-        function clearExplorer() {
-            document.getElementById('explorerSearch').value = '';
-            document.getElementById('explorerResults').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">🔍 عبارت مورد نظر را وارد کنید</div>';
+
+        // ===== SQLite =====
+        function filterSQLiteTables() {
+            const search = document.getElementById('sqliteSearch').value.toLowerCase();
+            const filtered = sqliteData.filter(t => t.table_name.toLowerCase().includes(search));
+            if (window.dbController) window.dbController.renderSQLiteTable(filtered);
         }
-        
+
+        async function viewSQLiteTable(tableName) {
+            try {
+                const data = await api.getSQLiteTableData(tableName, { limit: 20 });
+                if (data.success && data.data) {
+                    const rows = data.data.rows || [];
+                    const columns = data.data.columns || [];
+                    if (rows.length === 0) { showToast(`📭 جدول ${tableName} خالی است`, 'info'); return; }
+                    let msg = `📋 جدول: ${tableName}\n📊 ${rows.length} رکورد\n\n${columns.join(' | ')}\n${'─'.repeat(50)}\n`;
+                    rows.slice(0, 10).forEach(row => {
+                        msg += columns.map(c => String(row[c] || '').slice(0, 20)).join(' | ') + '\n';
+                    });
+                    if (rows.length > 10) msg += `\n... و ${rows.length - 10} رکورد دیگر`;
+                    alert(msg);
+                }
+            } catch (err) { showToast('❌ خطا در دریافت داده‌ها', 'error'); }
+        }
+
+        async function exportSQLiteTable(tableName) {
+            try {
+                api.exportSQLiteTable(tableName);
+                showToast(`📥 دانلود ${tableName} شروع شد`, 'success');
+            } catch (err) { showToast('❌ خطا در دانلود', 'error'); }
+        }
+
+        function refreshSQLite() {
+            if (window.dbController) window.dbController.loadSQLite();
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             window.dbController = new DatabaseController();
         });
