@@ -126,10 +126,60 @@ function formatTimeAgo(date) {
         if (diff < 3600) return `${Math.floor(diff / 60)} دقیقه پیش`;
         if (diff < 86400) return `${Math.floor(diff / 3600)} ساعت پیش`;
         if (diff < 604800) return `${Math.floor(diff / 86400)} روز پیش`;
+        if (diff < 2592000) return `${Math.floor(diff / 604800)} هفته پیش`;
         return formatDate(date);
     } catch {
         return '—';
     }
+}
+
+// ===== جدید: فرمت کردن حجم فایل =====
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+// ===== جدید: فرمت کردن زمان به صورت نسبی =====
+function formatRelativeTime(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        
+        if (diff < 60) return `${Math.floor(diff)} ثانیه پیش`;
+        if (diff < 3600) return `${Math.floor(diff / 60)} دقیقه پیش`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} ساعت پیش`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} روز پیش`;
+        if (diff < 2592000) return `${Math.floor(diff / 604800)} هفته پیش`;
+        return formatDate(date);
+    } catch {
+        return '—';
+    }
+}
+
+// ===== جدید: برش متن با نشانگر =====
+function truncateText(text, maxLength = 50) {
+    if (!text) return '—';
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
+}
+
+// ===== جدید: دریافت وضعیت رنگ بر اساس درصد =====
+function getStatusColor(percent, thresholds = { warning: 60, danger: 80 }) {
+    if (percent >= thresholds.danger) return 'red';
+    if (percent >= thresholds.warning) return 'orange';
+    return 'green';
+}
+
+// ===== جدید: دریافت وضعیت متن بر اساس درصد =====
+function getStatusText(percent, thresholds = { warning: 60, danger: 80 }) {
+    if (percent >= thresholds.danger) return '🚨 بحرانی';
+    if (percent >= thresholds.warning) return '⚠️ هشدار';
+    return '✅ سالم';
 }
 
 // ============================================================
@@ -211,6 +261,16 @@ async function copyToClipboard(text) {
     }
 }
 
+// ===== جدید: کپی کردن شیء به صورت JSON =====
+function copyObjectToClipboard(obj) {
+    try {
+        const json = JSON.stringify(obj, null, 2);
+        copyToClipboard(json);
+    } catch (err) {
+        showToast('❌ خطا در کپی', 'error');
+    }
+}
+
 // ============================================================
 // TABLE HELPERS
 // ============================================================
@@ -256,12 +316,18 @@ window.formatPercent = formatPercent;
 window.formatDate = formatDate;
 window.formatDuration = formatDuration;
 window.formatTimeAgo = formatTimeAgo;
+window.formatFileSize = formatFileSize;
+window.formatRelativeTime = formatRelativeTime;
+window.truncateText = truncateText;
+window.copyToClipboard = copyToClipboard;
+window.copyObjectToClipboard = copyObjectToClipboard;
+window.getStatusColor = getStatusColor;
+window.getStatusText = getStatusText;
 window.$ = $;
 window.$$ = $$;
 window.createElement = createElement;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
-window.copyToClipboard = copyToClipboard;
 window.renderTable = renderTable;
 
 console.log('✅ Utils v10.0 loaded');
