@@ -73,7 +73,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲. آمار واقعی اپلیکیشن (جدید)
+    // ۲. آمار واقعی اپلیکیشن (APP STATS)
     // ============================================================
 
     getAppStats() {
@@ -134,7 +134,6 @@ class ApiClient {
         });
     }
 
-    // ===== جدید: دریافت مقدار یک کلید Redis =====
     getRedisKey(key) {
         return this.request(`/api/db/redis/key/${encodeURIComponent(key)}`);
     }
@@ -361,7 +360,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۴. دیباگ (DEBUG)
+    // ۱۴. دیباگ (DEBUG) - کامل با متدهای جدید
     // ============================================================
 
     getDebugStatus() {
@@ -418,7 +417,44 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۵. دیتابیس - کوئری مستقیم (جدید)
+    // ۱۵. دیباگ - متدهای جدید (Processes, Cache)
+    // ============================================================
+
+    // ===== دریافت جزئیات کامل یک پردازش =====
+    getProcessDetails(pid) {
+        return this.request(`/api/debug/processes/${pid}/details`);
+    }
+
+    // ===== خاتمه دادن به یک پردازش =====
+    killProcess(pid) {
+        return this.request(`/api/debug/processes/${pid}/kill`, {
+            method: 'POST'
+        });
+    }
+
+    // ===== جستجوی کلیدها در کش با الگو =====
+    searchCache(pattern = '*', limit = 50) {
+        const params = new URLSearchParams({ pattern, limit });
+        return this.request(`/api/debug/cache/search?${params}`);
+    }
+
+    // ===== حذف یک کلید خاص از کش =====
+    deleteCacheKey(key) {
+        const params = new URLSearchParams({ key });
+        return this.request(`/api/debug/cache/key?${params}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // ===== پاکسازی کامل کش و آزادسازی حافظه =====
+    purgeCache() {
+        return this.request('/api/debug/cache/purge', {
+            method: 'POST'
+        });
+    }
+
+    // ============================================================
+    // ۱۶. دیتابیس - کوئری مستقیم
     // ============================================================
 
     executeDBQuery(query) {
