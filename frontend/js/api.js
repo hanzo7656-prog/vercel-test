@@ -83,7 +83,13 @@ class ApiClient {
     // ============================================================
     // ۳. دیتابیس - PostgreSQL
     // ============================================================
+    // ===== خروجی یک رکورد از PostgreSQL =====
+    exportPostgreSQLRow(tableName, rowId, format = 'json') {
+        const params = new URLSearchParams({ format });
+        return this.request(`/api/db/postgresql/table/${tableName}/export/row/${rowId}?${params}`);
+    }
 
+    
     getPostgreSQLTables() {
         return this.request('/api/db/postgresql/tables');
     }
@@ -138,6 +144,10 @@ class ApiClient {
         return this.request(`/api/db/redis/key/${encodeURIComponent(key)}`);
     }
 
+    // ===== خروجی یک کلید Redis =====
+    exportRedisKey(key) {
+        return this.request(`/api/db/redis/key/${encodeURIComponent(key)}/export`);
+    }
     // ============================================================
     // ۵. دیتابیس - SQLite
     // ============================================================
@@ -164,6 +174,11 @@ class ApiClient {
         window.open(`/api/db/sqlite/export/${tableName}?format=csv`, '_blank');
     }
 
+    // ===== خروجی یک رکورد از SQLite =====
+    exportSQLiteRow(tableName, rowId, format = 'json') {
+        const params = new URLSearchParams({ format });
+        return this.request(`/api/db/sqlite/table/${tableName}/export/row/${rowId}?${params}`);
+    }
     // ============================================================
     // ۶. دیتابیس - عمومی
     // ============================================================
