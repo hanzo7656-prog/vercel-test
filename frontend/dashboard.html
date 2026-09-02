@@ -8,11 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* ============================================================
+           DASHBOARD - استایل‌های اختصاصی
+           ============================================================ */
+        
+        /* ===== WELCOME CARD ===== */
         .welcome-card {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
             border: 1px solid rgba(0, 212, 255, 0.08);
             border-radius: var(--radius-lg);
-            padding: 24px 28px;
+            padding: 20px 24px;
             margin-bottom: 20px;
             position: relative;
             overflow: hidden;
@@ -31,23 +36,40 @@
             pointer-events: none;
         }
         .welcome-card .welcome-content { position: relative; z-index: 1; }
-        .welcome-card .greeting { font-size: 1.4rem; font-weight: 700; }
+        .welcome-card .greeting { font-size: 1.3rem; font-weight: 700; }
         .welcome-card .greeting .highlight { color: var(--accent-cyan); }
-        .welcome-card .sub-greeting { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; display: flex; align-items: center; gap: 8px; }
-        .welcome-card .quick-stats { display: flex; gap: 24px; margin-top: 12px; flex-wrap: wrap; }
-        .welcome-card .quick-stat {
+        .welcome-card .sub-greeting {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 4px;
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.8rem;
+        }
+        .welcome-card .quick-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .welcome-card .quick-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             background: var(--bg-input);
-            padding: 4px 14px;
+            padding: 4px 12px;
             border-radius: var(--radius-full);
             border: 1px solid var(--border-color);
         }
-        .welcome-card .quick-stat .num { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+        .welcome-card .quick-stat .num {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
 
+        /* ===== MARKET GRID ===== */
         .market-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -59,32 +81,109 @@
             backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            padding: 16px 18px;
+            padding: 14px 16px;
             transition: var(--transition);
             cursor: default;
             position: relative;
             overflow: hidden;
         }
-        .market-card:hover { border-color: var(--border-hover); transform: translateY(-3px); box-shadow: var(--shadow); }
-        .market-card .market-icon { font-size: 1.4rem; margin-bottom: 2px; }
-        .market-card .market-name { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .market-card .market-price { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); margin: 2px 0; }
-        .market-card .market-change { font-size: 0.7rem; font-weight: 500; }
+        .market-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        .market-card .market-icon { font-size: 1.3rem; margin-bottom: 2px; }
+        .market-card .market-name {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .market-card .market-price {
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin: 2px 0;
+        }
+        .market-card .market-change { font-size: 0.65rem; font-weight: 500; }
         .market-card .market-change.up { color: var(--accent-green); }
         .market-card .market-change.down { color: var(--accent-red); }
         .market-card .market-change.neutral { color: var(--text-muted); }
         .market-card .market-change.up::before { content: '▲ '; }
         .market-card .market-change.down::before { content: '▼ '; }
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
+        /* ===== STATS CARD (یکپارچه) ===== */
+        .stats-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 18px 22px;
             margin-bottom: 20px;
+            transition: var(--transition);
         }
-        .dashboard-grid .full-width { grid-column: 1 / -1; }
-        .dashboard-grid .half-width { grid-column: span 2; }
+        .stats-card:hover { border-color: var(--border-hover); }
+        .stats-card .stats-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats-card .stats-title i { color: var(--accent-cyan); }
+        .stats-card .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .stats-card .stat-item {
+            text-align: center;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+        .stats-card .stat-item .stat-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stats-card .stat-item .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin-top: 2px;
+        }
+        .stats-card .stat-item .stat-value.cyan { color: var(--accent-cyan); }
+        .stats-card .stat-item .stat-value.green { color: var(--accent-green); }
+        .stats-card .stat-item .stat-value.orange { color: var(--accent-orange); }
+        .stats-card .stat-item .stat-value.red { color: var(--accent-red); }
 
+        /* ===== RAM BAR ===== */
+        .ram-bar-container {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-input);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .ram-bar {
+            height: 100%;
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease, background 0.5s ease;
+            width: 0%;
+        }
+        .ram-bar-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ===== CHART CARD ===== */
         .chart-card {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -94,12 +193,24 @@
             transition: var(--transition);
         }
         .chart-card:hover { border-color: var(--border-hover); }
-        .chart-card .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .chart-card .chart-title { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .chart-card .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .chart-card .chart-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .chart-card .chart-title i { color: var(--accent-cyan); }
         .chart-card .chart-badge {
-            font-size: 0.55rem;
-            padding: 2px 12px;
+            font-size: 0.5rem;
+            padding: 2px 10px;
             border-radius: var(--radius-full);
             background: rgba(34, 211, 238, 0.08);
             color: var(--accent-green);
@@ -110,71 +221,35 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
-        .chart-card .chart-wrapper { height: 200px; position: relative; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+        .chart-card .chart-wrapper {
+            height: 180px;
+            position: relative;
         }
-        .stat-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            transition: var(--transition);
-            text-align: center;
-        }
-        .stat-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-        .stat-card .stat-icon { font-size: 1.2rem; display: block; margin-bottom: 4px; }
-        .stat-card .stat-value { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); }
-        .stat-card .stat-value.cyan { color: var(--accent-cyan); }
-        .stat-card .stat-value.green { color: var(--accent-green); }
-        .stat-card .stat-value.orange { color: var(--accent-orange); }
-        .stat-card .stat-value.red { color: var(--accent-red); }
-        .stat-card .stat-label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-
-        .ram-bar-container {
-            width: 100%;
-            height: 8px;
-            background: var(--bg-input);
-            border-radius: var(--radius-full);
-            overflow: hidden;
-            margin-top: 6px;
-        }
-        .ram-bar {
-            height: 100%;
-            border-radius: var(--radius-full);
-            transition: width 0.5s ease, background 0.5s ease;
-            width: 0%;
-        }
-        .ram-bar-label {
-            font-size: 0.6rem;
-            color: var(--text-muted);
-            margin-top: 2px;
+        /* رفع مشکل رنگ متن نمودار */
+        .chart-card canvas {
+            filter: brightness(1.1);
         }
 
+        /* ===== ACTIVITY LIST ===== */
         .activity-list { display: flex; flex-direction: column; gap: 4px; }
         .activity-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 8px 12px;
+            gap: 10px;
+            padding: 6px 12px;
             border-radius: var(--radius-sm);
             background: var(--bg-hover);
             transition: var(--transition);
         }
         .activity-item:hover { background: var(--bg-input); }
         .activity-item .activity-icon {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             flex-shrink: 0;
         }
         .activity-item .activity-icon.cyan { background: rgba(0, 212, 255, 0.1); color: var(--accent-cyan); }
@@ -183,37 +258,61 @@
         .activity-item .activity-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); }
         .activity-item .activity-icon.red { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
         .activity-item .activity-content { flex: 1; min-width: 0; }
-        .activity-item .activity-text { font-size: 0.8rem; color: var(--text-primary); }
+        .activity-item .activity-text { font-size: 0.75rem; color: var(--text-primary); }
         .activity-item .activity-text .highlight { color: var(--accent-cyan); font-weight: 500; }
-        .activity-item .activity-time { font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono); flex-shrink: 0; }
+        .activity-item .activity-time { font-size: 0.55rem; color: var(--text-muted); font-family: var(--font-mono); flex-shrink: 0; }
 
-        .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-        .quick-actions .btn { padding: 6px 16px; border-radius: var(--radius-sm); font-size: 0.75rem; }
+        /* ===== DASHBOARD GRID ===== */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .dashboard-grid .full-width { grid-column: 1 / -1; }
 
-        @media (max-width: 1200px) { .market-grid { grid-template-columns: repeat(2, 1fr); } }
+        /* ===== QUICK ACTIONS ===== */
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .quick-actions .btn {
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1200px) {
+            .market-grid { grid-template-columns: repeat(2, 1fr); }
+        }
         @media (max-width: 1024px) {
-            .dashboard-grid { grid-template-columns: 1fr 1fr; }
-            .dashboard-grid .half-width { grid-column: span 1; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .stats-card .stats-row { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 768px) {
-            .dashboard-grid { grid-template-columns: 1fr; }
             .market-grid { grid-template-columns: 1fr 1fr; }
-            .welcome-card { padding: 18px 20px; }
-            .welcome-card .greeting { font-size: 1.1rem; }
-            .welcome-card .quick-stats { gap: 12px; }
-            .welcome-card .quick-stat { font-size: 0.7rem; }
-            .chart-card .chart-wrapper { height: 160px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .welcome-card { padding: 14px 16px; }
+            .welcome-card .greeting { font-size: 1rem; }
+            .welcome-card .quick-stats { gap: 8px; }
+            .welcome-card .quick-stat { font-size: 0.65rem; }
+            .stats-card { padding: 14px 16px; }
+            .stats-card .stats-row { grid-template-columns: 1fr; gap: 8px; }
+            .chart-card .chart-wrapper { height: 140px; }
+            .dashboard-grid { gap: 12px; }
         }
         @media (max-width: 480px) {
             .market-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .market-card { padding: 12px 14px; }
-            .market-card .market-price { font-size: 0.9rem; }
-            .activity-item { padding: 6px 10px; flex-wrap: wrap; }
+            .market-card { padding: 10px 12px; }
+            .market-card .market-price { font-size: 0.85rem; }
+            .activity-item { padding: 4px 8px; flex-wrap: wrap; }
             .activity-item .activity-time { width: 100%; text-align: left; }
             .quick-actions .btn { width: 100%; justify-content: center; }
-            .stats-grid { grid-template-columns: 1fr; }
+            .chart-card .chart-wrapper { height: 120px; }
         }
     </style>
 </head>
@@ -223,6 +322,7 @@
 
     <div class="container">
 
+        <!-- ===== WELCOME ===== -->
         <div class="welcome-card">
             <div class="welcome-content">
                 <div class="greeting">👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span></div>
@@ -233,37 +333,12 @@
                 <div class="quick-stats">
                     <div class="quick-stat">🕐 آپتایم: <span class="num" id="uptimeDisplay">—</span></div>
                     <div class="quick-stat">🧠 مدل: <span class="num" id="modelStatus">—</span></div>
+                    <div class="quick-stat">📊 جمع‌آوری‌ها: <span class="num" id="collectionsDisplay">—</span></div>
                 </div>
             </div>
         </div>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <span class="stat-icon">💻</span>
-                <div class="stat-value cyan" id="cpuValue">—</div>
-                <div class="stat-label">CPU</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-icon">🧠</span>
-                <div class="stat-value" id="ramValue">—</div>
-                <div class="stat-label">RAM</div>
-                <div class="ram-bar-container"><div class="ram-bar" id="ramBar" style="width:0%"></div></div>
-                <div class="ram-bar-label" id="ramLabel">—</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-icon">⏱️</span>
-                <div class="stat-value green" id="uptimeDisplay2">—</div>
-                <div class="stat-label">آپتایم اپلیکیشن</div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-icon">📊</span>
-                <div class="stat-value purple" id="collectionsValue">—</div>
-                <div class="stat-label">جمع‌آوری‌ها</div>
-            </div>
-        </div>
-
-        <!-- Market Cards -->
+        <!-- ===== MARKET CARDS ===== -->
         <div class="market-grid" id="marketGrid">
             <div class="market-card">
                 <div class="market-icon">₿</div>
@@ -291,18 +366,40 @@
             </div>
         </div>
 
-        <!-- Charts -->
+        <!-- ===== STATS CARD (یکپارچه) ===== -->
+        <div class="stats-card">
+            <div class="stats-title"><i class="fas fa-microchip"></i> وضعیت سیستم</div>
+            <div class="stats-row" id="statsRow">
+                <div class="stat-item">
+                    <div class="stat-label">💻 CPU</div>
+                    <div class="stat-value cyan" id="cpuValue">—</div>
+                    <div class="ram-bar-container"><div class="ram-bar" id="cpuBar" style="width:0%;background:var(--accent-cyan);"></div></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">🧠 RAM</div>
+                    <div class="stat-value" id="ramValue">—</div>
+                    <div class="ram-bar-container"><div class="ram-bar" id="ramBar" style="width:0%;"></div></div>
+                    <div class="ram-bar-label" id="ramLabel">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">⏱️ آپتایم اپلیکیشن</div>
+                    <div class="stat-value green" id="uptimeDisplay2">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CHARTS ===== -->
         <div class="dashboard-grid">
-            <div class="chart-card half-width">
+            <div class="chart-card full-width">
                 <div class="chart-header">
-                    <div class="chart-title"><i class="fas fa-microchip"></i> منابع سیستم</div>
+                    <div class="chart-title"><i class="fas fa-microchip"></i> منابع سیستم (CPU / RAM)</div>
                     <span class="chart-badge">● LIVE</span>
                 </div>
                 <div class="chart-wrapper"><canvas id="cpuRamChart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card full-width">
                 <div class="chart-header">
-                    <div class="chart-title"><i class="fas fa-plug"></i> درخواست‌ها</div>
+                    <div class="chart-title"><i class="fas fa-plug"></i> درخواست‌های API</div>
                     <span class="chart-badge">● LIVE</span>
                 </div>
                 <div class="chart-wrapper"><canvas id="apiChart"></canvas></div>
@@ -313,12 +410,15 @@
                     <span class="chart-badge" id="activityCount">۰ رویداد</span>
                 </div>
                 <div class="activity-list" id="activityList">
-                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
+                    <div class="loading-container" style="padding:20px;">
+                        <div class="loading-spinner" style="width:24px;height:24px;"></div>
+                        <p class="loading-text" style="font-size:0.8rem;">در حال بارگذاری...</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Actions -->
+        <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
             <a href="/analyzer" class="btn btn-primary"><i class="fas fa-robot"></i> تحلیلگر</a>
             <a href="/model" class="btn btn-outline"><i class="fas fa-brain"></i> مدل</a>
@@ -336,14 +436,14 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD CONTROLLER
+        // DASHBOARD CONTROLLER - نسخه اصلاح شده
         // ============================================================
         
         let statsInterval = null;
         let chartInterval = null;
         let charts = {};
         let chartData = { cpu: [], ram: [], api: [], labels: [] };
-        const MAX_DATA = 30;
+        const MAX_DATA = 20;
 
         class DashboardController {
             constructor() {
@@ -378,7 +478,12 @@
                 }
             }
             
+            // ===== CHARTS =====
             initCharts() {
+                // تنظیمات رنگ برای متن و محورها
+                const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
+                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
+                
                 // CPU/RAM Chart
                 const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
                 if (ctx1) {
@@ -387,19 +492,60 @@
                         data: {
                             labels: chartData.labels,
                             datasets: [
-                                { label: 'CPU', data: chartData.cpu, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true },
-                                { label: 'RAM', data: chartData.ram, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true }
+                                {
+                                    label: 'CPU (%)',
+                                    data: chartData.cpu,
+                                    borderColor: '#00d4ff',
+                                    backgroundColor: 'rgba(0,212,255,0.1)',
+                                    borderWidth: 2,
+                                    pointRadius: 2,
+                                    pointBackgroundColor: '#00d4ff',
+                                    tension: 0.3,
+                                    fill: true
+                                },
+                                {
+                                    label: 'RAM (%)',
+                                    data: chartData.ram,
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'rgba(245,158,11,0.1)',
+                                    borderWidth: 2,
+                                    pointRadius: 2,
+                                    pointBackgroundColor: '#f59e0b',
+                                    tension: 0.3,
+                                    fill: true
+                                }
                             ]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
-                                legend: { position: 'top', labels: { color: 'var(--text-secondary)', font: { size: 9 }, boxWidth: 12, usePointStyle: true } }
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        color: textColor,
+                                        font: { size: 9, family: 'inherit' },
+                                        boxWidth: 12,
+                                        usePointStyle: true,
+                                        padding: 8
+                                    }
+                                }
                             },
                             scales: {
-                                x: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } },
-                                y: { beginAtZero: true, max: 100, grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 }, callback: v => v + '%' } }
+                                x: {
+                                    grid: { color: gridColor },
+                                    ticks: { color: textColor, font: { size: 7, family: 'inherit' } }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: gridColor },
+                                    ticks: {
+                                        color: textColor,
+                                        font: { size: 7, family: 'inherit' },
+                                        callback: v => v + '%'
+                                    }
+                                }
                             },
                             animation: { duration: 400 }
                         }
@@ -413,15 +559,39 @@
                         type: 'bar',
                         data: {
                             labels: chartData.labels,
-                            datasets: [{ label: 'درخواست‌ها', data: chartData.api, backgroundColor: 'rgba(236,72,153,0.5)', borderColor: '#ec4899', borderWidth: 1.5, borderRadius: 4 }]
+                            datasets: [{
+                                label: 'درخواست‌ها',
+                                data: chartData.api,
+                                backgroundColor: 'rgba(236,72,153,0.6)',
+                                borderColor: '#ec4899',
+                                borderWidth: 1.5,
+                                borderRadius: 4
+                            }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: textColor,
+                                        font: { size: 9, family: 'inherit' }
+                                    }
+                                }
+                            },
                             scales: {
-                                x: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } },
-                                y: { beginAtZero: true, grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-muted)', font: { size: 7 } } }
+                                x: {
+                                    grid: { color: gridColor },
+                                    ticks: { color: textColor, font: { size: 7, family: 'inherit' } }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: gridColor },
+                                    ticks: {
+                                        color: textColor,
+                                        font: { size: 7, family: 'inherit' }
+                                    }
+                                }
                             },
                             animation: { duration: 400 }
                         }
@@ -429,11 +599,13 @@
                 }
             }
             
-            updateCharts(metrics) {
+            updateCharts(stats) {
                 const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-                const cpu = metrics?.metrics?.cpu?.value || 0;
-                const ram = metrics?.metrics?.ram?.percent || 0;
-                const apiCount = metrics?.stats?.collections || 0;
+                
+                // دریافت مقادیر از stats
+                const cpu = stats?.cpu?.percent || 0;
+                const ram = stats?.ram?.percent || 0;
+                const apiCount = parseInt(document.getElementById('collectionsDisplay')?.textContent) || 0;
                 
                 chartData.cpu.push(cpu);
                 chartData.ram.push(ram);
@@ -453,6 +625,7 @@
                     charts.cpuRam.data.datasets[1].data = chartData.ram;
                     charts.cpuRam.update('none');
                 }
+                
                 if (charts.api) {
                     charts.api.data.labels = chartData.labels;
                     charts.api.data.datasets[0].data = chartData.api;
@@ -460,13 +633,16 @@
                 }
             }
             
+            // ===== LOAD DATA =====
             async loadAllData() {
                 try {
                     await this.loadAppStats();
                     const metrics = await app.loadMetrics();
                     if (metrics) {
-                        this.updateUI(metrics);
-                        this.updateCharts(metrics);
+                        this.updateMarketData(metrics);
+                        this.updateCollections(metrics);
+                        this.updateModelStatus(metrics);
+                        this.updateApiStatus(metrics);
                     }
                     const user = await app.loadUser();
                     if (user) document.getElementById('userName').textContent = user.username || 'کاربر';
@@ -476,6 +652,7 @@
                 }
             }
             
+            // ===== LOAD APP STATS (اصلاح شده - لحظه‌ای) =====
             async loadAppStats() {
                 try {
                     const res = await fetch('/api/app/stats', { credentials: 'include' });
@@ -483,51 +660,55 @@
                     if (data.success && data.data) {
                         const stats = data.data;
                         
-                        // RAM
+                        // ===== CPU =====
+                        const cpuEl = document.getElementById('cpuValue');
+                        const cpuBar = document.getElementById('cpuBar');
+                        const cpuPercent = stats.cpu.percent;
+                        if (cpuEl) {
+                            cpuEl.textContent = cpuPercent + '%';
+                            cpuEl.className = 'stat-value ' + getStatusColor(cpuPercent);
+                        }
+                        if (cpuBar) {
+                            cpuBar.style.width = Math.min(cpuPercent, 100) + '%';
+                        }
+                        
+                        // ===== RAM =====
                         const ramEl = document.getElementById('ramValue');
                         const ramBar = document.getElementById('ramBar');
                         const ramLabel = document.getElementById('ramLabel');
+                        const ramPercent = stats.ram.percent;
                         if (ramEl) {
-                            ramEl.textContent = `${stats.ram.used_mb} MB (${stats.ram.percent}%)`;
-                            const pct = stats.ram.percent;
-                            ramEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'green');
+                            ramEl.textContent = stats.ram.used_mb + ' MB (' + ramPercent + '%)';
+                            ramEl.className = 'stat-value ' + getStatusColor(ramPercent);
                         }
                         if (ramBar) {
-                            const pct = Math.min(stats.ram.percent, 100);
-                            ramBar.style.width = `${pct}%`;
-                            ramBar.style.background = pct > 80 ? 'var(--accent-red)' : pct > 60 ? 'var(--accent-orange)' : 'var(--accent-green)';
+                            ramBar.style.width = Math.min(ramPercent, 100) + '%';
+                            ramBar.style.background = getStatusColor(ramPercent) === 'red' ? 'var(--accent-red)' :
+                                                      getStatusColor(ramPercent) === 'orange' ? 'var(--accent-orange)' :
+                                                      'var(--accent-green)';
                         }
                         if (ramLabel) {
-                            ramLabel.textContent = `${stats.ram.used_mb} MB / ${stats.ram.limit_mb} MB`;
+                            ramLabel.textContent = stats.ram.used_mb + ' MB / ' + stats.ram.limit_mb + ' MB';
                         }
                         
-                        // CPU
-                        const cpuEl = document.getElementById('cpuValue');
-                        if (cpuEl) {
-                            cpuEl.textContent = `${stats.cpu.percent}%`;
-                            const pct = stats.cpu.percent;
-                            cpuEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'cyan');
-                        }
-                        
-                        // Uptime
+                        // ===== UPTIME (لحظه‌ای) =====
                         const uptimeEl = document.getElementById('uptimeDisplay');
                         const uptimeEl2 = document.getElementById('uptimeDisplay2');
-                        if (uptimeEl) uptimeEl.textContent = stats.uptime.app_formatted;
-                        if (uptimeEl2) uptimeEl2.textContent = stats.uptime.app_formatted;
+                        const uptimeText = stats.uptime.app_formatted;
+                        if (uptimeEl) uptimeEl.textContent = uptimeText;
+                        if (uptimeEl2) uptimeEl2.textContent = uptimeText;
+                        
+                        // ===== به‌روزرسانی نمودارها =====
+                        this.updateCharts(stats);
                     }
                 } catch (err) {
                     console.error('Failed to load app stats:', err);
                 }
             }
             
-            updateUI(metrics) {
+            // ===== MARKET DATA =====
+            updateMarketData(metrics) {
                 const m = metrics?.metrics || {};
-                const stats = metrics?.stats || {};
-                
-                document.getElementById('collectionsValue').textContent = stats.collections || 0;
-                
-                const modelStatus = m.model_status?.value || {};
-                document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
                 
                 const btc = m.btc_price || {};
                 document.getElementById('btcPrice').textContent = formatCurrency(btc.value);
@@ -552,7 +733,25 @@
                 
                 const dominance = m.btc_dominance || {};
                 document.getElementById('btcDominance').textContent = dominance.value ? dominance.value + '%' : '—';
-                
+            }
+            
+            // ===== COLLECTIONS =====
+            updateCollections(metrics) {
+                const stats = metrics?.stats || {};
+                const collections = stats.collections || 0;
+                document.getElementById('collectionsDisplay').textContent = collections;
+            }
+            
+            // ===== MODEL STATUS =====
+            updateModelStatus(metrics) {
+                const m = metrics?.metrics || {};
+                const modelStatus = m.model_status?.value || {};
+                document.getElementById('modelStatus').textContent = modelStatus.loaded ? '✅ فعال' : '📦 دمو';
+            }
+            
+            // ===== API STATUS =====
+            updateApiStatus(metrics) {
+                const m = metrics?.metrics || {};
                 const apiStatus = m.api_status?.value || 'unknown';
                 const dot = document.getElementById('statusDot');
                 const msg = document.getElementById('statusMessage');
@@ -569,13 +768,18 @@
                 }
             }
             
+            // ===== ACTIVITIES =====
             async loadActivities() {
                 const container = document.getElementById('activityList');
                 const countEl = document.getElementById('activityCount');
                 try {
+                    // دریافت هشدارها
                     const alerts = await api.getAlerts({ limit: 5, resolved: false });
+                    // دریافت تاریخچه مدل
                     const history = await api.getModelHistory(3);
+                    
                     let activities = [];
+                    
                     if (alerts.success && alerts.data) {
                         alerts.data.forEach(a => {
                             activities.push({
@@ -587,6 +791,7 @@
                             });
                         });
                     }
+                    
                     if (history.success && history.data) {
                         history.data.slice(0, 3).forEach(h => {
                             activities.push({
@@ -598,13 +803,18 @@
                             });
                         });
                     }
+                    
+                    // مرتب‌سازی بر اساس زمان (جدیدترین اول)
                     activities.sort((a, b) => b.time - a.time);
                     activities = activities.slice(0, 10);
-                    countEl.textContent = `${activities.length} رویداد`;
+                    
+                    countEl.textContent = activities.length + ' رویداد';
+                    
                     if (activities.length === 0) {
-                        container.innerHTML = `<div class="activity-item" style="justify-content:center;color:var(--text-muted);padding:20px;">📭 هیچ فعالیتی ثبت نشده است</div>`;
+                        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.8rem;">📭 هیچ فعالیتی ثبت نشده است</div>`;
                         return;
                     }
+                    
                     container.innerHTML = activities.map(a => `
                         <div class="activity-item">
                             <div class="activity-icon ${a.iconClass}">${a.icon}</div>
@@ -612,21 +822,26 @@
                             <div class="activity-time">${formatTimeAgo(a.time)}</div>
                         </div>
                     `).join('');
+                    
                 } catch (err) {
                     console.error('Failed to load activities:', err);
-                    container.innerHTML = `<div class="activity-item" style="justify-content:center;color:var(--accent-red);padding:20px;">❌ خطا در دریافت فعالیت‌ها</div>`;
+                    container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--accent-red);font-size:0.8rem;">❌ خطا در دریافت فعالیت‌ها</div>`;
                 }
             }
             
+            // ===== AUTO UPDATE =====
             startAutoUpdate() {
-                // App stats هر ۳ ثانیه
-                statsInterval = setInterval(() => this.loadAppStats(), 3000);
-                // Metrics هر ۱۰ ثانیه
+                // آپدیت آمار اپلیکیشن هر ۲ ثانیه (لحظه‌ای)
+                statsInterval = setInterval(() => this.loadAppStats(), 2000);
+                
+                // آپدیت متریک‌ها هر ۱۰ ثانیه
                 setInterval(() => { app.loadMetrics(); }, 10000);
-                // Activities هر ۳۰ ثانیه
+                
+                // آپدیت فعالیت‌ها هر ۳۰ ثانیه
                 setInterval(() => { this.loadActivities(); }, 30000);
             }
             
+            // ===== REFRESH =====
             async refresh() {
                 showToast('🔄 بروزرسانی...', 'info');
                 await this.loadAllData();
@@ -634,11 +849,23 @@
             }
         }
         
+        // ============================================================
+        // توابع کمکی وضعیت رنگ
+        // ============================================================
+        function getStatusColor(percent) {
+            if (percent >= 80) return 'red';
+            if (percent >= 60) return 'orange';
+            return 'green';
+        }
+        
         function refreshDashboard() {
             if (window.dashboard) dashboard.refresh();
             else location.reload();
         }
         
+        // ============================================================
+        // INIT
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             window.dashboard = new DashboardController();
         });
