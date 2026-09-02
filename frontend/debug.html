@@ -337,6 +337,86 @@
             color: var(--accent-cyan);
         }
 
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        .modal-box .modal-close {
+            position: absolute;
+            top: 12px;
+            left: 16px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .modal-box .modal-close:hover {
+            color: var(--accent-red);
+        }
+        .modal-box .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-box .modal-title i { color: var(--accent-cyan); }
+        .modal-box .modal-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 16px;
+        }
+        .modal-box .modal-body .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.8rem;
+        }
+        .modal-box .modal-body .info-item .label { color: var(--text-secondary); }
+        .modal-box .modal-body .info-item .value { color: var(--text-primary); font-weight: 500; }
+        .modal-box .modal-body .info-item .value.cyan { color: var(--accent-cyan); }
+        .modal-box .modal-body .info-item .value.red { color: var(--accent-red); }
+        .modal-box .modal-body .info-item .value.green { color: var(--accent-green); }
+        .modal-box .modal-body .full-width { grid-column: 1 / -1; }
+        .modal-box .modal-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
         /* ============================================================
            RESPONSIVE
            ============================================================ */
@@ -358,6 +438,8 @@
             .cache-keys .key-tag { font-size: 0.55rem; }
             .cli-area .cli-shortcuts { gap: 4px; }
             .cli-area .cli-shortcuts .shortcut { font-size: 0.5rem; padding: 1px 6px; }
+            .modal-box { padding: 16px 18px; max-width: 95%; }
+            .modal-box .modal-body { grid-template-columns: 1fr; }
         }
         @media (max-width: 480px) {
             .debug-stats-grid { grid-template-columns: 1fr 1fr; }
@@ -430,6 +512,12 @@
                 <div class="card-title">
                     <i class="fas fa-list"></i> لاگ‌های سیستم
                     <div style="display:flex;gap:6px;margin-right:auto;">
+                        <select id="logLevelSelect" onchange="setLogLevel(this.value)" style="padding:2px 8px;font-size:0.65rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO" selected>INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
                         <button class="btn btn-xs btn-outline" onclick="loadLogs()"><i class="fas fa-sync-alt"></i></button>
                         <button class="btn btn-xs btn-danger" onclick="clearLogs()"><i class="fas fa-trash"></i></button>
                         <button class="btn btn-xs btn-outline" onclick="copyLogs()"><i class="fas fa-copy"></i></button>
@@ -502,12 +590,14 @@
                 <div class="card-title">
                     <i class="fas fa-database"></i> مدیریت کش
                     <div style="display:flex;gap:6px;margin-right:auto;">
-                        <div class="cache-search">
-                            <input id="cacheSearchInput" placeholder="جستجو در کلیدها..." onkeyup="filterCacheKeys()">
-                            <button class="btn-xs" onclick="loadCache()"><i class="fas fa-sync-alt"></i></button>
-                            <button class="btn-xs btn-danger" onclick="clearCache()"><i class="fas fa-trash"></i></button>
-                        </div>
+                        <button class="btn btn-xs btn-outline" onclick="searchCache()"><i class="fas fa-search"></i></button>
+                        <button class="btn btn-xs btn-danger" onclick="purgeCache()"><i class="fas fa-broom"></i> پاکسازی کامل</button>
                     </div>
+                </div>
+                <div class="cache-search">
+                    <input id="cacheSearchInput" placeholder="جستجو در کلیدها (مثل: session:*)" onkeypress="if(event.key==='Enter') searchCache()">
+                    <button class="btn-xs" onclick="searchCache()"><i class="fas fa-search"></i> جستجو</button>
+                    <button class="btn-xs" onclick="loadCache()"><i class="fas fa-sync-alt"></i> همه</button>
                 </div>
                 <div id="cacheContent">
                     <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
@@ -533,6 +623,24 @@
 
     </div>
 
+    <!-- ===== MODAL ===== -->
+    <div class="modal-overlay" id="processModal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeProcessModal()"><i class="fas fa-times"></i></button>
+            <div class="modal-title"><i class="fas fa-microchip"></i> جزئیات پردازش: <span id="modalPid">—</span></div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading-container" style="grid-column:1/-1;padding:20px;">
+                    <div class="loading-spinner" style="width:24px;height:24px;"></div>
+                    <p class="loading-text">در حال بارگذاری...</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger btn-sm" id="modalKillBtn" onclick="modalKillProcess()"><i class="fas fa-skull"></i> خاتمه</button>
+                <button class="btn btn-outline btn-sm" onclick="closeProcessModal()"><i class="fas fa-times"></i> بستن</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="/js/utils.js"></script>
@@ -546,6 +654,7 @@
         let debugStatsInterval = null;
         let processesData = [];
         let cacheData = [];
+        let currentModalPid = null;
 
         class DebugController {
             constructor() {
@@ -603,18 +712,6 @@
                         e.preventDefault();
                         executeCommand();
                     }
-                    if (e.key === 'Enter' && e.shiftKey) {
-                        e.preventDefault();
-                        const textarea = e.target;
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        textarea.value = textarea.value.substring(0, start) + '\n' + textarea.value.substring(end);
-                        textarea.selectionStart = textarea.selectionEnd = start + 1;
-                    }
-                    // ↑ و ↓ برای تاریخچه (ساده)
-                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                        // میتونیم تاریخچه پیاده‌سازی کنیم
-                    }
                 });
             }
             async loadAll() {
@@ -626,13 +723,11 @@
                 await this.loadProcesses();
             }
             startAutoUpdate() {
-                // آمار اپلیکیشن هر ۱ ثانیه
                 debugStatsInterval = setInterval(() => this.loadAppStats(), 1000);
-                // وضعیت هر ۱۰ ثانیه
                 this.updateInterval = setInterval(() => this.loadStatus(), 10000);
             }
 
-            // ===== APP STATS (رفع RAM و Uptime) =====
+            // ===== APP STATS =====
             async loadAppStats() {
                 try {
                     const res = await fetch('/api/app/stats', { credentials: 'include' });
@@ -641,7 +736,6 @@
                         const stats = data.data;
                         const RAM_LIMIT_MB = 512;
                         
-                        // CPU
                         const cpuEl = document.getElementById('debugCpu');
                         if (cpuEl) {
                             cpuEl.textContent = stats.cpu.percent + '%';
@@ -649,7 +743,6 @@
                             cpuEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'green');
                         }
                         
-                        // RAM (نرمالایز شده)
                         const ramEl = document.getElementById('debugRam');
                         const ramBar = document.getElementById('debugRamBar');
                         const ramUsed = stats.ram.used_mb;
@@ -666,13 +759,11 @@
                                                       'var(--accent-green)';
                         }
                         
-                        // Uptime (لحظه‌ای)
                         const uptimeEl = document.getElementById('debugUptime');
                         if (uptimeEl && stats.uptime) {
                             uptimeEl.textContent = stats.uptime.app_formatted || '—';
                         }
                         
-                        // Collections
                         const metrics = await api.getMetrics();
                         if (metrics.success && metrics.data) {
                             const collections = metrics.data.stats?.collections || 0;
@@ -735,7 +826,7 @@
                         if (logs.length === 0) {
                             output.innerHTML = `
                                 <div class="log-line"><span class="log-time">📭</span><span class="log-level info">INFO</span><span class="log-msg">هیچ لاگی ثبت نشده است</span></div>
-                                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">نکته: برای فعال‌سازی لاگ‌ها، سطح لاگ را به INFO یا DEBUG تنظیم کنید.</span></div>
+                                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">برای فعال‌سازی لاگ‌ها، سطح لاگ را با منوی بالا به INFO یا DEBUG تنظیم کنید.</span></div>
                             `;
                             return;
                         }
@@ -779,7 +870,7 @@
                 } catch (err) { container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت اطلاعات</p>'; }
             }
 
-            // ===== CACHE (با قابلیت مدیریت) =====
+            // ===== CACHE =====
             async loadCache() {
                 const container = document.getElementById('cacheContent');
                 container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
@@ -802,7 +893,7 @@
                         if (cacheData.length > 0) {
                             html += `
                                 <div style="margin-top:8px;">
-                                    <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">کلیدها (نمونه):</div>
+                                    <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">کلیدها:</div>
                                     <div class="cache-keys" id="cacheKeysList">
                                         ${cacheData.map(k => `
                                             <span class="key-tag" data-key="${k.key}">
@@ -846,7 +937,7 @@
                             <thead><tr><th>PID</th><th>نام</th><th>وضعیت</th><th>CPU</th><th>حافظه</th></tr></thead>
                             <tbody>
                                 ${data.map(p => `
-                                    <tr>
+                                    <tr onclick="showProcessDetails(${p.pid})" style="cursor:pointer;">
                                         <td style="font-family:var(--font-mono);font-size:0.7rem;">${p.pid || '—'}</td>
                                         <td>${p.name || '—'}</td>
                                         <td><span class="badge ${p.status === 'running' ? 'badge-green' : p.status === 'sleeping' ? 'badge-cyan' : 'badge-orange'}">${p.status || '—'}</span></td>
@@ -863,12 +954,10 @@
         }
 
         // ============================================================
-        // CLI FUNCTIONS (پیشرفته)
+        // CLI FUNCTIONS
         // ============================================================
         
         let currentCommandType = 'python';
-        let commandHistory = [];
-        let historyIndex = -1;
 
         function setCommandType(type) {
             currentCommandType = type;
@@ -897,7 +986,6 @@
             copyToClipboard(`[${time}] ${level}: ${msg}`);
         }
 
-        // ===== اجرای دستور =====
         async function executeCommand() {
             const input = document.getElementById('cliInput');
             const output = document.getElementById('cliOutput');
@@ -908,40 +996,34 @@
                 return;
             }
 
-            // ===== بررسی میانبرها =====
             const shortcuts = {
                 '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
                 '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
                 '/uptime': 'import psutil, os, time; p=psutil.Process(os.getpid()); s=int(time.time()-p.create_time()); d,h,m=s//86400,(s%86400)//3600,(s%3600)//60; print(f"Uptime: {d}d {h}h {m}m")',
                 '/stats': 'import psutil, os, time; p=psutil.Process(os.getpid()); m=p.memory_info(); c=p.cpu_percent(interval=0.3); u=int(time.time()-p.create_time()); d,h,mi=u//86400,(u%86400)//3600,(u%3600)//60; print(f"PID: {os.getpid()}\\nCPU: {c}%\\nRAM: {m.rss/(1024*1024):.1f} MB\\nUptime: {d}d {h}h {mi}m")',
-                '/clear': 'clearCli()',  // تابع داخلی
+                '/clear': 'clearCli()',
                 '/help': 'print("📋 میانبرها:\\n  /cpu   - نمایش مصرف CPU\\n  /ram   - نمایش مصرف RAM\\n  /uptime - نمایش آپتایم\\n  /stats - نمایش همه آمار\\n  /clear - پاک کردن خروجی\\n  /help  - نمایش این راهنما\\n\\n💡 حالت Python: دستورات پایتون\\n💡 حالت Shell: دستورات لینوکس (با / شروع)")'
             };
 
-            // بررسی میانبر
             if (shortcuts[cmd]) {
                 cmd = shortcuts[cmd];
                 if (cmd === 'clearCli()') {
                     clearCli();
                     return;
                 }
-                // برای میانبرها، حالت رو Python می‌ذاریم
                 currentCommandType = 'python';
                 setCommandType('python');
             }
 
-            // بررسی دستورات Shell (با / شروع)
             if (cmd.startsWith('/') && !shortcuts[cmd]) {
-                // دستور shell خالص (مثل /ls -la)
                 currentCommandType = 'shell';
                 setCommandType('shell');
-                cmd = cmd.substring(1);  // حذف /
+                cmd = cmd.substring(1);
             }
 
             const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const typeLabel = currentCommandType === 'python' ? '🐍 PY' : '💻 SH';
             
-            // نمایش دستور در خروجی
             output.innerHTML += `
                 <div class="log-line">
                     <span class="log-time">${now}</span>
@@ -1009,30 +1091,98 @@
             copyToClipboard(text.trim());
         }
 
+        function copyLogs() {
+            const lines = document.querySelectorAll('#logsOutput .log-line');
+            let text = '';
+            lines.forEach(line => {
+                const time = line.querySelector('.log-time')?.textContent || '';
+                const level = line.querySelector('.log-level')?.textContent || '';
+                const msg = line.querySelector('.log-msg')?.textContent || '';
+                text += `[${time}] ${level}: ${msg}\n`;
+            });
+            copyToClipboard(text.trim());
+        }
+
+        // ============================================================
+        // LOG LEVEL
+        // ============================================================
+        
+        async function setLogLevel(level) {
+            try {
+                const data = await api.setDebugLogLevel(level);
+                if (data.success) {
+                    showToast('✅ سطح لاگ به ' + level + ' تغییر کرد', 'success');
+                    loadLogs();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
+        }
+
         // ============================================================
         // CACHE MANAGEMENT
         // ============================================================
         
-        function filterCacheKeys() {
-            const search = document.getElementById('cacheSearchInput').value.toLowerCase();
-            const keys = document.querySelectorAll('#cacheKeysList .key-tag');
-            keys.forEach(el => {
-                const key = el.dataset.key || '';
-                el.style.display = key.toLowerCase().includes(search) ? 'inline-flex' : 'none';
-            });
+        async function searchCache() {
+            const pattern = document.getElementById('cacheSearchInput').value.trim() || '*';
+            const container = document.getElementById('cacheContent');
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال جستجو...</p></div>';
+            try {
+                const data = await api.searchCache(pattern);
+                if (data.success && data.data) {
+                    const keys = data.data;
+                    if (keys.length === 0) {
+                        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);">🔑 کلیدی با الگوی "${pattern}" یافت نشد</div>`;
+                        return;
+                    }
+                    let html = `
+                        <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:8px;">${data.total_matched || keys.length} کلید یافت شد</div>
+                        <div class="cache-keys">
+                            ${keys.map(k => `
+                                <span class="key-tag" data-key="${k.key}">
+                                    ${k.key}
+                                    <span class="delete-key" onclick="deleteCacheKey('${k.key}')" title="حذف کلید">✕</span>
+                                </span>
+                            `).join('')}
+                        </div>
+                    `;
+                    container.innerHTML = html;
+                }
+            } catch (err) {
+                container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در جستجو</p>';
+            }
         }
 
         async function deleteCacheKey(key) {
             if (!confirm(`⚠️ آیا از حذف کلید "${key}" اطمینان دارید؟`)) return;
             try {
-                // برای حذف یک کلید خاص، باید endpoint جدید اضافه کنیم
-                // فعلاً از clear استفاده می‌کنیم
-                showToast('🔧 حذف کلید خاص: در حال توسعه', 'info');
+                const data = await api.deleteCacheKey(key);
+                if (data.success) {
+                    showToast('🗑️ کلید "' + key + '" حذف شد', 'success');
+                    searchCache();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
+            } catch (err) { showToast('❌ خطا', 'error'); }
+        }
+
+        async function purgeCache() {
+            if (!confirm('⚠️ آیا از پاکسازی کامل کش و آزادسازی حافظه اطمینان دارید؟')) return;
+            try {
+                const data = await api.purgeCache();
+                if (data.success) {
+                    showToast('🗑️ کش پاکسازی و حافظه آزاد شد', 'success');
+                    loadCache();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
             } catch (err) { showToast('❌ خطا', 'error'); }
         }
 
         // ============================================================
-        // PROCESSES FILTER
+        // PROCESSES
         // ============================================================
         
         function filterProcesses() {
@@ -1046,22 +1196,72 @@
             }
         }
 
+        async function showProcessDetails(pid) {
+            const modal = document.getElementById('processModal');
+            const body = document.getElementById('modalBody');
+            const pidSpan = document.getElementById('modalPid');
+            
+            modal.classList.add('active');
+            pidSpan.textContent = pid;
+            currentModalPid = pid;
+            
+            body.innerHTML = `
+                <div class="loading-container" style="grid-column:1/-1;padding:20px;">
+                    <div class="loading-spinner" style="width:24px;height:24px;"></div>
+                    <p class="loading-text">در حال بارگذاری جزئیات...</p>
+                </div>
+            `;
+            
+            try {
+                const data = await api.getProcessDetails(pid);
+                if (data.success && data.data) {
+                    const d = data.data;
+                    body.innerHTML = `
+                        <div class="info-item"><span class="label">🆔 PID</span><span class="value cyan">${d.pid}</span></div>
+                        <div class="info-item"><span class="label">📛 نام</span><span class="value">${d.name || '—'}</span></div>
+                        <div class="info-item"><span class="label">📊 وضعیت</span><span class="value ${d.status === 'running' ? 'green' : d.status === 'sleeping' ? 'orange' : 'red'}">${d.status || '—'}</span></div>
+                        <div class="info-item"><span class="label">⚡ CPU</span><span class="value cyan">${d.cpu_percent?.toFixed(1) || 0}%</span></div>
+                        <div class="info-item"><span class="label">🧠 RAM</span><span class="value cyan">${d.memory_percent?.toFixed(1) || 0}%</span></div>
+                        <div class="info-item"><span class="label">🧵 تردها</span><span class="value">${d.num_threads || 0}</span></div>
+                        <div class="info-item"><span class="label">👤 کاربر</span><span class="value">${d.username || '—'}</span></div>
+                        <div class="info-item"><span class="label">⏱️ شروع</span><span class="value" style="font-size:0.7rem;">${d.create_time_formatted ? formatDate(d.create_time_formatted) : '—'}</span></div>
+                        <div class="info-item full-width"><span class="label">📂 مسیر</span><span class="value" style="font-size:0.7rem;word-break:break-all;">${d.cwd || '—'}</span></div>
+                        <div class="info-item full-width"><span class="label">💻 دستور</span><span class="value" style="font-size:0.65rem;word-break:break-all;color:var(--accent-cyan);">${d.cmdline ? d.cmdline.join(' ') : '—'}</span></div>
+                    `;
+                } else {
+                    body.innerHTML = `<div class="full-width" style="text-align:center;padding:20px;color:var(--accent-red);">❌ ${data.error || 'خطا در دریافت اطلاعات'}</div>`;
+                }
+            } catch (err) {
+                body.innerHTML = `<div class="full-width" style="text-align:center;padding:20px;color:var(--accent-red);">❌ ${err.message}</div>`;
+            }
+        }
+
+        function closeProcessModal() {
+            document.getElementById('processModal').classList.remove('active');
+            currentModalPid = null;
+        }
+
+        async function modalKillProcess() {
+            if (!currentModalPid) return;
+            if (!confirm(`⚠️ آیا از خاتمه پردازش ${currentModalPid} اطمینان دارید؟`)) return;
+            try {
+                const data = await api.killProcess(currentModalPid);
+                if (data.success) {
+                    showToast('✅ پردازش ' + currentModalPid + ' خاتمه یافت', 'success');
+                    closeProcessModal();
+                    loadProcesses();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
+        }
+
         // ============================================================
         // LOGS & CACHE CLEAR
         // ============================================================
         
-        function copyLogs() {
-            const lines = document.querySelectorAll('#logsOutput .log-line');
-            let text = '';
-            lines.forEach(line => {
-                const time = line.querySelector('.log-time')?.textContent || '';
-                const level = line.querySelector('.log-level')?.textContent || '';
-                const msg = line.querySelector('.log-msg')?.textContent || '';
-                text += `[${time}] ${level}: ${msg}\n`;
-            });
-            copyToClipboard(text.trim());
-        }
-
         async function clearLogs() {
             if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
             try {
@@ -1069,17 +1269,6 @@
                 if (data.success) {
                     showToast('🗑️ لاگ‌ها پاک شدند', 'success');
                     document.querySelector('#debugTabs .tab-btn[data-tab="logs"]')?.click();
-                }
-            } catch (err) { showToast('❌ خطا', 'error'); }
-        }
-
-        async function clearCache() {
-            if (!confirm('⚠️ آیا از پاک کردن همه کش اطمینان دارید؟')) return;
-            try {
-                const data = await api.clearDebugCache(true);
-                if (data.success) {
-                    showToast('🗑️ کش پاک شد', 'success');
-                    document.querySelector('#debugTabs .tab-btn[data-tab="cache"]')?.click();
                 }
             } catch (err) { showToast('❌ خطا', 'error'); }
         }
@@ -1104,13 +1293,17 @@
         window.copyCli = copyCli;
         window.copyLogs = copyLogs;
         window.clearLogs = clearLogs;
-        window.clearCache = clearCache;
         window.copyLogLine = copyLogLine;
         window.insertCommand = insertCommand;
         window.setCommandType = setCommandType;
-        window.filterCacheKeys = filterCacheKeys;
+        window.setLogLevel = setLogLevel;
+        window.searchCache = searchCache;
         window.deleteCacheKey = deleteCacheKey;
+        window.purgeCache = purgeCache;
         window.filterProcesses = filterProcesses;
+        window.showProcessDetails = showProcessDetails;
+        window.closeProcessModal = closeProcessModal;
+        window.modalKillProcess = modalKillProcess;
         window.loadStatus = loadStatus;
         window.loadLogs = loadLogs;
         window.loadSystem = loadSystem;
@@ -1123,7 +1316,6 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             window.debugController = new DebugController();
-            // تنظیم حالت پیش‌فرض
             setCommandType('python');
         });
     </script>
