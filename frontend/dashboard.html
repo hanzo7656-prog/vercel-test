@@ -8,10 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        /* ============================================================
-           DASHBOARD - استایل‌های اختصاصی
-           ============================================================ */
-        
         .welcome-card {
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
             border: 1px solid rgba(0, 212, 255, 0.08);
@@ -68,7 +64,6 @@
             font-family: var(--font-mono);
         }
 
-        /* ===== MARKET GRID ===== */
         .market-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -109,7 +104,6 @@
         .market-card .market-change.up::before { content: '▲ '; }
         .market-card .market-change.down::before { content: '▼ '; }
 
-        /* ===== STATS CARD ===== */
         .stats-card {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -159,7 +153,6 @@
         .stats-card .stat-item .stat-value.orange { color: var(--accent-orange); }
         .stats-card .stat-item .stat-value.red { color: var(--accent-red); }
 
-        /* ===== RAM BAR ===== */
         .ram-bar-container {
             width: 100%;
             height: 5px;
@@ -180,7 +173,6 @@
             margin-top: 2px;
         }
 
-        /* ===== CHART CARD ===== */
         .chart-card {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -223,7 +215,6 @@
             position: relative;
         }
 
-        /* ===== ACTIVITY LIST ===== */
         .activity-list { display: flex; flex-direction: column; gap: 3px; }
         .activity-item {
             display: flex;
@@ -255,7 +246,6 @@
         .activity-item .activity-text .highlight { color: var(--accent-cyan); font-weight: 500; }
         .activity-item .activity-time { font-size: 0.5rem; color: var(--text-muted); font-family: var(--font-mono); flex-shrink: 0; }
 
-        /* ===== GRID ===== */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -264,7 +254,6 @@
         }
         .dashboard-grid .full-width { grid-column: 1 / -1; }
 
-        /* ===== QUICK ACTIONS ===== */
         .quick-actions {
             display: flex;
             gap: 6px;
@@ -277,9 +266,6 @@
             font-size: 0.65rem;
         }
 
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
         @media (max-width: 1200px) { .market-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 1024px) {
             .dashboard-grid { grid-template-columns: 1fr; }
@@ -313,7 +299,7 @@
 
     <div class="container">
 
-        <!-- ===== WELCOME (بدون آپتایم - حذف شد) ===== -->
+        <!-- WELCOME -->
         <div class="welcome-card">
             <div class="welcome-content">
                 <div class="greeting">👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span></div>
@@ -328,7 +314,7 @@
             </div>
         </div>
 
-        <!-- ===== MARKET CARDS ===== -->
+        <!-- MARKET -->
         <div class="market-grid" id="marketGrid">
             <div class="market-card">
                 <div class="market-icon">₿</div>
@@ -356,7 +342,7 @@
             </div>
         </div>
 
-        <!-- ===== STATS CARD ===== -->
+        <!-- STATS -->
         <div class="stats-card">
             <div class="stats-title"><i class="fas fa-microchip"></i> وضعیت سیستم (محدودیت: RAM 512MB | CPU 0.15%)</div>
             <div class="stats-row" id="statsRow">
@@ -378,7 +364,7 @@
             </div>
         </div>
 
-        <!-- ===== CHARTS ===== -->
+        <!-- CHARTS -->
         <div class="dashboard-grid">
             <div class="chart-card full-width">
                 <div class="chart-header">
@@ -408,7 +394,7 @@
             </div>
         </div>
 
-        <!-- ===== QUICK ACTIONS ===== -->
+        <!-- QUICK ACTIONS -->
         <div class="quick-actions">
             <a href="/analyzer" class="btn btn-primary"><i class="fas fa-robot"></i> تحلیلگر</a>
             <a href="/model" class="btn btn-outline"><i class="fas fa-brain"></i> مدل</a>
@@ -426,14 +412,13 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD CONTROLLER - نسخه نهایی اصلاح شده
+        // DASHBOARD CONTROLLER - نسخه نهایی
         // ============================================================
         
         let statsInterval = null;
         let charts = {};
         let chartData = { cpu: [], ram: [], api: [], labels: [] };
         const MAX_DATA = 20;
-        let lastStats = null;
 
         class DashboardController {
             constructor() {
@@ -473,7 +458,6 @@
                 const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
                 const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
                 
-                // CPU/RAM Chart
                 const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
                 if (ctx1) {
                     charts.cpuRam = new Chart(ctx1, {
@@ -541,7 +525,6 @@
                     });
                 }
                 
-                // API Chart
                 const ctx2 = document.getElementById('apiChart')?.getContext('2d');
                 if (ctx2) {
                     charts.api = new Chart(ctx2, {
@@ -590,7 +573,6 @@
             
             updateCharts(stats) {
                 const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-                
                 const cpu = stats?.cpu?.percent || 0;
                 const ram = stats?.ram?.percent || 0;
                 const apiCount = parseInt(document.getElementById('collectionsDisplay')?.textContent) || 0;
@@ -640,22 +622,20 @@
                 }
             }
             
-            // ===== LOAD APP STATS (لحظه‌ای - هر ۱ ثانیه) =====
+            // ===== LOAD APP STATS (هر ۲ ثانیه) =====
             async loadAppStats() {
                 try {
                     const res = await fetch('/api/app/stats', { credentials: 'include' });
                     const data = await res.json();
                     if (data.success && data.data) {
                         const stats = data.data;
-                        lastStats = stats;
                         
-                        // ===== CPU (از 0.15% = 15%) =====
+                        // ===== CPU =====
                         const cpuEl = document.getElementById('cpuValue');
                         const cpuBar = document.getElementById('cpuBar');
-                        // محاسبه درصد استفاده از CPU نسبت به محدودیت 0.15%
-                        const cpuPercent = Math.min((stats.cpu.percent / 0.15) * 100, 100);
+                        const cpuPercent = stats.cpu.percent;
                         if (cpuEl) {
-                            cpuEl.textContent = stats.cpu.percent + '%';
+                            cpuEl.textContent = cpuPercent + '%';
                             cpuEl.className = 'stat-value ' + getStatusColor(cpuPercent);
                         }
                         if (cpuBar) {
@@ -681,13 +661,13 @@
                             ramLabel.textContent = stats.ram.used_mb + ' MB / ' + stats.ram.limit_mb + ' MB';
                         }
                         
-                        // ===== UPTIME (لحظه‌ای - هر ۱ ثانیه) =====
+                        // ===== UPTIME =====
                         const uptimeEl = document.getElementById('uptimeDisplay');
                         if (uptimeEl) {
                             uptimeEl.textContent = stats.uptime.app_formatted;
                         }
                         
-                        // ===== به‌روزرسانی نمودارها =====
+                        // ===== CHARTS =====
                         this.updateCharts(stats);
                     }
                 } catch (err) {
@@ -695,40 +675,52 @@
                 }
             }
             
-            // ===== MARKET DATA =====
+            // ===== MARKET DATA (با مدیریت خطا برای داده‌های缺失) =====
             updateMarketData(metrics) {
                 const m = metrics?.metrics || {};
                 
+                // BTC
                 const btc = m.btc_price || {};
-                document.getElementById('btcPrice').textContent = formatCurrency(btc.value);
+                document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
                 const btcChange = document.getElementById('btcChange');
-                if (btc.change_24h !== undefined) {
+                if (btc.change_24h !== undefined && btc.change_24h !== null) {
                     btcChange.textContent = formatPercent(btc.change_24h);
                     btcChange.className = 'market-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
-                } else { btcChange.textContent = '—'; btcChange.className = 'market-change neutral'; }
+                } else {
+                    btcChange.textContent = '—';
+                    btcChange.className = 'market-change neutral';
+                }
                 
+                // ETH
                 const eth = m.eth_price || {};
-                document.getElementById('ethPrice').textContent = formatCurrency(eth.value);
+                document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
                 const ethChange = document.getElementById('ethChange');
-                if (eth.change_24h !== undefined) {
+                if (eth.change_24h !== undefined && eth.change_24h !== null) {
                     ethChange.textContent = formatPercent(eth.change_24h);
                     ethChange.className = 'market-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
-                } else { ethChange.textContent = '—'; ethChange.className = 'market-change neutral'; }
+                } else {
+                    ethChange.textContent = '—';
+                    ethChange.className = 'market-change neutral';
+                }
                 
+                // Fear & Greed
                 const fg = m.fear_greed || {};
-                document.getElementById('fearGreedValue').textContent = fg.value || '—';
-                document.getElementById('fearGreedLabel').textContent = fg.classification || '—';
+                const fgValue = fg.value;
+                const fgLabel = fg.classification;
+                document.getElementById('fearGreedValue').textContent = (fgValue !== undefined && fgValue !== null) ? fgValue : '—';
+                document.getElementById('fearGreedLabel').textContent = fgLabel || '—';
                 document.getElementById('fearGreedLabel').className = 'market-change neutral';
                 
+                // BTC Dominance
                 const dominance = m.btc_dominance || {};
-                document.getElementById('btcDominance').textContent = dominance.value ? dominance.value + '%' : '—';
+                const domValue = dominance.value;
+                document.getElementById('btcDominance').textContent = (domValue !== undefined && domValue !== null) ? domValue + '%' : '—';
             }
             
             // ===== COLLECTIONS =====
             updateCollections(metrics) {
                 const stats = metrics?.stats || {};
-                const collections = stats.collections || 0;
-                document.getElementById('collectionsDisplay').textContent = collections;
+                document.getElementById('collectionsDisplay').textContent = stats.collections || 0;
             }
             
             // ===== MODEL STATUS =====
@@ -757,7 +749,7 @@
                 }
             }
             
-            // ===== ACTIVITIES (بررسی شده و اصلاح) =====
+            // ===== ACTIVITIES =====
             async loadActivities() {
                 const container = document.getElementById('activityList');
                 const countEl = document.getElementById('activityCount');
@@ -819,12 +811,10 @@
             
             // ===== AUTO UPDATE =====
             startAutoUpdate() {
-                // آپدیت آمار اپلیکیشن هر ۱ ثانیه (لحظه‌ای)
-                statsInterval = setInterval(() => this.loadAppStats(), 1000);
-                
+                // آپدیت آمار اپلیکیشن هر ۲ ثانیه
+                statsInterval = setInterval(() => this.loadAppStats(), 2000);
                 // آپدیت متریک‌ها هر ۱۰ ثانیه
                 setInterval(() => { app.loadMetrics(); }, 10000);
-                
                 // آپدیت فعالیت‌ها هر ۳۰ ثانیه
                 setInterval(() => { this.loadActivities(); }, 30000);
             }
