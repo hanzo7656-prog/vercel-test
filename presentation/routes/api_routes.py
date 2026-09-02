@@ -1,12 +1,22 @@
 # presentation/routes/api_routes.py
 # ============================================================
-# API Routes - نسخه کاملاً بازنویسی شده (v10.0)
+# API Routes - نسخه کامل نهایی (v10.0)
 # ============================================================
-# اصول: 
-# 1. هر اندپوینت فقط یک کار انجام می‌دهد (Single Responsibility)
-# 2. نام‌گذاری شفاف و استاندارد REST
-# 3. حفظ تمام قابلیت‌های قبلی (جستجو، دانلود، بک‌آپ، کپی، ...)
-# 4. اضافه کردن امکانات جدید
+# شامل: ۵۷+ اندپوینت تفکیک شده
+# - سیستم (System): 7
+# - آمار اپلیکیشن (App Stats): 1
+# - دیتابیس PostgreSQL: 5
+# - دیتابیس Redis: 4
+# - دیتابیس SQLite: 4
+# - دیتابیس عمومی: 4
+# - مدل (Model): 8
+# - زمان‌بندی (Schedule): 3
+# - پیش‌بینی (Predictions): 3
+# - کوین‌استتس (CoinStats): 6
+# - هشدارها (Alerts): 3
+# - کاربر (User): 2
+# - دیباگ (Debug): 9
+# - احراز هویت (Auth): 1
 # ============================================================
 
 import os
@@ -16,6 +26,8 @@ import csv
 import io
 import logging
 import tempfile
+import time
+import traceback
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app, send_file, make_response
 from pathlib import Path
@@ -34,7 +46,7 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
 # ============================================================
-# ۱. صفحه اصلی & سلامت سیستم
+# ۱. صفحه اصلی (HOME)
 # ============================================================
 
 @api_bp.route('', methods=['GET'])
@@ -55,6 +67,9 @@ def api_home():
                 'metrics_summary': '/api/metrics/summary',
                 'metrics_dashboard': '/api/metrics/dashboard'
             },
+            'app_stats': {
+                'stats': '/api/app/stats'
+            },
             'database': {
                 'postgresql_tables': '/api/db/postgresql/tables',
                 'postgresql_table': '/api/db/postgresql/table/<name>',
@@ -62,19 +77,24 @@ def api_home():
                 'postgresql_export': '/api/db/postgresql/export/<name>',
                 'postgresql_backup': '/api/db/postgresql/backup',
                 'redis_keys': '/api/db/redis/keys',
+                'redis_key': '/api/db/redis/key/<key>',
                 'redis_stats': '/api/db/redis/stats',
                 'redis_clear': '/api/db/redis/clear',
                 'sqlite_tables': '/api/db/sqlite/tables',
+                'sqlite_table': '/api/db/sqlite/table/<name>',
                 'sqlite_stats': '/api/db/sqlite/stats',
                 'sqlite_export': '/api/db/sqlite/export/<name>',
                 'search': '/api/db/search',
                 'health': '/api/db/health',
-                'query': '/api/db/query'
+                'query': '/api/db/query',
+                'tables': '/api/db/tables',
+                'stats_general': '/api/db/stats'
             },
             'model': {
                 'status': '/api/model/status',
                 'history': '/api/model/history',
                 'features': '/api/model/features',
+                'data': '/api/model/data',
                 'train': '/api/model/train',
                 'export': '/api/model/export',
                 'import': '/api/model/import',
@@ -100,7 +120,8 @@ def api_home():
             },
             'alerts': {
                 'list': '/api/alerts',
-                'resolve': '/api/alerts/<id>/resolve'
+                'resolve': '/api/alerts/<id>/resolve',
+                'resolve_all': '/api/alerts/resolve-all'
             },
             'user': {
                 'info': '/api/user',
@@ -125,7 +146,7 @@ def api_home():
 
 
 # ============================================================
-# ۲. سلامت سیستم
+# ۲. سلامت سیستم (SYSTEM HEALTH)
 # ============================================================
 
 @api_bp.route('/health', methods=['GET'])
@@ -176,7 +197,7 @@ def health_database():
 
 
 # ============================================================
-# ۳. متریک‌ها و آمار
+# ۳. متریک‌ها و آمار (METRICS & STATS)
 # ============================================================
 
 @api_bp.route('/metrics', methods=['GET'])
@@ -245,7 +266,96 @@ def get_stats():
 
 
 # ============================================================
-# ۴. دیتابیس - PostgreSQL (کامل)
+# ۴. آمار واقعی اپلیکیشن (APP STATS) - جدید
+# ============================================================
+
+@api_bp.route('/app/stats', methods=['GET'])
+@require_auth()
+def app_stats():
+    """دریافت آمار واقعی اپلیکیشن (RAM، CPU، Uptime) - لحظه‌ای"""
+    try:
+        import psutil
+        import os
+        import time
+        
+        pid = os.getpid()
+        process = psutil.Process(pid)
+        mem_info = process.memory_info()
+        
+        # ===== RAM واقعی اپلیکیشن =====
+        rss_mb = mem_info.rss / (1024 * 1024)
+        
+        # محدودیت کانتینر (اگر وجود داشته باشد)
+        try:
+            with open('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'r') as f:
+                container_limit = int(f.read().strip())
+                container_limit_mb = container_limit / (1024 * 1024)
+        except:
+            container_limit_mb = psutil.virtual_memory().total / (1024 * 1024)
+        
+        # ===== CPU واقعی اپلیکیشن =====
+        cpu_percent = process.cpu_percent(interval=0.3)
+        
+        # ===== uptime اپلیکیشن (از زمان شروع فرآیند) =====
+        create_time = process.create_time()
+        app_uptime = time.time() - create_time
+        
+        # ===== uptime سیستم =====
+        system_uptime = time.time() - psutil.boot_time()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'ram': {
+                    'used_mb': round(rss_mb, 1),
+                    'limit_mb': round(container_limit_mb, 1),
+                    'percent': round((rss_mb / container_limit_mb) * 100, 1) if container_limit_mb > 0 else 0,
+                    'free_mb': round(container_limit_mb - rss_mb, 1)
+                },
+                'cpu': {
+                    'percent': round(cpu_percent, 1),
+                    'threads': process.num_threads(),
+                    'system_percent': round(psutil.cpu_percent(interval=0.3), 1)
+                },
+                'uptime': {
+                    'app_seconds': int(app_uptime),
+                    'app_formatted': format_uptime(app_uptime),
+                    'system_seconds': int(system_uptime),
+                    'system_formatted': format_uptime(system_uptime)
+                },
+                'process': {
+                    'pid': pid,
+                    'status': process.status(),
+                    'memory_percent': round(process.memory_percent(), 2)
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"App stats error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def format_uptime(seconds):
+    """تبدیل ثانیه به فرمت خوانا"""
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    parts.append(f"{secs}s")
+    
+    return " ".join(parts)
+
+
+# ============================================================
+# ۵. دیتابیس - PostgreSQL
 # ============================================================
 
 @api_bp.route('/db/postgresql/tables', methods=['GET'])
@@ -546,7 +656,7 @@ def postgresql_backup():
 
 
 # ============================================================
-# ۵. دیتابیس - Redis (کامل)
+# ۶. دیتابیس - Redis
 # ============================================================
 
 @api_bp.route('/db/redis/keys', methods=['GET'])
@@ -595,6 +705,9 @@ def redis_keys():
                 elif type_str == 'set':
                     val = cache._client.smembers(key)
                     value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)[:10]]
+                elif type_str == 'zset':
+                    val = cache._client.zrange(key, 0, 10, withscores=True)
+                    value = [{v.decode('utf-8') if isinstance(v, bytes) else v: score} for v, score in val]
             except:
                 value = '—'
             
@@ -622,6 +735,58 @@ def redis_keys():
         })
     except Exception as e:
         logger.error(f"Redis keys error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/redis/key/<path:key>', methods=['GET'])
+@require_auth()
+def redis_get_key(key):
+    """دریافت مقدار یک کلید خاص Redis"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        # دریافت نوع کلید
+        key_type = cache._client.type(key)
+        type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+        
+        # دریافت مقدار بر اساس نوع
+        value = None
+        if type_str == 'string':
+            val = cache._client.get(key)
+            value = val.decode('utf-8') if isinstance(val, bytes) else val
+        elif type_str == 'hash':
+            val = cache._client.hgetall(key)
+            value = {k.decode('utf-8') if isinstance(k, bytes) else k: 
+                    v.decode('utf-8') if isinstance(v, bytes) else v 
+                    for k, v in val.items()}
+        elif type_str == 'list':
+            val = cache._client.lrange(key, 0, 50)
+            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in val]
+        elif type_str == 'set':
+            val = cache._client.smembers(key)
+            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)[:50]]
+        elif type_str == 'zset':
+            val = cache._client.zrange(key, 0, 50, withscores=True)
+            value = [{v.decode('utf-8') if isinstance(v, bytes) else v: score} for v, score in val]
+        else:
+            value = 'Unsupported type'
+        
+        # دریافت TTL
+        ttl = cache._client.ttl(key)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'key': key,
+                'type': type_str,
+                'value': value,
+                'ttl': ttl if ttl > 0 else None
+            }
+        })
+    except Exception as e:
+        logger.error(f"Redis get key error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -699,7 +864,7 @@ def redis_clear():
 
 
 # ============================================================
-# ۶. دیتابیس - SQLite (کامل)
+# ۷. دیتابیس - SQLite
 # ============================================================
 
 @api_bp.route('/db/sqlite/tables', methods=['GET'])
@@ -928,57 +1093,61 @@ def sqlite_export(table_name):
 
 
 # ============================================================
-# ۷. دیتابیس - جستجو و عمومی
+# ۸. دیتابیس - عمومی
 # ============================================================
 
 @api_bp.route('/db/search', methods=['GET'])
 @require_auth()
 def database_search():
-    """جستجوی یکپارچه در همه جدول‌ها با قابلیت کپی رکورد"""
+    """جستجوی یکپارچه در همه جدول‌ها با نمایش کامل نتایج"""
     try:
         query = request.args.get('q', '').strip()
         if not query or len(query) < 2:
             return jsonify({'success': False, 'error': 'Search term too short (min 2 chars)'}), 400
         
-        tables_param = request.args.get('tables', '')
         db = get_primary()
         if not db or not db.is_connected():
             return jsonify({'success': False, 'error': 'Database not connected'}), 503
         
-        if tables_param:
-            tables = [t.strip() for t in tables_param.split(',')]
-        else:
-            result = db.execute("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """)
-            tables = [r['table_name'] for r in result]
+        # دریافت لیست جدول‌ها
+        tables_result = db.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        tables = [r['table_name'] for r in tables_result]
         
         results = []
         for table in tables:
             try:
+                # دریافت ستون‌های متنی
                 columns = db.execute("""
                     SELECT column_name 
                     FROM information_schema.columns 
                     WHERE table_name = %s 
-                    AND data_type IN ('text', 'varchar', 'char', 'character varying')
+                    AND data_type IN ('text', 'varchar', 'char', 'character varying', 'json', 'jsonb')
                 """, (table,))
                 
                 if not columns:
                     continue
                 
-                like_conditions = ' OR '.join([f'"{c["column_name"]}"::text ILIKE %s' for c in columns])
-                search_query = f'SELECT * FROM "{table}" WHERE {like_conditions} LIMIT 10'
-                params = [f'%{query}%'] * len(columns)
+                col_names = [c['column_name'] for c in columns]
+                
+                # ساخت شرط LIKE برای همه ستون‌ها
+                like_conditions = ' OR '.join([f'"{c}"::text ILIKE %s' for c in col_names])
+                search_query = f'SELECT * FROM "{table}" WHERE {like_conditions} LIMIT 20'
+                params = [f'%{query}%'] * len(col_names)
                 
                 rows = db.execute(search_query, tuple(params))
+                
                 if rows:
+                    # اضافه کردن نام ستون‌ها به نتیجه
                     results.append({
                         'table': table,
+                        'columns': col_names,
                         'rows': rows,
-                        'count': len(rows),
-                        'columns': [c['column_name'] for c in columns]
+                        'count': len(rows)
                     })
             except Exception as e:
                 logger.warning(f"Search error in table {table}: {e}")
@@ -1049,8 +1218,77 @@ def database_query():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/db/tables', methods=['GET'])
+@require_auth()
+def db_tables():
+    """دریافت لیست همه جدول‌ها با اطلاعات کامل"""
+    try:
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        result = db.execute("""
+            SELECT 
+                table_name,
+                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
+            FROM information_schema.tables t
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        
+        for table in result:
+            size_result = db.execute(f"""
+                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
+            """)
+            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"DB tables error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/stats', methods=['GET'])
+@require_auth()
+def db_stats():
+    """دریافت آمار کلی دیتابیس"""
+    try:
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        # تعداد جدول‌ها
+        tables = db.execute("""
+            SELECT COUNT(*) as table_count 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        """)
+        
+        # حجم کل دیتابیس
+        size = db.execute("""
+            SELECT 
+                pg_database_size(current_database()) / 1024 / 1024 as total_size_mb,
+                pg_database_size(current_database()) as total_size_bytes
+        """)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'table_count': tables[0]['table_count'] if tables else 0,
+                'total_size_mb': size[0]['total_size_mb'] if size else 0,
+                'total_size_bytes': size[0]['total_size_bytes'] if size else 0
+            }
+        })
+    except Exception as e:
+        logger.error(f"DB stats error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
-# ۸. مدل (Model) - کاملاً تفکیک شده
+# ۹. مدل (MODEL)
 # ============================================================
 
 @api_bp.route('/model/status', methods=['GET'])
@@ -1119,6 +1357,24 @@ def model_features():
         return jsonify({'success': False, 'error': 'No model loaded'}), 400
     except Exception as e:
         logger.error(f"Model features error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/data', methods=['GET'])
+@require_auth()
+def model_data():
+    """دریافت داده‌های آموزشی مدل"""
+    try:
+        db = get_primary()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Database not connected'}), 503
+        
+        result = db.execute(
+            "SELECT * FROM model_training_history ORDER BY created_at DESC LIMIT 50"
+        )
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        logger.error(f"Model data error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -1275,7 +1531,7 @@ def model_delete():
 
 
 # ============================================================
-# ۹. زمان‌بندی (Schedule)
+# ۱۰. زمان‌بندی (SCHEDULE)
 # ============================================================
 
 @api_bp.route('/schedule/status', methods=['GET'])
@@ -1344,7 +1600,7 @@ def schedule_stop():
 
 
 # ============================================================
-# ۱۰. پیش‌بینی (Predictions)
+# ۱۱. پیش‌بینی (PREDICTIONS)
 # ============================================================
 
 @api_bp.route('/predict/single', methods=['GET'])
@@ -1429,7 +1685,7 @@ def predict_explain():
 
 
 # ============================================================
-# ۱۱. کوین‌استتس (CoinStats)
+# ۱۲. کوین‌استتس (COINSTATS)
 # ============================================================
 
 @api_bp.route('/coinstats/price/<coin>', methods=['GET'])
@@ -1582,7 +1838,7 @@ def coinstats_all():
 
 
 # ============================================================
-# ۱۲. هشدارها (Alerts)
+# ۱۳. هشدارها (ALERTS)
 # ============================================================
 
 @api_bp.route('/alerts', methods=['GET'])
@@ -1653,7 +1909,7 @@ def resolve_all_alerts():
 
 
 # ============================================================
-# ۱۳. کاربر (User)
+# ۱۴. کاربر (USER)
 # ============================================================
 
 @api_bp.route('/user', methods=['GET'])
@@ -1687,7 +1943,7 @@ def get_user_info():
 
 
 # ============================================================
-# ۱۴. اعتبار (Credits)
+# ۱۵. اعتبار (CREDITS)
 # ============================================================
 
 @api_bp.route('/credits', methods=['GET'])
@@ -1709,7 +1965,7 @@ def credits():
 
 
 # ============================================================
-# ۱۵. ورود (Login)
+# ۱۶. ورود (LOGIN)
 # ============================================================
 
 @api_bp.route('/login', methods=['POST'])
@@ -1753,7 +2009,7 @@ def api_login():
 
 
 # ============================================================
-# ۱۶. دیباگ (Debug) - کاملاً تفکیک شده
+# ۱۷. دیباگ (DEBUG)
 # ============================================================
 
 @api_bp.route('/debug/status', methods=['GET'])
@@ -1966,7 +2222,7 @@ def debug_processes():
 @api_bp.route('/debug/exec', methods=['POST'])
 @require_auth('admin')
 def debug_exec():
-    """اجرای دستور پایتون (فقط admin)"""
+    """اجرای دستور پایتون با کتابخانه‌های بیشتر"""
     try:
         data = request.json or {}
         command = data.get('command', '').strip()
@@ -1974,6 +2230,72 @@ def debug_exec():
         
         if not command:
             return jsonify({'success': False, 'error': 'Command required'}), 400
+        
+        # کتابخانه‌های مجاز برای استفاده در exec
+        allowed_modules = {
+            'os': __import__('os'),
+            'sys': __import__('sys'),
+            'time': __import__('time'),
+            'datetime': __import__('datetime'),
+            'json': __import__('json'),
+            're': __import__('re'),
+            'math': __import__('math'),
+            'random': __import__('random'),
+            'collections': __import__('collections'),
+            'itertools': __import__('itertools'),
+            'functools': __import__('functools'),
+            'psutil': __import__('psutil'),
+            'requests': __import__('requests'),
+            'subprocess': __import__('subprocess'),
+            'glob': __import__('glob'),
+            'shutil': __import__('shutil'),
+            'tempfile': __import__('tempfile'),
+            'hashlib': __import__('hashlib'),
+            'base64': __import__('base64'),
+            'pprint': __import__('pprint'),
+            'inspect': __import__('inspect'),
+            'traceback': __import__('traceback'),
+            'logging': __import__('logging'),
+        }
+        
+        # ایجاد محیط امن برای اجرا
+        safe_globals = {
+            '__builtins__': {
+                'print': print,
+                'len': len,
+                'range': range,
+                'list': list,
+                'dict': dict,
+                'str': str,
+                'int': int,
+                'float': float,
+                'bool': bool,
+                'sum': sum,
+                'min': min,
+                'max': max,
+                'sorted': sorted,
+                'enumerate': enumerate,
+                'zip': zip,
+                'map': map,
+                'filter': filter,
+                'any': any,
+                'all': all,
+                'isinstance': isinstance,
+                'type': type,
+                'hasattr': hasattr,
+                'getattr': getattr,
+                'setattr': setattr,
+                'dir': dir,
+                'help': help,
+                'open': open,
+                'Exception': Exception,
+                'ValueError': ValueError,
+                'TypeError': TypeError,
+                'KeyError': KeyError,
+                'IndexError': IndexError,
+            },
+            **allowed_modules
+        }
         
         # بررسی دستورات خطرناک
         dangerous = ['os.system', 'subprocess', 'exec(', 'eval(', '__import__', 'open(', 'file(']
@@ -1984,33 +2306,33 @@ def debug_exec():
                     'error': f'Dangerous command contains "{kw}"'
                 }), 403
         
-        import signal
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Command execution timeout")
-        
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
         
         try:
+            # اجرا با محدودیت زمان
+            import signal
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Command execution timeout")
+            
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout)
             
-            exec(command, {'__builtins__': __builtins__, 'os': __import__('os'), 'sys': __import__('sys')})
+            exec(command, safe_globals)
             result = sys.stdout.getvalue()
             signal.alarm(0)
+            
         except TimeoutError as e:
             result = f"⏱️ Timeout after {timeout}s"
         except Exception as e:
-            result = str(e)
+            result = f"❌ Error: {str(e)}\n{traceback.format_exc()}"
         finally:
             sys.stdout = old_stdout
         
         return jsonify({
             'success': True,
             'result': result or '✅ Done',
-            'command': command,
-            'timeout': timeout
+            'command': command
         })
     except Exception as e:
         logger.error(f"Debug exec error: {e}", exc_info=True)
