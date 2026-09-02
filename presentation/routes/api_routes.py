@@ -2435,3 +2435,145 @@ def debug_loglevel():
     except Exception as e:
         logger.error(f"Debug loglevel error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/processes/<int:pid>/kill', methods=['POST'])
+@require_auth('admin')
+def kill_process(pid):
+    """خاتمه دادن به یک پردازش با PID"""
+    try:
+        import psutil
+        process = psutil.Process(pid)
+        process.terminate()
+        return jsonify({
+            'success': True,
+            'message': f'Process {pid} terminated successfully'
+        })
+    except psutil.NoSuchProcess:
+        return jsonify({'success': False, 'error': f'Process {pid} not found'}), 404
+    except psutil.AccessDenied:
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/processes/<int:pid>/details', methods=['GET'])
+@require_auth('admin')
+def process_details(pid):
+    """دریافت جزئیات کامل یک پردازش"""
+    try:
+        import psutil
+        process = psutil.Process(pid)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'pid': pid,
+                'name': process.name(),
+                'status': process.status(),
+                'cpu_percent': process.cpu_percent(interval=0.3),
+                'memory_percent': process.memory_percent(),
+                'memory_rss': process.memory_info().rss,
+                'memory_vms': process.memory_info().vms,
+                'create_time': process.create_time(),
+                'create_time_formatted': datetime.fromtimestamp(process.create_time()).isoformat(),
+                'cmdline': process.cmdline(),
+                'cwd': process.cwd(),
+                'username': process.username(),
+                'num_threads': process.num_threads(),
+                'ppid': process.ppid(),
+                'connections': len(process.connections()),
+                'open_files': len(process.open_files()) if hasattr(process, 'open_files') else 0,
+                'nice': process.nice() if hasattr(process, 'nice') else None,
+                'ionice': process.ionice() if hasattr(process, 'ionice') else None,
+            }
+        })
+    except psutil.NoSuchProcess:
+        return jsonify({'success': False, 'error': f'Process {pid} not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/search', methods=['GET'])
+@require_auth('admin')
+def cache_search():
+    """جستجوی کلیدها در Redis با الگو"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Cache not available'}), 503
+        
+        pattern = request.args.get('pattern', '*')
+        limit = request.args.get('limit', 50, type=int)
+        
+        keys = cache._client.keys(pattern)
+        keys = keys[:limit]
+        
+        result = []
+        for k in keys:
+            key_str = k.decode('utf-8') if isinstance(k, bytes) else k
+            key_type = cache._client.type(k)
+            type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+            ttl = cache._client.ttl(k)
+            result.append({
+                'key': key_str,
+                'type': type_str,
+                'ttl': ttl if ttl > 0 else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result),
+            'total_matched': len(keys)
+        })
+    except Exception as e:
+        logger.error(f"Cache search error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/key', methods=['DELETE'])
+@require_auth('admin')
+def cache_delete_key():
+    """حذف یک کلید خاص از Redis"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Cache not available'}), 503
+        
+        key = request.args.get('key')
+        if not key:
+            return jsonify({'success': False, 'error': 'Key is required'}), 400
+        
+        deleted = cache._client.delete(key)
+        if deleted:
+            return jsonify({'success': True, 'message': f'Key "{key}" deleted'})
+        return jsonify({'success': False, 'error': f'Key "{key}" not found'}), 404
+    except Exception as e:
+        logger.error(f"Cache delete key error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/purge', methods=['POST'])
+@require_auth('admin')
+def cache_purge():
+    """پاک کردن کامل حافظه Redis (MEMORY PURGE)"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Cache not available'}), 503
+        
+        # اجرای FLUSHDB و MEMORY PURGE
+        cache._client.flushdb()
+        try:
+            cache._client.execute_command('MEMORY', 'PURGE')
+        except:
+            pass  # بعضی نسخه‌های Redis این دستور رو ندارن
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Cache cleared and memory purged'
+        })
+    except Exception as e:
+        logger.error(f"Cache purge error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
