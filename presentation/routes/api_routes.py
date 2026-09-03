@@ -3113,3 +3113,109 @@ def cache_purge():
     except Exception as e:
         logger.error(f"Cache purge error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================
+# اندپوینت‌های Self-Healing
+# ============================================================
+
+@api_bp.route('/healing/status', methods=['GET'])
+@require_auth('admin')
+def healing_status():
+    """
+    دریافت وضعیت Self-Healer
+    
+    خروجی:
+        - status: running / stopped
+        - healing_actions: تعداد اقدامات انجام شده
+        - last_healing: زمان آخرین اقدام
+        - attempts: تلاش‌های انجام شده
+        - databases: وضعیت دیتابیس‌ها
+    """
+    try:
+        from core.metrics import metrics_scheduler
+        
+        # دریافت وضعیت از Scheduler
+        summary = metrics_scheduler.get_summary()
+        alert_metrics = metrics_scheduler.get_alert_metrics()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'status': summary.get('status', 'unknown'),
+                'healing_actions': summary.get('healing_actions', 0),
+                'last_healing': summary.get('last_healing'),
+                'total_collections': summary.get('total_collections', 0),
+                'errors': summary.get('errors', 0),
+                'databases': alert_metrics.get('databases', {}),
+                'model_loaded': alert_metrics.get('model_loaded', False),
+                'model_accuracy': alert_metrics.get('model_accuracy'),
+                'uptime': alert_metrics.get('uptime', '0s'),
+                'timestamp': datetime.now().isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Healing status error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/healing/trigger', methods=['POST'])
+@require_auth('admin')
+def healing_trigger():
+    """
+    اجرای دستی Self-Healing
+    
+    این اندپوینت به صورت دستی Self-Healing را اجرا می‌کند.
+    """
+    try:
+        from core.metrics import metrics_scheduler
+        
+        # گرفتن healer از Scheduler
+        healer = getattr(metrics_scheduler, 'healer', None)
+        if not healer:
+            return jsonify({
+                'success': False,
+                'error': 'SelfHealer not initialized'
+            }), 503
+        
+        # اجرای healing
+        metrics = metrics_scheduler.get_alert_metrics()
+        actions = healer.check_and_heal(metrics)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'actions': actions,
+                'timestamp': datetime.now().isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Healing trigger error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/healing/reset', methods=['POST'])
+@require_auth('admin')
+def healing_reset():
+    """
+    بازنشانی تلاش‌های Self-Healing
+    """
+    try:
+        from core.metrics import metrics_scheduler
+        
+        healer = getattr(metrics_scheduler, 'healer', None)
+        if not healer:
+            return jsonify({
+                'success': False,
+                'error': 'SelfHealer not initialized'
+            }), 503
+        
+        healer.reset_attempts()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Healing attempts reset successfully',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Healing reset error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
