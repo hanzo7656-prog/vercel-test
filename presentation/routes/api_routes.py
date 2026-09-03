@@ -1377,7 +1377,42 @@ def db_monitor():
     except Exception as e:
         logger.error(f"DB monitor error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/migrate', methods=['POST'])
+@require_auth('admin')
+def db_migrate():
+    """اجرای مهاجرت دیتابیس با استفاده از فایل SQL"""
+    try:
+        import subprocess
+        import os
+        from pathlib import Path
         
+        # اجرای فایل run_migration.py
+        project_path = '/opt/render/project/src'
+        os.chdir(project_path)
+        
+        result = subprocess.run(
+            ['python', 'scripts/run_migration.py'],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=project_path
+        )
+        
+        success = result.returncode == 0
+        
+        return jsonify({
+            'success': success,
+            'output': result.stdout,
+            'error': result.stderr if result.stderr else None,
+            'returncode': result.returncode
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Migration timed out'}), 408
+    except Exception as e:
+        logger.error(f"Migration error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
 # ۸. دیتابیس - عمومی
 # ============================================================
