@@ -1,6 +1,6 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۸.۲ (با دیتابیس)
+# سیستم جمع‌آوری متریک - نسخه ۹.۰ (با Self-Healer)
 # ============================================================
 
 import time
@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 
 class MetricsScheduler:
     """
-    سیستم جمع‌آوری متریک بدون وابستگی به system
+    سیستم جمع‌آوری متریک با Self-Healer یکپارچه
     ✅ داده‌ها را از طریق API می‌گیرد
     ✅ وضعیت دیتابیس‌ها را بررسی می‌کند
+    ✅ Self-Healing خودکار برای reconnect دیتابیس‌ها
     """
     
     def __init__(self):
@@ -27,7 +28,9 @@ class MetricsScheduler:
         self.stats = {
             "collections": 0,
             "errors": 0,
-            "last_collection": None
+            "last_collection": None,
+            "healing_actions": 0,
+            "last_healing": None
         }
         self.start_time = time.time()
         
@@ -35,8 +38,32 @@ class MetricsScheduler:
         self.light_interval = 3
         self.medium_interval = 60
         self.heavy_interval = 300
+        self.healing_interval = 30  # هر ۳۰ ثانیه یکبار چک کن
         
-        logger.info("✅ MetricsScheduler v8.2 initialized")
+        # ===== Self-Healer =====
+        self.healer = None
+        self._init_self_healer()
+        
+        logger.info("✅ MetricsScheduler v9.0 initialized with Self-Healer")
+    
+    def _init_self_healer(self):
+        """راه‌اندازی Self-Healer"""
+        try:
+            from models.manager.model_manager import ModelManager
+            from models.trainer.auto_trainer import AutoTrainer
+            from infrastructure.api.coinstats_client import coinstats_client
+            from application.services.self_healer import SelfHealer
+            
+            model_manager = ModelManager(coinstats_client)
+            trainer = AutoTrainer(coinstats_client)
+            self.healer = SelfHealer(model_manager, trainer, coinstats_client)
+            logger.info("✅ SelfHealer initialized in MetricsScheduler")
+        except ImportError as e:
+            logger.error(f"❌ SelfHealer import error: {e}")
+            self.healer = None
+        except Exception as e:
+            logger.error(f"❌ SelfHealer init error: {e}")
+            self.healer = None
     
     def set_stop_event(self, event):
         self._stop_event = event
@@ -49,11 +76,12 @@ class MetricsScheduler:
         self._running = True
         logger.info("🔄 Metrics Scheduler started")
         
-        # جمع‌آوری اولیه همه سطوح
+        # جمع‌آوری اولیه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
+            self._run_self_healing()  # ← اولین healing
             logger.info("✅ Initial all-level collection complete")
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
@@ -62,6 +90,7 @@ class MetricsScheduler:
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
+        last_healing = time.time()
         cycle_count = 0
         
         while self._running and not (self._stop_event and self._stop_event.is_set()):
@@ -69,19 +98,27 @@ class MetricsScheduler:
                 now = time.time()
                 cycle_count += 1
                 
+                # جمع‌آوری سبک (هر ۳ ثانیه)
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
                 
+                # جمع‌آوری متوسط (هر ۶۰ ثانیه)
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
                     logger.debug(f"📊 Medium collected (cycle {cycle_count})")
                 
+                # جمع‌آوری سنگین (هر ۳۰۰ ثانیه)
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     logger.debug(f"📊 Heavy collected (cycle {cycle_count})")
+                
+                # ===== Self-Healing (هر ۳۰ ثانیه) =====
+                if now - last_healing >= self.healing_interval:
+                    self._run_self_healing()
+                    last_healing = now
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
@@ -96,6 +133,33 @@ class MetricsScheduler:
     def stop(self):
         self._running = False
         logger.info("⏹️ Metrics Scheduler stopping")
+    
+    # ============================================================
+    # Self-Healing
+    # ============================================================
+    
+    def _run_self_healing(self):
+        """اجرای Self-Healing"""
+        if not self.healer:
+            logger.warning("⚠️ SelfHealer not available")
+            return
+        
+        try:
+            metrics = self.get_alert_metrics()
+            actions = self.healer.check_and_heal(metrics)
+            
+            if any(actions.values()):
+                self.stats["healing_actions"] += 1
+                self.stats["last_healing"] = datetime.now().isoformat()
+                logger.info(f"🔄 Self-healing actions: {actions}")
+                
+                # اگر مدل بازگردانی شد، وضعیت مدل را به‌روز کن
+                if actions.get("model_restored"):
+                    self._collect_medium_metrics()
+            
+        except Exception as e:
+            logger.error(f"❌ Self-healing error: {e}")
+            self.stats["errors"] += 1
     
     # ============================================================
     # جمع‌آوری‌کننده‌ها
@@ -140,7 +204,7 @@ class MetricsScheduler:
         try:
             from infrastructure.api.coinstats_client import coinstats_client
             from models.manager.model_manager import ModelManager
-            from infrastructure.database import health_check  # ✅ اضافه شد
+            from infrastructure.database import health_check
             
             # ===== ۱. قیمت بیت‌کوین =====
             try:
@@ -193,18 +257,32 @@ class MetricsScheduler:
                 model_manager = ModelManager(coinstats_client)
                 loaded = model_manager.current_model is not None
                 version = model_manager.current_version or "N/A"
+                
+                # دریافت دقت مدل از دیتابیس
+                accuracy = None
+                if model_manager.db and model_manager.db.is_connected():
+                    try:
+                        result = model_manager.db.execute(
+                            "SELECT accuracy FROM models WHERE version = %s",
+                            (version if version != "N/A" else None,)
+                        )
+                        if result:
+                            accuracy = result[0].get("accuracy")
+                    except:
+                        pass
+                
                 self.metrics_cache["model_status"] = {
                     "value": {"loaded": loaded, "version": version},
                     "timestamp": datetime.now().isoformat()
                 }
                 self.metrics_cache["model_accuracy"] = {
-                    "value": None,
+                    "value": accuracy,
                     "timestamp": datetime.now().isoformat()
                 }
             except Exception as e:
                 logger.warning(f"⚠️ Model status error: {e}")
             
-            # ===== ✅ ۶. وضعیت دیتابیس‌ها (جدید) =====
+            # ===== ۶. وضعیت دیتابیس‌ها =====
             try:
                 health = health_check()
                 dbs = {}
@@ -308,6 +386,8 @@ class MetricsScheduler:
             "status": "running" if self._running else "stopped",
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
+            "healing_actions": self.stats["healing_actions"],
+            "last_healing": self.stats["last_healing"],
             "metrics_count": len(self.metrics_cache),
             "last_collection": self.stats["last_collection"]
         }
@@ -320,7 +400,7 @@ class MetricsScheduler:
             "api_status": cache.get("api_status", {}).get("value", "unknown"),
             "api_credits": cache.get("api_credits", {}).get("value", 0),
             "model_loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-            "model_accuracy": None,
+            "model_accuracy": cache.get("model_accuracy", {}).get("value", None),
             "databases": cache.get("databases", {}).get("value", {}),
             "uptime": cache.get("uptime", {}).get("value", "0s"),
         }
@@ -349,6 +429,7 @@ class MetricsScheduler:
             "model": {
                 "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
                 "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
+                "accuracy": cache.get("model_accuracy", {}).get("value", None),
             },
             "databases": cache.get("databases", {}).get("value", {}),
             "disk": cache.get("disk_space", {}).get("value", {}),
@@ -359,16 +440,35 @@ class MetricsScheduler:
         cache = self.metrics_cache
         cpu = cache.get("cpu", {}).get("value", 0)
         ram = cache.get("ram", {}).get("value", 0)
+        databases = cache.get("databases", {}).get("value", {})
         
         cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
         ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
         
+        # وضعیت دیتابیس‌ها
+        db_status = {}
+        all_connected = True
+        for name, connected in databases.items():
+            db_status[name] = {
+                "connected": connected,
+                "status": "online" if connected else "offline"
+            }
+            if not connected:
+                all_connected = False
+        
+        overall_status = "ok" if (cpu_status == "healthy" and ram_status == "healthy" and all_connected) else "degraded"
+        
         return {
-            "status": "ok" if cpu_status == "healthy" and ram_status == "healthy" else "degraded",
+            "status": overall_status,
             "timestamp": datetime.now().isoformat(),
             "components": {
                 "cpu": {"status": cpu_status, "value": round(cpu, 1)},
                 "ram": {"status": ram_status, "value": round(ram, 1)},
+                "databases": db_status,
+                "model": {
+                    "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
+                    "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
+                }
             }
         }
 
