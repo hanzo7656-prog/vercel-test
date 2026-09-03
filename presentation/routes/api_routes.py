@@ -2374,46 +2374,46 @@ def debug_processes():
 @api_bp.route('/debug/exec', methods=['POST'])
 @require_auth('admin')
 def debug_exec():
-    """اجرای دستور پایتون با کتابخانه‌های بیشتر"""
+    """اجرای دستور پایتون با کتابخانه‌های بیشتر و مدیریت خطا"""
     try:
         data = request.json or {}
         command = data.get('command', '').strip()
-        timeout = data.get('timeout', 5)
+        command_type = data.get('type', 'python')  # python یا shell
+        timeout = data.get('timeout', 10)
         
         if not command:
             return jsonify({'success': False, 'error': 'Command required'}), 400
         
-        # کتابخانه‌های مجاز برای استفاده در exec
-        allowed_modules = {
-            'os': __import__('os'),
-            'sys': __import__('sys'),
-            'time': __import__('time'),
-            'datetime': __import__('datetime'),
-            'json': __import__('json'),
-            're': __import__('re'),
-            'math': __import__('math'),
-            'random': __import__('random'),
-            'collections': __import__('collections'),
-            'itertools': __import__('itertools'),
-            'functools': __import__('functools'),
-            'psutil': __import__('psutil'),
-            'requests': __import__('requests'),
-            'subprocess': __import__('subprocess'),
-            'glob': __import__('glob'),
-            'shutil': __import__('shutil'),
-            'tempfile': __import__('tempfile'),
-            'hashlib': __import__('hashlib'),
-            'base64': __import__('base64'),
-            'pprint': __import__('pprint'),
-            'inspect': __import__('inspect'),
-            'traceback': __import__('traceback'),
-            'logging': __import__('logging'),
-        }
+        # ===== اجرای دستورات Shell =====
+        if command_type == 'shell':
+            import subprocess
+            try:
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout
+                )
+                output = result.stdout or result.stderr or '✅ Done'
+                return jsonify({
+                    'success': True,
+                    'result': output,
+                    'type': 'shell'
+                })
+            except subprocess.TimeoutExpired:
+                return jsonify({
+                    'success': False,
+                    'error': f'⏱️ Command timeout after {timeout}s'
+                }), 408
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
         
-        # ایجاد محیط امن برای اجرا
-        safe_globals = {
+        # ===== اجرای دستورات Python =====
         # ===== کتابخانه‌هایی که کاربر بهشون نیاز داره =====
-        # اینا رو در safe_globals اضافه کن
         safe_globals = {
             '__builtins__': {
                 'print': print,
@@ -2448,75 +2448,111 @@ def debug_exec():
                 'TypeError': TypeError,
                 'KeyError': KeyError,
                 'IndexError': IndexError,
-                '__import__': __import__,  # ← این خط رو اضافه کن (برای import)
+                '__import__': __import__,  # ← برای import
             },
-            # ===== کتابخانه‌هایی که از قبل ایمپورت شدن =====
-            'os': __import__('os'),
-            'sys': __import__('sys'),
-            'time': __import__('time'),
-            'datetime': __import__('datetime'),
-            'json': __import__('json'),
-            're': __import__('re'),
-            'math': __import__('math'),
-            'random': __import__('random'),
-            'collections': __import__('collections'),
-            'itertools': __import__('itertools'),
-            'functools': __import__('functools'),
-            'hashlib': __import__('hashlib'),
-            'base64': __import__('base64'),
-            'pprint': __import__('pprint'),
-            'inspect': __import__('inspect'),
-            'traceback': __import__('traceback'),
-            'logging': __import__('logging'),
-            'subprocess': __import__('subprocess'),
-            # ===== کتابخانه‌های خارجی (اگه نصب باشن) =====
-            'psutil': __import__('psutil') if 'psutil' in sys.modules else None,
-            'requests': __import__('requests') if 'requests' in sys.modules else None,
-        
-            **allowed_modules
         }
-        
-        # بررسی دستورات خطرناک
-        dangerous = ['os.system', 'subprocess', 'exec(', 'eval(', '__import__', 'open(', 'file(']
+
+        # ===== اضافه کردن کتابخانه‌های استاندارد =====
+        import os, sys, time, datetime, json, re, math, random
+        import collections, itertools, functools, hashlib, base64
+        import pprint, inspect, traceback, logging, subprocess
+
+        safe_globals.update({
+            'os': os,
+            'sys': sys,
+            'time': time,
+            'datetime': datetime,
+            'json': json,
+            're': re,
+            'math': math,
+            'random': random,
+            'collections': collections,
+            'itertools': itertools,
+            'functools': functools,
+            'hashlib': hashlib,
+            'base64': base64,
+            'pprint': pprint,
+            'inspect': inspect,
+            'traceback': traceback,
+            'logging': logging,
+            'subprocess': subprocess,
+        })
+
+        # ===== تلاش برای اضافه کردن کتابخانه‌های خارجی =====
+        try:
+            import psutil
+            safe_globals['psutil'] = psutil
+        except ImportError:
+            pass
+
+        try:
+            import requests
+            safe_globals['requests'] = requests
+        except ImportError:
+            pass
+
+        # ===== بررسی دستورات خطرناک =====
+        dangerous = ['os.system', 'subprocess.run', 'exec(', 'eval(', '__import__', 'open(', 'file(']
         for kw in dangerous:
             if kw in command:
                 return jsonify({
                     'success': False,
-                    'error': f'Dangerous command contains "{kw}"'
+                    'error': f'🚫 Dangerous command contains "{kw}"'
                 }), 403
-        
+
+        # ===== ذخیره خروجی =====
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
-        
+        error_output = None
+
         try:
-            # اجرا با محدودیت زمان
+            # ===== اجرا با محدودیت زمان =====
             import signal
+            
             def timeout_handler(signum, frame):
-                raise TimeoutError("Command execution timeout")
+                raise TimeoutError("⏱️ Command execution timeout")
             
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
+            # تنظیم timeout (فقط در سیستم‌های Unix)
+            try:
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
+            except:
+                pass  # در سیستم‌هایی که SIGALRM ندارند (ویندوز)
             
+            # اجرای دستور
             exec(command, safe_globals)
             result = sys.stdout.getvalue()
-            signal.alarm(0)
             
+            # خاموش کردن alarm
+            try:
+                signal.alarm(0)
+            except:
+                pass
+                
         except TimeoutError as e:
             result = f"⏱️ Timeout after {timeout}s"
         except Exception as e:
             result = f"❌ Error: {str(e)}\n{traceback.format_exc()}"
         finally:
             sys.stdout = old_stdout
-        
+
+        # ===== اگر نتیجه خالی بود، پیام موفقیت =====
+        if not result or result.strip() == '':
+            result = '✅ Done'
+
         return jsonify({
             'success': True,
-            'result': result or '✅ Done',
-            'command': command
+            'result': result,
+            'command': command,
+            'type': 'python'
         })
+
     except Exception as e:
         logger.error(f"Debug exec error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @api_bp.route('/debug/cache', methods=['GET'])
 @require_auth('admin')
