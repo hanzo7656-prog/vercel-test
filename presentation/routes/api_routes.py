@@ -2412,6 +2412,9 @@ def debug_exec():
         
         # ایجاد محیط امن برای اجرا
         safe_globals = {
+        # ===== کتابخانه‌هایی که کاربر بهشون نیاز داره =====
+        # اینا رو در safe_globals اضافه کن
+        safe_globals = {
             '__builtins__': {
                 'print': print,
                 'len': len,
@@ -2445,7 +2448,31 @@ def debug_exec():
                 'TypeError': TypeError,
                 'KeyError': KeyError,
                 'IndexError': IndexError,
+                '__import__': __import__,  # ← این خط رو اضافه کن (برای import)
             },
+            # ===== کتابخانه‌هایی که از قبل ایمپورت شدن =====
+            'os': __import__('os'),
+            'sys': __import__('sys'),
+            'time': __import__('time'),
+            'datetime': __import__('datetime'),
+            'json': __import__('json'),
+            're': __import__('re'),
+            'math': __import__('math'),
+            'random': __import__('random'),
+            'collections': __import__('collections'),
+            'itertools': __import__('itertools'),
+            'functools': __import__('functools'),
+            'hashlib': __import__('hashlib'),
+            'base64': __import__('base64'),
+            'pprint': __import__('pprint'),
+            'inspect': __import__('inspect'),
+            'traceback': __import__('traceback'),
+            'logging': __import__('logging'),
+            'subprocess': __import__('subprocess'),
+            # ===== کتابخانه‌های خارجی (اگه نصب باشن) =====
+            'psutil': __import__('psutil') if 'psutil' in sys.modules else None,
+            'requests': __import__('requests') if 'requests' in sys.modules else None,
+        
             **allowed_modules
         }
         
