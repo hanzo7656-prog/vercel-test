@@ -57,6 +57,54 @@
             width: 0%;
         }
 
+        /* ===== CLI MODE SWITCHER ===== */
+        .cli-mode-switcher {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+        .cli-mode-switcher .mode-btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: var(--transition);
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cli-mode-switcher .mode-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+        .cli-mode-switcher .mode-btn.active {
+            color: white;
+        }
+        .cli-mode-switcher .mode-btn.mode-python.active {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+        .cli-mode-switcher .mode-btn.mode-shell.active {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.05);
+        }
+        .cli-mode-switcher .mode-btn.mode-terminal.active {
+            background: rgba(34, 211, 238, 0.2);
+            color: #22d3ee;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.05);
+        }
+
         /* ===== CONSOLE ===== */
         .console-output {
             background: rgba(0, 0, 0, 0.4);
@@ -71,6 +119,7 @@
             text-align: left;
             line-height: 1.8;
             border: 1px solid var(--border-color);
+            min-height: 200px;
         }
         .console-output::-webkit-scrollbar { width: 4px; }
         .console-output::-webkit-scrollbar-track { background: transparent; }
@@ -85,13 +134,13 @@
         .console-output .log-time {
             color: var(--text-muted);
             min-width: 70px;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             flex-shrink: 0;
         }
         .console-output .log-level {
             min-width: 60px;
             font-weight: 600;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             flex-shrink: 0;
         }
         .console-output .log-level.info { color: var(--accent-cyan); }
@@ -100,6 +149,7 @@
         .console-output .log-level.warning { color: var(--accent-orange); }
         .console-output .log-level.cmd { color: var(--accent-purple); }
         .console-output .log-level.shell { color: #f59e0b; }
+        .console-output .log-level.terminal { color: #22d3ee; }
         .console-output .log-msg {
             flex: 1;
             word-break: break-word;
@@ -113,7 +163,7 @@
             border: none;
             color: var(--text-muted);
             cursor: pointer;
-            font-size: 0.55rem;
+            font-size: 0.5rem;
             padding: 0 4px;
             border-radius: 4px;
             transition: var(--transition);
@@ -123,8 +173,15 @@
             color: var(--accent-cyan);
             background: rgba(0, 212, 255, 0.05);
         }
+        .console-output .log-prompt {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+        .console-output .log-prompt.python { color: #00d4ff; }
+        .console-output .log-prompt.shell { color: #f59e0b; }
+        .console-output .log-prompt.terminal { color: #22d3ee; }
 
-        /* ===== CLI ===== */
+        /* ===== CLI INPUT ===== */
         .cli-area { margin-top: 12px; }
         .cli-area .cli-input-wrapper { position: relative; }
         .cli-area .cli-input-wrapper .cli-prompt {
@@ -132,13 +189,16 @@
             left: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--accent-green);
             font-family: var(--font-mono);
             font-size: 0.8rem;
             font-weight: 600;
             pointer-events: none;
-            opacity: 0.6;
+            opacity: 0.8;
         }
+        .cli-area .cli-input-wrapper .cli-prompt.python { color: #00d4ff; }
+        .cli-area .cli-input-wrapper .cli-prompt.shell { color: #f59e0b; }
+        .cli-area .cli-input-wrapper .cli-prompt.terminal { color: #22d3ee; }
+
         .cli-area textarea {
             width: 100%;
             padding: 10px 14px;
@@ -152,7 +212,7 @@
             min-height: 60px;
             transition: var(--transition);
             direction: ltr;
-            padding-left: 80px;
+            padding-left: 120px;
         }
         .cli-area textarea:focus {
             outline: none;
@@ -163,6 +223,7 @@
             color: var(--text-muted);
             opacity: 0.5;
         }
+
         .cli-area .cli-shortcuts {
             display: flex;
             gap: 6px;
@@ -174,7 +235,7 @@
             border: 1px solid var(--border-color);
         }
         .cli-area .cli-shortcuts .shortcut {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: var(--text-muted);
             padding: 2px 8px;
             border: 1px solid var(--border-color);
@@ -190,6 +251,7 @@
             background: rgba(0, 212, 255, 0.05);
         }
         .cli-area .cli-shortcuts .shortcut .icon { margin-left: 4px; }
+
         .cli-area .cli-actions {
             display: flex;
             gap: 8px;
@@ -201,228 +263,74 @@
             border-radius: var(--radius-sm);
             font-size: 0.75rem;
         }
-        .cli-area .cli-actions .btn .badge {
-            font-size: 0.5rem;
-            padding: 1px 6px;
-            border-radius: var(--radius-full);
-            background: rgba(0, 212, 255, 0.1);
-            color: var(--accent-cyan);
-            margin-right: 4px;
-        }
 
-        /* ===== SYSTEM ===== */
-        .system-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-        }
-        .system-item {
-            background: var(--bg-input);
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-color);
-            transition: var(--transition);
-        }
-        .system-item:hover { border-color: var(--border-hover); }
-        .system-item .sys-label {
-            font-size: 0.6rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .system-item .sys-value {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-top: 4px;
-            font-family: var(--font-mono);
-            word-break: break-all;
-        }
-        .system-item .sys-value.cyan { color: var(--accent-cyan); }
-
-        /* ===== CACHE ===== */
-        .cache-grid {
+        /* ===== HEALING CARD ===== */
+        .healing-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-bottom: 12px;
         }
-        .cache-item {
+        .healing-card {
             background: var(--bg-input);
             padding: 12px 16px;
             border-radius: var(--radius-sm);
-            text-align: center;
             border: 1px solid var(--border-color);
+            text-align: center;
+            transition: var(--transition);
         }
-        .cache-item .c-label {
+        .healing-card:hover { border-color: var(--border-hover); }
+        .healing-card .h-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+        .healing-card .h-value.green { color: var(--accent-green); }
+        .healing-card .h-value.orange { color: var(--accent-orange); }
+        .healing-card .h-value.cyan { color: var(--accent-cyan); }
+        .healing-card .h-label {
             font-size: 0.55rem;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }
-        .cache-item .c-value {
-            font-size: 1.2rem;
-            font-weight: 700;
-            font-family: var(--font-mono);
             margin-top: 4px;
         }
-        .cache-item .c-value.cyan { color: var(--accent-cyan); }
-        .cache-item .c-value.green { color: var(--accent-green); }
-        .cache-item .c-value.orange { color: var(--accent-orange); }
-
-        .cache-keys {
+        .healing-actions {
             display: flex;
+            gap: 8px;
             flex-wrap: wrap;
-            gap: 4px;
-            padding: 8px 12px;
-            background: var(--bg-input);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-color);
+            margin-top: 12px;
+        }
+        .healing-actions .btn {
+            padding: 5px 14px;
+            font-size: 0.7rem;
+        }
+
+        .healing-history {
+            margin-top: 12px;
             max-height: 200px;
             overflow-y: auto;
         }
-        .cache-keys .key-tag {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 10px;
-            border-radius: 4px;
-            font-size: 0.6rem;
-            font-family: var(--font-mono);
-            color: var(--accent-cyan);
-            border: 1px solid rgba(0, 212, 255, 0.06);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .cache-keys .key-tag .delete-key {
-            cursor: pointer;
-            color: var(--text-muted);
-            font-size: 0.5rem;
-            transition: var(--transition);
-        }
-        .cache-keys .key-tag .delete-key:hover {
-            color: var(--accent-red);
-        }
-
-        .cache-search {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .cache-search input {
-            flex: 1;
-            padding: 6px 12px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.75rem;
-            font-family: inherit;
-        }
-        .cache-search input:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-        }
-        .cache-search .btn-xs {
-            padding: 4px 12px;
-            font-size: 0.65rem;
-            border: 1px solid var(--border-color);
-            background: transparent;
-            color: var(--text-secondary);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .cache-search .btn-xs:hover {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-        }
-
-        /* ===== MODAL ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(4px);
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
-        .modal-box {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px 28px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-        }
-        .modal-box .modal-close {
-            position: absolute;
-            top: 12px;
-            left: 16px;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .modal-box .modal-close:hover {
-            color: var(--accent-red);
-        }
-        .modal-box .modal-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .modal-box .modal-title i { color: var(--accent-cyan); }
-        .modal-box .modal-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px 16px;
-        }
-        .modal-box .modal-body .info-item {
+        .healing-history .h-item {
             display: flex;
             justify-content: space-between;
-            padding: 4px 0;
+            padding: 4px 10px;
             border-bottom: 1px solid var(--border-color);
-            font-size: 0.8rem;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
         }
-        .modal-box .modal-body .info-item .label { color: var(--text-secondary); }
-        .modal-box .modal-body .info-item .value { color: var(--text-primary); font-weight: 500; }
-        .modal-box .modal-body .info-item .value.cyan { color: var(--accent-cyan); }
-        .modal-box .modal-body .info-item .value.red { color: var(--accent-red); }
-        .modal-box .modal-body .info-item .value.green { color: var(--accent-green); }
-        .modal-box .modal-body .full-width { grid-column: 1 / -1; }
-        .modal-box .modal-actions {
-            margin-top: 16px;
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-            padding-top: 12px;
-            border-top: 1px solid var(--border-color);
-        }
+        .healing-history .h-item .h-time { color: var(--text-muted); font-size: 0.6rem; }
+        .healing-history .h-item .h-action { font-weight: 500; }
+        .healing-history .h-item .h-action.success { color: var(--accent-green); }
+        .healing-history .h-item .h-action.warning { color: var(--accent-orange); }
+        .healing-history .h-item .h-action.error { color: var(--accent-red); }
 
         /* ============================================================
            RESPONSIVE
            ============================================================ */
         @media (max-width: 1024px) {
             .debug-stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .cache-grid { grid-template-columns: repeat(2, 1fr); }
+            .healing-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
             .debug-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -433,22 +341,18 @@
             .console-output .log-level { min-width: 45px; font-size: 0.55rem; }
             .cli-area .cli-actions { flex-direction: column; }
             .cli-area .cli-actions .btn { width: 100%; justify-content: center; }
-            .system-grid { grid-template-columns: 1fr; }
-            .cache-grid { grid-template-columns: 1fr 1fr; }
-            .cache-keys .key-tag { font-size: 0.55rem; }
-            .cli-area .cli-shortcuts { gap: 4px; }
-            .cli-area .cli-shortcuts .shortcut { font-size: 0.5rem; padding: 1px 6px; }
-            .modal-box { padding: 16px 18px; max-width: 95%; }
-            .modal-box .modal-body { grid-template-columns: 1fr; }
+            .cli-mode-switcher .mode-btn { font-size: 0.6rem; padding: 4px 10px; }
+            .cli-area textarea { padding-left: 80px; font-size: 0.75rem; }
+            .cli-area .cli-input-wrapper .cli-prompt { font-size: 0.65rem; left: 8px; }
+            .healing-grid { grid-template-columns: 1fr; }
+            .healing-actions { flex-direction: column; }
+            .healing-actions .btn { width: 100%; justify-content: center; }
         }
         @media (max-width: 480px) {
             .debug-stats-grid { grid-template-columns: 1fr 1fr; }
             .debug-stat-card .stat-value { font-size: 0.8rem; }
-            .cache-grid { grid-template-columns: 1fr; }
             .console-output .log-line { flex-wrap: wrap; gap: 2px; }
             .console-output .log-time { min-width: 100%; font-size: 0.5rem; color: var(--text-muted); }
-            .cli-area textarea { padding-left: 60px; font-size: 0.75rem; }
-            .cli-area .cli-input-wrapper .cli-prompt { font-size: 0.65rem; left: 8px; }
         }
     </style>
 </head>
@@ -496,9 +400,10 @@
             <button class="tab-btn" data-tab="system">🖥️ سیستم</button>
             <button class="tab-btn" data-tab="cache">🗄️ کش</button>
             <button class="tab-btn" data-tab="processes">📈 پردازش‌ها</button>
+            <button class="tab-btn" data-tab="healing">🔄 خودترمیمی</button>
         </div>
 
-        <!-- Tab: Status -->
+        <!-- ===== TAB: STATUS ===== -->
         <div class="tab-content active" id="tab-status">
             <div class="card">
                 <div class="card-title"><i class="fas fa-heartbeat"></i> وضعیت سیستم<button class="btn btn-xs btn-outline" onclick="loadStatus()" style="margin-right:auto;"><i class="fas fa-sync-alt"></i></button></div>
@@ -506,7 +411,7 @@
             </div>
         </div>
 
-        <!-- Tab: Logs -->
+        <!-- ===== TAB: LOGS ===== -->
         <div class="tab-content" id="tab-logs">
             <div class="card">
                 <div class="card-title">
@@ -529,54 +434,66 @@
             </div>
         </div>
 
-        <!-- Tab: CLI -->
+        <!-- ===== TAB: CLI ===== -->
         <div class="tab-content" id="tab-cli">
             <div class="card">
                 <div class="card-title">
                     <i class="fas fa-terminal"></i> کنسول تعاملی
                     <div style="display:flex;gap:6px;margin-right:auto;">
-                        <span style="font-size:0.6rem;color:var(--text-muted);">🟢 Python | 🟡 Shell</span>
                         <button class="btn btn-xs btn-danger" onclick="clearCli()"><i class="fas fa-eraser"></i></button>
                         <button class="btn btn-xs btn-outline" onclick="copyCli()"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
+
+                <!-- Mode Switcher -->
+                <div class="cli-mode-switcher" id="cliModeSwitcher">
+                    <button class="mode-btn mode-python active" data-mode="python" onclick="setCliMode('python')">
+                        <i class="fab fa-python"></i> Python
+                    </button>
+                    <button class="mode-btn mode-shell" data-mode="shell" onclick="setCliMode('shell')">
+                        <i class="fas fa-terminal"></i> Shell
+                    </button>
+                    <button class="mode-btn mode-terminal" data-mode="terminal" onclick="setCliMode('terminal')">
+                        <i class="fas fa-desktop"></i> Terminal
+                    </button>
+                </div>
+
+                <!-- Console Output -->
                 <div class="console-output" id="cliOutput" style="min-height:200px;">
                     <div class="log-line"><span class="log-time">🚀</span><span class="log-level info">INFO</span><span class="log-msg">کنسول آماده است.</span></div>
-                    <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">نکته: دستورات <span class="highlight">پایتون</span> و <span class="highlight">شل</span> (با / شروع) پشتیبانی می‌شوند.</span></div>
-                    <div class="log-line"><span class="log-time">📋</span><span class="log-level info">INFO</span><span class="log-msg">میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
+                    <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">حالت: <span class="highlight" id="modeDisplay">Python</span> | میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
                 </div>
+
+                <!-- CLI Input -->
                 <div class="cli-area">
                     <div class="cli-input-wrapper">
                         <textarea id="cliInput" placeholder="دستور خود را وارد کنید..."></textarea>
-                        <span class="cli-prompt">$</span>
+                        <span class="cli-prompt python" id="cliPrompt">>>> </span>
                     </div>
-                    <div class="cli-shortcuts">
+
+                    <!-- Shortcuts -->
+                    <div class="cli-shortcuts" id="cliShortcuts">
                         <button class="shortcut" onclick="insertCommand('/cpu')"><span class="icon">⚡</span>/cpu</button>
                         <button class="shortcut" onclick="insertCommand('/ram')"><span class="icon">💾</span>/ram</button>
                         <button class="shortcut" onclick="insertCommand('/uptime')"><span class="icon">⏱️</span>/uptime</button>
                         <button class="shortcut" onclick="insertCommand('/stats')"><span class="icon">📊</span>/stats</button>
                         <button class="shortcut" onclick="insertCommand('/clear')"><span class="icon">🧹</span>/clear</button>
                         <button class="shortcut" onclick="insertCommand('/help')"><span class="icon">❓</span>/help</button>
-                        <button class="shortcut" onclick="insertCommand('ls -la')"><span class="icon">📂</span>shell: ls</button>
-                        <button class="shortcut" onclick="insertCommand('ps aux')"><span class="icon">📈</span>shell: ps</button>
-                        <button class="shortcut" onclick="insertCommand('df -h')"><span class="icon">💿</span>shell: df</button>
+                        <button class="shortcut" onclick="insertCommand('ls -la')"><span class="icon">📂</span>ls</button>
+                        <button class="shortcut" onclick="insertCommand('ps aux')"><span class="icon">📈</span>ps</button>
+                        <button class="shortcut" onclick="insertCommand('df -h')"><span class="icon">💿</span>df</button>
                     </div>
+
+                    <!-- Actions -->
                     <div class="cli-actions">
                         <button class="btn btn-primary" onclick="executeCommand()"><i class="fas fa-play"></i> اجرا (Ctrl+Enter)</button>
                         <button class="btn btn-outline" onclick="clearCliInput()"><i class="fas fa-times"></i> پاک کردن</button>
-                        <button class="btn btn-outline" onclick="setCommandType('python')" id="pythonBtn" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">
-                            <i class="fab fa-python"></i> Python
-                        </button>
-                        <button class="btn btn-outline" onclick="setCommandType('shell')" id="shellBtn">
-                            <i class="fas fa-terminal"></i> Shell
-                        </button>
-                        <span style="font-size:0.6rem;color:var(--text-muted);margin-right:auto;" id="cmdTypeLabel">حالت: Python</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: System -->
+        <!-- ===== TAB: SYSTEM ===== -->
         <div class="tab-content" id="tab-system">
             <div class="card">
                 <div class="card-title"><i class="fas fa-server"></i> اطلاعات سیستم<button class="btn btn-xs btn-outline" onclick="loadSystem()" style="margin-right:auto;"><i class="fas fa-sync-alt"></i></button></div>
@@ -584,7 +501,7 @@
             </div>
         </div>
 
-        <!-- Tab: Cache -->
+        <!-- ===== TAB: CACHE ===== -->
         <div class="tab-content" id="tab-cache">
             <div class="card">
                 <div class="card-title">
@@ -605,7 +522,7 @@
             </div>
         </div>
 
-        <!-- Tab: Processes -->
+        <!-- ===== TAB: PROCESSES ===== -->
         <div class="tab-content" id="tab-processes">
             <div class="card">
                 <div class="card-title">
@@ -621,26 +538,24 @@
             </div>
         </div>
 
-    </div>
-
-    <!-- ===== MODAL ===== -->
-    <div class="modal-overlay" id="processModal">
-        <div class="modal-box">
-            <button class="modal-close" onclick="closeProcessModal()"><i class="fas fa-times"></i></button>
-            <div class="modal-title"><i class="fas fa-microchip"></i> جزئیات پردازش: <span id="modalPid">—</span></div>
-            <div class="modal-body" id="modalBody">
-                <div class="loading-container" style="grid-column:1/-1;padding:20px;">
-                    <div class="loading-spinner" style="width:24px;height:24px;"></div>
-                    <p class="loading-text">در حال بارگذاری...</p>
+        <!-- ===== TAB: HEALING ===== -->
+        <div class="tab-content" id="tab-healing">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-heartbeat"></i> خودترمیمی (Self-Healer)
+                    <button class="btn btn-xs btn-outline" onclick="loadHealingStatus()" style="margin-right:auto;">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div id="healingContent">
+                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button class="btn btn-danger btn-sm" id="modalKillBtn" onclick="modalKillProcess()"><i class="fas fa-skull"></i> خاتمه</button>
-                <button class="btn btn-outline btn-sm" onclick="closeProcessModal()"><i class="fas fa-times"></i> بستن</button>
-            </div>
         </div>
+
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="/js/utils.js"></script>
@@ -648,13 +563,16 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DEBUG CONTROLLER - نسخه کامل نهایی
+        // DEBUG CONTROLLER - نسخه کامل
         // ============================================================
         
         let debugStatsInterval = null;
+        let healingInterval = null;
         let processesData = [];
         let cacheData = [];
-        let currentModalPid = null;
+        let currentCliMode = 'python';
+        let cliHistory = [];
+        let historyIndex = -1;
 
         class DebugController {
             constructor() {
@@ -700,19 +618,40 @@
                             'cli': () => {},
                             'system': () => this.loadSystem(),
                             'cache': () => this.loadCache(),
-                            'processes': () => this.loadProcesses()
+                            'processes': () => this.loadProcesses(),
+                            'healing': () => this.loadHealingStatus()
                         };
                         if (loaders[tab]) loaders[tab]();
                     });
                 });
             }
             setupEvents() {
-                document.getElementById('cliInput').addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                        e.preventDefault();
-                        executeCommand();
-                    }
-                });
+                const input = document.getElementById('cliInput');
+                if (input) {
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            e.preventDefault();
+                            executeCommand();
+                        }
+                        if (e.key === 'ArrowUp' && cliHistory.length > 0) {
+                            e.preventDefault();
+                            if (historyIndex < cliHistory.length - 1) {
+                                historyIndex++;
+                                input.value = cliHistory[cliHistory.length - 1 - historyIndex];
+                            }
+                        }
+                        if (e.key === 'ArrowDown' && historyIndex >= 0) {
+                            e.preventDefault();
+                            if (historyIndex > 0) {
+                                historyIndex--;
+                                input.value = cliHistory[cliHistory.length - 1 - historyIndex];
+                            } else {
+                                historyIndex = -1;
+                                input.value = '';
+                            }
+                        }
+                    });
+                }
             }
             async loadAll() {
                 await this.loadAppStats();
@@ -721,10 +660,12 @@
                 await this.loadSystem();
                 await this.loadCache();
                 await this.loadProcesses();
+                await this.loadHealingStatus();
             }
             startAutoUpdate() {
                 debugStatsInterval = setInterval(() => this.loadAppStats(), 1000);
                 this.updateInterval = setInterval(() => this.loadStatus(), 10000);
+                healingInterval = setInterval(() => this.loadHealingStatus(), 30000);
             }
 
             // ===== APP STATS =====
@@ -951,21 +892,111 @@
                     <div style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);">نمایش ${data.length} پردازش</div>
                 `;
             }
+
+            // ===== HEALING =====
+            async loadHealingStatus() {
+                const container = document.getElementById('healingContent');
+                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
+                try {
+                    const data = await api.getHealingStatus();
+                    if (data.success && data.data) {
+                        const d = data.data;
+                        const dbStatus = d.databases || {};
+                        const dbCount = Object.keys(dbStatus).length;
+                        const connectedCount = Object.values(dbStatus).filter(v => v === true).length;
+                        
+                        let html = `
+                            <div class="healing-grid">
+                                <div class="healing-card">
+                                    <div class="h-value ${d.status === 'running' ? 'green' : 'orange'}">${d.status === 'running' ? '✅ فعال' : '⏹️ غیرفعال'}</div>
+                                    <div class="h-label">وضعیت</div>
+                                </div>
+                                <div class="healing-card">
+                                    <div class="h-value cyan">${d.healing_actions || 0}</div>
+                                    <div class="h-label">اقدامات انجام شده</div>
+                                </div>
+                                <div class="healing-card">
+                                    <div class="h-value ${connectedCount === dbCount ? 'green' : 'orange'}">${connectedCount}/${dbCount}</div>
+                                    <div class="h-label">دیتابیس‌های متصل</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;">
+                                ${Object.entries(dbStatus).map(([name, connected]) => `
+                                    <span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>
+                                `).join('')}
+                            </div>
+                            <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px;">
+                                <span>🧠 مدل: ${d.model_loaded ? '✅ بارگذاری شده' : '❌ بارگذاری نشده'}</span>
+                                ${d.model_accuracy !== null && d.model_accuracy !== undefined ? ` • 🎯 دقت: ${(d.model_accuracy * 100).toFixed(1)}%` : ''}
+                                <span> • ⏱️ آپتایم: ${d.uptime || '0s'}</span>
+                            </div>
+                            <div class="healing-actions">
+                                <button class="btn btn-success btn-sm" onclick="triggerHealing()"><i class="fas fa-play"></i> اجرای Healing</button>
+                                <button class="btn btn-outline btn-sm" onclick="resetHealing()"><i class="fas fa-undo"></i> بازنشانی</button>
+                            </div>
+                            <div class="healing-history" id="healingHistory">
+                                <div style="font-size:0.6rem;color:var(--text-muted);padding:4px 0;">آخرین اقدام: ${d.last_healing ? formatTimeAgo(d.last_healing) : '—'}</div>
+                            </div>
+                        `;
+                        container.innerHTML = html;
+                    }
+                } catch (err) {
+                    console.error('Healing status error:', err);
+                    container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت وضعیت خودترمیمی</p>';
+                }
+            }
         }
 
         // ============================================================
         // CLI FUNCTIONS
         // ============================================================
         
-        let currentCommandType = 'python';
+        let currentCliMode = 'python';
+        let cliHistory = [];
+        let historyIndex = -1;
 
-        function setCommandType(type) {
-            currentCommandType = type;
-            document.getElementById('cmdTypeLabel').textContent = 'حالت: ' + (type === 'python' ? 'Python' : 'Shell');
-            document.getElementById('pythonBtn').style.borderColor = type === 'python' ? 'var(--accent-cyan)' : 'var(--border-color)';
-            document.getElementById('pythonBtn').style.color = type === 'python' ? 'var(--accent-cyan)' : 'var(--text-secondary)';
-            document.getElementById('shellBtn').style.borderColor = type === 'shell' ? 'var(--accent-cyan)' : 'var(--border-color)';
-            document.getElementById('shellBtn').style.color = type === 'shell' ? 'var(--accent-cyan)' : 'var(--text-secondary)';
+        function setCliMode(mode) {
+            currentCliMode = mode;
+            
+            // به‌روزرسانی دکمه‌ها
+            document.querySelectorAll('#cliModeSwitcher .mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // به‌روزرسانی پرامپت
+            const prompt = document.getElementById('cliPrompt');
+            const display = document.getElementById('modeDisplay');
+            const input = document.getElementById('cliInput');
+            
+            const prompts = {
+                'python': { text: '>>> ', color: 'python', label: 'Python' },
+                'shell': { text: '$ ', color: 'shell', label: 'Shell' },
+                'terminal': { text: '$ ', color: 'terminal', label: 'Terminal' }
+            };
+            
+            const p = prompts[mode] || prompts['python'];
+            prompt.textContent = p.text;
+            prompt.className = 'cli-prompt ' + p.color;
+            display.textContent = p.label;
+            
+            // تغییر placeholder
+            const placeholders = {
+                'python': 'دستور پایتون را وارد کنید...',
+                'shell': 'دستور شل را وارد کنید...',
+                'terminal': 'دستور ترمینال را وارد کنید...'
+            };
+            input.placeholder = placeholders[mode] || placeholders['python'];
+            
+            // تغییر رنگ border
+            const colors = {
+                'python': '#00d4ff',
+                'shell': '#f59e0b',
+                'terminal': '#22d3ee'
+            };
+            input.style.borderColor = colors[mode] || '#00d4ff';
         }
 
         function insertCommand(cmd) {
@@ -996,39 +1027,63 @@
                 return;
             }
 
+            // ذخیره در تاریخچه
+            if (cmd) {
+                cliHistory.push(cmd);
+                if (cliHistory.length > 50) cliHistory.shift();
+                historyIndex = -1;
+            }
+
+            // ===== میانبرها =====
             const shortcuts = {
                 '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
                 '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
                 '/uptime': 'import psutil, os, time; p=psutil.Process(os.getpid()); s=int(time.time()-p.create_time()); d,h,m=s//86400,(s%86400)//3600,(s%3600)//60; print(f"Uptime: {d}d {h}h {m}m")',
                 '/stats': 'import psutil, os, time; p=psutil.Process(os.getpid()); m=p.memory_info(); c=p.cpu_percent(interval=0.3); u=int(time.time()-p.create_time()); d,h,mi=u//86400,(u%86400)//3600,(u%3600)//60; print(f"PID: {os.getpid()}\\nCPU: {c}%\\nRAM: {m.rss/(1024*1024):.1f} MB\\nUptime: {d}d {h}h {mi}m")',
                 '/clear': 'clearCli()',
-                '/help': 'print("📋 میانبرها:\\n  /cpu   - نمایش مصرف CPU\\n  /ram   - نمایش مصرف RAM\\n  /uptime - نمایش آپتایم\\n  /stats - نمایش همه آمار\\n  /clear - پاک کردن خروجی\\n  /help  - نمایش این راهنما\\n\\n💡 حالت Python: دستورات پایتون\\n💡 حالت Shell: دستورات لینوکس (با / شروع)")'
+                '/help': 'print("📋 میانبرها:\\n  /cpu   - نمایش مصرف CPU\\n  /ram   - نمایش مصرف RAM\\n  /uptime - نمایش آپتایم\\n  /stats - نمایش همه آمار\\n  /clear - پاک کردن خروجی\\n  /help  - نمایش این راهنما\\n\\n💡 حالت‌ها: Python, Shell, Terminal")'
             };
 
+            let type = currentCliMode;
+            let actualCmd = cmd;
+
             if (shortcuts[cmd]) {
-                cmd = shortcuts[cmd];
-                if (cmd === 'clearCli()') {
+                actualCmd = shortcuts[cmd];
+                if (actualCmd === 'clearCli()') {
                     clearCli();
                     return;
                 }
-                currentCommandType = 'python';
-                setCommandType('python');
+                type = 'python';
             }
 
+            // اگر با / شروع شد، حالت shell
             if (cmd.startsWith('/') && !shortcuts[cmd]) {
-                currentCommandType = 'shell';
-                setCommandType('shell');
-                cmd = cmd.substring(1);
+                type = 'shell';
+                actualCmd = cmd.substring(1);
             }
 
             const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const typeLabel = currentCommandType === 'python' ? '🐍 PY' : '💻 SH';
+            const typeLabels = {
+                'python': '🐍 PY',
+                'shell': '💻 SH',
+                'terminal': '🖥️ TM'
+            };
+            const typeColors = {
+                'python': 'var(--accent-green)',
+                'shell': '#f59e0b',
+                'terminal': '#22d3ee'
+            };
+            const typeLevels = {
+                'python': 'cmd',
+                'shell': 'shell',
+                'terminal': 'terminal'
+            };
             
             output.innerHTML += `
                 <div class="log-line">
                     <span class="log-time">${now}</span>
-                    <span class="log-level ${currentCommandType === 'python' ? 'cmd' : 'shell'}">${typeLabel}</span>
-                    <span class="log-msg" style="color:${currentCommandType === 'python' ? 'var(--accent-green)' : '#f59e0b'};">${input.value.trim()}</span>
+                    <span class="log-level ${typeLevels[type]}">${typeLabels[type] || '📝'}</span>
+                    <span class="log-msg" style="color:${typeColors[type] || 'var(--accent-green)'};">${cmd}</span>
                     <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
                 </div>
             `;
@@ -1037,13 +1092,18 @@
             output.scrollTop = output.scrollHeight;
 
             try {
-                const data = await api.executeDebugCommand(cmd, currentCommandType === 'shell' ? 10 : 5);
+                const data = await api.executeDebugCommand(actualCmd, type, 15);
                 if (data.success) {
+                    let result = data.result || 'انجام شد';
+                    // اگر حالت terminal بود، پرامپت رو هم نمایش بده
+                    if (type === 'terminal' && data.prompt) {
+                        result = result;
+                    }
                     output.innerHTML += `
                         <div class="log-line">
                             <span class="log-time">${now}</span>
                             <span class="log-level success">✅ RESULT</span>
-                            <span class="log-msg">${data.result || 'انجام شد'}</span>
+                            <span class="log-msg" style="white-space:pre-wrap;background:rgba(0,0,0,0.15);padding:4px 8px;border-radius:4px;margin:2px 0;">${result}</span>
                             <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
                         </div>
                     `;
@@ -1072,10 +1132,16 @@
 
         function clearCli() {
             const output = document.getElementById('cliOutput');
+            const modeDisplay = document.getElementById('modeDisplay');
+            const mode = currentCliMode || 'python';
+            const modeLabels = {
+                'python': 'Python',
+                'shell': 'Shell',
+                'terminal': 'Terminal'
+            };
             output.innerHTML = `
                 <div class="log-line"><span class="log-time">🧹</span><span class="log-level info">INFO</span><span class="log-msg">خروجی کنسول پاک شد</span></div>
-                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">نکته: دستورات <span class="highlight">پایتون</span> و <span class="highlight">شل</span> (با / شروع) پشتیبانی می‌شوند.</span></div>
-                <div class="log-line"><span class="log-time">📋</span><span class="log-level info">INFO</span><span class="log-msg">میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
+                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">حالت: <span class="highlight" id="modeDisplay">${modeLabels[mode] || 'Python'}</span> | میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
             `;
         }
 
@@ -1122,7 +1188,7 @@
         }
 
         // ============================================================
-        // CACHE MANAGEMENT
+        // CACHE FUNCTIONS
         // ============================================================
         
         async function searchCache() {
@@ -1165,7 +1231,9 @@
                 } else {
                     showToast('❌ ' + data.error, 'error');
                 }
-            } catch (err) { showToast('❌ خطا', 'error'); }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
         }
 
         async function purgeCache() {
@@ -1178,11 +1246,47 @@
                 } else {
                     showToast('❌ ' + data.error, 'error');
                 }
-            } catch (err) { showToast('❌ خطا', 'error'); }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
         }
 
         // ============================================================
-        // PROCESSES
+        // HEALING FUNCTIONS
+        // ============================================================
+        
+        async function triggerHealing() {
+            if (!confirm('⚠️ آیا از اجرای دستی Self-Healing اطمینان دارید؟')) return;
+            try {
+                const data = await api.triggerHealing();
+                if (data.success) {
+                    showToast('✅ Self-Healing اجرا شد', 'success');
+                    loadHealingStatus();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
+        }
+
+        async function resetHealing() {
+            if (!confirm('⚠️ آیا از بازنشانی تلاش‌های Self-Healing اطمینان دارید؟')) return;
+            try {
+                const data = await api.resetHealing();
+                if (data.success) {
+                    showToast('✅ تلاش‌ها بازنشانی شد', 'success');
+                    loadHealingStatus();
+                } else {
+                    showToast('❌ ' + data.error, 'error');
+                }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
+        }
+
+        // ============================================================
+        // PROCESS FUNCTIONS
         // ============================================================
         
         function filterProcesses() {
@@ -1197,69 +1301,29 @@
         }
 
         async function showProcessDetails(pid) {
-            const modal = document.getElementById('processModal');
-            const body = document.getElementById('modalBody');
-            const pidSpan = document.getElementById('modalPid');
-            
-            modal.classList.add('active');
-            pidSpan.textContent = pid;
-            currentModalPid = pid;
-            
-            body.innerHTML = `
-                <div class="loading-container" style="grid-column:1/-1;padding:20px;">
-                    <div class="loading-spinner" style="width:24px;height:24px;"></div>
-                    <p class="loading-text">در حال بارگذاری جزئیات...</p>
-                </div>
-            `;
-            
             try {
                 const data = await api.getProcessDetails(pid);
                 if (data.success && data.data) {
                     const d = data.data;
-                    body.innerHTML = `
-                        <div class="info-item"><span class="label">🆔 PID</span><span class="value cyan">${d.pid}</span></div>
-                        <div class="info-item"><span class="label">📛 نام</span><span class="value">${d.name || '—'}</span></div>
-                        <div class="info-item"><span class="label">📊 وضعیت</span><span class="value ${d.status === 'running' ? 'green' : d.status === 'sleeping' ? 'orange' : 'red'}">${d.status || '—'}</span></div>
-                        <div class="info-item"><span class="label">⚡ CPU</span><span class="value cyan">${d.cpu_percent?.toFixed(1) || 0}%</span></div>
-                        <div class="info-item"><span class="label">🧠 RAM</span><span class="value cyan">${d.memory_percent?.toFixed(1) || 0}%</span></div>
-                        <div class="info-item"><span class="label">🧵 تردها</span><span class="value">${d.num_threads || 0}</span></div>
-                        <div class="info-item"><span class="label">👤 کاربر</span><span class="value">${d.username || '—'}</span></div>
-                        <div class="info-item"><span class="label">⏱️ شروع</span><span class="value" style="font-size:0.7rem;">${d.create_time_formatted ? formatDate(d.create_time_formatted) : '—'}</span></div>
-                        <div class="info-item full-width"><span class="label">📂 مسیر</span><span class="value" style="font-size:0.7rem;word-break:break-all;">${d.cwd || '—'}</span></div>
-                        <div class="info-item full-width"><span class="label">💻 دستور</span><span class="value" style="font-size:0.65rem;word-break:break-all;color:var(--accent-cyan);">${d.cmdline ? d.cmdline.join(' ') : '—'}</span></div>
-                    `;
-                } else {
-                    body.innerHTML = `<div class="full-width" style="text-align:center;padding:20px;color:var(--accent-red);">❌ ${data.error || 'خطا در دریافت اطلاعات'}</div>`;
+                    let msg = `📋 جزئیات پردازش PID: ${pid}\n`;
+                    msg += `📛 نام: ${d.name || '—'}\n`;
+                    msg += `📊 وضعیت: ${d.status || '—'}\n`;
+                    msg += `⚡ CPU: ${(d.cpu_percent || 0).toFixed(1)}%\n`;
+                    msg += `🧠 RAM: ${(d.memory_percent || 0).toFixed(1)}%\n`;
+                    msg += `🧵 تردها: ${d.num_threads || 0}\n`;
+                    msg += `👤 کاربر: ${d.username || '—'}\n`;
+                    msg += `⏱️ شروع: ${d.create_time_formatted ? formatDate(d.create_time_formatted) : '—'}\n`;
+                    msg += `📂 مسیر: ${d.cwd || '—'}\n`;
+                    msg += `💻 دستور: ${d.cmdline ? d.cmdline.join(' ') : '—'}`;
+                    alert(msg);
                 }
             } catch (err) {
-                body.innerHTML = `<div class="full-width" style="text-align:center;padding:20px;color:var(--accent-red);">❌ ${err.message}</div>`;
-            }
-        }
-
-        function closeProcessModal() {
-            document.getElementById('processModal').classList.remove('active');
-            currentModalPid = null;
-        }
-
-        async function modalKillProcess() {
-            if (!currentModalPid) return;
-            if (!confirm(`⚠️ آیا از خاتمه پردازش ${currentModalPid} اطمینان دارید؟`)) return;
-            try {
-                const data = await api.killProcess(currentModalPid);
-                if (data.success) {
-                    showToast('✅ پردازش ' + currentModalPid + ' خاتمه یافت', 'success');
-                    closeProcessModal();
-                    loadProcesses();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
+                showToast('❌ خطا در دریافت جزئیات', 'error');
             }
         }
 
         // ============================================================
-        // LOGS & CACHE CLEAR
+        // CLEAR FUNCTIONS
         // ============================================================
         
         async function clearLogs() {
@@ -1270,7 +1334,9 @@
                     showToast('🗑️ لاگ‌ها پاک شدند', 'success');
                     document.querySelector('#debugTabs .tab-btn[data-tab="logs"]')?.click();
                 }
-            } catch (err) { showToast('❌ خطا', 'error'); }
+            } catch (err) {
+                showToast('❌ خطا', 'error');
+            }
         }
 
         // ============================================================
@@ -1282,6 +1348,7 @@
         function loadSystem() { document.querySelector('#debugTabs .tab-btn[data-tab="system"]')?.click(); }
         function loadCache() { document.querySelector('#debugTabs .tab-btn[data-tab="cache"]')?.click(); }
         function loadProcesses() { document.querySelector('#debugTabs .tab-btn[data-tab="processes"]')?.click(); }
+        function loadHealingStatus() { document.querySelector('#debugTabs .tab-btn[data-tab="healing"]')?.click(); }
 
         // ============================================================
         // EXPOSE GLOBALS
@@ -1295,20 +1362,21 @@
         window.clearLogs = clearLogs;
         window.copyLogLine = copyLogLine;
         window.insertCommand = insertCommand;
-        window.setCommandType = setCommandType;
+        window.setCliMode = setCliMode;
         window.setLogLevel = setLogLevel;
         window.searchCache = searchCache;
         window.deleteCacheKey = deleteCacheKey;
         window.purgeCache = purgeCache;
         window.filterProcesses = filterProcesses;
         window.showProcessDetails = showProcessDetails;
-        window.closeProcessModal = closeProcessModal;
-        window.modalKillProcess = modalKillProcess;
+        window.triggerHealing = triggerHealing;
+        window.resetHealing = resetHealing;
         window.loadStatus = loadStatus;
         window.loadLogs = loadLogs;
         window.loadSystem = loadSystem;
         window.loadCache = loadCache;
         window.loadProcesses = loadProcesses;
+        window.loadHealingStatus = loadHealingStatus;
 
         // ============================================================
         // INIT
@@ -1316,7 +1384,7 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             window.debugController = new DebugController();
-            setCommandType('python');
+            setCliMode('python');
         });
     </script>
 </body>
