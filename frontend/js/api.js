@@ -409,10 +409,11 @@ class ApiClient {
         return this.request(`/api/debug/processes?${params}`);
     }
 
-    executeDebugCommand(command, timeout = 5) {
+    // ===== Debug Exec (با پشتیبانی از ۳ حالت) =====
+    executeDebugCommand(command, type = 'python', timeout = 15) {
         return this.request('/api/debug/exec', {
             method: 'POST',
-            body: JSON.stringify({ command, timeout })
+            body: JSON.stringify({ command, type, timeout })
         });
     }
 
@@ -435,6 +436,28 @@ class ApiClient {
         });
     }
 
+    // ============================================================
+    // اضافه کردن به js/api.js
+    // ============================================================
+
+    // ===== Self-Healing =====
+    getHealingStatus() {
+        return this.request('/api/healing/status');
+    }
+
+    triggerHealing() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST'
+        });
+    }
+
+    resetHealing() {
+        return this.request('/api/healing/reset', {
+            method: 'POST'
+        });
+    }
+
+    
     // ============================================================
     // ۱۵. دیباگ - متدهای جدید (Processes, Cache)
     // ============================================================
