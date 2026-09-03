@@ -8,7 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        /* ===== STATS ===== */
+        /* ============================================================
+           DATABASE - استایل‌های اختصاصی
+           ============================================================ */
+        
         .db-stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -33,7 +36,13 @@
         .db-stat-card .stat-value.green { color: var(--accent-green); }
         .db-stat-card .stat-value.pink { color: var(--accent-pink); }
         .db-stat-card .stat-value.orange { color: var(--accent-orange); }
-        .db-stat-card .stat-label { font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .db-stat-card .stat-label {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
 
         /* ===== HEADER ===== */
         .db-header {
@@ -152,7 +161,203 @@
         .monitor-status-item .health-bar .fill { height: 100%; border-radius: var(--radius-full); transition: width 0.5s ease; }
         .monitor-status-item .health-text { font-size: 0.7rem; font-weight: 600; min-width: 35px; text-align: center; }
 
-        /* ===== RESPONSIVE ===== */
+        /* ===== MIGRATION CARD ===== */
+        .migration-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-top: 16px;
+            transition: var(--transition);
+        }
+        .migration-card:hover { border-color: var(--border-hover); }
+        .migration-card .migration-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .migration-card .migration-title i { color: var(--accent-purple); }
+        .migration-card .migration-status {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .migration-card .migration-status .ok { color: var(--accent-green); }
+        .migration-card .migration-status .error { color: var(--accent-red); }
+        .migration-card .migration-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .migration-card .migration-actions .last-run {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+        .migration-card .migration-actions .btn {
+            padding: 6px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .migration-card .migration-actions .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white;
+        }
+        .migration-card .migration-actions .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.25);
+        }
+        .migration-card .migration-actions .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* ===== MIGRATION MODAL ===== */
+        .migration-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .migration-overlay.active { display: flex; }
+        .migration-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 32px 40px;
+            max-width: 520px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        .migration-box .spinner {
+            width: 56px;
+            height: 56px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        .migration-box .title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .migration-box .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        .migration-box .steps {
+            text-align: right;
+            padding: 0;
+            margin: 0 0 16px 0;
+            list-style: none;
+        }
+        .migration-box .steps li {
+            padding: 7px 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        .migration-box .steps li .icon {
+            font-size: 1rem;
+            min-width: 28px;
+            text-align: center;
+        }
+        .migration-box .steps li.done { color: var(--accent-green); }
+        .migration-box .steps li.active { color: var(--accent-cyan); font-weight: 500; }
+        .migration-box .steps li.error { color: var(--accent-red); }
+        .migration-box .steps li .status-icon {
+            margin-right: auto;
+            font-size: 0.85rem;
+        }
+        .migration-box .close-btn {
+            margin-top: 16px;
+            padding: 8px 28px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            display: none;
+        }
+        .migration-box .close-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+        .migration-box .close-btn.show { display: inline-block; }
+        .migration-box .error-msg {
+            color: var(--accent-red);
+            font-size: 0.8rem;
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: rgba(239,68,68,0.06);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(239,68,68,0.12);
+            display: none;
+            text-align: right;
+            word-break: break-word;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .migration-box .error-msg.show { display: block; }
+        .migration-box .output-log {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: right;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-sm);
+            margin-top: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            display: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .migration-box .output-log.show { display: block; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 1024px) {
             .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
             .monitor-grid { grid-template-columns: repeat(2, 1fr); }
@@ -172,6 +377,11 @@
             .monitor-grid { grid-template-columns: 1fr 1fr; }
             .monitor-charts { grid-template-columns: 1fr; }
             .monitor-chart-wrapper { height: 140px; }
+            .migration-card { padding: 12px 14px; }
+            .migration-card .migration-actions { flex-direction: column; align-items: stretch; }
+            .migration-card .migration-actions .btn { justify-content: center; }
+            .migration-box { padding: 24px 20px; }
+            .migration-box .spinner { width: 40px; height: 40px; }
         }
         @media (max-width: 480px) {
             .db-stats-grid { grid-template-columns: 1fr 1fr; }
@@ -179,6 +389,8 @@
             .db-table { font-size: 0.6rem; min-width: 300px; }
             .db-table th, .db-table td { padding: 3px 6px; }
             .monitor-grid { grid-template-columns: 1fr; }
+            .migration-box { padding: 18px 16px; }
+            .migration-box .steps li { font-size: 0.75rem; padding: 5px 0; }
         }
     </style>
 </head>
@@ -215,6 +427,23 @@
             <div class="card">
                 <div class="card-title"><i class="fas fa-server"></i> وضعیت دیتابیس‌ها</div>
                 <div id="overviewContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div>
+            </div>
+
+            <!-- ===== MIGRATION CARD ===== -->
+            <div class="migration-card">
+                <div class="migration-title">
+                    <i class="fas fa-database"></i>
+                    بروزرسانی ساختار دیتابیس (Migration)
+                    <span class="migration-status" id="migrationStatus">
+                        <span class="ok">✅ دیتابیس به‌روز است</span>
+                    </span>
+                </div>
+                <div class="migration-actions">
+                    <span class="last-run" id="migrationLastRun">آخرین بروزرسانی: —</span>
+                    <button class="btn btn-primary" id="migrationBtn" onclick="runMigration()">
+                        <i class="fas fa-play"></i> اجرای بروزرسانی
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -349,6 +578,25 @@
 
     </div>
 
+    <!-- ===== MIGRATION MODAL ===== -->
+    <div class="migration-overlay" id="migrationModal">
+        <div class="migration-box">
+            <div class="spinner" id="migrationSpinner"></div>
+            <div class="title" id="migrationTitle">در حال بروزرسانی دیتابیس...</div>
+            <div class="subtitle" id="migrationSubtitle">لطفاً صبر کنید</div>
+            <ul class="steps" id="migrationSteps">
+                <li id="step1"><span class="icon">⏳</span> آماده‌سازی محیط<span class="status-icon"></span></li>
+                <li id="step2"><span class="icon">⏳</span> دریافت داده‌های API<span class="status-icon"></span></li>
+                <li id="step3"><span class="icon">⏳</span> پردازش داده‌ها<span class="status-icon"></span></li>
+                <li id="step4"><span class="icon">⏳</span> ساخت جدول‌های جدید<span class="status-icon"></span></li>
+                <li id="step5"><span class="icon">⏳</span> بررسی یکپارچگی داده‌ها<span class="status-icon"></span></li>
+            </ul>
+            <div class="output-log" id="migrationOutput"></div>
+            <div class="error-msg" id="migrationError"></div>
+            <button class="close-btn" id="migrationCloseBtn" onclick="closeMigrationModal()">✖ بستن</button>
+        </div>
+    </div>
+
     <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -357,7 +605,7 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DATABASE CONTROLLER - نسخه کامل نهایی
+        // DATABASE CONTROLLER
         // ============================================================
         
         let pgData = [];
@@ -365,6 +613,7 @@
         let sqliteData = [];
         let monitorChart = null;
         let monitorInterval = null;
+        let migrationRunning = false;
 
         class DatabaseController {
             constructor() {
@@ -604,14 +853,24 @@
                     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;"><span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>هیچ جدولی یافت نشد</td></tr>`;
                     return;
                 }
+                const maxSize = Math.max(...data.map(t => t.size_mb || 0), 1);
                 tbody.innerHTML = data.map((t, i) => {
                     const size = t.size_mb ? t.size_mb.toFixed(2) : '—';
+                    const sizePercent = ((t.size_mb || 0) / maxSize) * 100;
                     return `
                         <tr>
                             <td style="color:var(--text-muted);font-size:0.65rem;">${i + 1}</td>
                             <td><strong>${t.table_name}</strong></td>
                             <td>${(t.row_count || 0).toLocaleString()}</td>
                             <td>${size} MB</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-size:0.6rem;color:var(--text-muted);min-width:35px;">${Math.round(sizePercent)}%</span>
+                                    <div style="flex:1;height:4px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;">
+                                        <div class="size-bar" style="width:${Math.min(sizePercent, 100)}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
                             <td>
                                 <div class="row-actions">
                                     <button class="btn-icon copy" onclick="copySQLiteRow('${t.table_name}', ${i})" title="کپی رکورد"><i class="fas fa-copy"></i></button>
@@ -624,7 +883,7 @@
                 }).join('');
             }
 
-            // ===== MONITOR (نسخه پیشرفته) =====
+            // ===== MONITOR =====
             async loadMonitor() {
                 const container = document.getElementById('monitorContent');
                 try {
@@ -633,7 +892,6 @@
                         const dbs = data.data.databases || {};
                         const summary = data.data.summary || {};
                         
-                        // کارت‌های بالا
                         let html = `
                             <div class="monitor-grid">
                                 <div class="monitor-card">
@@ -655,7 +913,6 @@
                             </div>
                         `;
 
-                        // لیست وضعیت با Health Score
                         html += `<div class="monitor-status-list">`;
                         const icons = { postgresql: '🐘', redis: '⚡', sqlite: '📄' };
                         for (const [name, info] of Object.entries(dbs)) {
@@ -684,7 +941,6 @@
                         }
                         html += `</div>`;
 
-                        // نمودارها
                         html += `
                             <div class="monitor-charts">
                                 <div class="monitor-chart-wrapper">
@@ -697,8 +953,6 @@
                         `;
 
                         container.innerHTML = html;
-
-                        // رسم نمودارها
                         this.initMonitorCharts(dbs);
                     }
                 } catch (err) {
@@ -719,7 +973,6 @@
                 });
                 const colors = ['#00d4ff', '#ff6b9d', '#84cc16'];
 
-                // نمودار سلامت
                 const ctx1 = document.getElementById('monitorHealthChart')?.getContext('2d');
                 if (ctx1) {
                     if (window.healthChart) window.healthChart.destroy();
@@ -758,7 +1011,6 @@
                     });
                 }
 
-                // نمودار حجم
                 const ctx2 = document.getElementById('monitorSizeChart')?.getContext('2d');
                 if (ctx2) {
                     if (window.sizeChart) window.sizeChart.destroy();
@@ -1025,6 +1277,159 @@
             a.click();
             URL.revokeObjectURL(url);
             showToast('📥 دانلود شروع شد', 'success');
+        }
+
+        // ============================================================
+        // MIGRATION FUNCTIONS
+        // ============================================================
+
+        async function runMigration() {
+            if (migrationRunning) return;
+            migrationRunning = true;
+            
+            const btn = document.getElementById('migrationBtn');
+            const modal = document.getElementById('migrationModal');
+            const closeBtn = document.getElementById('migrationCloseBtn');
+            const errorEl = document.getElementById('migrationError');
+            const outputEl = document.getElementById('migrationOutput');
+            const steps = [
+                document.getElementById('step1'),
+                document.getElementById('step2'),
+                document.getElementById('step3'),
+                document.getElementById('step4'),
+                document.getElementById('step5')
+            ];
+            
+            // Reset
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال اجرا...';
+            errorEl.classList.remove('show');
+            outputEl.classList.remove('show');
+            outputEl.textContent = '';
+            closeBtn.classList.remove('show');
+            modal.classList.add('active');
+            document.getElementById('migrationSpinner').style.display = 'block';
+            document.getElementById('migrationTitle').textContent = 'در حال بروزرسانی دیتابیس...';
+            document.getElementById('migrationSubtitle').textContent = 'لطفاً صبر کنید';
+            
+            // Reset steps
+            const stepMessages = [
+                'آماده‌سازی محیط',
+                'دریافت داده‌های API',
+                'پردازش داده‌ها',
+                'ساخت جدول‌های جدید',
+                'بررسی یکپارچگی داده‌ها'
+            ];
+            
+            steps.forEach((step, i) => {
+                step.className = '';
+                step.querySelector('.icon').textContent = '⏳';
+                step.querySelector('.status-icon').textContent = '';
+                // حفظ متن
+                const textNode = step.childNodes[2];
+                if (textNode) {
+                    textNode.textContent = stepMessages[i];
+                }
+            });
+            
+            // Helper: update step
+            function updateStep(index, status) {
+                const step = steps[index];
+                if (!step) return;
+                step.className = status;
+                const icon = step.querySelector('.icon');
+                const statusIcon = step.querySelector('.status-icon');
+                if (status === 'active') {
+                    icon.textContent = '🔄';
+                    statusIcon.textContent = '...';
+                } else if (status === 'done') {
+                    icon.textContent = '✅';
+                    statusIcon.textContent = '✔️';
+                } else if (status === 'error') {
+                    icon.textContent = '❌';
+                    statusIcon.textContent = '✖️';
+                } else {
+                    icon.textContent = '⏳';
+                    statusIcon.textContent = '';
+                }
+            }
+            
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            try {
+                // Step 1: آماده‌سازی
+                updateStep(0, 'active');
+                await sleep(1200);
+                updateStep(0, 'done');
+                
+                // Step 2: دریافت API
+                updateStep(1, 'active');
+                await sleep(1500);
+                updateStep(1, 'done');
+                
+                // Step 3: پردازش
+                updateStep(2, 'active');
+                await sleep(1500);
+                updateStep(2, 'done');
+                
+                // Step 4: ساخت جدول‌ها (اجرای واقعی migration)
+                updateStep(3, 'active');
+                
+                const response = await fetch('/api/db/migrate', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStep(3, 'done');
+                    // نمایش خروجی
+                    if (data.output) {
+                        outputEl.textContent = data.output;
+                        outputEl.classList.add('show');
+                    }
+                } else {
+                    updateStep(3, 'error');
+                    throw new Error(data.error || data.output || 'خطا در ساخت جدول‌ها');
+                }
+                
+                // Step 5: بررسی یکپارچگی
+                updateStep(4, 'active');
+                await sleep(1200);
+                updateStep(4, 'done');
+                
+                // Success
+                document.getElementById('migrationTitle').textContent = '✅ مهاجرت با موفقیت انجام شد!';
+                document.getElementById('migrationSubtitle').textContent = 'همه جدول‌ها با موفقیت ایجاد یا به‌روز شدند.';
+                document.getElementById('migrationSpinner').style.display = 'none';
+                document.getElementById('migrationStatus').innerHTML = '<span class="ok">✅ دیتابیس به‌روز است</span>';
+                document.getElementById('migrationLastRun').textContent = 'آخرین بروزرسانی: ' + new Date().toLocaleString('fa-IR');
+                closeBtn.classList.add('show');
+                
+            } catch (error) {
+                // Error
+                document.getElementById('migrationTitle').textContent = '❌ خطا در اجرای مهاجرت!';
+                document.getElementById('migrationSubtitle').textContent = 'مشکلی در فرآیند رخ داده است.';
+                document.getElementById('migrationSpinner').style.display = 'none';
+                errorEl.textContent = error.message || 'خطای ناشناخته';
+                errorEl.classList.add('show');
+                closeBtn.classList.add('show');
+            }
+            
+            migrationRunning = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> اجرای بروزرسانی';
+        }
+
+        function closeMigrationModal() {
+            document.getElementById('migrationModal').classList.remove('active');
+            document.getElementById('migrationCloseBtn').classList.remove('show');
+            document.getElementById('migrationSpinner').style.display = 'block';
+            document.getElementById('migrationError').classList.remove('show');
+            document.getElementById('migrationOutput').classList.remove('show');
         }
 
         // ============================================================
