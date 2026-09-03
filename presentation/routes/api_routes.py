@@ -1091,7 +1091,293 @@ def sqlite_export(table_name):
         logger.error(f"SQLite export error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
+@api_bp.route('/db/monitor', methods=['GET'])
+@require_auth()
+def db_monitor():
+    """دریافت داده‌های مانیتورینگ دیتابیس‌ها با Health Score"""
+    try:
+        import time
+        import psutil
+        
+        result = {}
+        
+        # ===== PostgreSQL =====
+        try:
+            pg = get_primary()
+            if pg and pg.is_connected():
+                # تست زمان پاسخ‌دهی
+                start = time.time()
+                pg.execute("SELECT 1")
+                ping_ms = round((time.time() - start) * 1000, 1)
+                
+                # دریافت آمار
+                tables = pg.execute("""
+                    SELECT COUNT(*) as count 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                """)
+                table_count = tables[0]['count'] if tables else 0
+                
+                size = pg.execute("""
+                    SELECT pg_database_size(current_database()) / 1024 / 1024 as size_mb
+                """)
+                size_mb = size[0]['size_mb'] if size else 0
+                
+                rows = 0
+                if table_count > 0:
+                    table_list = pg.execute("""
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'public'
+                    """)
+                    for t in table_list:
+                        try:
+                            count = pg.execute(f'SELECT COUNT(*) as count FROM "{t["table_name"]}"')
+                            rows += count[0]['count'] if count else 0
+                        except:
+                            pass
+                
+                # Health Score
+                health_score = 0
+                if ping_ms < 10:
+                    health_score += 40
+                elif ping_ms < 50:
+                    health_score += 30
+                elif ping_ms < 100:
+                    health_score += 20
+                else:
+                    health_score += 10
+                
+                if table_count > 10:
+                    health_score += 30
+                elif table_count > 5:
+                    health_score += 20
+                elif table_count > 0:
+                    health_score += 10
+                
+                if size_mb < 100:
+                    health_score += 30
+                elif size_mb < 500:
+                    health_score += 20
+                elif size_mb < 1000:
+                    health_score += 10
+                
+                result['postgresql'] = {
+                    'status': 'connected',
+                    'ping_ms': ping_ms,
+                    'tables': table_count,
+                    'size_mb': round(size_mb, 2),
+                    'rows': rows,
+                    'health_score': min(health_score, 100),
+                    'version': pg._connection.info.server_version if hasattr(pg._connection, 'info') else 'unknown'
+                }
+            else:
+                result['postgresql'] = {
+                    'status': 'disconnected',
+                    'ping_ms': None,
+                    'tables': 0,
+                    'size_mb': 0,
+                    'rows': 0,
+                    'health_score': 0,
+                    'version': 'unknown'
+                }
+        except Exception as e:
+            logger.error(f"PostgreSQL monitor error: {e}")
+            result['postgresql'] = {
+                'status': 'error',
+                'ping_ms': None,
+                'tables': 0,
+                'size_mb': 0,
+                'rows': 0,
+                'health_score': 0,
+                'version': 'unknown',
+                'error': str(e)
+            }
+        
+        # ===== Redis =====
+        try:
+            redis = get_cache()
+            if redis and redis.is_connected():
+                start = time.time()
+                redis._client.ping()
+                ping_ms = round((time.time() - start) * 1000, 1)
+                
+                info = redis._client.info()
+                keys = info.get('db0', {}).get('keys', 0)
+                memory = info.get('used_memory_human', '0B')
+                memory_bytes = info.get('used_memory', 0)
+                clients = info.get('connected_clients', 0)
+                
+                # Health Score
+                health_score = 0
+                if ping_ms < 5:
+                    health_score += 40
+                elif ping_ms < 20:
+                    health_score += 30
+                elif ping_ms < 50:
+                    health_score += 20
+                else:
+                    health_score += 10
+                
+                if keys > 100:
+                    health_score += 30
+                elif keys > 50:
+                    health_score += 20
+                elif keys > 0:
+                    health_score += 10
+                
+                if clients < 10:
+                    health_score += 30
+                elif clients < 50:
+                    health_score += 20
+                else:
+                    health_score += 10
+                
+                result['redis'] = {
+                    'status': 'connected',
+                    'ping_ms': ping_ms,
+                    'keys': keys,
+                    'memory_mb': round(memory_bytes / (1024 * 1024), 2),
+                    'memory_human': memory,
+                    'clients': clients,
+                    'health_score': min(health_score, 100),
+                    'version': info.get('redis_version', 'unknown')
+                }
+            else:
+                result['redis'] = {
+                    'status': 'disconnected',
+                    'ping_ms': None,
+                    'keys': 0,
+                    'memory_mb': 0,
+                    'memory_human': '0B',
+                    'clients': 0,
+                    'health_score': 0,
+                    'version': 'unknown'
+                }
+        except Exception as e:
+            logger.error(f"Redis monitor error: {e}")
+            result['redis'] = {
+                'status': 'error',
+                'ping_ms': None,
+                'keys': 0,
+                'memory_mb': 0,
+                'memory_human': '0B',
+                'clients': 0,
+                'health_score': 0,
+                'version': 'unknown',
+                'error': str(e)
+            }
+        
+        # ===== SQLite =====
+        try:
+            sqlite = get_backup()
+            if sqlite and sqlite.is_connected():
+                start = time.time()
+                sqlite.execute("SELECT 1")
+                ping_ms = round((time.time() - start) * 1000, 1)
+                
+                tables = sqlite.execute("""
+                    SELECT name as table_name 
+                    FROM sqlite_master 
+                    WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                """)
+                table_count = len(tables)
+                
+                rows = 0
+                for t in tables:
+                    try:
+                        count = sqlite.execute(f'SELECT COUNT(*) as count FROM [{t["table_name"]}]')
+                        rows += count[0]['count'] if count else 0
+                    except:
+                        pass
+                
+                import os
+                db_path = os.path.join(os.path.dirname(__file__), '../../data/trading.db')
+                size_bytes = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+                size_mb = round(size_bytes / (1024 * 1024), 2)
+                
+                # Health Score
+                health_score = 0
+                if ping_ms < 10:
+                    health_score += 40
+                elif ping_ms < 50:
+                    health_score += 30
+                elif ping_ms < 100:
+                    health_score += 20
+                else:
+                    health_score += 10
+                
+                if table_count > 5:
+                    health_score += 30
+                elif table_count > 0:
+                    health_score += 20
+                
+                if size_mb < 10:
+                    health_score += 30
+                elif size_mb < 50:
+                    health_score += 20
+                elif size_mb < 100:
+                    health_score += 10
+                
+                result['sqlite'] = {
+                    'status': 'connected',
+                    'ping_ms': ping_ms,
+                    'tables': table_count,
+                    'size_mb': size_mb,
+                    'rows': rows,
+                    'health_score': min(health_score, 100),
+                    'version': 'SQLite 3'
+                }
+            else:
+                result['sqlite'] = {
+                    'status': 'disconnected',
+                    'ping_ms': None,
+                    'tables': 0,
+                    'size_mb': 0,
+                    'rows': 0,
+                    'health_score': 0,
+                    'version': 'unknown'
+                }
+        except Exception as e:
+            logger.error(f"SQLite monitor error: {e}")
+            result['sqlite'] = {
+                'status': 'error',
+                'ping_ms': None,
+                'tables': 0,
+                'size_mb': 0,
+                'rows': 0,
+                'health_score': 0,
+                'version': 'unknown',
+                'error': str(e)
+            }
+        
+        # ===== آمار کلی =====
+        total_health = 0
+        connected_count = 0
+        for db in result.values():
+            if db.get('status') == 'connected':
+                connected_count += 1
+                total_health += db.get('health_score', 0)
+        
+        avg_health = round(total_health / connected_count, 1) if connected_count > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'databases': result,
+                'summary': {
+                    'total': len(result),
+                    'connected': connected_count,
+                    'disconnected': len(result) - connected_count,
+                    'avg_health_score': avg_health,
+                    'timestamp': datetime.now().isoformat()
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"DB monitor error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # ۸. دیتابیس - عمومی
 # ============================================================
