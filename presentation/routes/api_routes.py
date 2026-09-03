@@ -2692,29 +2692,89 @@ def debug_processes():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+
+# ============================================================
+# ۲. اندپوینت اجرای دستورات (اصلاح شده با پشتیبانی از ۳ حالت)
+# ============================================================
+
 @api_bp.route('/debug/exec', methods=['POST'])
 @require_auth('admin')
 def debug_exec():
-    """اجرای دستور پایتون با کتابخانه‌های بیشتر و مدیریت خطا"""
+    """
+    اجرای دستورات در ۳ حالت:
+    - python: کد پایتون
+    - shell: دستورات شل
+    - terminal: شبیه‌سازی ترمینال با مسیر و کاربر
+    """
     try:
         data = request.json or {}
         command = data.get('command', '').strip()
-        command_type = data.get('type', 'python')  # python یا shell
-        timeout = data.get('timeout', 10)
+        command_type = data.get('type', 'python')  # python, shell, terminal
+        timeout = data.get('timeout', 15)
         
         if not command:
             return jsonify({'success': False, 'error': 'Command required'}), 400
         
-        # ===== اجرای دستورات Shell =====
+        # ===== حالت Terminal =====
+        if command_type == 'terminal':
+            import subprocess
+            import os
+            import pwd
+            
+            try:
+                # دریافت اطلاعات کاربر و مسیر
+                username = pwd.getpwuid(os.getuid()).pw_name
+                hostname = os.uname().nodename
+                cwd = os.getcwd()
+                
+                # ساخت پرامپت ترمینال
+                prompt = f"{username}@{hostname}:{cwd}$ "
+                
+                # اجرای دستور
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=cwd,
+                    executable='/bin/bash'
+                )
+                
+                output = result.stdout or result.stderr or '✅ Done'
+                
+                return jsonify({
+                    'success': True,
+                    'result': output,
+                    'type': 'terminal',
+                    'prompt': prompt,
+                    'cwd': cwd,
+                    'username': username,
+                    'hostname': hostname
+                })
+            except subprocess.TimeoutExpired:
+                return jsonify({
+                    'success': False,
+                    'error': f'⏱️ Command timeout after {timeout}s'
+                }), 408
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        # ===== حالت Shell =====
         if command_type == 'shell':
             import subprocess
+            
             try:
                 result = subprocess.run(
                     command,
                     shell=True,
                     capture_output=True,
                     text=True,
-                    timeout=timeout
+                    timeout=timeout,
+                    cwd='/opt/render/project/src'
                 )
                 output = result.stdout or result.stderr or '✅ Done'
                 return jsonify({
@@ -2733,8 +2793,8 @@ def debug_exec():
                     'error': str(e)
                 }), 500
         
-        # ===== اجرای دستورات Python =====
-        # ===== کتابخانه‌هایی که کاربر بهشون نیاز داره =====
+        # ===== حالت Python (پیش‌فرض) =====
+        # ===== کتابخانه‌ها =====
         safe_globals = {
             '__builtins__': {
                 'print': print,
@@ -2764,16 +2824,16 @@ def debug_exec():
                 'dir': dir,
                 'help': help,
                 'open': open,
+                '__import__': __import__,
                 'Exception': Exception,
                 'ValueError': ValueError,
                 'TypeError': TypeError,
                 'KeyError': KeyError,
                 'IndexError': IndexError,
-                '__import__': __import__,  # ← برای import
             },
         }
 
-        # ===== اضافه کردن کتابخانه‌های استاندارد =====
+        # اضافه کردن کتابخانه‌های استاندارد
         import os, sys, time, datetime, json, re, math, random
         import collections, itertools, functools, hashlib, base64
         import pprint, inspect, traceback, logging, subprocess
@@ -2799,7 +2859,7 @@ def debug_exec():
             'subprocess': subprocess,
         })
 
-        # ===== تلاش برای اضافه کردن کتابخانه‌های خارجی =====
+        # تلاش برای کتابخانه‌های خارجی
         try:
             import psutil
             safe_globals['psutil'] = psutil
@@ -2812,7 +2872,7 @@ def debug_exec():
         except ImportError:
             pass
 
-        # ===== بررسی دستورات خطرناک =====
+        # بررسی دستورات خطرناک
         dangerous = ['os.system', 'subprocess.run', 'exec(', 'eval(', '__import__', 'open(', 'file(']
         for kw in dangerous:
             if kw in command:
@@ -2821,30 +2881,25 @@ def debug_exec():
                     'error': f'🚫 Dangerous command contains "{kw}"'
                 }), 403
 
-        # ===== ذخیره خروجی =====
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
         error_output = None
 
         try:
-            # ===== اجرا با محدودیت زمان =====
             import signal
             
             def timeout_handler(signum, frame):
                 raise TimeoutError("⏱️ Command execution timeout")
             
-            # تنظیم timeout (فقط در سیستم‌های Unix)
             try:
                 signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(timeout)
             except:
-                pass  # در سیستم‌هایی که SIGALRM ندارند (ویندوز)
+                pass
             
-            # اجرای دستور
             exec(command, safe_globals)
             result = sys.stdout.getvalue()
             
-            # خاموش کردن alarm
             try:
                 signal.alarm(0)
             except:
@@ -2857,7 +2912,6 @@ def debug_exec():
         finally:
             sys.stdout = old_stdout
 
-        # ===== اگر نتیجه خالی بود، پیام موفقیت =====
         if not result or result.strip() == '':
             result = '✅ Done'
 
@@ -2874,6 +2928,8 @@ def debug_exec():
             'success': False,
             'error': str(e)
         }), 500
+
+                
 
 @api_bp.route('/debug/cache', methods=['GET'])
 @require_auth('admin')
