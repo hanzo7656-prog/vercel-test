@@ -53,66 +53,58 @@ class MetricsScheduler:
         logger.info("✅ MetricsScheduler v10.0 initialized")
     
     def _init_self_healer(self):
-        """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
+        """راه‌اندازی Self-Healer با لاگ‌های دقیق"""
+        logger.info("🔍 Starting _init_self_healer...")
+    
         try:
             from models.manager.model_manager import ModelManager
+            logger.info("✅ ModelManager imported")
+        
             from models.trainer.auto_trainer import AutoTrainer
+            logger.info("✅ AutoTrainer imported")
+        
             from infrastructure.api.coinstats_client import coinstats_client
+            logger.info("✅ coinstats_client imported")
+        
             from application.services.self_healer import SelfHealer
-            
-            logger.info("✅ All SelfHealer imports successful")
-            
-            # ===== بررسی در دسترس بودن =====
-            if ModelManager is None or AutoTrainer is None or SelfHealer is None or coinstats_client is None:
-                logger.error("❌ One or more dependencies are None")
-                self.healer = None
-                return
-            
+            logger.info("✅ SelfHealer imported")
+        
             # ===== ایجاد ModelManager =====
-            try:
-                model_manager = ModelManager(api=coinstats_client)
-                logger.info("✅ ModelManager created successfully")
-            except Exception as e:
-                logger.error(f"❌ ModelManager creation failed: {e}")
-                self.healer = None
-                return
-            
+            logger.info("🔄 Creating ModelManager...")
+            model_manager = ModelManager(api=coinstatsص_client)
+            logger.info(f"✅ ModelManager created: {model_manager is not None}")
+        
             # ===== ایجاد AutoTrainer =====
-            try:
-                trainer = AutoTrainer(
-                    api=coinstats_client,
-                    model_manager=model_manager
-                )
-                logger.info("✅ AutoTrainer created successfully")
-            except Exception as e:
-                logger.error(f"❌ AutoTrainer creation failed: {e}")
-                self.healer = None
-                return
-            
+            logger.info("🔄 Creating AutoTrainer...")
+            trainer = AutoTrainer(
+                api=coinstats_client,
+                model_manager=model_manager
+            )
+            logger.info(f"✅ AutoTrainer created: {trainer is not None}")
+        
             # ===== ایجاد SelfHealer =====
-            try:
-                self.healer = SelfHealer(
-                    model_manager=model_manager,
-                    trainer=trainer,
-                    api_client=coinstats_client
-                )
-                logger.info("✅ SelfHealer initialized successfully")
-                
-                # تست اولیه
-                if self.healer:
-                    test_status = self.healer.get_healing_status()
-                    logger.info(f"📊 SelfHealer initial status: {test_status}")
-                
-            except Exception as e:
-                logger.error(f"❌ SelfHealer creation failed: {e}")
-                self.healer = None
-                return
-            
+            logger.info("🔄 Creating SelfHealer...")
+            self.healer = SelfHealer(
+                model_manager=model_manager,
+                trainer=trainer,
+                api_client=coinstats_client
+            )
+            logger.info(f"✅ SelfHealer created: {self.healer is not None}")
+        
+            # ===== تست =====
+            if self.healer:
+                test_status = self.healer.get_healing_status()
+                logger.info(f"📊 SelfHealer status: {test_status}")
+            else:
+                logger.error("❌ SelfHealer is None after creation!")
+        
         except Exception as e:
-            logger.error(f"❌ SelfHealer init error: {e}")
+            logger.error(f"❌ _init_self_healer error: {e}")
             import traceback
             logger.error(traceback.format_exc())
             self.healer = None
+    
+        logger.info(f"🔍 FINAL: self.healer = {self.healer}")   
     
     def _run_self_healing(self):
         """اجرای Self-Healing"""
