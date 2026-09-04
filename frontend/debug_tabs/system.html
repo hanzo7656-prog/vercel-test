@@ -1,0 +1,142 @@
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-server"></i> اطلاعات کامل سیستم
+        <button class="btn btn-xs btn-outline" onclick="refreshSystem()" style="margin-right:auto;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+    <div id="systemContent">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بارگذاری...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// SYSTEM TAB - کامل و پیشرفته
+// ============================================================
+
+async function refreshSystem() {
+    const container = document.getElementById('systemContent');
+    container.innerHTML = `
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بارگذاری اطلاعات سیستم...</p>
+        </div>
+    `;
+    
+    try {
+        const [systemData, statsData] = await Promise.all([
+            api.getDebugSystem(),
+            api.getStats()
+        ]);
+        
+        if (systemData.success && systemData.data) {
+            const s = systemData.data;
+            const stats = statsData.success ? statsData.data : {};
+            
+            let html = `
+                <!-- ===== HEADER INFO ===== -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px;">
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🐍 Python</div>
+                        <div style="font-size:0.9rem;font-weight:600;color:var(--text-primary);margin-top:4px;font-family:var(--font-mono);">${s.python || '—'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🖥️ Platform</div>
+                        <div style="font-size:0.9rem;font-weight:600;color:var(--text-primary);margin-top:4px;font-family:var(--font-mono);">${s.platform || '—'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🌐 Environment</div>
+                        <div style="font-size:0.9rem;font-weight:600;color:var(--accent-cyan);margin-top:4px;font-family:var(--font-mono);">${s.environment || '—'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">⏰ Timezone</div>
+                        <div style="font-size:0.9rem;font-weight:600;color:var(--text-primary);margin-top:4px;font-family:var(--font-mono);">${s.timezone || '—'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📂 مسیر کاری</div>
+                        <div style="font-size:0.75rem;font-weight:500;color:var(--text-secondary);margin-top:4px;font-family:var(--font-mono);word-break:break-all;">${s.cwd || '—'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📅 زمان سرور</div>
+                        <div style="font-size:0.9rem;font-weight:600;color:var(--accent-green);margin-top:4px;font-family:var(--font-mono);">${formatDate(new Date())}</div>
+                    </div>
+                </div>
+            `;
+            
+            // ===== SYSTEM DETAILS =====
+            html += `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">💻 اطلاعات سیستم</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:0.75rem;">
+                            <span style="color:var(--text-secondary);">Hostname:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.hostname || '—'}</span>
+                            <span style="color:var(--text-secondary);">System:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.system || '—'}</span>
+                            <span style="color:var(--text-secondary);">Release:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.release || '—'}</span>
+                            <span style="color:var(--text-secondary);">Machine:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.machine || '—'}</span>
+                            <span style="color:var(--text-secondary);">Processor:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.processor || '—'}</span>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📊 آمار سیستم</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:0.75rem;">
+                            <span style="color:var(--text-secondary);">جمع‌آوری‌ها:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${stats.collections || 0}</span>
+                            <span style="color:var(--text-secondary);">پیش‌بینی‌ها:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${stats.predictions || 0}</span>
+                            <span style="color:var(--text-secondary);">آپتایم سیستم:</span>
+                            <span style="color:var(--text-primary);font-family:var(--font-mono);">${stats.uptime || '—'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // ===== ENVIRONMENT VARIABLES =====
+            html += `
+                <div style="background:var(--bg-input);padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                    <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🔧 متغیرهای محیطی مهم</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:0.7rem;max-height:150px;overflow-y:auto;">
+                        <span style="color:var(--text-secondary);">FLASK_ENV:</span>
+                        <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.environment || '—'}</span>
+                        <span style="color:var(--text-secondary);">TZ:</span>
+                        <span style="color:var(--text-primary);font-family:var(--font-mono);">${s.timezone || '—'}</span>
+                        <span style="color:var(--text-secondary);">PYTHONPATH:</span>
+                        <span style="color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;word-break:break-all;">${s.pythonpath || '—'}</span>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = `
+                <div class="error-msg">
+                    <span class="icon">⚠️</span>
+                    <p>خطا در دریافت اطلاعات سیستم</p>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${systemData.error || 'Unknown error'}</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('System error:', err);
+        container.innerHTML = `
+            <div class="error-msg">
+                <span class="icon">❌</span>
+                <p>خطا در ارتباط با سرور</p>
+                <p style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+window.init_system = function() {
+    refreshSystem();
+};
+</script>
