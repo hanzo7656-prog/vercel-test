@@ -38,7 +38,7 @@ class MetricsScheduler:
         self.light_interval = 3
         self.medium_interval = 60
         self.heavy_interval = 300
-        self.healing_interval = 30  # هر ۳۰ ثانیه یکبار چک کن
+        self.healing_interval = 30
         
         # ===== Self-Healer =====
         self.healer = None
@@ -52,15 +52,8 @@ class MetricsScheduler:
         
         logger.info("✅ MetricsScheduler v10.0 initialized")
     
-    # ============================================================
-    # مقداردهی Self-Healer با مقاومت بالا
-    # ============================================================
-    
     def _init_self_healer(self):
-        """
-        راه‌اندازی Self-Healer با مدیریت کامل خطاها
-        این تابع هیچ‌گاه با خطا مواجه نمی‌شود و در صورت خطا، self.healer = None می‌شود
-        """
+        """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
         try:
             from models.manager.model_manager import ModelManager
             from models.trainer.auto_trainer import AutoTrainer
@@ -69,24 +62,9 @@ class MetricsScheduler:
             
             logger.info("✅ All SelfHealer imports successful")
             
-            # ===== بررسی در دسترس بودن کلاس‌ها =====
-            if ModelManager is None:
-                logger.error("❌ ModelManager is None")
-                self.healer = None
-                return
-                
-            if AutoTrainer is None:
-                logger.error("❌ AutoTrainer is None")
-                self.healer = None
-                return
-                
-            if SelfHealer is None:
-                logger.error("❌ SelfHealer is None")
-                self.healer = None
-                return
-                
-            if coinstats_client is None:
-                logger.error("❌ coinstats_client is None")
+            # ===== بررسی در دسترس بودن =====
+            if ModelManager is None or AutoTrainer is None or SelfHealer is None or coinstats_client is None:
+                logger.error("❌ One or more dependencies are None")
                 self.healer = None
                 return
             
@@ -106,11 +84,6 @@ class MetricsScheduler:
                     model_manager=model_manager
                 )
                 logger.info("✅ AutoTrainer created successfully")
-            except TypeError as e:
-                logger.error(f"❌ AutoTrainer TypeError: {e}")
-                logger.error("💡 AutoTrainer needs model_manager parameter")
-                self.healer = None
-                return
             except Exception as e:
                 logger.error(f"❌ AutoTrainer creation failed: {e}")
                 self.healer = None
@@ -125,26 +98,15 @@ class MetricsScheduler:
                 )
                 logger.info("✅ SelfHealer initialized successfully")
                 
-                # ===== تست اولیه SelfHealer =====
-                test_status = self.healer.get_healing_status()
-                logger.info(f"📊 SelfHealer initial status: {test_status}")
+                # تست اولیه
+                if self.healer:
+                    test_status = self.healer.get_healing_status()
+                    logger.info(f"📊 SelfHealer initial status: {test_status}")
                 
             except Exception as e:
                 logger.error(f"❌ SelfHealer creation failed: {e}")
                 self.healer = None
                 return
-            
-        except ImportError as e:
-            logger.error(f"❌ SelfHealer import error: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            self.healer = None
-            
-        except TypeError as e:
-            logger.error(f"❌ SelfHealer type error: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            self.healer = None
             
         except Exception as e:
             logger.error(f"❌ SelfHealer init error: {e}")
@@ -152,14 +114,9 @@ class MetricsScheduler:
             logger.error(traceback.format_exc())
             self.healer = None
     
-    # ============================================================
-    # اجرای Self-Healing
-    # ============================================================
-    
     def _run_self_healing(self):
-        """اجرای Self-Healing با مقاومت بالا"""
+        """اجرای Self-Healing"""
         if self.healer is None:
-            logger.warning("⚠️ SelfHealer not available")
             return
         
         try:
@@ -171,17 +128,12 @@ class MetricsScheduler:
                 self.stats["last_healing"] = datetime.now().isoformat()
                 logger.info(f"🔄 Self-healing actions: {actions}")
                 
-                # اگر مدل بازگردانی شد، وضعیت مدل را به‌روز کن
                 if actions.get("model_restored"):
                     self._collect_medium_metrics()
             
         except Exception as e:
             logger.error(f"❌ Self-healing error: {e}")
             self.stats["errors"] += 1
-    
-    # ============================================================
-    # جمع‌آوری‌کننده‌ها
-    # ============================================================
     
     def _collect_light_metrics(self):
         """CPU, RAM, Uptime"""
@@ -199,18 +151,9 @@ class MetricsScheduler:
                 minutes = (elapsed % 3600) // 60
                 uptime = f"{hours}h {minutes}m"
             
-            self.metrics_cache["cpu"] = {
-                "value": cpu,
-                "timestamp": datetime.now().isoformat()
-            }
-            self.metrics_cache["ram"] = {
-                "value": ram,
-                "timestamp": datetime.now().isoformat()
-            }
-            self.metrics_cache["uptime"] = {
-                "value": uptime,
-                "timestamp": datetime.now().isoformat()
-            }
+            self.metrics_cache["cpu"] = {"value": cpu, "timestamp": datetime.now().isoformat()}
+            self.metrics_cache["ram"] = {"value": ram, "timestamp": datetime.now().isoformat()}
+            self.metrics_cache["uptime"] = {"value": uptime, "timestamp": datetime.now().isoformat()}
             self.stats["collections"] += 1
             
         except Exception as e:
@@ -224,7 +167,7 @@ class MetricsScheduler:
             from models.manager.model_manager import ModelManager
             from infrastructure.database import health_check
             
-            # ===== ۱. قیمت بیت‌کوین =====
+            # قیمت‌ها
             try:
                 btc = coinstats_client.get_coin("bitcoin")
                 if btc and "error" not in btc:
@@ -236,7 +179,6 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ BTC price error: {e}")
             
-            # ===== ۲. قیمت اتریوم =====
             try:
                 eth = coinstats_client.get_coin("ethereum")
                 if eth and "error" not in eth:
@@ -248,35 +190,28 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ ETH price error: {e}")
             
-            # ===== ۳. وضعیت API =====
+            # API status
             try:
                 status = coinstats_client.get_status()
                 api_status = status.get("status", "unknown") if status else "unknown"
-                self.metrics_cache["api_status"] = {
-                    "value": api_status,
-                    "timestamp": datetime.now().isoformat()
-                }
+                self.metrics_cache["api_status"] = {"value": api_status, "timestamp": datetime.now().isoformat()}
             except Exception as e:
                 logger.warning(f"⚠️ API status error: {e}")
             
-            # ===== ۴. اعتبار API =====
+            # Credits
             try:
                 credits = coinstats_client.get_credits()
                 api_credits = credits.get("remainingCredits", 0) if credits else 0
-                self.metrics_cache["api_credits"] = {
-                    "value": api_credits,
-                    "timestamp": datetime.now().isoformat()
-                }
+                self.metrics_cache["api_credits"] = {"value": api_credits, "timestamp": datetime.now().isoformat()}
             except Exception as e:
                 logger.warning(f"⚠️ Credits error: {e}")
             
-            # ===== ۵. وضعیت مدل =====
+            # Model status
             try:
                 model_manager = ModelManager(coinstats_client)
                 loaded = model_manager.current_model is not None
                 version = model_manager.current_version or "N/A"
                 
-                # دریافت دقت مدل از دیتابیس
                 accuracy = None
                 if model_manager.db and model_manager.db.is_connected():
                     try:
@@ -300,7 +235,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ Model status error: {e}")
             
-            # ===== ۶. وضعیت دیتابیس‌ها =====
+            # Databases
             try:
                 health = health_check()
                 dbs = {}
@@ -314,7 +249,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ Databases error: {e}")
             
-            # ===== ۷. تعداد درخواست‌ها =====
+            # Request count
             try:
                 stats = coinstats_client.get_stats()
                 self.metrics_cache["request_count"] = {
@@ -332,9 +267,8 @@ class MetricsScheduler:
         """ترس و طمع, سلطه, اخبار, دیسک"""
         try:
             from infrastructure.api.coinstats_client import coinstats_client
-            import psutil
             
-            # ===== ۱. ترس و طمع =====
+            # Fear & Greed
             try:
                 fg = coinstats_client.get_fear_greed(use_cache=True)
                 if fg and "now" in fg:
@@ -346,7 +280,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ Fear & Greed error: {e}")
             
-            # ===== ۲. سلطه بیت‌کوین =====
+            # BTC Dominance
             try:
                 dominance = coinstats_client.get_btc_dominance(use_cache=True)
                 if dominance:
@@ -357,18 +291,15 @@ class MetricsScheduler:
             except Exception as e:
                 logger.warning(f"⚠️ BTC Dominance error: {e}")
             
-            # ===== ۳. اخبار =====
+            # News
             try:
                 news = coinstats_client.get_news(limit=5)
                 if news and "error" not in news:
-                    self.metrics_cache["news"] = {
-                        "value": news,
-                        "timestamp": datetime.now().isoformat()
-                    }
+                    self.metrics_cache["news"] = {"value": news, "timestamp": datetime.now().isoformat()}
             except Exception as e:
                 logger.warning(f"⚠️ News error: {e}")
             
-            # ===== ۴. فضای دیسک =====
+            # Disk space
             try:
                 usage = psutil.disk_usage('/')
                 disk = {
@@ -377,10 +308,7 @@ class MetricsScheduler:
                     "free_gb": round(usage.free / (1024**3), 2),
                     "percent": usage.percent
                 }
-                self.metrics_cache["disk_space"] = {
-                    "value": disk,
-                    "timestamp": datetime.now().isoformat()
-                }
+                self.metrics_cache["disk_space"] = {"value": disk, "timestamp": datetime.now().isoformat()}
             except Exception as e:
                 logger.warning(f"⚠️ Disk space error: {e}")
             
@@ -463,14 +391,10 @@ class MetricsScheduler:
         cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
         ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
         
-        # وضعیت دیتابیس‌ها
         db_status = {}
         all_connected = True
         for name, connected in databases.items():
-            db_status[name] = {
-                "connected": connected,
-                "status": "online" if connected else "offline"
-            }
+            db_status[name] = {"connected": connected, "status": "online" if connected else "offline"}
             if not connected:
                 all_connected = False
         
@@ -490,22 +414,16 @@ class MetricsScheduler:
             }
         }
     
-    # ============================================================
-    # مدیریت اجرا
-    # ============================================================
-    
     def set_stop_event(self, event):
         self._stop_event = event
     
     def start(self):
-        """شروع Scheduler"""
         if self._running:
             return
         
         self._running = True
         logger.info("🔄 Metrics Scheduler started")
         
-        # جمع‌آوری اولیه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
@@ -515,7 +433,6 @@ class MetricsScheduler:
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
         
-        # حلقه اصلی
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
@@ -527,24 +444,20 @@ class MetricsScheduler:
                 now = time.time()
                 cycle_count += 1
                 
-                # جمع‌آوری سبک (هر ۳ ثانیه)
                 if now - last_light >= self.light_interval:
                     self._collect_light_metrics()
                     last_light = now
                 
-                # جمع‌آوری متوسط (هر ۶۰ ثانیه)
                 if now - last_medium >= self.medium_interval:
                     self._collect_medium_metrics()
                     last_medium = now
                     logger.debug(f"📊 Medium collected (cycle {cycle_count})")
                 
-                # جمع‌آوری سنگین (هر ۳۰۰ ثانیه)
                 if now - last_heavy >= self.heavy_interval:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     logger.debug(f"📊 Heavy collected (cycle {cycle_count})")
                 
-                # ===== Self-Healing (هر ۳۰ ثانیه) =====
                 if now - last_healing >= self.healing_interval:
                     self._run_self_healing()
                     last_healing = now
