@@ -41,11 +41,21 @@ class MetricsScheduler:
         self.healing_interval = 30  # هر ۳۰ ثانیه یکبار چک کن
         
         # ===== Self-Healer =====
-        self.healer = None
-        self._init_self_healer()
-        
-        logger.info("✅ MetricsScheduler v9.0 initialized with Self-Healer")
     
+    # ===== Self-Healer =====
+        self.healer = None
+        try:
+            self._init_self_healer()
+            if self.healer is not None:
+                logger.info("✅ SelfHealer initialized successfully")
+            else:
+                logger.warning("⚠️ SelfHealer could not be initialized")
+        except Exception as e:
+            logger.error(f"❌ SelfHealer init error: {e}")
+            self.healer = None
+    
+        logger.info("✅ MetricsScheduler v9.0 initialized")
+        
     def _init_self_healer(self):
         """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
         try:
