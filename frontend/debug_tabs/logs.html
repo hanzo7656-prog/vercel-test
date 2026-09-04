@@ -1,0 +1,119 @@
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-list"></i> لاگ‌های سیستم
+        <div style="display:flex;gap:6px;margin-right:auto;">
+            <select id="logLevelSelect" onchange="setLogLevel(this.value)" style="padding:2px 8px;font-size:0.65rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);">
+                <option value="DEBUG">DEBUG</option>
+                <option value="INFO" selected>INFO</option>
+                <option value="WARNING">WARNING</option>
+                <option value="ERROR">ERROR</option>
+            </select>
+            <button class="btn btn-xs btn-outline" onclick="refreshLogs()"><i class="fas fa-sync-alt"></i></button>
+            <button class="btn btn-xs btn-danger" onclick="clearLogs()"><i class="fas fa-trash"></i></button>
+        </div>
+    </div>
+    <div class="console-output" id="logsOutput" style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:14px 16px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);max-height:400px;overflow-y:auto;border:1px solid var(--border-color);">
+        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">⏳</span>
+            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
+            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">در حال بارگذاری لاگ‌ها...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+async function refreshLogs() {
+    const output = document.getElementById('logsOutput');
+    output.innerHTML = `
+        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">⏳</span>
+            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
+            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">در حال بارگذاری...</span>
+        </div>
+    `;
+    
+    try {
+        const data = await api.getDebugLogs({ limit: 50 });
+        if (data.success && data.data) {
+            const logs = data.data;
+            if (logs.length === 0) {
+                output.innerHTML = `
+                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">📭</span>
+                        <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
+                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">هیچ لاگی ثبت نشده است</span>
+                    </div>
+                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">💡</span>
+                        <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
+                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">برای فعال‌سازی لاگ‌ها، سطح لاگ را به INFO یا DEBUG تنظیم کنید.</span>
+                    </div>
+                `;
+                return;
+            }
+            let html = '';
+            logs.slice().reverse().forEach(line => {
+                let time = '--:--', level = 'info', msg = line;
+                const timeMatch = line.match(/\[([^\]]+)\]/);
+                if (timeMatch) { time = timeMatch[1]; msg = line.replace(timeMatch[0], '').trim(); }
+                if (msg.includes('✅')) level = 'success';
+                else if (msg.includes('❌')) level = 'error';
+                else if (msg.includes('⚠️')) level = 'warning';
+                else if (msg.includes('INFO')) level = 'info';
+                else if (msg.includes('ERROR')) level = 'error';
+                else if (msg.includes('WARNING')) level = 'warning';
+                html += `
+                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">${time}</span>
+                        <span class="log-level ${level}" style="min-width:60px;font-weight:600;font-size:0.65rem;color:${level === 'success' ? 'var(--accent-green)' : level === 'error' ? 'var(--accent-red)' : level === 'warning' ? 'var(--accent-orange)' : 'var(--accent-cyan)'};">${level.toUpperCase()}</span>
+                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">${msg}</span>
+                    </div>
+                `;
+            });
+            output.innerHTML = html;
+        }
+    } catch (err) {
+        output.innerHTML = `
+            <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
+                <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">❌</span>
+                <span class="log-level error" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-red);">ERROR</span>
+                <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">خطا در دریافت لاگ‌ها</span>
+            </div>
+        `;
+    }
+}
+
+async function setLogLevel(level) {
+    try {
+        const data = await api.setDebugLogLevel(level);
+        if (data.success) {
+            showToast('✅ سطح لاگ به ' + level + ' تغییر کرد', 'success');
+            refreshLogs();
+        } else {
+            showToast('❌ ' + data.error, 'error');
+        }
+    } catch (err) {
+        showToast('❌ خطا', 'error');
+    }
+}
+
+async function clearLogs() {
+    if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+    try {
+        const data = await api.clearDebugLogs(true);
+        if (data.success) {
+            showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+            refreshLogs();
+        } else {
+            showToast('❌ ' + data.error, 'error');
+        }
+    } catch (err) {
+        showToast('❌ خطا', 'error');
+    }
+}
+
+window.init_logs = function() {
+    refreshLogs();
+    setInterval(refreshLogs, 30000);
+};
+</script>
