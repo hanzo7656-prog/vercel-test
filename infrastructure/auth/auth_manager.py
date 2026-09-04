@@ -1,6 +1,6 @@
 # infrastructure/auth/auth_manager.py
 # ============================================================
-# مدیریت احراز هویت - نسخه ۳.۰ (با get_session)
+# مدیریت احراز هویت - نسخه ۳.۱ (با require_auth)
 # ============================================================
 
 import os
@@ -10,6 +10,8 @@ import logging
 import time
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+from functools import wraps
+from flask import request, jsonify, redirect, url_for
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +19,6 @@ logger = logging.getLogger(__name__)
 class AuthManager:
     """
     مدیریت احراز هویت با پشتیبانی از Session
-    
-    ویژگی‌ها:
-        - ایجاد session با UUID
-        - ذخیره session در Redis یا حافظه داخلی
-        - بررسی اعتبار session
-        - حذف session (خروج)
-        - دریافت اطلاعات session با get_session
     """
     
     _instance = None
@@ -38,7 +33,7 @@ class AuthManager:
             return
         self._initialized = True
         
-        # اطلاعات کاربران (در محیط واقعی از دیتابیس بگیرید)
+        # اطلاعات کاربران
         self._users = {
             "admin": {
                 "password": "Admin@123",
@@ -52,7 +47,7 @@ class AuthManager:
             }
         }
         
-        # ذخیره session ها در حافظه (در محیط واقعی از Redis استفاده کنید)
+        # ذخیره session ها
         self._sessions: Dict[str, Dict] = {}
         self._session_ttl = 86400  # ۲۴ ساعت
         
@@ -76,46 +71,23 @@ class AuthManager:
             logger.warning(f"⚠️ Redis session storage not available: {e}")
             logger.info("📝 Using in-memory session storage")
         
-        logger.info("✅ AuthManager v3.0 initialized")
+        logger.info("✅ AuthManager v3.1 initialized")
     
     def login(self, username: str, password: str) -> Dict[str, Any]:
-        """
-        ورود کاربر و ایجاد session
-        
-        پارامترها:
-            username: نام کاربری
-            password: رمز عبور
-        
-        خروجی:
-            دیکشنری شامل success, session_id, username, role
-        """
-        # اعتبارسنجی ورودی
+        """ورود کاربر و ایجاد session"""
         if not username or not password:
-            return {
-                "success": False,
-                "error": "Username and password are required"
-            }
+            return {"success": False, "error": "Username and password are required"}
         
-        # بررسی کاربر
         user = self._users.get(username)
         if not user:
             logger.warning(f"⚠️ Login attempt with unknown username: {username}")
-            return {
-                "success": False,
-                "error": "Invalid username or password"
-            }
+            return {"success": False, "error": "Invalid username or password"}
         
-        # بررسی رمز عبور
         if user.get("password") != password:
             logger.warning(f"⚠️ Login attempt with wrong password for: {username}")
-            return {
-                "success": False,
-                "error": "Invalid username or password"
-            }
+            return {"success": False, "error": "Invalid username or password"}
         
-        # ایجاد session
         session_id = self._create_session(username, user)
-        
         logger.info(f"✅ User logged in: {username} (role: {user.get('role')})")
         
         return {
@@ -137,15 +109,10 @@ class AuthManager:
             "expires_at": (datetime.now() + timedelta(seconds=self._session_ttl)).isoformat()
         }
         
-        # ذخیره در Redis یا حافظه
         if self._use_redis and self._redis:
             try:
                 key = f"session:{session_id}"
-                self._redis.setex(
-                    key,
-                    self._session_ttl,
-                    json.dumps(session_data)
-                )
+                self._redis.setex(key, self._session_ttl, json.dumps(session_data))
                 logger.debug(f"✅ Session stored in Redis: {session_id[:8]}...")
             except Exception as e:
                 logger.error(f"❌ Redis session save error: {e}")
@@ -157,39 +124,26 @@ class AuthManager:
         return session_id
     
     def validate_session(self, session_id: str) -> Optional[Dict]:
-        """
-        بررسی اعتبار session
-        
-        پارامترها:
-            session_id: شناسه session
-        
-        خروجی:
-            اطلاعات session در صورت معتبر بودن، یا None
-        """
+        """بررسی اعتبار session"""
         if not session_id:
             return None
         
         session_data = None
         
-        # دریافت از Redis یا حافظه
         if self._use_redis and self._redis:
             try:
                 key = f"session:{session_id}"
                 data = self._redis.get(key)
                 if data:
                     session_data = json.loads(data)
-                    # تمدید زمان انقضا
                     self._redis.expire(key, self._session_ttl)
             except Exception as e:
                 logger.error(f"❌ Redis session get error: {e}")
         
-        # اگر Redis کار نکرد، از حافظه بگیر
         if session_data is None:
             session_data = self._sessions.get(session_id)
         
-        # بررسی اعتبار
         if session_data:
-            # چک کردن انقضا
             expires_at = session_data.get("expires_at")
             if expires_at:
                 try:
@@ -204,15 +158,7 @@ class AuthManager:
         return None
     
     def get_session(self, session_id: str) -> Optional[Dict]:
-        """
-        دریافت اطلاعات session بر اساس session_id
-        
-        پارامترها:
-            session_id: شناسه session
-        
-        خروجی:
-            دیکشنری اطلاعات session یا None
-        """
+        """دریافت اطلاعات session"""
         return self.validate_session(session_id)
     
     def _remove_session(self, session_id: str) -> bool:
@@ -228,22 +174,12 @@ class AuthManager:
             return False
     
     def logout(self, session_id: str) -> bool:
-        """
-        خروج کاربر و حذف session
-        
-        پارامترها:
-            session_id: شناسه session
-        
-        خروجی:
-            موفقیت عملیات
-        """
+        """خروج کاربر"""
         if not session_id:
             return False
         
-        # دریافت اطلاعات برای لاگ
         session_data = self.get_session(session_id)
         username = session_data.get("username") if session_data else "unknown"
-        
         result = self._remove_session(session_id)
         
         if result:
@@ -254,15 +190,7 @@ class AuthManager:
         return result
     
     def get_user_by_session(self, session_id: str) -> Optional[Dict]:
-        """
-        دریافت اطلاعات کاربر بر اساس session_id
-        
-        پارامترها:
-            session_id: شناسه session
-        
-        خروجی:
-            دیکشنری اطلاعات کاربر یا None
-        """
+        """دریافت اطلاعات کاربر بر اساس session_id"""
         session_data = self.get_session(session_id)
         if not session_data:
             return None
@@ -282,27 +210,11 @@ class AuthManager:
             "login_time": session_data.get("login_time")
         }
     
-    def get_current_user(self, session_id: str) -> Optional[Dict]:
-        """دریافت اطلاعات کاربر فعلی (alias برای get_user_by_session)"""
-        return self.get_user_by_session(session_id)
-    
-    def is_admin(self, session_id: str) -> bool:
-        """بررسی ادمین بودن کاربر"""
-        user = self.get_user_by_session(session_id)
-        if user:
-            return user.get("role") == "admin"
-        return False
-    
-    def is_authenticated(self, session_id: str) -> bool:
-        """بررسی احراز هویت کاربر"""
-        return self.get_session(session_id) is not None
-    
     def clean_expired_sessions(self) -> int:
         """پاک کردن session های منقضی شده"""
         count = 0
         now = datetime.now()
         
-        # پاک کردن از حافظه
         expired_keys = []
         for session_id, data in self._sessions.items():
             expires_at = data.get("expires_at")
@@ -318,7 +230,6 @@ class AuthManager:
             del self._sessions[key]
             count += 1
         
-        # پاک کردن از Redis (با اسکن)
         if self._use_redis and self._redis:
             try:
                 cursor = 0
@@ -326,9 +237,9 @@ class AuthManager:
                     cursor, keys = self._redis.scan(cursor, match="session:*", count=100)
                     for key in keys:
                         ttl = self._redis.ttl(key)
-                        if ttl == -2:  # کلید وجود ندارد
+                        if ttl == -2:
                             continue
-                        if ttl == -1:  # بدون تاریخ انقضا
+                        if ttl == -1:
                             self._redis.expire(key, self._session_ttl)
                     if cursor == 0:
                         break
@@ -341,10 +252,76 @@ class AuthManager:
         return count
 
 
-# ایجاد نمونه Singleton
+# ============================================================
+# توابع کمکی و دکوراتور
+# ============================================================
+
 auth_manager = AuthManager()
 
 
 def get_auth() -> AuthManager:
     """دریافت نمونه AuthManager"""
     return auth_manager
+
+
+def require_auth(role: str = None):
+    """
+    دکوراتور برای بررسی احراز هویت و نقش کاربر
+    
+    پارامترها:
+        role: نقش مورد نیاز (admin, user, یا None برای هر کاربر احراز هویت شده)
+    
+    کاربرد:
+        @require_auth()
+        def protected_endpoint():
+            return jsonify({"message": "Authenticated"})
+        
+        @require_auth('admin')
+        def admin_endpoint():
+            return jsonify({"message": "Admin only"})
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            session_id = request.cookies.get('session_id')
+            
+            if not session_id:
+                if request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
+                    return jsonify({
+                        'success': False,
+                        'error': 'Authentication required',
+                        'redirect': '/login'
+                    }), 401
+                return redirect(url_for('web.login_page'))
+            
+            auth = get_auth()
+            session_data = auth.get_session(session_id)
+            
+            if not session_data:
+                if request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
+                    return jsonify({
+                        'success': False,
+                        'error': 'Invalid or expired session',
+                        'redirect': '/login'
+                    }), 401
+                return redirect(url_for('web.login_page'))
+            
+            if role:
+                user_role = session_data.get('role', 'guest')
+                if user_role != role and user_role != 'admin':
+                    if request.headers.get('Content-Type') == 'application/json' or request.headers.get('Accept') == 'application/json':
+                        return jsonify({
+                            'success': False,
+                            'error': f'Role {role} required'
+                        }), 403
+                    return redirect(url_for('web.page_403'))
+            
+            request.user = {
+                'username': session_data.get('username'),
+                'role': session_data.get('role', 'guest'),
+                'session_id': session_id
+            }
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
