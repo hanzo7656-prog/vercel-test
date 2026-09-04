@@ -54,6 +54,12 @@ class MetricsScheduler:
             from infrastructure.api.coinstats_client import coinstats_client
             from application.services.self_healer import SelfHealer
             
+            # بررسی اینکه کلاس‌ها در دسترس هستند
+            if not ModelManager or not AutoTrainer or not SelfHealer:
+                logger.warning("⚠️ One or more classes not available for SelfHealer")
+                self.healer = None
+                return
+            
             model_manager = ModelManager(coinstats_client)
             trainer = AutoTrainer(coinstats_client)
             self.healer = SelfHealer(model_manager, trainer, coinstats_client)
