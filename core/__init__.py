@@ -3,10 +3,6 @@
 # پکیج Core
 # ============================================================
 
-# ❌ حذف import مستقیم system برای جلوگیری از Circular Import
-# from core.system import TradingSignalSystem, system
-# from core.metrics import MetricsScheduler, metrics_scheduler
-
 # ✅ فقط export names
 from core.metrics import metrics_scheduler
 from core.threading_manager import threading_manager
@@ -19,8 +15,6 @@ def get_system():
     return system
 
 __all__ = [
-    # 'TradingSignalSystem',  # ❌ حذف
-    # 'system',                # ❌ حذف
     'metrics_scheduler',
     'threading_manager',
     'FeatureEngineer',
