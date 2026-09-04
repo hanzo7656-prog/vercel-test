@@ -1,0 +1,106 @@
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-heartbeat"></i> وضعیت سیستم
+        <button class="btn btn-xs btn-outline" onclick="refreshStatus()" style="margin-right:auto;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+    <div id="statusContent">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بارگذاری...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// تابع refreshStatus برای تب وضعیت
+// ============================================================
+async function refreshStatus() {
+    const container = document.getElementById('statusContent');
+    container.innerHTML = `
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بروزرسانی...</p>
+        </div>
+    `;
+    
+    try {
+        const data = await api.getMetrics();
+        if (data.success && data.data) {
+            const m = data.data.metrics || {};
+            const stats = data.data.stats || {};
+            const apiStatus = m.api_status?.value || 'unknown';
+            const apiStatusText = { 
+                'ok': '✅ سالم', 
+                'degraded': '⚠️ ضعیف', 
+                'error': '❌ قطع', 
+                'unknown': '❓ نامشخص' 
+            };
+            const apiStatusColor = { 
+                'ok': 'green', 
+                'degraded': 'orange', 
+                'error': 'red', 
+                'unknown': 'orange' 
+            };
+            const modelStatus = m.model_status?.value || {};
+            const dbs = m.databases?.value || {};
+            
+            container.innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.6rem;color:var(--text-muted);">🔌 API</div>
+                        <div style="font-size:1.1rem;font-weight:600;color:var(--accent-${apiStatusColor[apiStatus]});">${apiStatusText[apiStatus]}</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">اعتبار: ${(m.api_credits?.value || 0).toLocaleString()}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.6rem;color:var(--text-muted);">🧠 مدل</div>
+                        <div style="font-size:1.1rem;font-weight:600;color:${modelStatus.loaded ? 'var(--accent-green)' : 'var(--accent-orange)'};">${modelStatus.loaded ? '✅ فعال' : '📦 دمو'}</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">نسخه: ${modelStatus.version || 'N/A'}</div>
+                    </div>
+                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                        <div style="font-size:0.6rem;color:var(--text-muted);">📊 جمع‌آوری‌ها</div>
+                        <div style="font-size:1.1rem;font-weight:600;color:var(--accent-cyan);">${stats.collections || 0}</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${stats.predictions || 0} پیش‌بینی</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+                    <span style="font-size:0.6rem;color:var(--text-muted);">🗄️ دیتابیس‌ها:</span>
+                    ${Object.entries(dbs).map(([name, connected]) => 
+                        `<span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>`
+                    ).join('') || '<span style="font-size:0.7rem;color:var(--text-muted);">بدون اطلاعات</span>'}
+                </div>
+                <div style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);">
+                    آخرین بروزرسانی: ${formatDate(data.data.timestamp)}
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="error-msg">
+                    <span class="icon">⚠️</span>
+                    <p>خطا در دریافت اطلاعات</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('Status error:', err);
+        container.innerHTML = `
+            <div class="error-msg">
+                <span class="icon">❌</span>
+                <p>خطا در ارتباط با سرور</p>
+                <p style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// تابع init برای تب status
+// ============================================================
+window.init_status = function() {
+    refreshStatus();
+    // بروزرسانی هر ۱۰ ثانیه
+    setInterval(refreshStatus, 10000);
+};
+</script>
