@@ -47,11 +47,8 @@ class MetricsScheduler:
         logger.info("✅ MetricsScheduler v9.0 initialized with Self-Healer")
     
     def _init_self_healer(self):
-        """
-        راه‌اندازی Self-Healer با مدیریت کامل خطاها
-        """
+        """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
         try:
-            # ===== ۱. Import کلاس‌ها =====
             from models.manager.model_manager import ModelManager
             from models.trainer.auto_trainer import AutoTrainer
             from infrastructure.api.coinstats_client import coinstats_client
@@ -59,18 +56,18 @@ class MetricsScheduler:
         
             logger.info("✅ All SelfHealer imports successful")
         
-            # ===== ۲. ایجاد ModelManager =====
+            # ===== ایجاد ModelManager =====
             model_manager = ModelManager(api=coinstats_client)
             logger.info("✅ ModelManager created successfully")
         
-            # ===== ۳. ایجاد AutoTrainer (با ۲ پارامتر) =====
+            # ===== ایجاد AutoTrainer (با ۲ پارامتر) =====
             trainer = AutoTrainer(
                 api=coinstats_client,
                 model_manager=model_manager
             )
             logger.info("✅ AutoTrainer created successfully")
         
-            # ===== ۴. ایجاد SelfHealer =====
+            # ===== ایجاد SelfHealer =====
             self.healer = SelfHealer(
                 model_manager=model_manager,
                 trainer=trainer,
@@ -78,7 +75,7 @@ class MetricsScheduler:
             )
             logger.info("✅ SelfHealer initialized successfully")
         
-            # ===== ۵. تست اولیه =====
+            # ===== تست اولیه =====
             test_status = self.healer.get_healing_status()
             logger.info(f"📊 SelfHealer initial status: {test_status}")
         
