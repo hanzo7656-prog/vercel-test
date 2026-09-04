@@ -47,28 +47,45 @@ class MetricsScheduler:
         logger.info("✅ MetricsScheduler v9.0 initialized with Self-Healer")
     
     def _init_self_healer(self):
-        """راه‌اندازی Self-Healer"""
+        """
+        راه‌اندازی Self-Healer با مدیریت کامل خطاها
+        """
         try:
+            # ===== ۱. Import کلاس‌ها =====
             from models.manager.model_manager import ModelManager
             from models.trainer.auto_trainer import AutoTrainer
             from infrastructure.api.coinstats_client import coinstats_client
             from application.services.self_healer import SelfHealer
-            
-            # بررسی اینکه کلاس‌ها در دسترس هستند
-            if not ModelManager or not AutoTrainer or not SelfHealer:
-                logger.warning("⚠️ One or more classes not available for SelfHealer")
-                self.healer = None
-                return
-            
-            model_manager = ModelManager(coinstats_client)
-            trainer = AutoTrainer(coinstats_client)
-            self.healer = SelfHealer(model_manager, trainer, coinstats_client)
-            logger.info("✅ SelfHealer initialized in MetricsScheduler")
-        except ImportError as e:
-            logger.error(f"❌ SelfHealer import error: {e}")
-            self.healer = None
+        
+            logger.info("✅ All SelfHealer imports successful")
+        
+            # ===== ۲. ایجاد ModelManager =====
+            model_manager = ModelManager(api=coinstats_client)
+            logger.info("✅ ModelManager created successfully")
+        
+            # ===== ۳. ایجاد AutoTrainer (با ۲ پارامتر) =====
+            trainer = AutoTrainer(
+                api=coinstats_client,
+                model_manager=model_manager
+            )
+            logger.info("✅ AutoTrainer created successfully")
+        
+            # ===== ۴. ایجاد SelfHealer =====
+            self.healer = SelfHealer(
+                model_manager=model_manager,
+                trainer=trainer,
+                api_client=coinstats_client
+            )
+            logger.info("✅ SelfHealer initialized successfully")
+        
+            # ===== ۵. تست اولیه =====
+            test_status = self.healer.get_healing_status()
+            logger.info(f"📊 SelfHealer initial status: {test_status}")
+        
         except Exception as e:
             logger.error(f"❌ SelfHealer init error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             self.healer = None
     
     def set_stop_event(self, event):
