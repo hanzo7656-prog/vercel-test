@@ -1,6 +1,6 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه نهایی با Singleton
+# سیستم جمع‌آوری متریک - نسخه نهایی با Self-Healer مقاوم
 # ============================================================
 
 import time
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class MetricsScheduler:
     """
-    سیستم جمع‌آوری متریک با Self-Healer یکپارچه (Singleton)
+    سیستم جمع‌آوری متریک با Self-Healer یکپارچه
     """
     
     _instance = None
@@ -25,7 +25,6 @@ class MetricsScheduler:
         return cls._instance
     
     def __init__(self):
-        # جلوگیری از مقداردهی مجدد
         if hasattr(self, '_initialized'):
             return
         self._initialized = True
@@ -55,11 +54,11 @@ class MetricsScheduler:
         
         # ===== بررسی نهایی =====
         if self.healer is not None:
-            logger.info("✅ SelfHealer initialized successfully in MetricsScheduler")
+            logger.info("✅ SelfHealer initialized successfully")
         else:
-            logger.warning("⚠️ SelfHealer could not be initialized - healing features disabled")
+            logger.warning("⚠️ SelfHealer could not be initialized")
         
-        logger.info("✅ MetricsScheduler v10.0 (Singleton) initialized")
+        logger.info("✅ MetricsScheduler v10.0 initialized")
     
     def _init_self_healer(self):
         """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
@@ -72,44 +71,28 @@ class MetricsScheduler:
             logger.info("✅ All SelfHealer imports successful")
             
             # ===== ایجاد ModelManager =====
-            try:
-                model_manager = ModelManager(api=coinstats_client)
-                logger.info("✅ ModelManager created successfully")
-            except Exception as e:
-                logger.error(f"❌ ModelManager creation failed: {e}")
-                self.healer = None
-                return
+            model_manager = ModelManager(api=coinstats_client)
+            logger.info("✅ ModelManager created")
             
             # ===== ایجاد AutoTrainer =====
-            try:
-                trainer = AutoTrainer(
-                    api=coinstats_client,
-                    model_manager=model_manager
-                )
-                logger.info("✅ AutoTrainer created successfully")
-            except Exception as e:
-                logger.error(f"❌ AutoTrainer creation failed: {e}")
-                self.healer = None
-                return
+            trainer = AutoTrainer(
+                api=coinstats_client,
+                model_manager=model_manager
+            )
+            logger.info("✅ AutoTrainer created")
             
             # ===== ایجاد SelfHealer =====
-            try:
-                self.healer = SelfHealer(
-                    model_manager=model_manager,
-                    trainer=trainer,
-                    api_client=coinstats_client
-                )
-                logger.info("✅ SelfHealer initialized successfully")
-                
-                # تست اولیه
-                if self.healer:
-                    test_status = self.healer.get_healing_status()
-                    logger.info(f"📊 SelfHealer initial status: {test_status}")
-                
-            except Exception as e:
-                logger.error(f"❌ SelfHealer creation failed: {e}")
-                self.healer = None
-                return
+            self.healer = SelfHealer(
+                model_manager=model_manager,
+                trainer=trainer,
+                api_client=coinstats_client
+            )
+            logger.info("✅ SelfHealer created")
+            
+            # ===== تست =====
+            if self.healer:
+                status = self.healer.get_healing_status()
+                logger.info(f"📊 SelfHealer status: {status}")
             
         except Exception as e:
             logger.error(f"❌ SelfHealer init error: {e}")
@@ -120,6 +103,7 @@ class MetricsScheduler:
     def _run_self_healing(self):
         """اجرای Self-Healing"""
         if self.healer is None:
+            logger.warning("⚠️ SelfHealer not available")
             return
         
         try:
@@ -139,11 +123,10 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     # ============================================================
-    # جمع‌آوری‌کننده‌ها
+    # بقیه متدها (بدون تغییر)
     # ============================================================
     
     def _collect_light_metrics(self):
-        """CPU, RAM, Uptime"""
         try:
             cpu = psutil.cpu_percent(interval=0.2)
             ram = psutil.virtual_memory().percent
@@ -168,7 +151,6 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     def _collect_medium_metrics(self):
-        """قیمت‌ها, API, مدل, دیتابیس‌ها"""
         try:
             from infrastructure.api.coinstats_client import coinstats_client
             from models.manager.model_manager import ModelManager
@@ -271,7 +253,6 @@ class MetricsScheduler:
             self.stats["errors"] += 1
     
     def _collect_heavy_metrics(self):
-        """ترس و طمع, سلطه, اخبار, دیسک"""
         try:
             from infrastructure.api.coinstats_client import coinstats_client
             
@@ -485,6 +466,6 @@ class MetricsScheduler:
 
 
 # ============================================================
-# ایجاد نمونه واحد
+# ایجاد نمونه
 # ============================================================
 metrics_scheduler = MetricsScheduler()
