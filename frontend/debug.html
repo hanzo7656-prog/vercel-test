@@ -563,7 +563,7 @@
     <script src="/js/app.js"></script>
     <script>
         // ============================================================
-        // DEBUG CONTROLLER - نسخه کامل
+        // DEBUG CONTROLLER - نسخه کامل اصلاح شده
         // ============================================================
         
         let debugStatsInterval = null;
@@ -653,15 +653,45 @@
                     });
                 }
             }
+            
+            // ===== LOAD ALL (اصلاح شده: ادامه با وجود خطا) =====
             async loadAll() {
-                await this.loadAppStats();
-                await this.loadStatus();
-                await this.loadLogs();
-                await this.loadSystem();
-                await this.loadCache();
-                await this.loadProcesses();
-                await this.loadHealingStatus();
+                const errors = [];
+                
+                try { await this.loadAppStats(); } catch(e) { 
+                    console.warn('⚠️ loadAppStats failed:', e);
+                    errors.push('appStats'); 
+                }
+                try { await this.loadStatus(); } catch(e) { 
+                    console.warn('⚠️ loadStatus failed:', e);
+                    errors.push('status'); 
+                }
+                try { await this.loadLogs(); } catch(e) { 
+                    console.warn('⚠️ loadLogs failed:', e);
+                    errors.push('logs'); 
+                }
+                try { await this.loadSystem(); } catch(e) { 
+                    console.warn('⚠️ loadSystem failed:', e);
+                    errors.push('system'); 
+                }
+                try { await this.loadCache(); } catch(e) { 
+                    console.warn('⚠️ loadCache failed:', e);
+                    errors.push('cache'); 
+                }
+                try { await this.loadProcesses(); } catch(e) { 
+                    console.warn('⚠️ loadProcesses failed:', e);
+                    errors.push('processes'); 
+                }
+                try { await this.loadHealingStatus(); } catch(e) { 
+                    console.warn('⚠️ loadHealingStatus failed:', e);
+                    errors.push('healing'); 
+                }
+                
+                if (errors.length > 0) {
+                    console.warn('⚠️ Some tabs failed to load:', errors.join(', '));
+                }
             }
+            
             startAutoUpdate() {
                 debugStatsInterval = setInterval(() => this.loadAppStats(), 1000);
                 this.updateInterval = setInterval(() => this.loadStatus(), 10000);
@@ -893,7 +923,7 @@
                 `;
             }
 
-            // ===== HEALING =====
+            // ===== HEALING STATUS (اصلاح شده با مدیریت خطا) =====
             async loadHealingStatus() {
                 const container = document.getElementById('healingContent');
                 container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
@@ -916,15 +946,30 @@
                                     <div class="h-label">اقدامات انجام شده</div>
                                 </div>
                                 <div class="healing-card">
-                                    <div class="h-value ${connectedCount === dbCount ? 'green' : 'orange'}">${connectedCount}/${dbCount}</div>
+                                    <div class="h-value ${connectedCount === dbCount && dbCount > 0 ? 'green' : 'orange'}">${dbCount > 0 ? `${connectedCount}/${dbCount}` : '—'}</div>
                                     <div class="h-label">دیتابیس‌های متصل</div>
                                 </div>
                             </div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;">
-                                ${Object.entries(dbStatus).map(([name, connected]) => `
-                                    <span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>
-                                `).join('')}
-                            </div>
+                        `;
+                        
+                        // نمایش دیتابیس‌ها (اگر وجود داشته باشند)
+                        if (dbCount > 0) {
+                            html += `
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;">
+                                    ${Object.entries(dbStatus).map(([name, connected]) => `
+                                        <span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>
+                                    `).join('')}
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;color:var(--text-muted);">
+                                    ℹ️ هیچ دیتابیسی ثبت نشده است
+                                </div>
+                            `;
+                        }
+                        
+                        html += `
                             <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px;">
                                 <span>🧠 مدل: ${d.model_loaded ? '✅ بارگذاری شده' : '❌ بارگذاری نشده'}</span>
                                 ${d.model_accuracy !== null && d.model_accuracy !== undefined ? ` • 🎯 دقت: ${(d.model_accuracy * 100).toFixed(1)}%` : ''}
@@ -939,10 +984,22 @@
                             </div>
                         `;
                         container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div style="text-align:center;padding:20px;color:var(--accent-orange);">
+                                ⚠️ داده‌های خودترمیمی در دسترس نیست
+                                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${data.error || 'خطا در دریافت داده'}</div>
+                            </div>
+                        `;
                     }
                 } catch (err) {
                     console.error('Healing status error:', err);
-                    container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت وضعیت خودترمیمی</p>';
+                    container.innerHTML = `
+                        <div style="text-align:center;padding:20px;color:var(--accent-orange);">
+                            ⚠️ خودترمیمی در دسترس نیست
+                            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${err.message || 'خطای ارتباط با سرور'}</div>
+                        </div>
+                    `;
                 }
             }
         }
@@ -958,7 +1015,6 @@
         function setCliMode(mode) {
             currentCliMode = mode;
             
-            // به‌روزرسانی دکمه‌ها
             document.querySelectorAll('#cliModeSwitcher .mode-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.mode === mode) {
@@ -966,7 +1022,6 @@
                 }
             });
             
-            // به‌روزرسانی پرامپت
             const prompt = document.getElementById('cliPrompt');
             const display = document.getElementById('modeDisplay');
             const input = document.getElementById('cliInput');
@@ -982,7 +1037,6 @@
             prompt.className = 'cli-prompt ' + p.color;
             display.textContent = p.label;
             
-            // تغییر placeholder
             const placeholders = {
                 'python': 'دستور پایتون را وارد کنید...',
                 'shell': 'دستور شل را وارد کنید...',
@@ -990,7 +1044,6 @@
             };
             input.placeholder = placeholders[mode] || placeholders['python'];
             
-            // تغییر رنگ border
             const colors = {
                 'python': '#00d4ff',
                 'shell': '#f59e0b',
@@ -1027,14 +1080,12 @@
                 return;
             }
 
-            // ذخیره در تاریخچه
             if (cmd) {
                 cliHistory.push(cmd);
                 if (cliHistory.length > 50) cliHistory.shift();
                 historyIndex = -1;
             }
 
-            // ===== میانبرها =====
             const shortcuts = {
                 '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
                 '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
@@ -1056,7 +1107,6 @@
                 type = 'python';
             }
 
-            // اگر با / شروع شد، حالت shell
             if (cmd.startsWith('/') && !shortcuts[cmd]) {
                 type = 'shell';
                 actualCmd = cmd.substring(1);
@@ -1095,7 +1145,6 @@
                 const data = await api.executeDebugCommand(actualCmd, type, 15);
                 if (data.success) {
                     let result = data.result || 'انجام شد';
-                    // اگر حالت terminal بود، پرامپت رو هم نمایش بده
                     if (type === 'terminal' && data.prompt) {
                         result = result;
                     }
@@ -1132,7 +1181,6 @@
 
         function clearCli() {
             const output = document.getElementById('cliOutput');
-            const modeDisplay = document.getElementById('modeDisplay');
             const mode = currentCliMode || 'python';
             const modeLabels = {
                 'python': 'Python',
