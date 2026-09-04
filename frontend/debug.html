@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         /* ============================================================
-           DEBUG - استایل‌های اختصاصی
+           DEBUG - استایل‌های اصلی
            ============================================================ */
         
         .debug-stats-grid {
@@ -57,302 +57,105 @@
             width: 0%;
         }
 
-        /* ===== CLI MODE SWITCHER ===== */
-        .cli-mode-switcher {
+        /* ===== TABS ===== */
+        .debug-tabs {
             display: flex;
             gap: 4px;
-            background: var(--bg-input);
+            background: var(--bg-secondary);
             border-radius: var(--radius-sm);
-            padding: 3px;
+            padding: 4px;
             border: 1px solid var(--border-color);
-            margin-bottom: 10px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
         }
-        .cli-mode-switcher .mode-btn {
-            padding: 6px 14px;
+        .debug-tabs .tab-btn {
+            padding: 8px 16px;
+            background: transparent;
             border: none;
             border-radius: 6px;
-            background: transparent;
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 0.7rem;
-            font-weight: 500;
             transition: var(--transition);
+            font-size: 0.75rem;
             font-family: inherit;
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
-        .cli-mode-switcher .mode-btn:hover {
+        .debug-tabs .tab-btn:hover {
             color: var(--text-primary);
             background: var(--bg-hover);
         }
-        .cli-mode-switcher .mode-btn.active {
+        .debug-tabs .tab-btn.active {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-cyan);
+        }
+        .debug-tabs .tab-btn .badge {
+            font-size: 0.5rem;
+            padding: 1px 6px;
+            border-radius: var(--radius-full);
+            background: var(--accent-red);
             color: white;
         }
-        .cli-mode-switcher .mode-btn.mode-python.active {
-            background: rgba(0, 212, 255, 0.2);
-            color: #00d4ff;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
-        }
-        .cli-mode-switcher .mode-btn.mode-shell.active {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.05);
-        }
-        .cli-mode-switcher .mode-btn.mode-terminal.active {
-            background: rgba(34, 211, 238, 0.2);
-            color: #22d3ee;
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.05);
-        }
 
-        /* ===== CONSOLE ===== */
-        .console-output {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
+        /* ===== TAB CONTENT ===== */
+        .tab-content-wrapper {
+            min-height: 400px;
+            position: relative;
+        }
+        .tab-content-wrapper .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+        .tab-content-wrapper .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .tab-content-wrapper .loading-text {
             color: var(--text-secondary);
-            max-height: 400px;
-            overflow-y: auto;
-            direction: ltr;
-            text-align: left;
-            line-height: 1.8;
-            border: 1px solid var(--border-color);
-            min-height: 200px;
+            font-size: 0.9rem;
         }
-        .console-output::-webkit-scrollbar { width: 4px; }
-        .console-output::-webkit-scrollbar-track { background: transparent; }
-        .console-output::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 4px; }
-        .console-output .log-line {
-            padding: 2px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-        }
-        .console-output .log-time {
-            color: var(--text-muted);
-            min-width: 70px;
-            font-size: 0.6rem;
-            flex-shrink: 0;
-        }
-        .console-output .log-level {
-            min-width: 60px;
-            font-weight: 600;
-            font-size: 0.6rem;
-            flex-shrink: 0;
-        }
-        .console-output .log-level.info { color: var(--accent-cyan); }
-        .console-output .log-level.success { color: var(--accent-green); }
-        .console-output .log-level.error { color: var(--accent-red); }
-        .console-output .log-level.warning { color: var(--accent-orange); }
-        .console-output .log-level.cmd { color: var(--accent-purple); }
-        .console-output .log-level.shell { color: #f59e0b; }
-        .console-output .log-level.terminal { color: #22d3ee; }
-        .console-output .log-msg {
-            flex: 1;
-            word-break: break-word;
-            white-space: pre-wrap;
-            color: #c0d0e0;
-        }
-        .console-output .log-msg .highlight { color: var(--accent-cyan); }
-        .console-output .log-msg .error-text { color: var(--accent-red); }
-        .console-output .log-copy-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 0.5rem;
-            padding: 0 4px;
-            border-radius: 4px;
-            transition: var(--transition);
-            flex-shrink: 0;
-        }
-        .console-output .log-copy-btn:hover {
-            color: var(--accent-cyan);
-            background: rgba(0, 212, 255, 0.05);
-        }
-        .console-output .log-prompt {
-            color: var(--accent-cyan);
-            font-weight: 600;
-        }
-        .console-output .log-prompt.python { color: #00d4ff; }
-        .console-output .log-prompt.shell { color: #f59e0b; }
-        .console-output .log-prompt.terminal { color: #22d3ee; }
-
-        /* ===== CLI INPUT ===== */
-        .cli-area { margin-top: 12px; }
-        .cli-area .cli-input-wrapper { position: relative; }
-        .cli-area .cli-input-wrapper .cli-prompt {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            font-weight: 600;
-            pointer-events: none;
-            opacity: 0.8;
-        }
-        .cli-area .cli-input-wrapper .cli-prompt.python { color: #00d4ff; }
-        .cli-area .cli-input-wrapper .cli-prompt.shell { color: #f59e0b; }
-        .cli-area .cli-input-wrapper .cli-prompt.terminal { color: #22d3ee; }
-
-        .cli-area textarea {
-            width: 100%;
-            padding: 10px 14px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            resize: vertical;
-            min-height: 60px;
-            transition: var(--transition);
-            direction: ltr;
-            padding-left: 120px;
-        }
-        .cli-area textarea:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05);
-        }
-        .cli-area textarea::placeholder {
-            color: var(--text-muted);
-            opacity: 0.5;
-        }
-
-        .cli-area .cli-shortcuts {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-            padding: 6px 10px;
-            background: var(--bg-input);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-color);
-        }
-        .cli-area .cli-shortcuts .shortcut {
-            font-size: 0.55rem;
-            color: var(--text-muted);
-            padding: 2px 8px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: var(--font-mono);
-            background: transparent;
-        }
-        .cli-area .cli-shortcuts .shortcut:hover {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-            background: rgba(0, 212, 255, 0.05);
-        }
-        .cli-area .cli-shortcuts .shortcut .icon { margin-left: 4px; }
-
-        .cli-area .cli-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-        .cli-area .cli-actions .btn {
-            padding: 6px 16px;
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-        }
-
-        /* ===== HEALING CARD ===== */
-        .healing-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-        .healing-card {
-            background: var(--bg-input);
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-color);
+        .tab-content-wrapper .error-msg {
             text-align: center;
-            transition: var(--transition);
+            padding: 40px 20px;
+            color: var(--accent-orange);
         }
-        .healing-card:hover { border-color: var(--border-hover); }
-        .healing-card .h-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            font-family: var(--font-mono);
+        .tab-content-wrapper .error-msg .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 10px;
         }
-        .healing-card .h-value.green { color: var(--accent-green); }
-        .healing-card .h-value.orange { color: var(--accent-orange); }
-        .healing-card .h-value.cyan { color: var(--accent-cyan); }
-        .healing-card .h-label {
-            font-size: 0.55rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-        }
-        .healing-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-        }
-        .healing-actions .btn {
-            padding: 5px 14px;
-            font-size: 0.7rem;
-        }
-
-        .healing-history {
-            margin-top: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .healing-history .h-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 10px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-        .healing-history .h-item .h-time { color: var(--text-muted); font-size: 0.6rem; }
-        .healing-history .h-item .h-action { font-weight: 500; }
-        .healing-history .h-item .h-action.success { color: var(--accent-green); }
-        .healing-history .h-item .h-action.warning { color: var(--accent-orange); }
-        .healing-history .h-item .h-action.error { color: var(--accent-red); }
 
         /* ============================================================
            RESPONSIVE
            ============================================================ */
         @media (max-width: 1024px) {
             .debug-stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .healing-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
             .debug-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
             .debug-stat-card { padding: 10px 12px; }
             .debug-stat-card .stat-value { font-size: 0.9rem; }
-            .console-output { font-size: 0.65rem; max-height: 300px; padding: 10px 12px; }
-            .console-output .log-time { min-width: 50px; font-size: 0.55rem; }
-            .console-output .log-level { min-width: 45px; font-size: 0.55rem; }
-            .cli-area .cli-actions { flex-direction: column; }
-            .cli-area .cli-actions .btn { width: 100%; justify-content: center; }
-            .cli-mode-switcher .mode-btn { font-size: 0.6rem; padding: 4px 10px; }
-            .cli-area textarea { padding-left: 80px; font-size: 0.75rem; }
-            .cli-area .cli-input-wrapper .cli-prompt { font-size: 0.65rem; left: 8px; }
-            .healing-grid { grid-template-columns: 1fr; }
-            .healing-actions { flex-direction: column; }
-            .healing-actions .btn { width: 100%; justify-content: center; }
+            .debug-tabs { flex-wrap: nowrap; overflow-x: auto; }
+            .debug-tabs .tab-btn { font-size: 0.65rem; padding: 6px 12px; }
         }
         @media (max-width: 480px) {
             .debug-stats-grid { grid-template-columns: 1fr 1fr; }
             .debug-stat-card .stat-value { font-size: 0.8rem; }
-            .console-output .log-line { flex-wrap: wrap; gap: 2px; }
-            .console-output .log-time { min-width: 100%; font-size: 0.5rem; color: var(--text-muted); }
+            .debug-tabs .tab-btn { font-size: 0.6rem; padding: 4px 8px; }
         }
     </style>
 </head>
@@ -362,12 +165,16 @@
 
     <div class="container">
 
+        <!-- ===== PAGE HEADER ===== -->
         <div class="page-header">
-            <div><h1><i class="fas fa-bug" style="color:#ff6b00;"></i> دیباگ</h1><span class="subtitle">ابزارهای عیب‌یابی و مدیریت سیستم</span></div>
+            <div>
+                <h1><i class="fas fa-bug" style="color:#ff6b00;"></i> دیباگ</h1>
+                <span class="subtitle">ابزارهای عیب‌یابی و مدیریت سیستم</span>
+            </div>
             <span class="timestamp" id="pageTimestamp"></span>
         </div>
 
-        <!-- Stats -->
+        <!-- ===== STATS ===== -->
         <div class="debug-stats-grid" id="debugStats">
             <div class="debug-stat-card">
                 <span class="stat-icon">💻</span>
@@ -392,164 +199,37 @@
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="tabs" id="debugTabs">
-            <button class="tab-btn active" data-tab="status">📊 وضعیت</button>
-            <button class="tab-btn" data-tab="logs">📋 لاگ‌ها</button>
-            <button class="tab-btn" data-tab="cli">💻 کنسول</button>
-            <button class="tab-btn" data-tab="system">🖥️ سیستم</button>
-            <button class="tab-btn" data-tab="cache">🗄️ کش</button>
-            <button class="tab-btn" data-tab="processes">📈 پردازش‌ها</button>
-            <button class="tab-btn" data-tab="healing">🔄 خودترمیمی</button>
+        <!-- ===== TABS ===== -->
+        <div class="debug-tabs" id="debugTabs">
+            <button class="tab-btn active" data-tab="status">
+                <i class="fas fa-heartbeat"></i> وضعیت
+            </button>
+            <button class="tab-btn" data-tab="logs">
+                <i class="fas fa-list"></i> لاگ‌ها
+            </button>
+            <button class="tab-btn" data-tab="cli">
+                <i class="fas fa-terminal"></i> کنسول
+            </button>
+            <button class="tab-btn" data-tab="system">
+                <i class="fas fa-server"></i> سیستم
+            </button>
+            <button class="tab-btn" data-tab="cache">
+                <i class="fas fa-database"></i> کش
+                <span class="badge" id="cacheBadge" style="display:none;">!</span>
+            </button>
+            <button class="tab-btn" data-tab="processes">
+                <i class="fas fa-tasks"></i> پردازش‌ها
+            </button>
+            <button class="tab-btn" data-tab="healing">
+                <i class="fas fa-heartbeat"></i> خودترمیمی
+            </button>
         </div>
 
-        <!-- ===== TAB: STATUS ===== -->
-        <div class="tab-content active" id="tab-status">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-heartbeat"></i> وضعیت سیستم<button class="btn btn-xs btn-outline" onclick="loadStatus()" style="margin-right:auto;"><i class="fas fa-sync-alt"></i></button></div>
-                <div id="statusContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: LOGS ===== -->
-        <div class="tab-content" id="tab-logs">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-list"></i> لاگ‌های سیستم
-                    <div style="display:flex;gap:6px;margin-right:auto;">
-                        <select id="logLevelSelect" onchange="setLogLevel(this.value)" style="padding:2px 8px;font-size:0.65rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);">
-                            <option value="DEBUG">DEBUG</option>
-                            <option value="INFO" selected>INFO</option>
-                            <option value="WARNING">WARNING</option>
-                            <option value="ERROR">ERROR</option>
-                        </select>
-                        <button class="btn btn-xs btn-outline" onclick="loadLogs()"><i class="fas fa-sync-alt"></i></button>
-                        <button class="btn btn-xs btn-danger" onclick="clearLogs()"><i class="fas fa-trash"></i></button>
-                        <button class="btn btn-xs btn-outline" onclick="copyLogs()"><i class="fas fa-copy"></i></button>
-                    </div>
-                </div>
-                <div class="console-output" id="logsOutput">
-                    <div class="log-line"><span class="log-time">⏳</span><span class="log-level info">INFO</span><span class="log-msg">در حال بارگذاری لاگ‌ها...</span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: CLI ===== -->
-        <div class="tab-content" id="tab-cli">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-terminal"></i> کنسول تعاملی
-                    <div style="display:flex;gap:6px;margin-right:auto;">
-                        <button class="btn btn-xs btn-danger" onclick="clearCli()"><i class="fas fa-eraser"></i></button>
-                        <button class="btn btn-xs btn-outline" onclick="copyCli()"><i class="fas fa-copy"></i></button>
-                    </div>
-                </div>
-
-                <!-- Mode Switcher -->
-                <div class="cli-mode-switcher" id="cliModeSwitcher">
-                    <button class="mode-btn mode-python active" data-mode="python" onclick="setCliMode('python')">
-                        <i class="fab fa-python"></i> Python
-                    </button>
-                    <button class="mode-btn mode-shell" data-mode="shell" onclick="setCliMode('shell')">
-                        <i class="fas fa-terminal"></i> Shell
-                    </button>
-                    <button class="mode-btn mode-terminal" data-mode="terminal" onclick="setCliMode('terminal')">
-                        <i class="fas fa-desktop"></i> Terminal
-                    </button>
-                </div>
-
-                <!-- Console Output -->
-                <div class="console-output" id="cliOutput" style="min-height:200px;">
-                    <div class="log-line"><span class="log-time">🚀</span><span class="log-level info">INFO</span><span class="log-msg">کنسول آماده است.</span></div>
-                    <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">حالت: <span class="highlight" id="modeDisplay">Python</span> | میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
-                </div>
-
-                <!-- CLI Input -->
-                <div class="cli-area">
-                    <div class="cli-input-wrapper">
-                        <textarea id="cliInput" placeholder="دستور خود را وارد کنید..."></textarea>
-                        <span class="cli-prompt python" id="cliPrompt">>>> </span>
-                    </div>
-
-                    <!-- Shortcuts -->
-                    <div class="cli-shortcuts" id="cliShortcuts">
-                        <button class="shortcut" onclick="insertCommand('/cpu')"><span class="icon">⚡</span>/cpu</button>
-                        <button class="shortcut" onclick="insertCommand('/ram')"><span class="icon">💾</span>/ram</button>
-                        <button class="shortcut" onclick="insertCommand('/uptime')"><span class="icon">⏱️</span>/uptime</button>
-                        <button class="shortcut" onclick="insertCommand('/stats')"><span class="icon">📊</span>/stats</button>
-                        <button class="shortcut" onclick="insertCommand('/clear')"><span class="icon">🧹</span>/clear</button>
-                        <button class="shortcut" onclick="insertCommand('/help')"><span class="icon">❓</span>/help</button>
-                        <button class="shortcut" onclick="insertCommand('ls -la')"><span class="icon">📂</span>ls</button>
-                        <button class="shortcut" onclick="insertCommand('ps aux')"><span class="icon">📈</span>ps</button>
-                        <button class="shortcut" onclick="insertCommand('df -h')"><span class="icon">💿</span>df</button>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="cli-actions">
-                        <button class="btn btn-primary" onclick="executeCommand()"><i class="fas fa-play"></i> اجرا (Ctrl+Enter)</button>
-                        <button class="btn btn-outline" onclick="clearCliInput()"><i class="fas fa-times"></i> پاک کردن</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: SYSTEM ===== -->
-        <div class="tab-content" id="tab-system">
-            <div class="card">
-                <div class="card-title"><i class="fas fa-server"></i> اطلاعات سیستم<button class="btn btn-xs btn-outline" onclick="loadSystem()" style="margin-right:auto;"><i class="fas fa-sync-alt"></i></button></div>
-                <div id="systemContent"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div></div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: CACHE ===== -->
-        <div class="tab-content" id="tab-cache">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-database"></i> مدیریت کش
-                    <div style="display:flex;gap:6px;margin-right:auto;">
-                        <button class="btn btn-xs btn-outline" onclick="searchCache()"><i class="fas fa-search"></i></button>
-                        <button class="btn btn-xs btn-danger" onclick="purgeCache()"><i class="fas fa-broom"></i> پاکسازی کامل</button>
-                    </div>
-                </div>
-                <div class="cache-search">
-                    <input id="cacheSearchInput" placeholder="جستجو در کلیدها (مثل: session:*)" onkeypress="if(event.key==='Enter') searchCache()">
-                    <button class="btn-xs" onclick="searchCache()"><i class="fas fa-search"></i> جستجو</button>
-                    <button class="btn-xs" onclick="loadCache()"><i class="fas fa-sync-alt"></i> همه</button>
-                </div>
-                <div id="cacheContent">
-                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: PROCESSES ===== -->
-        <div class="tab-content" id="tab-processes">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-tasks"></i> پردازش‌های فعال
-                    <div style="display:flex;gap:6px;margin-right:auto;">
-                        <input class="search-input" id="processSearch" placeholder="جستجو..." onkeyup="filterProcesses()" style="padding:4px 10px;font-size:0.7rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);">
-                        <button class="btn btn-xs btn-outline" onclick="loadProcesses()"><i class="fas fa-sync-alt"></i></button>
-                    </div>
-                </div>
-                <div id="processesContent">
-                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: HEALING ===== -->
-        <div class="tab-content" id="tab-healing">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-heartbeat"></i> خودترمیمی (Self-Healer)
-                    <button class="btn btn-xs btn-outline" onclick="loadHealingStatus()" style="margin-right:auto;">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-                <div id="healingContent">
-                    <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
-                </div>
+        <!-- ===== TAB CONTENT ===== -->
+        <div class="tab-content-wrapper" id="tabContent">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">در حال بارگذاری...</p>
             </div>
         </div>
 
@@ -558,925 +238,13 @@
     <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
-    <script>
-        // ============================================================
-        // DEBUG CONTROLLER - نسخه کامل اصلاح شده
-        // ============================================================
-        
-        let debugStatsInterval = null;
-        let healingInterval = null;
-        let processesData = [];
-        let cacheData = [];
-        let currentCliMode = 'python';
-        let cliHistory = [];
-        let historyIndex = -1;
+    <script src="/js/debug-loader.js"></script>
 
-        class DebugController {
-            constructor() {
-                this.updateInterval = null;
-                this.init();
-            }
-            async init() {
-                console.log('🚀 Debug initializing...');
-                await this.loadNav();
-                this.setupTabs();
-                this.setupEvents();
-                await this.loadAll();
-                this.startAutoUpdate();
-                console.log('🚀 Debug ready');
-            }
-            async loadNav() {
-                const container = document.getElementById('navContainer');
-                if (!container) return;
-                try {
-                    const res = await fetch('/nav.html');
-                    if (!res.ok) throw new Error('nav.html not found');
-                    const html = await res.text();
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                } catch (err) { console.error('❌ Nav error:', err); }
-            }
-            setupTabs() {
-                document.querySelectorAll('#debugTabs .tab-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        document.querySelectorAll('#debugTabs .tab-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        const tab = btn.dataset.tab;
-                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                        document.getElementById(`tab-${tab}`).classList.add('active');
-                        const loaders = {
-                            'status': () => this.loadStatus(),
-                            'logs': () => this.loadLogs(),
-                            'cli': () => {},
-                            'system': () => this.loadSystem(),
-                            'cache': () => this.loadCache(),
-                            'processes': () => this.loadProcesses(),
-                            'healing': () => this.loadHealingStatus()
-                        };
-                        if (loaders[tab]) loaders[tab]();
-                    });
-                });
-            }
-            setupEvents() {
-                const input = document.getElementById('cliInput');
-                if (input) {
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                            e.preventDefault();
-                            executeCommand();
-                        }
-                        if (e.key === 'ArrowUp' && cliHistory.length > 0) {
-                            e.preventDefault();
-                            if (historyIndex < cliHistory.length - 1) {
-                                historyIndex++;
-                                input.value = cliHistory[cliHistory.length - 1 - historyIndex];
-                            }
-                        }
-                        if (e.key === 'ArrowDown' && historyIndex >= 0) {
-                            e.preventDefault();
-                            if (historyIndex > 0) {
-                                historyIndex--;
-                                input.value = cliHistory[cliHistory.length - 1 - historyIndex];
-                            } else {
-                                historyIndex = -1;
-                                input.value = '';
-                            }
-                        }
-                    });
-                }
-            }
-            
-            // ===== LOAD ALL (اصلاح شده: ادامه با وجود خطا) =====
-            // ===== LOAD ALL - با timeout و مدیریت خطا =====
-            async loadAll() {
-                const errors = [];
-                const timeout = 5000; // ۵ ثانیه timeout برای هر تابع
-    
-                // تابع کمکی برای اجرا با timeout
-                const withTimeout = (promise, name) => {
-                    return Promise.race([
-                        promise,
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error(`${name} timeout`)), timeout)
-                        )
-                    ]);
-                };
-    
-                try { 
-                    await withTimeout(this.loadAppStats(), 'appStats'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadAppStats failed:', e.message);
-                    errors.push('appStats'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadStatus(), 'status'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadStatus failed:', e.message);
-                    errors.push('status'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadLogs(), 'logs'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadLogs failed:', e.message);
-                    errors.push('logs'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadSystem(), 'system'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadSystem failed:', e.message);
-                    errors.push('system'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadCache(), 'cache'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadCache failed:', e.message);
-                    errors.push('cache'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadProcesses(), 'processes'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadProcesses failed:', e.message);
-                    errors.push('processes'); 
-                }
-    
-                try { 
-                    await withTimeout(this.loadHealingStatus(), 'healing'); 
-                } catch(e) { 
-                    console.warn('⚠️ loadHealingStatus failed:', e.message);
-                    errors.push('healing'); 
-                }
-    
-                if (errors.length > 0) {
-                    console.warn('⚠️ Some tabs failed to load:', errors.join(', '));
-                // نمایش خطا در صفحه
-                    const container = document.getElementById('statusContent');
-                    if (container && errors.includes('status')) {
-                        container.innerHTML = `
-                            <div style="text-align:center;padding:20px;color:var(--accent-orange);">
-                                ⚠️ برخی بخش‌ها با خطا مواجه شدند
-                                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${errors.join(', ')}</div>
-                                <button onclick="location.reload()" style="margin-top:10px;padding:6px 16px;background:var(--accent-cyan);color:#000;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
-                            </div>
-                        `;
-                    }
-                }
-            }
-            
-            startAutoUpdate() {
-                debugStatsInterval = setInterval(() => this.loadAppStats(), 1000);
-                this.updateInterval = setInterval(() => this.loadStatus(), 10000);
-                healingInterval = setInterval(() => this.loadHealingStatus(), 30000);
-            }
-
-            // ===== APP STATS =====
-            async loadAppStats() {
-                try {
-                    const res = await fetch('/api/app/stats', { credentials: 'include' });
-                    const data = await res.json();
-                    if (data.success && data.data) {
-                        const stats = data.data;
-                        const RAM_LIMIT_MB = 512;
-                        
-                        const cpuEl = document.getElementById('debugCpu');
-                        if (cpuEl) {
-                            cpuEl.textContent = stats.cpu.percent + '%';
-                            const pct = stats.cpu.percent;
-                            cpuEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'green');
-                        }
-                        
-                        const ramEl = document.getElementById('debugRam');
-                        const ramBar = document.getElementById('debugRamBar');
-                        const ramUsed = stats.ram.used_mb;
-                        const ramPercent = Math.min((ramUsed / RAM_LIMIT_MB) * 100, 100);
-                        if (ramEl) {
-                            ramEl.textContent = ramUsed.toFixed(1) + ' MB (' + ramPercent.toFixed(1) + '%)';
-                            const pct = ramPercent;
-                            ramEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'green');
-                        }
-                        if (ramBar) {
-                            ramBar.style.width = ramPercent + '%';
-                            ramBar.style.background = ramPercent > 80 ? 'var(--accent-red)' :
-                                                      ramPercent > 60 ? 'var(--accent-orange)' :
-                                                      'var(--accent-green)';
-                        }
-                        
-                        const uptimeEl = document.getElementById('debugUptime');
-                        if (uptimeEl && stats.uptime) {
-                            uptimeEl.textContent = stats.uptime.app_formatted || '—';
-                        }
-                        
-                        const metrics = await api.getMetrics();
-                        if (metrics.success && metrics.data) {
-                            const collections = metrics.data.stats?.collections || 0;
-                            document.getElementById('debugCollections').textContent = collections;
-                        }
-                    }
-                } catch (err) { console.error('Failed to load app stats:', err); }
-            }
-
-            // ===== STATUS =====
-            async loadStatus() {
-                const container = document.getElementById('statusContent');
-                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
-                try {
-                    const data = await api.getMetrics();
-                    if (data.success && data.data) {
-                        const m = data.data.metrics || {};
-                        const stats = data.data.stats || {};
-                        const apiStatus = m.api_status?.value || 'unknown';
-                        const apiStatusText = { 'ok': '✅ سالم', 'degraded': '⚠️ ضعیف', 'error': '❌ قطع', 'unknown': '❓ نامشخص' };
-                        const apiStatusColor = { 'ok': 'green', 'degraded': 'orange', 'error': 'red', 'unknown': 'orange' };
-                        const modelStatus = m.model_status?.value || {};
-                        const dbs = m.databases?.value || {};
-                        container.innerHTML = `
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
-                                <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                    <div style="font-size:0.6rem;color:var(--text-muted);">🔌 API</div>
-                                    <div style="font-size:1.1rem;font-weight:600;color:var(--accent-${apiStatusColor[apiStatus]});">${apiStatusText[apiStatus]}</div>
-                                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">اعتبار: ${(m.api_credits?.value || 0).toLocaleString()}</div>
-                                </div>
-                                <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                    <div style="font-size:0.6rem;color:var(--text-muted);">🧠 مدل</div>
-                                    <div style="font-size:1.1rem;font-weight:600;color:${modelStatus.loaded ? 'var(--accent-green)' : 'var(--accent-orange)'};">${modelStatus.loaded ? '✅ فعال' : '📦 دمو'}</div>
-                                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">نسخه: ${modelStatus.version || 'N/A'}</div>
-                                </div>
-                                <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                    <div style="font-size:0.6rem;color:var(--text-muted);">📊 جمع‌آوری‌ها</div>
-                                    <div style="font-size:1.1rem;font-weight:600;color:var(--accent-cyan);">${stats.collections || 0}</div>
-                                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${stats.predictions || 0} پیش‌بینی</div>
-                                </div>
-                            </div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-                                <span style="font-size:0.6rem;color:var(--text-muted);">🗄️ دیتابیس‌ها:</span>
-                                ${Object.entries(dbs).map(([name, connected]) => `<span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>`).join('') || '<span style="font-size:0.7rem;color:var(--text-muted);">بدون اطلاعات</span>'}
-                            </div>
-                            <div style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);">آخرین بروزرسانی: ${formatDate(data.data.timestamp)}</div>
-                        `;
-                    }
-                } catch (err) { container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت اطلاعات</p>'; }
-            }
-
-            // ===== LOGS =====
-            async loadLogs() {
-                const output = document.getElementById('logsOutput');
-                output.innerHTML = '<div class="log-line"><span class="log-time">⏳</span><span class="log-level info">INFO</span><span class="log-msg">در حال بارگذاری...</span></div>';
-                try {
-                    const data = await api.getDebugLogs({ limit: 50 });
-                    if (data.success && data.data) {
-                        const logs = data.data;
-                        if (logs.length === 0) {
-                            output.innerHTML = `
-                                <div class="log-line"><span class="log-time">📭</span><span class="log-level info">INFO</span><span class="log-msg">هیچ لاگی ثبت نشده است</span></div>
-                                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">برای فعال‌سازی لاگ‌ها، سطح لاگ را با منوی بالا به INFO یا DEBUG تنظیم کنید.</span></div>
-                            `;
-                            return;
-                        }
-                        let html = '';
-                        logs.slice().reverse().forEach(line => {
-                            let time = '--:--', level = 'info', msg = line;
-                            const timeMatch = line.match(/\[([^\]]+)\]/);
-                            if (timeMatch) { time = timeMatch[1]; msg = line.replace(timeMatch[0], '').trim(); }
-                            if (msg.includes('✅')) level = 'success';
-                            else if (msg.includes('❌')) level = 'error';
-                            else if (msg.includes('⚠️')) level = 'warning';
-                            else if (msg.includes('INFO')) level = 'info';
-                            else if (msg.includes('ERROR')) level = 'error';
-                            else if (msg.includes('WARNING')) level = 'warning';
-                            html += `<div class="log-line"><span class="log-time">${time}</span><span class="log-level ${level}">${level.toUpperCase()}</span><span class="log-msg">${msg}</span><button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button></div>`;
-                        });
-                        output.innerHTML = html;
-                    }
-                } catch (err) { output.innerHTML = '<div class="log-line"><span class="log-time">❌</span><span class="log-level error">ERROR</span><span class="log-msg">خطا در دریافت لاگ‌ها</span></div>'; }
-            }
-
-            // ===== SYSTEM =====
-            async loadSystem() {
-                const container = document.getElementById('systemContent');
-                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
-                try {
-                    const data = await api.getDebugSystem();
-                    if (data.success && data.data) {
-                        const s = data.data;
-                        container.innerHTML = `
-                            <div class="system-grid">
-                                <div class="system-item"><div class="sys-label">🐍 Python</div><div class="sys-value">${s.python || '—'}</div></div>
-                                <div class="system-item"><div class="sys-label">🖥️ Platform</div><div class="sys-value">${s.platform || '—'}</div></div>
-                                <div class="system-item"><div class="sys-label">📂 مسیر کاری</div><div class="sys-value" style="font-size:0.75rem;">${s.cwd || '—'}</div></div>
-                                <div class="system-item"><div class="sys-label">🌐 Environment</div><div class="sys-value cyan">${s.environment || '—'}</div></div>
-                                <div class="system-item"><div class="sys-label">⏰ Timezone</div><div class="sys-value">${s.timezone || '—'}</div></div>
-                                <div class="system-item"><div class="sys-label">📅 تاریخ</div><div class="sys-value">${formatDate(new Date())}</div></div>
-                            </div>
-                        `;
-                    }
-                } catch (err) { container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت اطلاعات</p>'; }
-            }
-
-            // ===== CACHE =====
-            async loadCache() {
-                const container = document.getElementById('cacheContent');
-                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
-                try {
-                    const data = await api.getDebugCache();
-                    if (data.success && data.data) {
-                        cacheData = data.data.keys || [];
-                        const count = data.data.total_keys || 0;
-                        const connected = data.data.connected || false;
-                        const memory = data.data.memory || '—';
-                        
-                        let html = `
-                            <div class="cache-grid">
-                                <div class="cache-item"><div class="c-label">🔑 کلیدها</div><div class="c-value cyan">${count}</div></div>
-                                <div class="cache-item"><div class="c-label">🔌 وضعیت</div><div class="c-value ${connected ? 'green' : 'red'}">${connected ? '✅ متصل' : '❌ قطع'}</div></div>
-                                <div class="cache-item"><div class="c-label">💾 حافظه</div><div class="c-value orange">${memory}</div></div>
-                            </div>
-                        `;
-                        
-                        if (cacheData.length > 0) {
-                            html += `
-                                <div style="margin-top:8px;">
-                                    <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">کلیدها:</div>
-                                    <div class="cache-keys" id="cacheKeysList">
-                                        ${cacheData.map(k => `
-                                            <span class="key-tag" data-key="${k.key}">
-                                                ${k.key}
-                                                <span class="delete-key" onclick="deleteCacheKey('${k.key}')" title="حذف کلید">✕</span>
-                                            </span>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            `;
-                        } else {
-                            html += `<div style="text-align:center;padding:16px;color:var(--text-muted);">🔑 هیچ کلیدی یافت نشد</div>`;
-                        }
-                        container.innerHTML = html;
-                    }
-                } catch (err) { container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت اطلاعات</p>'; }
-            }
-
-            // ===== PROCESSES =====
-            async loadProcesses() {
-                const container = document.getElementById('processesContent');
-                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
-                try {
-                    const data = await api.getDebugProcesses({ limit: 50 });
-                    if (data.success && data.data) {
-                        processesData = data.data || [];
-                        this.renderProcesses(processesData);
-                    }
-                } catch (err) { container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت اطلاعات</p>'; }
-            }
-
-            renderProcesses(data) {
-                const container = document.getElementById('processesContent');
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">📭 هیچ پردازشی یافت نشد</p>';
-                    return;
-                }
-                container.innerHTML = `
-                    <div class="table-wrap">
-                        <table class="table-modern">
-                            <thead><tr><th>PID</th><th>نام</th><th>وضعیت</th><th>CPU</th><th>حافظه</th></tr></thead>
-                            <tbody>
-                                ${data.map(p => `
-                                    <tr onclick="showProcessDetails(${p.pid})" style="cursor:pointer;">
-                                        <td style="font-family:var(--font-mono);font-size:0.7rem;">${p.pid || '—'}</td>
-                                        <td>${p.name || '—'}</td>
-                                        <td><span class="badge ${p.status === 'running' ? 'badge-green' : p.status === 'sleeping' ? 'badge-cyan' : 'badge-orange'}">${p.status || '—'}</span></td>
-                                        <td style="font-family:var(--font-mono);font-size:0.7rem;color:${(p.cpu_percent || 0) > 20 ? 'var(--accent-orange)' : 'var(--accent-cyan)'};">${(p.cpu_percent || 0).toFixed(1)}%</td>
-                                        <td style="font-family:var(--font-mono);font-size:0.7rem;color:${(p.memory_percent || 0) > 20 ? 'var(--accent-orange)' : 'var(--accent-cyan)'};">${(p.memory_percent || 0).toFixed(1)}%</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);">نمایش ${data.length} پردازش</div>
-                `;
-            }
-
-            // ===== HEALING STATUS (اصلاح شده با مدیریت خطا) =====
-            async loadHealingStatus() {
-                const container = document.getElementById('healingContent');
-                container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>';
-                try {
-                    const data = await api.getHealingStatus();
-                    if (data.success && data.data) {
-                        const d = data.data;
-                        const dbStatus = d.databases || {};
-                        const dbCount = Object.keys(dbStatus).length;
-                        const connectedCount = Object.values(dbStatus).filter(v => v === true).length;
-                        
-                        let html = `
-                            <div class="healing-grid">
-                                <div class="healing-card">
-                                    <div class="h-value ${d.status === 'running' ? 'green' : 'orange'}">${d.status === 'running' ? '✅ فعال' : '⏹️ غیرفعال'}</div>
-                                    <div class="h-label">وضعیت</div>
-                                </div>
-                                <div class="healing-card">
-                                    <div class="h-value cyan">${d.healing_actions || 0}</div>
-                                    <div class="h-label">اقدامات انجام شده</div>
-                                </div>
-                                <div class="healing-card">
-                                    <div class="h-value ${connectedCount === dbCount && dbCount > 0 ? 'green' : 'orange'}">${dbCount > 0 ? `${connectedCount}/${dbCount}` : '—'}</div>
-                                    <div class="h-label">دیتابیس‌های متصل</div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // نمایش دیتابیس‌ها (اگر وجود داشته باشند)
-                        if (dbCount > 0) {
-                            html += `
-                                <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;">
-                                    ${Object.entries(dbStatus).map(([name, connected]) => `
-                                        <span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>
-                                    `).join('')}
-                                </div>
-                            `;
-                        } else {
-                            html += `
-                                <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;color:var(--text-muted);">
-                                    ℹ️ هیچ دیتابیسی ثبت نشده است
-                                </div>
-                            `;
-                        }
-                        
-                        html += `
-                            <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px;">
-                                <span>🧠 مدل: ${d.model_loaded ? '✅ بارگذاری شده' : '❌ بارگذاری نشده'}</span>
-                                ${d.model_accuracy !== null && d.model_accuracy !== undefined ? ` • 🎯 دقت: ${(d.model_accuracy * 100).toFixed(1)}%` : ''}
-                                <span> • ⏱️ آپتایم: ${d.uptime || '0s'}</span>
-                            </div>
-                            <div class="healing-actions">
-                                <button class="btn btn-success btn-sm" onclick="triggerHealing()"><i class="fas fa-play"></i> اجرای Healing</button>
-                                <button class="btn btn-outline btn-sm" onclick="resetHealing()"><i class="fas fa-undo"></i> بازنشانی</button>
-                            </div>
-                            <div class="healing-history" id="healingHistory">
-                                <div style="font-size:0.6rem;color:var(--text-muted);padding:4px 0;">آخرین اقدام: ${d.last_healing ? formatTimeAgo(d.last_healing) : '—'}</div>
-                            </div>
-                        `;
-                        container.innerHTML = html;
-                    } else {
-                        container.innerHTML = `
-                            <div style="text-align:center;padding:20px;color:var(--accent-orange);">
-                                ⚠️ داده‌های خودترمیمی در دسترس نیست
-                                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${data.error || 'خطا در دریافت داده'}</div>
-                            </div>
-                        `;
-                    }
-                } catch (err) {
-                    console.error('Healing status error:', err);
-                    container.innerHTML = `
-                        <div style="text-align:center;padding:20px;color:var(--accent-orange);">
-                            ⚠️ خودترمیمی در دسترس نیست
-                            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${err.message || 'خطای ارتباط با سرور'}</div>
-                        </div>
-                    `;
-                }
-            }
-        }
-
-        // ============================================================
-        // CLI FUNCTIONS
-        // ============================================================
-        
-        let currentCliMode = 'python';
-        let cliHistory = [];
-        let historyIndex = -1;
-
-        function setCliMode(mode) {
-            currentCliMode = mode;
-            
-            document.querySelectorAll('#cliModeSwitcher .mode-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.mode === mode) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            const prompt = document.getElementById('cliPrompt');
-            const display = document.getElementById('modeDisplay');
-            const input = document.getElementById('cliInput');
-            
-            const prompts = {
-                'python': { text: '>>> ', color: 'python', label: 'Python' },
-                'shell': { text: '$ ', color: 'shell', label: 'Shell' },
-                'terminal': { text: '$ ', color: 'terminal', label: 'Terminal' }
-            };
-            
-            const p = prompts[mode] || prompts['python'];
-            prompt.textContent = p.text;
-            prompt.className = 'cli-prompt ' + p.color;
-            display.textContent = p.label;
-            
-            const placeholders = {
-                'python': 'دستور پایتون را وارد کنید...',
-                'shell': 'دستور شل را وارد کنید...',
-                'terminal': 'دستور ترمینال را وارد کنید...'
-            };
-            input.placeholder = placeholders[mode] || placeholders['python'];
-            
-            const colors = {
-                'python': '#00d4ff',
-                'shell': '#f59e0b',
-                'terminal': '#22d3ee'
-            };
-            input.style.borderColor = colors[mode] || '#00d4ff';
-        }
-
-        function insertCommand(cmd) {
-            document.getElementById('cliInput').value = cmd;
-            document.getElementById('cliInput').focus();
-        }
-
-        function clearCliInput() {
-            document.getElementById('cliInput').value = '';
-        }
-
-        function copyLogLine(btn) {
-            const line = btn.closest('.log-line');
-            if (!line) return;
-            const time = line.querySelector('.log-time')?.textContent || '';
-            const level = line.querySelector('.log-level')?.textContent || '';
-            const msg = line.querySelector('.log-msg')?.textContent || '';
-            copyToClipboard(`[${time}] ${level}: ${msg}`);
-        }
-
-        async function executeCommand() {
-            const input = document.getElementById('cliInput');
-            const output = document.getElementById('cliOutput');
-            let cmd = input.value.trim();
-            
-            if (!cmd) {
-                showToast('⚠️ لطفاً یک دستور وارد کنید', 'warning');
-                return;
-            }
-
-            if (cmd) {
-                cliHistory.push(cmd);
-                if (cliHistory.length > 50) cliHistory.shift();
-                historyIndex = -1;
-            }
-
-            const shortcuts = {
-                '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
-                '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
-                '/uptime': 'import psutil, os, time; p=psutil.Process(os.getpid()); s=int(time.time()-p.create_time()); d,h,m=s//86400,(s%86400)//3600,(s%3600)//60; print(f"Uptime: {d}d {h}h {m}m")',
-                '/stats': 'import psutil, os, time; p=psutil.Process(os.getpid()); m=p.memory_info(); c=p.cpu_percent(interval=0.3); u=int(time.time()-p.create_time()); d,h,mi=u//86400,(u%86400)//3600,(u%3600)//60; print(f"PID: {os.getpid()}\\nCPU: {c}%\\nRAM: {m.rss/(1024*1024):.1f} MB\\nUptime: {d}d {h}h {mi}m")',
-                '/clear': 'clearCli()',
-                '/help': 'print("📋 میانبرها:\\n  /cpu   - نمایش مصرف CPU\\n  /ram   - نمایش مصرف RAM\\n  /uptime - نمایش آپتایم\\n  /stats - نمایش همه آمار\\n  /clear - پاک کردن خروجی\\n  /help  - نمایش این راهنما\\n\\n💡 حالت‌ها: Python, Shell, Terminal")'
-            };
-
-            let type = currentCliMode;
-            let actualCmd = cmd;
-
-            if (shortcuts[cmd]) {
-                actualCmd = shortcuts[cmd];
-                if (actualCmd === 'clearCli()') {
-                    clearCli();
-                    return;
-                }
-                type = 'python';
-            }
-
-            if (cmd.startsWith('/') && !shortcuts[cmd]) {
-                type = 'shell';
-                actualCmd = cmd.substring(1);
-            }
-
-            const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const typeLabels = {
-                'python': '🐍 PY',
-                'shell': '💻 SH',
-                'terminal': '🖥️ TM'
-            };
-            const typeColors = {
-                'python': 'var(--accent-green)',
-                'shell': '#f59e0b',
-                'terminal': '#22d3ee'
-            };
-            const typeLevels = {
-                'python': 'cmd',
-                'shell': 'shell',
-                'terminal': 'terminal'
-            };
-            
-            output.innerHTML += `
-                <div class="log-line">
-                    <span class="log-time">${now}</span>
-                    <span class="log-level ${typeLevels[type]}">${typeLabels[type] || '📝'}</span>
-                    <span class="log-msg" style="color:${typeColors[type] || 'var(--accent-green)'};">${cmd}</span>
-                    <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
-                </div>
-            `;
-
-            input.value = '';
-            output.scrollTop = output.scrollHeight;
-
-            try {
-                const data = await api.executeDebugCommand(actualCmd, type, 15);
-                if (data.success) {
-                    let result = data.result || 'انجام شد';
-                    if (type === 'terminal' && data.prompt) {
-                        result = result;
-                    }
-                    output.innerHTML += `
-                        <div class="log-line">
-                            <span class="log-time">${now}</span>
-                            <span class="log-level success">✅ RESULT</span>
-                            <span class="log-msg" style="white-space:pre-wrap;background:rgba(0,0,0,0.15);padding:4px 8px;border-radius:4px;margin:2px 0;">${result}</span>
-                            <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
-                        </div>
-                    `;
-                } else {
-                    output.innerHTML += `
-                        <div class="log-line">
-                            <span class="log-time">${now}</span>
-                            <span class="log-level error">❌ ERROR</span>
-                            <span class="log-msg" style="color:var(--accent-red);">${data.error || 'خطا'}</span>
-                            <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
-                        </div>
-                    `;
-                }
-            } catch (err) {
-                output.innerHTML += `
-                    <div class="log-line">
-                        <span class="log-time">${now}</span>
-                        <span class="log-level error">❌ ERROR</span>
-                        <span class="log-msg" style="color:var(--accent-red);">${err.message || 'خطا در ارتباط'}</span>
-                        <button class="log-copy-btn" onclick="copyLogLine(this)"><i class="fas fa-copy"></i></button>
-                    </div>
-                `;
-            }
-            output.scrollTop = output.scrollHeight;
-        }
-
-        function clearCli() {
-            const output = document.getElementById('cliOutput');
-            const mode = currentCliMode || 'python';
-            const modeLabels = {
-                'python': 'Python',
-                'shell': 'Shell',
-                'terminal': 'Terminal'
-            };
-            output.innerHTML = `
-                <div class="log-line"><span class="log-time">🧹</span><span class="log-level info">INFO</span><span class="log-msg">خروجی کنسول پاک شد</span></div>
-                <div class="log-line"><span class="log-time">💡</span><span class="log-level info">INFO</span><span class="log-msg">حالت: <span class="highlight" id="modeDisplay">${modeLabels[mode] || 'Python'}</span> | میانبرها: <span class="highlight">/cpu</span> <span class="highlight">/ram</span> <span class="highlight">/uptime</span> <span class="highlight">/stats</span> <span class="highlight">/clear</span> <span class="highlight">/help</span></span></div>
-            `;
-        }
-
-        function copyCli() {
-            const lines = document.querySelectorAll('#cliOutput .log-line');
-            let text = '';
-            lines.forEach(line => {
-                const time = line.querySelector('.log-time')?.textContent || '';
-                const level = line.querySelector('.log-level')?.textContent || '';
-                const msg = line.querySelector('.log-msg')?.textContent || '';
-                text += `[${time}] ${level}: ${msg}\n`;
-            });
-            copyToClipboard(text.trim());
-        }
-
-        function copyLogs() {
-            const lines = document.querySelectorAll('#logsOutput .log-line');
-            let text = '';
-            lines.forEach(line => {
-                const time = line.querySelector('.log-time')?.textContent || '';
-                const level = line.querySelector('.log-level')?.textContent || '';
-                const msg = line.querySelector('.log-msg')?.textContent || '';
-                text += `[${time}] ${level}: ${msg}\n`;
-            });
-            copyToClipboard(text.trim());
-        }
-
-        // ============================================================
-        // LOG LEVEL
-        // ============================================================
-        
-        async function setLogLevel(level) {
-            try {
-                const data = await api.setDebugLogLevel(level);
-                if (data.success) {
-                    showToast('✅ سطح لاگ به ' + level + ' تغییر کرد', 'success');
-                    loadLogs();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        // ============================================================
-        // CACHE FUNCTIONS
-        // ============================================================
-        
-        async function searchCache() {
-            const pattern = document.getElementById('cacheSearchInput').value.trim() || '*';
-            const container = document.getElementById('cacheContent');
-            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال جستجو...</p></div>';
-            try {
-                const data = await api.searchCache(pattern);
-                if (data.success && data.data) {
-                    const keys = data.data;
-                    if (keys.length === 0) {
-                        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);">🔑 کلیدی با الگوی "${pattern}" یافت نشد</div>`;
-                        return;
-                    }
-                    let html = `
-                        <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:8px;">${data.total_matched || keys.length} کلید یافت شد</div>
-                        <div class="cache-keys">
-                            ${keys.map(k => `
-                                <span class="key-tag" data-key="${k.key}">
-                                    ${k.key}
-                                    <span class="delete-key" onclick="deleteCacheKey('${k.key}')" title="حذف کلید">✕</span>
-                                </span>
-                            `).join('')}
-                        </div>
-                    `;
-                    container.innerHTML = html;
-                }
-            } catch (err) {
-                container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در جستجو</p>';
-            }
-        }
-
-        async function deleteCacheKey(key) {
-            if (!confirm(`⚠️ آیا از حذف کلید "${key}" اطمینان دارید؟`)) return;
-            try {
-                const data = await api.deleteCacheKey(key);
-                if (data.success) {
-                    showToast('🗑️ کلید "' + key + '" حذف شد', 'success');
-                    searchCache();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        async function purgeCache() {
-            if (!confirm('⚠️ آیا از پاکسازی کامل کش و آزادسازی حافظه اطمینان دارید؟')) return;
-            try {
-                const data = await api.purgeCache();
-                if (data.success) {
-                    showToast('🗑️ کش پاکسازی و حافظه آزاد شد', 'success');
-                    loadCache();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        // ============================================================
-        // HEALING FUNCTIONS
-        // ============================================================
-        
-        async function triggerHealing() {
-            if (!confirm('⚠️ آیا از اجرای دستی Self-Healing اطمینان دارید؟')) return;
-            try {
-                const data = await api.triggerHealing();
-                if (data.success) {
-                    showToast('✅ Self-Healing اجرا شد', 'success');
-                    loadHealingStatus();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        async function resetHealing() {
-            if (!confirm('⚠️ آیا از بازنشانی تلاش‌های Self-Healing اطمینان دارید؟')) return;
-            try {
-                const data = await api.resetHealing();
-                if (data.success) {
-                    showToast('✅ تلاش‌ها بازنشانی شد', 'success');
-                    loadHealingStatus();
-                } else {
-                    showToast('❌ ' + data.error, 'error');
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        // ============================================================
-        // PROCESS FUNCTIONS
-        // ============================================================
-        
-        function filterProcesses() {
-            const search = document.getElementById('processSearch').value.toLowerCase();
-            const filtered = processesData.filter(p => 
-                (p.name || '').toLowerCase().includes(search) ||
-                String(p.pid || '').includes(search)
-            );
-            if (window.debugController) {
-                window.debugController.renderProcesses(filtered);
-            }
-        }
-
-        async function showProcessDetails(pid) {
-            try {
-                const data = await api.getProcessDetails(pid);
-                if (data.success && data.data) {
-                    const d = data.data;
-                    let msg = `📋 جزئیات پردازش PID: ${pid}\n`;
-                    msg += `📛 نام: ${d.name || '—'}\n`;
-                    msg += `📊 وضعیت: ${d.status || '—'}\n`;
-                    msg += `⚡ CPU: ${(d.cpu_percent || 0).toFixed(1)}%\n`;
-                    msg += `🧠 RAM: ${(d.memory_percent || 0).toFixed(1)}%\n`;
-                    msg += `🧵 تردها: ${d.num_threads || 0}\n`;
-                    msg += `👤 کاربر: ${d.username || '—'}\n`;
-                    msg += `⏱️ شروع: ${d.create_time_formatted ? formatDate(d.create_time_formatted) : '—'}\n`;
-                    msg += `📂 مسیر: ${d.cwd || '—'}\n`;
-                    msg += `💻 دستور: ${d.cmdline ? d.cmdline.join(' ') : '—'}`;
-                    alert(msg);
-                }
-            } catch (err) {
-                showToast('❌ خطا در دریافت جزئیات', 'error');
-            }
-        }
-
-        // ============================================================
-        // CLEAR FUNCTIONS
-        // ============================================================
-        
-        async function clearLogs() {
-            if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
-            try {
-                const data = await api.clearDebugLogs(true);
-                if (data.success) {
-                    showToast('🗑️ لاگ‌ها پاک شدند', 'success');
-                    document.querySelector('#debugTabs .tab-btn[data-tab="logs"]')?.click();
-                }
-            } catch (err) {
-                showToast('❌ خطا', 'error');
-            }
-        }
-
-        // ============================================================
-        // NAVIGATION FUNCTIONS
-        // ============================================================
-        
-        function loadStatus() { document.querySelector('#debugTabs .tab-btn[data-tab="status"]')?.click(); }
-        function loadLogs() { document.querySelector('#debugTabs .tab-btn[data-tab="logs"]')?.click(); }
-        function loadSystem() { document.querySelector('#debugTabs .tab-btn[data-tab="system"]')?.click(); }
-        function loadCache() { document.querySelector('#debugTabs .tab-btn[data-tab="cache"]')?.click(); }
-        function loadProcesses() { document.querySelector('#debugTabs .tab-btn[data-tab="processes"]')?.click(); }
-        function loadHealingStatus() { document.querySelector('#debugTabs .tab-btn[data-tab="healing"]')?.click(); }
-
-        // ============================================================
-        // EXPOSE GLOBALS
-        // ============================================================
-        
-        window.executeCommand = executeCommand;
-        window.clearCli = clearCli;
-        window.clearCliInput = clearCliInput;
-        window.copyCli = copyCli;
-        window.copyLogs = copyLogs;
-        window.clearLogs = clearLogs;
-        window.copyLogLine = copyLogLine;
-        window.insertCommand = insertCommand;
-        window.setCliMode = setCliMode;
-        window.setLogLevel = setLogLevel;
-        window.searchCache = searchCache;
-        window.deleteCacheKey = deleteCacheKey;
-        window.purgeCache = purgeCache;
-        window.filterProcesses = filterProcesses;
-        window.showProcessDetails = showProcessDetails;
-        window.triggerHealing = triggerHealing;
-        window.resetHealing = resetHealing;
-        window.loadStatus = loadStatus;
-        window.loadLogs = loadLogs;
-        window.loadSystem = loadSystem;
-        window.loadCache = loadCache;
-        window.loadProcesses = loadProcesses;
-        window.loadHealingStatus = loadHealingStatus;
-
-        // ============================================================
-        // INIT
-        // ============================================================
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            window.debugController = new DebugController();
-            setCliMode('python');
-        });
-    </script>
 </body>
 </html>
