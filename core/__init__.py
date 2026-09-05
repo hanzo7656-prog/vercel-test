@@ -9,6 +9,13 @@ from core.feature_engineering import FeatureEngineer, feature_engineer
 from core.parallel_processor import parallel_processor, ParallelProcessor
 from core.user_tracker import UserTracker
 from core.price_manager import PriceManager
+from core.indicators import (
+    calculate_rsi,
+    calculate_sma,
+    calculate_ema,
+    calculate_macd,
+    get_all_indicators
+)
 
 
 def get_system():
@@ -19,7 +26,6 @@ def get_system():
 
 def get_price_manager():
     """دریافت نمونه PriceManager (از Container استفاده کنید)"""
-    # این تابع فقط برای راحتی است، اما توصیه می‌شود از Container استفاده کنید
     from container import Container
     return Container().price_manager()
 
@@ -45,4 +51,11 @@ __all__ = [
     'PriceManager',
     'get_price_manager',
     'get_user_tracker',
+    
+    # اندیکاتورها
+    'calculate_rsi',
+    'calculate_sma',
+    'calculate_ema',
+    'calculate_macd',
+    'get_all_indicators',
 ]
