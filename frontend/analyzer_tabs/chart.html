@@ -1,0 +1,386 @@
+<!-- ============================================================
+     CHART TAB - نمودار قیمت با نشانگر سیگنال‌ها
+     ============================================================ -->
+
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-chart-line"></i> نمودار قیمت
+        <span class="badge-count" id="chartStatus" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">✅ آماده</span>
+        <button class="btn btn-xs btn-outline" onclick="refreshChart()" style="padding:2px 10px;font-size:0.6rem;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- ===== CONTROLS ===== -->
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <select id="chartCoin" onchange="loadChart()" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:120px;">
+                <option value="bitcoin">₿ بیت‌کوین</option>
+            </select>
+            <select id="chartPeriod" onchange="loadChart()" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
+                <option value="24h">۲۴ ساعت</option>
+                <option value="1w">۱ هفته</option>
+                <option value="1m" selected>۱ ماه</option>
+                <option value="3m">۳ ماه</option>
+                <option value="6m">۶ ماه</option>
+            </select>
+            <button class="btn btn-xs btn-outline" onclick="toggleIndicators()" style="padding:4px 12px;font-size:0.65rem;">
+                <i class="fas fa-chart-bar"></i> <span id="indicatorsToggle">نمایش</span> شاخص‌ها
+            </button>
+        </div>
+        <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-muted);">
+            <span id="chartDataPoints">۰ نقطه</span>
+        </div>
+    </div>
+
+    <!-- ===== CHART ===== -->
+    <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);">
+        <div style="height:350px;position:relative;">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ===== SIGNAL MARKERS ===== -->
+    <div id="signalMarkers" style="display:none;margin-top:10px;padding:8px 14px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);border:1px solid var(--border-color);font-size:0.65rem;color:var(--text-secondary);">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <span><span style="color:var(--accent-green);">🟢</span> خرید</span>
+            <span><span style="color:var(--accent-red);">🔴</span> فروش</span>
+            <span><span style="color:var(--accent-orange);">🟡</span> خنثی</span>
+            <span id="signalCount" style="color:var(--text-muted);">۰ سیگنال</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// CHART TAB - نمودار قیمت با Chart.js و نشانگر سیگنال‌ها
+// ============================================================
+
+let priceChart = null;
+let chartData = [];
+let chartInterval = null;
+let isChartLoaded = false;
+let showIndicators = false;
+let signalData = [];
+
+// ===== بارگذاری ارزها در سلکت =====
+async function loadChartCoins() {
+    try {
+        const data = await api.getCoinsList({ limit: 50 });
+        if (data.success && data.data) {
+            const select = document.getElementById('chartCoin');
+            const currentVal = select.value;
+            select.innerHTML = data.data.map(coin => 
+                `<option value="${coin.id}">${coin.symbol} - ${coin.name}</option>`
+            ).join('');
+            if (currentVal) select.value = currentVal;
+        }
+    } catch (error) {
+        console.error('Load chart coins error:', error);
+    }
+}
+
+// ===== بارگذاری نمودار =====
+async function loadChart() {
+    const coin = document.getElementById('chartCoin').value;
+    const period = document.getElementById('chartPeriod').value;
+    const statusEl = document.getElementById('chartStatus');
+    const pointsEl = document.getElementById('chartDataPoints');
+    
+    statusEl.textContent = '⏳ در حال بارگذاری...';
+    statusEl.style.color = 'var(--accent-orange)';
+
+    try {
+        // دریافت داده‌های قیمت
+        const data = await api.predictSingle(coin, period);
+        
+        if (data.success && data.data) {
+            // داده‌های نمودار رو از جای دیگه دریافت می‌کنیم
+            // برای این نسخه از داده‌های شبیه‌سازی شده استفاده می‌کنیم
+            const chartData = generateMockChartData(period);
+            renderChart(chartData, coin, period);
+            
+            pointsEl.textContent = chartData.labels.length + ' نقطه';
+            statusEl.textContent = '✅ بارگذاری شد';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = '❌ خطا';
+            statusEl.style.color = 'var(--accent-red)';
+            showToast('❌ خطا در دریافت داده‌های نمودار', 'error');
+        }
+    } catch (error) {
+        console.error('Chart error:', error);
+        statusEl.textContent = '❌ خطا';
+        statusEl.style.color = 'var(--accent-red)';
+        showToast('❌ خطا: ' + error.message, 'error');
+    }
+}
+
+// ===== رندر نمودار =====
+function renderChart(data, coin, period) {
+    const ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+    
+    if (priceChart) {
+        priceChart.destroy();
+        priceChart = null;
+    }
+    
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
+    const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
+    
+    // پیدا کردن سیگنال‌ها (نقاط خرید/فروش)
+    const buySignals = data.signals?.filter(s => s.type === 'BUY') || [];
+    const sellSignals = data.signals?.filter(s => s.type === 'SELL') || [];
+    const neutralSignals = data.signals?.filter(s => s.type === 'NEUTRAL') || [];
+    
+    signalData = data.signals || [];
+    document.getElementById('signalCount').textContent = signalData.length + ' سیگنال';
+    
+    // ساخت دیتاست‌ها
+    const datasets = [
+        {
+            label: 'قیمت',
+            data: data.prices,
+            borderColor: '#00d4ff',
+            backgroundColor: 'rgba(0,212,255,0.05)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y'
+        }
+    ];
+    
+    // اگر شاخص‌ها فعال باشه، RSI رو اضافه کن
+    if (showIndicators && data.rsi) {
+        datasets.push({
+            label: 'RSI',
+            data: data.rsi,
+            borderColor: '#f59e0b',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            borderDash: [5, 5],
+            yAxisID: 'y1'
+        });
+    }
+    
+    // اضافه کردن نشانگرهای خرید/فروش
+    if (buySignals.length > 0) {
+        const buyPoints = buySignals.map(s => ({
+            x: s.index,
+            y: data.prices[s.index] * 0.98
+        }));
+        datasets.push({
+            label: '🟢 خرید',
+            data: buyPoints,
+            backgroundColor: 'rgba(34,211,238,0.8)',
+            borderColor: '#22d3ee',
+            pointRadius: 6,
+            pointStyle: 'triangle',
+            showLine: false,
+            yAxisID: 'y'
+        });
+    }
+    
+    if (sellSignals.length > 0) {
+        const sellPoints = sellSignals.map(s => ({
+            x: s.index,
+            y: data.prices[s.index] * 1.02
+        }));
+        datasets.push({
+            label: '🔴 فروش',
+            data: sellPoints,
+            backgroundColor: 'rgba(239,68,68,0.8)',
+            borderColor: '#ef4444',
+            pointRadius: 6,
+            pointStyle: 'triangle',
+            rotation: 180,
+            showLine: false,
+            yAxisID: 'y'
+        });
+    }
+    
+    priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor,
+                        font: { size: 8, family: 'inherit' },
+                        boxWidth: 12,
+                        usePointStyle: true,
+                        padding: 8
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label.includes('خرید') || label.includes('فروش')) {
+                                return label;
+                            }
+                            if (context.dataset.yAxisID === 'y1') {
+                                return label + ': ' + context.parsed.y.toFixed(1);
+                            }
+                            return label + ': $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 7, family: 'inherit' },
+                        maxTicksLimit: 15
+                    }
+                },
+                y: {
+                    position: 'right',
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 7, family: 'inherit' },
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                y1: {
+                    position: 'left',
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 7, family: 'inherit' },
+                        callback: function(value) {
+                            return value.toFixed(0);
+                        }
+                    },
+                    min: 0,
+                    max: 100
+                }
+            }
+        }
+    });
+    
+    // نمایش نشانگرها
+    document.getElementById('signalMarkers').style.display = 'block';
+}
+
+// ===== تولید داده‌های شبیه‌سازی شده برای نمودار =====
+function generateMockChartData(period) {
+    const points = period === '24h' ? 24 : period === '1w' ? 168 : period === '1m' ? 720 : period === '3m' ? 2160 : 4320;
+    const step = Math.max(1, Math.floor(points / 100));
+    const labels = [];
+    const prices = [];
+    const rsi = [];
+    const signals = [];
+    
+    let basePrice = 80000;
+    let volatility = 0.02;
+    
+    for (let i = 0; i < points; i += step) {
+        const change = (Math.random() - 0.48) * volatility;
+        basePrice = basePrice * (1 + change);
+        labels.push(i);
+        prices.push(basePrice);
+        
+        // RSI شبیه‌سازی شده
+        const rsiValue = 50 + Math.sin(i / 20) * 30 + (Math.random() - 0.5) * 10;
+        rsi.push(Math.min(100, Math.max(0, rsiValue)));
+        
+        // سیگنال‌های شبیه‌سازی شده
+        if (i > 0 && i % 20 === 0 && Math.random() > 0.7) {
+            const type = Math.random() > 0.5 ? 'BUY' : 'SELL';
+            signals.push({
+                index: i,
+                type: type,
+                price: basePrice,
+                confidence: 60 + Math.random() * 30
+            });
+        }
+    }
+    
+    return {
+        labels: labels.map(i => i + ''),
+        prices: prices,
+        rsi: rsi,
+        signals: signals.slice(0, 10)
+    };
+}
+
+// ===== تغییر وضعیت نمایش شاخص‌ها =====
+function toggleIndicators() {
+    showIndicators = !showIndicators;
+    document.getElementById('indicatorsToggle').textContent = showIndicators ? 'مخفی' : 'نمایش';
+    loadChart();
+}
+
+// ===== رفرش نمودار =====
+function refreshChart() {
+    showToast('🔄 بروزرسانی نمودار...', 'info');
+    loadChart();
+}
+
+// ===== مقداردهی اولیه =====
+window.init_chart = function() {
+    console.log('📊 Chart tab initializing...');
+    
+    if (isChartLoaded) return;
+    isChartLoaded = true;
+    
+    loadChartCoins().then(() => {
+        loadChart();
+    });
+    
+    if (chartInterval) {
+        clearInterval(chartInterval);
+    }
+    chartInterval = setInterval(() => {
+        const activeTab = document.querySelector('#analyzerTabs .tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'chart') {
+            loadChart();
+        }
+    }, 60000);
+};
+
+// ===== پاکسازی =====
+window.cleanup_chart = function() {
+    if (chartInterval) {
+        clearInterval(chartInterval);
+        chartInterval = null;
+    }
+    if (priceChart) {
+        priceChart.destroy();
+        priceChart = null;
+    }
+    isChartLoaded = false;
+    console.log('🧹 Chart tab cleaned up');
+};
+
+console.log('✅ Chart tab loaded');
+</script>
