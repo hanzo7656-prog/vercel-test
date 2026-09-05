@@ -1,0 +1,368 @@
+<!-- ============================================================
+     FEATURES TAB - اهمیت ویژگی‌های مدل XGBoost
+     ============================================================ -->
+
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-chart-bar"></i> اهمیت ویژگی‌ها
+        <span class="badge-count" id="featuresCount" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">۰</span>
+        <button class="btn btn-xs btn-outline" onclick="refreshFeatures()" style="padding:2px 10px;font-size:0.6rem;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- ===== TOOLBAR ===== -->
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
+            <input type="text" id="featuresSearch" placeholder="🔍 جستجو در ویژگی‌ها..." onkeyup="filterFeatures()" style="padding:4px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:150px;flex:1;">
+            <select id="featuresSort" onchange="filterFeatures()" style="padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+                <option value="importance_desc">بیشترین اهمیت</option>
+                <option value="importance_asc">کمترین اهمیت</option>
+                <option value="name_asc">الفبایی (صعودی)</option>
+                <option value="name_desc">الفبایی (نزولی)</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:6px;">
+            <button class="btn btn-xs btn-outline" onclick="exportFeaturesCSV()" style="padding:2px 10px;font-size:0.6rem;">
+                <i class="fas fa-file-csv"></i> CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== CHART + LIST ===== -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <!-- ===== CHART ===== -->
+        <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:14px 16px;border:1px solid var(--border-color);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">
+                    <i class="fas fa-chart-bar" style="color:var(--accent-purple);"></i> نمودار اهمیت ویژگی‌ها
+                </span>
+                <span class="badge" id="topFeaturesBadge" style="font-size:0.5rem;padding:2px 8px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">۵ ویژگی برتر</span>
+            </div>
+            <div style="height:350px;position:relative;">
+                <canvas id="featuresChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ===== LIST ===== -->
+        <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:14px 16px;border:1px solid var(--border-color);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">
+                    <i class="fas fa-list"></i> لیست ویژگی‌ها
+                </span>
+                <span class="badge" id="filteredCount" style="font-size:0.5rem;padding:2px 8px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">۰</span>
+            </div>
+            <div id="featuresList" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:4px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
+                    <div class="loading-spinner" style="width:24px;height:24px;border:2px solid var(--border-color);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-bottom:8px;"></div>
+                    <br>در حال بارگذاری...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// FEATURES TAB - اهمیت ویژگی‌ها با نمودار
+// ============================================================
+
+let featuresData = [];
+let filteredFeatures = [];
+let featuresChart = null;
+let featuresInterval = null;
+let isFeaturesLoaded = false;
+
+// ===== بارگذاری ویژگی‌ها =====
+async function loadFeatures() {
+    const listEl = document.getElementById('featuresList');
+    listEl.innerHTML = `
+        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
+            <div class="loading-spinner" style="width:24px;height:24px;border:2px solid var(--border-color);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-bottom:8px;"></div>
+            <br>در حال بارگذاری...
+        </div>
+    `;
+
+    try {
+        const data = await api.getModelImportance();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            featuresData = data.data;
+            filteredFeatures = [...featuresData];
+            document.getElementById('featuresCount').textContent = featuresData.length;
+            document.getElementById('filteredCount').textContent = featuresData.length;
+            renderFeatures();
+            renderChart();
+        } else {
+            listEl.innerHTML = `
+                <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>
+                    هیچ ویژگی‌ای یافت نشد
+                    <br><span style="font-size:0.65rem;">لطفاً ابتدا مدل را آموزش دهید</span>
+                </div>
+            `;
+            document.getElementById('featuresCount').textContent = '۰';
+        }
+    } catch (error) {
+        console.error('Features error:', error);
+        listEl.innerHTML = `
+            <div style="text-align:center;padding:20px;color:var(--accent-red);font-size:0.75rem;">
+                ❌ خطا در دریافت ویژگی‌ها
+                <br><span style="font-size:0.65rem;color:var(--text-muted);">${error.message}</span>
+            </div>
+        `;
+    }
+}
+
+// ===== رندر لیست ویژگی‌ها =====
+function renderFeatures() {
+    const listEl = document.getElementById('featuresList');
+    const search = document.getElementById('featuresSearch').value.toLowerCase();
+    const sort = document.getElementById('featuresSort').value;
+    
+    // فیلتر
+    filteredFeatures = featuresData.filter(f => 
+        f.feature.toLowerCase().includes(search)
+    );
+    
+    // مرتب‌سازی
+    switch(sort) {
+        case 'importance_desc':
+            filteredFeatures.sort((a, b) => b.importance - a.importance);
+            break;
+        case 'importance_asc':
+            filteredFeatures.sort((a, b) => a.importance - b.importance);
+            break;
+        case 'name_asc':
+            filteredFeatures.sort((a, b) => a.feature.localeCompare(b.feature));
+            break;
+        case 'name_desc':
+            filteredFeatures.sort((a, b) => b.feature.localeCompare(a.feature));
+            break;
+    }
+    
+    document.getElementById('filteredCount').textContent = filteredFeatures.length;
+    
+    if (filteredFeatures.length === 0) {
+        listEl.innerHTML = `
+            <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
+                🔍 هیچ ویژگی‌ای با این جستجو یافت نشد
+            </div>
+        `;
+        return;
+    }
+    
+    // رنگ‌بندی بر اساس اهمیت
+    const maxImportance = Math.max(...filteredFeatures.map(f => f.importance));
+    
+    listEl.innerHTML = filteredFeatures.map((f, index) => {
+        const percent = (f.importance / maxImportance) * 100;
+        const color = percent > 80 ? 'var(--accent-cyan)' :
+                     percent > 60 ? 'var(--accent-green)' :
+                     percent > 40 ? 'var(--accent-orange)' :
+                     'var(--accent-red)';
+        const isTop5 = index < 5;
+        
+        return `
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:${isTop5 ? 'rgba(0,212,255,0.05)' : 'transparent'};border-radius:var(--radius-sm);border:${isTop5 ? '1px solid rgba(0,212,255,0.08)' : '1px solid transparent'};transition:var(--transition);">
+                <span style="font-size:0.6rem;color:var(--text-muted);min-width:24px;font-family:var(--font-mono);">${index + 1}</span>
+                <span style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:${isTop5 ? '600' : '400'};">
+                    ${f.feature}
+                    ${isTop5 ? ' <span class="badge badge-cyan" style="font-size:0.45rem;padding:1px 6px;">TOP ${index + 1}</span>' : ''}
+                </span>
+                <div style="width:100px;height:6px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;">
+                    <div style="height:100%;width:${percent}%;background:${color};border-radius:var(--radius-full);transition:width 0.5s ease;"></div>
+                </div>
+                <span style="font-size:0.7rem;font-weight:600;color:${color};font-family:var(--font-mono);min-width:45px;text-align:right;">
+                    ${f.percentage ? f.percentage.toFixed(1) + '%' : (f.importance * 100).toFixed(1) + '%'}
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== رندر نمودار =====
+function renderChart() {
+    const ctx = document.getElementById('featuresChart');
+    if (!ctx) return;
+    
+    if (featuresChart) {
+        featuresChart.destroy();
+        featuresChart = null;
+    }
+    
+    // نمایش ۲۰ ویژگی برتر در نمودار
+    const top20 = featuresData.slice(0, 20);
+    const colors = [
+        '#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee',
+        '#3b82f6', '#84cc16', '#f43f5e', '#14b8a6', '#a855f7',
+        '#06b6d4', '#eab308', '#10b981', '#6366f1', '#f472b6',
+        '#0ea5e9', '#8b5cf6', '#f59e0b', '#22d3ee', '#ec4899'
+    ];
+    
+    const labels = top20.map(f => f.feature);
+    const data = top20.map(f => f.importance);
+    const percentages = top20.map(f => f.percentage || (f.importance * 100));
+    
+    if (top20.length === 0) {
+        featuresChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['بدون داده'],
+                datasets: [{
+                    data: [0],
+                    backgroundColor: ['rgba(255,255,255,0.1)'],
+                    borderColor: ['rgba(255,255,255,0.05)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { display: false } },
+                    y: { grid: { display: false }, ticks: { display: false } }
+                }
+            }
+        });
+        return;
+    }
+    
+    featuresChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'اهمیت (%)',
+                data: percentages,
+                backgroundColor: colors.slice(0, top20.length).map(c => c + '80'),
+                borderColor: colors.slice(0, top20.length),
+                borderWidth: 1.5,
+                borderRadius: 4,
+                barPercentage: 0.7
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'اهمیت: ' + context.parsed.x.toFixed(2) + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255,255,255,0.04)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'var(--text-muted)',
+                        font: { size: 8, family: 'inherit' },
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    max: Math.max(...percentages) * 1.15 || 100
+                },
+                y: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary)',
+                        font: { size: 8, family: 'inherit' }
+                    }
+                }
+            },
+            interaction: {
+                intersect: true,
+                mode: 'index'
+            }
+        }
+    });
+}
+
+// ===== فیلتر ویژگی‌ها =====
+function filterFeatures() {
+    renderFeatures();
+    // اگر جستجو خالی است، نمودار را بروزرسانی نکن (همان ۲۰ تای برتر)
+    const search = document.getElementById('featuresSearch').value.toLowerCase();
+    if (search.length === 0) {
+        renderChart();
+    }
+}
+
+// ===== خروجی CSV =====
+function exportFeaturesCSV() {
+    if (featuresData.length === 0) {
+        showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
+        return;
+    }
+    
+    const headers = ['ویژگی', 'اهمیت', 'درصد'];
+    const rows = featuresData.map(f => [
+        f.feature,
+        f.importance,
+        f.percentage ? f.percentage.toFixed(2) + '%' : (f.importance * 100).toFixed(2) + '%'
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `feature_importance_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast('📥 دانلود CSV شروع شد', 'success');
+}
+
+// ===== رفرش دستی =====
+function refreshFeatures() {
+    showToast('🔄 بروزرسانی...', 'info');
+    loadFeatures();
+}
+
+// ===== مقداردهی اولیه =====
+window.init_features = function() {
+    console.log('📊 Features tab initializing...');
+    
+    if (isFeaturesLoaded) return;
+    isFeaturesLoaded = true;
+    
+    loadFeatures();
+    
+    if (featuresInterval) {
+        clearInterval(featuresInterval);
+    }
+    featuresInterval = setInterval(loadFeatures, 60000);
+};
+
+// ===== پاکسازی =====
+window.cleanup_features = function() {
+    if (featuresInterval) {
+        clearInterval(featuresInterval);
+        featuresInterval = null;
+    }
+    if (featuresChart) {
+        featuresChart.destroy();
+        featuresChart = null;
+    }
+    isFeaturesLoaded = false;
+    console.log('🧹 Features tab cleaned up');
+};
+
+console.log('✅ Features tab loaded');
+</script>
