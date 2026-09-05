@@ -55,7 +55,7 @@ function loadModelTab(tabName) {
                 <div class="error-msg">
                     <span class="icon">⚠️</span>
                     <p>خطا در بارگذاری تب</p>
-                    <button onclick="loadModelTab('${tabName}')" style="margin-top:12px;padding:6px 16px;background:var(--accent-cyan);color:#000;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
+                    <button onclick="loadModelTab('${tabName}')">🔄 تلاش مجدد</button>
                 </div>
             `;
         });
@@ -99,7 +99,7 @@ function initModelTabs() {
             const tabName = this.dataset.tab;
             loadModelTab(tabName);
             
-            // بروزرسانی URL (اختیاری)
+            // بروزرسانی URL
             history.replaceState(null, '', `?tab=${tabName}`);
         });
     });
@@ -111,8 +111,58 @@ function initModelTabs() {
     
     document.querySelector(`#modelTabs .tab-btn[data-tab="${defaultTab}"]`)?.classList.add('active');
     loadModelTab(defaultTab);
+    
+    // بارگذاری نویگیشن
+    loadNav();
 }
 
+async function loadNav() {
+    const container = document.getElementById('navContainer');
+    if (!container) return;
+    try {
+        const res = await fetch('/nav.html');
+        if (!res.ok) throw new Error('nav.html not found');
+        const html = await res.text();
+        container.innerHTML = html;
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach(old => {
+            const ns = document.createElement('script');
+            ns.textContent = old.textContent;
+            old.parentNode.replaceChild(ns, old);
+        });
+    } catch (err) {
+        console.error('❌ Nav error:', err);
+    }
+}
+
+// ===== دریافت وضعیت مدل برای Badge =====
+async function updateModelBadge() {
+    try {
+        const data = await api.getModelStatus();
+        if (data.success && data.data) {
+            const badge = document.getElementById('modelStatusBadge');
+            const loaded = data.data.loaded || false;
+            const isTraining = data.data.is_training || false;
+            
+            if (isTraining) {
+                badge.textContent = '⏳ در حال آموزش';
+                badge.className = 'badge badge-orange';
+            } else if (loaded) {
+                badge.textContent = '✅ فعال';
+                badge.className = 'badge badge-green';
+            } else {
+                badge.textContent = '📦 دمو';
+                badge.className = 'badge badge-orange';
+            }
+        }
+    } catch (err) {
+        console.error('Badge update error:', err);
+    }
+}
+
+// ===== مقداردهی اولیه =====
 document.addEventListener('DOMContentLoaded', function() {
     initModelTabs();
+    updateModelBadge();
+    setInterval(updateModelBadge, 15000);
 });
