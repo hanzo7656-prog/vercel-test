@@ -1,5 +1,6 @@
+# infrastructure/api/free_crypto_client.py
 # ============================================================
-# free_crypto_client.py - کلاینت WebSocket FreeCryptoAPI
+# کلاینت WebSocket FreeCryptoAPI با Auto-Reconnect
 # ============================================================
 
 import json
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 class FreeCryptoClient:
     """
     کلاینت WebSocket برای FreeCryptoAPI
-    دریافت قیمت‌های لحظه‌ای ارزها
+    با Auto-Reconnect و Backoff
     """
     
     def __init__(self, api_key: str, auto_reconnect: bool = True):
@@ -34,6 +35,7 @@ class FreeCryptoClient:
         self._lock: threading.Lock = threading.Lock()
         self._last_heartbeat: Optional[datetime] = None
         self._subscribed_symbols: set = set()
+        self._connection_attempts: int = 0
         
         # آمار
         self.stats = {
@@ -41,7 +43,8 @@ class FreeCryptoClient:
             "reconnects": 0,
             "errors": 0,
             "last_update": None,
-            "symbols_count": 0
+            "symbols_count": 0,
+            "connection_attempts": 0
         }
         
         logger.info("✅ FreeCryptoClient initialized")
@@ -77,6 +80,8 @@ class FreeCryptoClient:
     def _connect_ws(self) -> None:
         """اتصال به WebSocket و نگهداری اتصال"""
         ws_url = "wss://freecryptoapi.com/ws"
+        self._connection_attempts += 1
+        self.stats["connection_attempts"] = self._connection_attempts
         
         self.ws = websocket.WebSocketApp(
             ws_url,
@@ -97,6 +102,7 @@ class FreeCryptoClient:
         logger.info("✅ WebSocket connected to FreeCryptoAPI")
         self.is_connected = True
         self._reconnect_delay = 1
+        self._connection_attempts = 0
         
         # ارسال احراز هویت
         auth_msg = json.dumps({
@@ -117,7 +123,6 @@ class FreeCryptoClient:
             data = json.loads(message)
             self.stats["messages_received"] += 1
             
-            # بررسی نوع پیام
             if "type" in data:
                 if data["type"] == "auth":
                     if data.get("status") == "success":
@@ -129,11 +134,9 @@ class FreeCryptoClient:
                     self._handle_price_update(data.get("data", {}))
                 
                 elif data["type"] == "ping":
-                    # پاسخ به پینگ
                     ws.send(json.dumps({"type": "pong"}))
                     self._last_heartbeat = datetime.now()
             
-            # فراخوانی callbackها
             for cb in self._callbacks:
                 try:
                     cb(data)
@@ -155,14 +158,14 @@ class FreeCryptoClient:
             return
         
         with self._lock:
-            # ذخیره در کش
             self.price_cache[symbol] = {
                 "price": data.get("price", 0),
                 "change_24h": data.get("change24h", 0),
                 "high_24h": data.get("high24h", 0),
                 "low_24h": data.get("low24h", 0),
                 "volume": data.get("volume", 0),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "source": "websocket"
             }
             self.stats["last_update"] = datetime.now().isoformat()
             self.stats["symbols_count"] = len(self.price_cache)
@@ -184,7 +187,6 @@ class FreeCryptoClient:
         if not symbols:
             return
         
-        # حداکثر ۵۰ تا در هر درخواست
         batch_size = 50
         for i in range(0, len(symbols), batch_size):
             batch = symbols[i:i+batch_size]
@@ -241,7 +243,8 @@ class FreeCryptoClient:
             "reconnects": self.stats["reconnects"],
             "errors": self.stats["errors"],
             "last_update": self.stats["last_update"],
-            "cache_size": len(self.price_cache)
+            "cache_size": len(self.price_cache),
+            "connection_attempts": self.stats["connection_attempts"]
         }
     
     def stop(self) -> None:
@@ -255,10 +258,6 @@ class FreeCryptoClient:
         self.is_connected = False
         logger.info("✅ WebSocket stopped")
 
-
-# ============================================================
-# نمونه Singleton (برای استفاده در Container)
-# ============================================================
 
 def create_free_crypto_client(api_key: str) -> FreeCryptoClient:
     """ایجاد نمونه FreeCryptoClient"""
