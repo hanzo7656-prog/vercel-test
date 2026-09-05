@@ -1,18 +1,52 @@
 # infrastructure/database/__init__.py
 # ============================================================
-# پکیج دیتابیس - نسخه ۳.۰ (نهایی)
+# پکیج دیتابیس - نسخه ۳.۱ (رفع Circular Import)
 # ============================================================
 
-from infrastructure.database.registry import registry
-from infrastructure.database.router import router
-from infrastructure.database.base import DatabaseBase
-from infrastructure.database.redis_manager import RedisManager
-from infrastructure.database.postgresql_manager import PostgreSQLManager
-from infrastructure.database.sqlite_manager import SQLiteManager
-from infrastructure.database.database_factory import db_factory, ensure_databases_connected
-
 import logging
+from typing import Optional, Any
+
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# Lazy Import برای جلوگیری از Circular Import
+# ============================================================
+
+def _get_registry():
+    """Lazy import registry"""
+    from infrastructure.database.registry import registry
+    return registry
+
+
+def _get_router():
+    """Lazy import router"""
+    from infrastructure.database.router import router
+    return router
+
+
+def _get_db_factory():
+    """Lazy import db_factory"""
+    from infrastructure.database.database_factory import db_factory
+    return db_factory
+
+
+def _get_postgresql_manager():
+    """Lazy import PostgreSQLManager"""
+    from infrastructure.database.postgresql_manager import PostgreSQLManager
+    return PostgreSQLManager
+
+
+def _get_sqlite_manager():
+    """Lazy import SQLiteManager"""
+    from infrastructure.database.sqlite_manager import SQLiteManager
+    return SQLiteManager
+
+
+def _get_redis_manager():
+    """Lazy import RedisManager"""
+    from infrastructure.database.redis_manager import RedisManager
+    return RedisManager
 
 
 # ============================================================
@@ -29,7 +63,7 @@ def get_db(name: str = None):
     خروجی:
         نمونه دیتابیس یا None
     """
-    return registry.get(name)
+    return _get_registry().get(name)
 
 
 def get_db_for(data_type: str):
@@ -42,7 +76,7 @@ def get_db_for(data_type: str):
     خروجی:
         نمونه دیتابیس مناسب
     """
-    return router.get_db_for(data_type)
+    return _get_router().get_db_for(data_type)
 
 
 def get_cache():
@@ -52,7 +86,7 @@ def get_cache():
     خروجی:
         نمونه RedisManager یا None
     """
-    return router.get_cache_db()
+    return _get_router().get_cache_db()
 
 
 def get_primary():
@@ -62,22 +96,24 @@ def get_primary():
     خروجی:
         نمونه PostgreSQLManager یا None
     """
+    router = _get_router()
     db = router.get_primary_db()
     
     if db is None or not db.is_connected():
-        db = registry.get("postgresql")
+        db = _get_registry().get("postgresql")
     
     if db is None:
         try:
             import json
             from pathlib import Path
+            PostgreSQLManager = _get_postgresql_manager()
             
             with open("config/databases.json") as f:
                 config = json.load(f)
             pg_config = config["databases"]["postgresql"]
             db = PostgreSQLManager("postgresql", pg_config)
             if db.connect():
-                registry.register("postgresql", db, ["primary", "users", "history", "logs"])
+                _get_registry().register("postgresql", db, ["primary", "users", "history", "logs"])
                 logger.info("✅ PostgreSQL reconnected automatically")
         except FileNotFoundError:
             logger.error("❌ config/databases.json not found")
@@ -94,7 +130,7 @@ def get_backup():
     خروجی:
         نمونه SQLiteManager یا None
     """
-    return router.get_backup_db()
+    return _get_router().get_backup_db()
 
 
 def health_check():
@@ -104,6 +140,7 @@ def health_check():
     خروجی:
         دیکشنری وضعیت همه دیتابیس‌ها
     """
+    registry = _get_registry()
     health = registry.get_health()
     
     for db_name, db_info in health.items():
@@ -122,6 +159,18 @@ def health_check():
     return health
 
 
+def ensure_databases_connected():
+    """
+    اطمینان از اتصال همه دیتابیس‌ها
+    """
+    try:
+        from infrastructure.database.database_factory import ensure_databases_connected as _ensure
+        return _ensure()
+    except ImportError:
+        logger.warning("⚠️ ensure_databases_connected not available")
+        return False
+
+
 def get_all_databases():
     """
     دریافت همه دیتابیس‌های ثبت شده
@@ -129,7 +178,7 @@ def get_all_databases():
     خروجی:
         دیکشنری {name: db_instance}
     """
-    return registry.get_all()
+    return _get_registry().get_all()
 
 
 def get_database_status():
@@ -166,21 +215,10 @@ def get_database_status():
 
 
 # ============================================================
-# Export همه توابع و کلاس‌ها
+# Export همه توابع
 # ============================================================
 
 __all__ = [
-    # کلاس‌ها
-    'DatabaseBase',
-    'RedisManager',
-    'PostgreSQLManager',
-    'SQLiteManager',
-    
-    # نمونه‌های Singleton
-    'registry',
-    'router',
-    'db_factory',
-    
     # توابع اصلی
     'get_db',
     'get_db_for',
