@@ -111,25 +111,46 @@ def start_metrics_scheduler() -> None:
 
 
 # ============================================================
-# راه‌اندازی Alert و Self-Healing
+# راه‌اندازی Alert و Self-Healing (اصلاح شده)
 # ============================================================
 
 def start_alert_system() -> None:
     try:
-        model_manager = container.get('model_manager')
-        trainer = container.get('trainer')
-        self_healer = SelfHealer(model_manager, trainer)
+        # ✅ دریافت metrics_scheduler از container
+        metrics_scheduler = container.get('metrics_scheduler')
+        
+        if metrics_scheduler is None:
+            logger.error("❌ metrics_scheduler is None, alert system disabled")
+            return
+        
+        # ✅ دریافت یا ساخت SelfHealer از metrics_scheduler
+        if metrics_scheduler.healer is None:
+            logger.warning("⚠️ SelfHealer is None in metrics_scheduler, creating new one...")
+            from application.services.self_healer import SelfHealer
+            model_manager = container.get('model_manager')
+            trainer = container.get('trainer')
+            api_client = container.get('api_client')
+            
+            healer = SelfHealer(
+                model_manager=model_manager,
+                trainer=trainer,
+                api_client=api_client
+            )
+            metrics_scheduler.healer = healer
+            logger.info("✅ SelfHealer created and assigned to metrics_scheduler")
         
         def alert_loop() -> None:
             import time
             while True:
                 try:
-                    metrics_scheduler = container.get('metrics_scheduler')
-                    if metrics_scheduler:
-                        alert_metrics = metrics_scheduler.get_alert_metrics()
+                    scheduler = container.get('metrics_scheduler')
+                    if scheduler:
+                        alert_metrics = scheduler.get_alert_metrics()
                         alerts = alerter.check_and_alert(alert_metrics)
-                        if alerts:
-                            self_healer.check_and_heal(alert_metrics)
+                        
+                        # ✅ استفاده از healer که در metrics_scheduler است
+                        if scheduler.healer:
+                            scheduler.healer.check_and_heal(alert_metrics)
                     time.sleep(30)
                 except Exception as e:
                     logger.error(f"❌ Alert loop error: {e}")
@@ -151,10 +172,12 @@ def start_alert_system() -> None:
             alert_thread = threading.Thread(target=alert_loop, daemon=False)
             alert_thread.start()
             logger.info("✅ Alert system started directly")
+            
     except Exception as e:
         logger.error(f"❌ Failed to start alert system: {e}")
-
-
+        import traceback
+        logger.error(traceback.format_exc())
+        
 # ============================================================
 # راه‌اندازی Database Health Check
 # ============================================================
