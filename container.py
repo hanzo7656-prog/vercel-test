@@ -78,9 +78,12 @@ def register_services() -> None:
     # ۱. سرویس‌های Infrastructure
     # ============================================================
     
+    # container.py - این قبلاً ثبت شده، اما مطمئن شو که درست است
     def get_api_client():
         from infrastructure.api.coinstats_client import coinstats_client
         return coinstats_client
+
+    container.register('api_client', get_api_client, singleton=True)
     
     def get_cache_manager():
         from infrastructure.api.cache_manager import cache_manager
@@ -158,9 +161,13 @@ def register_services() -> None:
             model_manager=container.get('model_manager')
         )
     
+    # container.py - اضافه کردن به register_services()
+
     def get_prediction_service():
         from application.services.prediction_service import PredictionService
         return PredictionService(container.get('predict_use_case'))
+  
+    container.register('prediction_service', get_prediction_service, singleton=True)
     
     def get_monitoring_service():
         from application.services.monitoring_service import MonitoringService
