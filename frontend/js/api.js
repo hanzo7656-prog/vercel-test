@@ -389,9 +389,28 @@ class ApiClient {
             method: 'POST'
         });
     }
-    // ===== دریافت داده‌های نمودار =====
+    // ============================================================
+    // اضافه کردن به api.js
+    // ============================================================
+
+    // ===== دریافت داده‌های نمودار با اندیکاتورها =====
     getChartData(coin, period = '1m') {
         return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
+    }
+
+    // ===== دریافت فقط RSI =====
+    getRSI(coin, period = '1m', rsi_period = 14) {
+        return this.request(`/api/coinstats/rsi/${coin}?period=${period}&rsi_period=${rsi_period}`);
+    }
+
+    // ===== دریافت فقط SMA =====
+    getSMA(coin, period = '1m', sma_period = 20) {
+        return this.request(`/api/coinstats/sma/${coin}?period=${period}&sma_period=${sma_period}`);
+    }
+
+    // ===== دریافت MACD =====
+    getMACD(coin, period = '1m') {
+        return this.request(`/api/coinstats/macd/${coin}?period=${period}`);
     }
     // ============================================================
     // ۱۱. هشدارها (ALERTS)
