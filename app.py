@@ -1,6 +1,6 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۹.۲ (فقط API)
+# ورودی اصلی سیستم - نسخه ۹.۳ (با WebSocket)
 # ============================================================
 
 import os
@@ -12,7 +12,7 @@ from flask import Flask, jsonify
 
 from config.version import VERSION, APP_NAME
 from container import container
-from providers import init_container
+from providers import init_container, shutdown_services
 
 # ✅ فقط Import‌های مورد نیاز برای API
 from infrastructure.external.alerter import alerter
@@ -22,28 +22,41 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Signal Handler
+# Signal Handler (با پشتیبانی از WebSocket)
 # ============================================================
 
 def signal_handler(sig, frame) -> None:
     logger.info(f"🛑 Received signal {sig}, shutting down gracefully...")
+    
+    # ۱. توقف WebSocket
+    try:
+        shutdown_services()
+    except Exception as e:
+        logger.error(f"❌ Error shutting down services: {e}")
+    
+    # ۲. توقف Metrics Scheduler
     try:
         metrics_scheduler = container.get('metrics_scheduler')
         if metrics_scheduler:
             metrics_scheduler.stop()
     except Exception as e:
         logger.error(f"❌ Error stopping metrics scheduler: {e}")
+    
+    # ۳. توقف Threadها
     try:
         threading_manager = container.get('threading_manager')
         if threading_manager:
             threading_manager.stop_all()
     except Exception as e:
         logger.error(f"❌ Error stopping threads: {e}")
+    
+    # ۴. خاموش کردن Parallel Processor
     try:
         from core.parallel_processor import parallel_processor
         parallel_processor.shutdown()
     except Exception as e:
         logger.error(f"❌ Error shutting down parallel processor: {e}")
+    
     logger.info("✅ Graceful shutdown complete")
     sys.exit(0)
 
@@ -62,15 +75,15 @@ app.config['JSON_AS_ASCII'] = False
 
 
 # ============================================================
-# راه‌اندازی Container
+# راه‌اندازی Container (با WebSocket)
 # ============================================================
 
 init_container(app)
-logger.info("✅ Container initialized")
+logger.info("✅ Container initialized with WebSocket services")
 
 
 # ============================================================
-# ✅ ثبت فقط Blueprintهای API
+# ✅ ثبت Blueprintها
 # ============================================================
 
 from presentation.routes.api_routes import api_bp
@@ -81,7 +94,7 @@ app.register_blueprint(web_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(metrics_bp)
 
-logger.info("✅ API Blueprints registered")
+logger.info("✅ Blueprints registered")
 
 
 # ============================================================
@@ -111,19 +124,17 @@ def start_metrics_scheduler() -> None:
 
 
 # ============================================================
-# راه‌اندازی Alert و Self-Healing (اصلاح شده)
+# راه‌اندازی Alert و Self-Healing
 # ============================================================
 
 def start_alert_system() -> None:
     try:
-        # ✅ دریافت metrics_scheduler از container
         metrics_scheduler = container.get('metrics_scheduler')
         
         if metrics_scheduler is None:
             logger.error("❌ metrics_scheduler is None, alert system disabled")
             return
         
-        # ✅ دریافت یا ساخت SelfHealer از metrics_scheduler
         if metrics_scheduler.healer is None:
             logger.warning("⚠️ SelfHealer is None in metrics_scheduler, creating new one...")
             from application.services.self_healer import SelfHealer
@@ -148,7 +159,6 @@ def start_alert_system() -> None:
                         alert_metrics = scheduler.get_alert_metrics()
                         alerts = alerter.check_and_alert(alert_metrics)
                         
-                        # ✅ استفاده از healer که در metrics_scheduler است
                         if scheduler.healer:
                             scheduler.healer.check_and_heal(alert_metrics)
                     time.sleep(30)
@@ -177,7 +187,8 @@ def start_alert_system() -> None:
         logger.error(f"❌ Failed to start alert system: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        
+
+
 # ============================================================
 # راه‌اندازی Database Health Check
 # ============================================================
@@ -255,7 +266,7 @@ def internal_error(error):
 
 
 # ============================================================
-# ✅ روت ساده برای بررسی وضعیت (بدون HTML)
+# ✅ روت ساده برای بررسی وضعیت
 # ============================================================
 
 @app.route('/')
@@ -264,6 +275,9 @@ def home():
         'name': APP_NAME,
         'version': VERSION,
         'status': 'running',
+        'websocket': {
+            'connected': container.get('free_crypto_client').is_connected if container.has('free_crypto_client') else False
+        },
         'timestamp': datetime.now().isoformat(),
         'endpoints': [
             '/api/metrics',
@@ -272,7 +286,10 @@ def home():
             '/api/model/train',
             '/api/health',
             '/api/alerts',
-            '/api/credits'
+            '/api/credits',
+            '/api/crypto/prices',
+            '/api/crypto/price/<symbol>',
+            '/api/crypto/stats'
         ]
     })
 
@@ -304,6 +321,7 @@ if __name__ == "__main__":
     print(f"🚀 {APP_NAME} v{VERSION} (API Only)")
     print(f"📡 Port: {port}")
     print(f"🐛 Debug: {debug}")
+    print(f"🔌 WebSocket: {'✅ Enabled' if container.has('free_crypto_client') else '❌ Disabled'}")
     print("=" * 70)
     print("📊 API Endpoints:")
     print("  GET  /api/metrics           - System metrics")
@@ -314,6 +332,9 @@ if __name__ == "__main__":
     print("  GET  /api/health            - Health check")
     print("  GET  /api/alerts            - Get alerts")
     print("  GET  /api/credits           - API credits")
+    print("  GET  /api/crypto/prices     - Real-time prices (WebSocket)")
+    print("  GET  /api/crypto/price/<s>  - Real-time price (WebSocket)")
+    print("  GET  /api/crypto/stats      - WebSocket stats")
     print("=" * 70)
     print("🔧 Use CTRL+C to stop gracefully")
     print("=" * 70)
