@@ -1,5 +1,5 @@
 // ============================================================
-// api.js - Unified API Client v10.0
+// api.js - Unified API Client v10.1
 // کاملاً هماهنگ با اندپوینت‌های تفکیک شده بک‌اند
 // ============================================================
 
@@ -83,13 +83,7 @@ class ApiClient {
     // ============================================================
     // ۳. دیتابیس - PostgreSQL
     // ============================================================
-    // ===== خروجی یک رکورد از PostgreSQL =====
-    exportPostgreSQLRow(tableName, rowId, format = 'json') {
-        const params = new URLSearchParams({ format });
-        return this.request(`/api/db/postgresql/table/${tableName}/export/row/${rowId}?${params}`);
-    }
 
-    
     getPostgreSQLTables() {
         return this.request('/api/db/postgresql/tables');
     }
@@ -116,8 +110,9 @@ class ApiClient {
         window.open('/api/db/postgresql/backup', '_blank');
     }
 
-    getPostgreSQLFullBackup() {
-        window.open('/api/db/postgresql/backup', '_blank');
+    exportPostgreSQLRow(tableName, rowId, format = 'json') {
+        const params = new URLSearchParams({ format });
+        return this.request(`/api/db/postgresql/table/${tableName}/export/row/${rowId}?${params}`);
     }
 
     // ============================================================
@@ -144,10 +139,10 @@ class ApiClient {
         return this.request(`/api/db/redis/key/${encodeURIComponent(key)}`);
     }
 
-    // ===== خروجی یک کلید Redis =====
     exportRedisKey(key) {
         return this.request(`/api/db/redis/key/${encodeURIComponent(key)}/export`);
     }
+
     // ============================================================
     // ۵. دیتابیس - SQLite
     // ============================================================
@@ -174,11 +169,11 @@ class ApiClient {
         window.open(`/api/db/sqlite/export/${tableName}?format=csv`, '_blank');
     }
 
-    // ===== خروجی یک رکورد از SQLite =====
     exportSQLiteRow(tableName, rowId, format = 'json') {
         const params = new URLSearchParams({ format });
         return this.request(`/api/db/sqlite/table/${tableName}/export/row/${rowId}?${params}`);
     }
+
     // ============================================================
     // ۶. دیتابیس - عمومی
     // ============================================================
@@ -200,10 +195,25 @@ class ApiClient {
         return this.request('/api/db/health');
     }
 
-    // ===== دریافت داده‌های مانیتورینگ دیتابیس =====
     getDBMonitor() {
         return this.request('/api/db/monitor');
     }
+
+    // ===== جدید: دیتابیس عمومی =====
+    getDBTables() {
+        return this.request('/api/db/tables');
+    }
+
+    getDBStats() {
+        return this.request('/api/db/stats');
+    }
+
+    runDBMigration() {
+        return this.request('/api/db/migrate', {
+            method: 'POST'
+        });
+    }
+
     // ============================================================
     // ۷. مدل (MODEL)
     // ============================================================
@@ -218,6 +228,21 @@ class ApiClient {
 
     getModelFeatures() {
         return this.request('/api/model/features');
+    }
+
+    // ===== جدید: داده‌های آموزشی مدل =====
+    getModelData() {
+        return this.request('/api/model/data');
+    }
+
+    // ===== جدید: اهمیت ویژگی‌ها =====
+    getModelImportance() {
+        return this.request('/api/model/importance');
+    }
+
+    // ===== جدید: عملکرد مدل برای نمودار =====
+    getModelPerformance() {
+        return this.request('/api/model/performance');
     }
 
     trainModel(options = {}) {
@@ -301,6 +326,13 @@ class ApiClient {
         return this.request(`/api/predict/explain?coin=${encodeURIComponent(coin)}`);
     }
 
+    // ===== جدید: تاریخچه پیش‌بینی‌ها =====
+    getPredictionHistory(limit = 50, coin = null) {
+        const params = new URLSearchParams({ limit });
+        if (coin) params.append('coin', coin);
+        return this.request(`/api/predict/history?${params}`);
+    }
+
     // ============================================================
     // ۱۰. کوین‌استتس (COINSTATS)
     // ============================================================
@@ -379,7 +411,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۴. دیباگ (DEBUG) - کامل با متدهای جدید
+    // ۱۴. دیباگ (DEBUG)
     // ============================================================
 
     getDebugStatus() {
@@ -409,7 +441,6 @@ class ApiClient {
         return this.request(`/api/debug/processes?${params}`);
     }
 
-    // ===== Debug Exec (با پشتیبانی از ۳ حالت) =====
     executeDebugCommand(command, type = 'python', timeout = 15) {
         return this.request('/api/debug/exec', {
             method: 'POST',
@@ -436,11 +467,38 @@ class ApiClient {
         });
     }
 
+    getProcessDetails(pid) {
+        return this.request(`/api/debug/processes/${pid}/details`);
+    }
+
+    killProcess(pid) {
+        return this.request(`/api/debug/processes/${pid}/kill`, {
+            method: 'POST'
+        });
+    }
+
+    searchCache(pattern = '*', limit = 50) {
+        const params = new URLSearchParams({ pattern, limit });
+        return this.request(`/api/debug/cache/search?${params}`);
+    }
+
+    deleteCacheKey(key) {
+        const params = new URLSearchParams({ key });
+        return this.request(`/api/debug/cache/key?${params}`, {
+            method: 'DELETE'
+        });
+    }
+
+    purgeCache() {
+        return this.request('/api/debug/cache/purge', {
+            method: 'POST'
+        });
+    }
+
     // ============================================================
-    // اضافه کردن به js/api.js
+    // ۱۵. Self-Healing (خودترمیمی)
     // ============================================================
 
-    // ===== Self-Healing =====
     getHealingStatus() {
         return this.request('/api/healing/status');
     }
@@ -456,71 +514,10 @@ class ApiClient {
             method: 'POST'
         });
     }
-
-    
-    // ============================================================
-    // ۱۵. دیباگ - متدهای جدید (Processes, Cache)
-    // ============================================================
-
-    // ===== دریافت جزئیات کامل یک پردازش =====
-    getProcessDetails(pid) {
-        return this.request(`/api/debug/processes/${pid}/details`);
-    }
-
-    // ===== خاتمه دادن به یک پردازش =====
-    killProcess(pid) {
-        return this.request(`/api/debug/processes/${pid}/kill`, {
-            method: 'POST'
-        });
-    }
-
-    // ===== جستجوی کلیدها در کش با الگو =====
-    searchCache(pattern = '*', limit = 50) {
-        const params = new URLSearchParams({ pattern, limit });
-        return this.request(`/api/debug/cache/search?${params}`);
-    }
-
-    // ===== حذف یک کلید خاص از کش =====
-    deleteCacheKey(key) {
-        const params = new URLSearchParams({ key });
-        return this.request(`/api/debug/cache/key?${params}`, {
-            method: 'DELETE'
-        });
-    }
-
-    // ===== پاکسازی کامل کش و آزادسازی حافظه =====
-    purgeCache() {
-        return this.request('/api/debug/cache/purge', {
-            method: 'POST'
-        });
-    }
-
-    // ============================================================
-    // ۱۶. دیتابیس - کوئری مستقیم
-    // ============================================================
-
-    executeDBQuery(query) {
-        return this.request('/api/db/query', {
-            method: 'POST',
-            body: JSON.stringify({ query })
-        });
-    }
-
-    getPostgreSQLTableFull(tableName, options = {}) {
-        const { limit = 100, offset = 0, search = '', sort_by = 'id', sort_order = 'DESC', format = 'json' } = options;
-        const params = new URLSearchParams({ limit, offset, search, sort_by, sort_order, format });
-        return this.request(`/api/db/postgresql/table/${tableName}?${params}`);
-    }
-
-    getSQLiteTableFull(tableName, options = {}) {
-        const { limit = 100, offset = 0, search = '', format = 'json' } = options;
-        const params = new URLSearchParams({ limit, offset, search, format });
-        return this.request(`/api/db/sqlite/table/${tableName}?${params}`);
-    }
 }
 
 // ===== SINGLETON =====
 const api = new ApiClient();
 window.api = api;
 
-console.log('✅ API Client v10.0 loaded');
+console.log('✅ API Client v10.1 loaded');
