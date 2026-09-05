@@ -306,6 +306,94 @@ function renderTable(data, columns, container, options = {}) {
 }
 
 // ============================================================
+// utils.js - اضافه کردن تابع پیش‌فرض هوشمند
+// ============================================================
+
+/**
+ * محاسبه امتیاز ترکیبی ۳ گانه برای هر ارز
+ * @param {Array} coins - لیست ارزها
+ * @param {number} limit - تعداد ارزهای مورد نظر
+ * @returns {Array} - لیست ID ارزهای برتر
+ */
+function getTripleScoreCoins(coins, limit = 5) {
+    if (!coins || coins.length === 0) return [];
+    
+    const scored = coins.map(coin => {
+        // ۱. امتیاز رتبه (۴۰٪)
+        const rankScore = (100 - Math.min(coin.rank || 999, 100)) * 0.4;
+        
+        // ۲. امتیاز تغییرات (۳۵٪) - محدود به بازه -۲۰ تا +۲۰
+        const change = Math.min(Math.max(coin.priceChange1d || 0, -20), 20);
+        const changeScore = (change + 20) / 40 * 35;
+        
+        // ۳. امتیاز حجم (۲۵٪) - محدود به ۱۰ میلیارد
+        const volume = Math.min((coin.volume || 0) / 1e9, 10);
+        const volumeScore = (volume / 10) * 25;
+        
+        return {
+            ...coin,
+            score: rankScore + changeScore + volumeScore
+        };
+    });
+    
+    return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(c => c.id);
+}
+
+// ===== ذخیره و بازیابی انتخاب‌های کاربر =====
+function saveUserCoinSelection(coins) {
+    if (coins && coins.length > 0) {
+        localStorage.setItem('selectedTrainCoins', JSON.stringify(coins));
+    }
+}
+
+function loadUserCoinSelection() {
+    const saved = localStorage.getItem('selectedTrainCoins');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        } catch (e) {}
+    }
+    return null;
+}
+
+// ===== دریافت پیش‌فرض هوشمند (با در نظر گرفتن مدل فعلی) =====
+async function getSmartDefaultCoins(allCoins) {
+    // ۱. اولویت با ارزهای مدل فعلی
+    try {
+        const status = await api.getModelStatus();
+        if (status.success && status.data?.coins?.length > 0) {
+            const modelCoins = status.data.coins;
+            // بررسی وجود ارزها در لیست فعلی
+            const validCoins = modelCoins.filter(id => 
+                allCoins.some(c => c.id === id)
+            );
+            if (validCoins.length > 0) {
+                return validCoins;
+            }
+        }
+    } catch (e) {}
+    
+    // ۲. دومین اولویت: انتخاب‌های قبلی کاربر
+    const userHistory = loadUserCoinSelection();
+    if (userHistory && userHistory.length > 0) {
+        const validCoins = userHistory.filter(id => 
+            allCoins.some(c => c.id === id)
+        );
+        if (validCoins.length > 0) {
+            return validCoins;
+        }
+    }
+    
+    // ۳. پیش‌فرض هوشمند: ترکیبی ۳ گانه
+    return getTripleScoreCoins(allCoins, 5);
+}
+// ============================================================
 // EXPORT
 // ============================================================
 
