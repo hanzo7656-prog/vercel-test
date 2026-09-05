@@ -2307,7 +2307,7 @@ def coinstats_price(coin):
     """دریافت قیمت یک ارز خاص"""
     try:
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         data = api_client.get_coin(coin)
         
         if data:
@@ -2336,7 +2336,7 @@ def coinstats_prices():
     """دریافت قیمت‌های اصلی (BTC, ETH)"""
     try:
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         
         btc = api_client.get_coin("bitcoin")
         eth = api_client.get_coin("ethereum")
@@ -2368,7 +2368,7 @@ def coinstats_fear_greed():
     """دریافت شاخص ترس و طمع"""
     try:
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         fg = api_client.get_fear_greed(use_cache=True)
         
         now = fg.get('now', {})
@@ -2394,7 +2394,7 @@ def coinstats_btc_dominance():
     """دریافت سلطه بیت‌کوین"""
     try:
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         dominance = api_client.get_btc_dominance(use_cache=True)
         
         return jsonify({
@@ -2415,7 +2415,7 @@ def coinstats_all():
     """دریافت همه داده‌های بازار در یک جا"""
     try:
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         
         btc = api_client.get_coin("bitcoin")
         eth = api_client.get_coin("ethereum")
@@ -2464,7 +2464,7 @@ def get_realtime_prices():
         symbols = [s.strip().upper() for s in symbols_param.split(',') if s.strip()]
         
         container = current_app.container
-        price_manager = container.price_manager()
+        price_manager = container.get('price_manager')
         
         if symbols:
             prices = price_manager.get_prices(symbols)
