@@ -2603,6 +2603,36 @@ def crypto_heartbeat():
     except Exception as e:
         logger.error(f"Heartbeat error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# api_routes.py
+@api_bp.route('/coinstats/chart/<coin>', methods=['GET'])
+@require_auth()
+def get_chart_data(coin):
+    try:
+        period = request.args.get('period', '1m')
+        container = current_app.container
+        api_client = container.get('api_client')
+        
+        # دریافت داده‌های تاریخی
+        chart_data = api_client.get_chart(coin, period)
+        
+        # محاسبه RSI
+        rsi_values = calculate_rsi(chart_data)
+        
+        # دریافت سیگنال‌ها از مدل
+        signals = get_signals(chart_data)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'timestamps': [point[0] for point in chart_data],
+                'prices': [point[1] for point in chart_data],
+                'rsi': rsi_values,
+                'signals': signals
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
         
 # ============================================================
 # ۱۳. هشدارها (ALERTS)
