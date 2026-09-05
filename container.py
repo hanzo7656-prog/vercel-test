@@ -124,7 +124,20 @@ def register_services() -> None:
             update_interval=10,
             fallback_interval=60
         )
-    
+
+
+    # container.py
+    def get_indicators():
+        from core.indicators import get_all_indicators, calculate_rsi, calculate_sma, calculate_ema, calculate_macd
+        return {
+            'get_all_indicators': get_all_indicators,
+            'calculate_rsi': calculate_rsi,
+            'calculate_sma': calculate_sma,
+            'calculate_ema': calculate_ema,
+            'calculate_macd': calculate_macd
+        }
+
+    container.register('indicators', get_indicators, singleton=True)
     container.register('model_manager', get_model_manager, singleton=True)
     container.register('feature_engineer', get_feature_engineer, singleton=True)
     container.register('user_tracker', get_user_tracker, singleton=True)
