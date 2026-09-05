@@ -2449,7 +2449,165 @@ def coinstats_all():
         logger.error(f"CoinStats all error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================
+# اضافه کردن به api_routes.py - انتهای فایل
+# ============================================================
 
+# ============================================================
+# ۱۹. قیمت‌های لحظه‌ای (WebSocket + Fallback)
+# ============================================================
+
+@api_bp.route('/crypto/prices', methods=['GET'])
+@require_auth()
+def get_realtime_prices():
+    """
+    دریافت قیمت‌های لحظه‌ای چند ارز
+    """
+    try:
+        symbols_param = request.args.get('symbols', '')
+        symbols = [s.strip().upper() for s in symbols_param.split(',') if s.strip()]
+        
+        container = current_app.container
+        price_manager = container.price_manager()
+        
+        if symbols:
+            prices = price_manager.get_prices(symbols)
+        else:
+            prices = price_manager.get_prices()
+        
+        stats = price_manager.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': prices,
+            'count': len(prices),
+            'stats': {
+                'websocket_connected': stats.get('websocket_connected', False),
+                'last_update': stats.get('last_update'),
+                'source': 'websocket' if stats.get('websocket_connected') else 'cache'
+            },
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Get realtime prices error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/price/<symbol>', methods=['GET'])
+@require_auth()
+def get_realtime_price(symbol):
+    """
+    دریافت قیمت لحظه‌ای یک ارز
+    """
+    try:
+        symbol = symbol.upper()
+        container = current_app.container
+        price_manager = container.price_manager()
+        
+        price = price_manager.get_price(symbol)
+        
+        if price:
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'data': price,
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        # Fallback: دریافت از CoinStats
+        coin_data = current_app.coinstats_client.get_coin(symbol.lower())
+        if coin_data and "error" not in coin_data:
+            price_data = {
+                "price": coin_data.get("price", 0),
+                "change_24h": coin_data.get("priceChange1d", 0),
+                "high_24h": coin_data.get("high24h", 0),
+                "low_24h": coin_data.get("low24h", 0),
+                "volume": coin_data.get("volume24h", 0),
+                "timestamp": datetime.now().isoformat(),
+                "source": "coinstats"
+            }
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'data': price_data,
+                'source': 'coinstats',
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        return jsonify({'success': False, 'error': 'Price not found'}), 404
+        
+    except Exception as e:
+        logger.error(f"Get realtime price error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/stats', methods=['GET'])
+@require_auth()
+def get_crypto_stats():
+    """
+    دریافت آمار مصرف و وضعیت WebSocket
+    """
+    try:
+        container = current_app.container
+        price_manager = container.price_manager()
+        user_tracker = container.user_tracker()
+        free_client = container.free_crypto_client()
+        
+        stats = {
+            'websocket': {
+                'connected': free_client.is_connected,
+                'symbols_count': free_client.stats['symbols_count'],
+                'messages_received': free_client.stats['messages_received'],
+                'reconnects': free_client.stats['reconnects'],
+                'errors': free_client.stats['errors'],
+                'last_update': free_client.stats['last_update']
+            },
+            'price_manager': {
+                'is_running': price_manager.is_running,
+                'last_update': price_manager._last_update,
+                'fallback_count': price_manager._fallback_count,
+                'last_fallback': price_manager._last_fallback
+            },
+            'users': {
+                'online': user_tracker.get_online_count(),
+                'timeout': user_tracker.timeout
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Get crypto stats error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/heartbeat', methods=['POST'])
+@require_auth()
+def crypto_heartbeat():
+    """
+    ثبت ضربان قلب کاربر (برای پیگیری کاربران آنلاین)
+    """
+    try:
+        session_id = request.cookies.get('session_id')
+        if not session_id:
+            return jsonify({'success': False, 'error': 'No session'}), 401
+        
+        container = current_app.container
+        user_tracker = container.user_tracker()
+        user_tracker.heartbeat(session_id)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Heartbeat sent',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Heartbeat error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # ۱۳. هشدارها (ALERTS)
 # ============================================================
