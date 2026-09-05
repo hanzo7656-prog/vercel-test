@@ -117,7 +117,29 @@ class CoinStatsClient(APIClient):
     # ============================================================
     # پیاده‌سازی Interface APIClient
     # ============================================================
+    def get_coins_list(self, limit: int = 50, page: int = 1, currency: str = "USD", search: str = None) -> Optional[List[Dict]]:
+        """دریافت لیست ارزها از API (TTL: ۲۴ ساعت)"""
+        cache_key = f"coins_list_{limit}_{page}_{currency}_{search}"
     
+        cached = cache_manager.get(cache_key)
+        if cached:
+            self._stats["cache_hits"] += 1
+            return cached
+    
+        self._stats["cache_misses"] += 1
+        params = {"limit": limit, "page": page, "currency": currency}
+        if search:
+            params["search"] = search
+    
+        result = self._request("GET", "/v1/coins", params)
+    
+        if result and "result" in result:
+            coins = result.get("result", [])
+            cache_manager.set(cache_key, coins, 86400)  # ۲۴ ساعت
+            return coins
+    
+        return None
+        
     def get_chart(self, coin_id: str, period: str = "24h", currency: str = "USD") -> Union[List[List], Dict]:
         """دریافت داده‌های تاریخی (TTL: ۱ ساعت)"""
         cache_key: str = f"chart_{coin_id}_{period}"
