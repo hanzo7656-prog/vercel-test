@@ -1,5 +1,5 @@
 <!-- ============================================================
-     TRAINING TAB - آموزش مدل XGBoost با لاگ لحظه‌ای
+     TRAINING TAB - آموزش مدل با انتخاب داینامیک ارزها
      ============================================================ -->
 
 <div class="card">
@@ -24,33 +24,6 @@
             </select>
         </div>
 
-        <!-- ارزها -->
-        <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                <i class="fas fa-coins"></i> ارزها
-            </label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);min-height:40px;align-items:center;">
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="bitcoin" checked class="coin-checkbox"> ₿
-                </label>
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="ethereum" checked class="coin-checkbox"> ⟠
-                </label>
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="solana" class="coin-checkbox"> ◎
-                </label>
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="cardano" class="coin-checkbox"> ₳
-                </label>
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="ripple" class="coin-checkbox"> ✕
-                </label>
-                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
-                    <input type="checkbox" value="polkadot" class="coin-checkbox"> ◈
-                </label>
-            </div>
-        </div>
-
         <!-- آموزش افزایشی -->
         <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
@@ -66,13 +39,51 @@
         </div>
 
         <!-- دکمه‌ها -->
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;grid-column:span 1;">
             <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()" style="padding:8px 24px;font-size:0.8rem;">
                 <i class="fas fa-play"></i> شروع آموزش
             </button>
             <button class="btn btn-danger" id="stopTrainBtn" onclick="stopTraining()" style="padding:8px 20px;font-size:0.8rem;display:none;">
                 <i class="fas fa-stop"></i> توقف
             </button>
+        </div>
+    </div>
+
+    <!-- ===== COIN SELECTOR ===== -->
+    <div style="margin-bottom:16px;padding:12px 14px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">
+                    <i class="fas fa-coins"></i> انتخاب ارزها برای آموزش
+                </span>
+                <span class="badge badge-cyan" id="selectedCount" style="font-size:0.55rem;padding:2px 8px;">۰ انتخاب</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-xs btn-outline" onclick="selectAllCoins()" style="padding:2px 10px;font-size:0.6rem;">
+                    <i class="fas fa-check-double"></i> همه
+                </button>
+                <button class="btn btn-xs btn-outline" onclick="deselectAllCoins()" style="padding:2px 10px;font-size:0.6rem;">
+                    <i class="fas fa-times"></i> هیچ‌کدام
+                </button>
+            </div>
+        </div>
+
+        <!-- جستجو و فیلتر -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <input type="text" id="trainCoinSearch" placeholder="🔍 جستجو در ارزها..." onkeyup="filterTrainCoins()" style="flex:1;min-width:150px;padding:4px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
+            <select id="trainCoinSort" onchange="filterTrainCoins()" style="padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+                <option value="rank_asc">📊 رتبه (صعودی)</option>
+                <option value="name_asc">🔤 نام (الفبا)</option>
+                <option value="change_desc">📈 بیشترین تغییر</option>
+            </select>
+        </div>
+
+        <!-- لیست ارزها -->
+        <div id="trainCoinsGrid" style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;padding:4px 2px;">
+            <div class="loading-container" style="padding:20px;width:100%;">
+                <div class="loading-spinner" style="width:24px;height:24px;"></div>
+                <p class="loading-text" style="font-size:0.7rem;">در حال بارگذاری ارزها...</p>
+            </div>
         </div>
     </div>
 
@@ -92,9 +103,10 @@
     </div>
 
     <!-- ===== LOG CONSOLE ===== -->
-    <div style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);max-height:250px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);" id="trainingLog">
+    <div style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);max-height:200px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);" id="trainingLog">
         <div style="color:var(--text-muted);padding:4px 0;">📋 منتظر شروع آموزش...</div>
-        <div style="color:var(--text-muted);padding:4px 0;">💡 بازه پیش‌فرض: ۱ ماه • ارزها: bitcoin, ethereum</div>
+        <div style="color:var(--text-muted);padding:4px 0;">💡 بازه پیش‌فرض: ۱ ماه</div>
+        <div style="color:var(--text-muted);padding:4px 0;">🪙 ارزهای پیش‌فرض: bitcoin, ethereum</div>
     </div>
 
     <!-- ===== RESULT ===== -->
@@ -124,29 +136,166 @@
 
 <script>
 // ============================================================
-// TRAINING TAB - آموزش مدل با لاگ لحظه‌ای
+// TRAINING TAB - با انتخاب داینامیک ارزها
 // ============================================================
 
+let trainAllCoins = [];
+let trainFilteredCoins = [];
+let selectedTrainCoins = [];
 let isTraining = false;
 let trainingInterval = null;
-let trainingLogs = [];
-let trainingStartTime = 0;
-let isTrainingInitialized = false;
+let isTrainingLoaded = false;
+
+// ===== بارگذاری لیست ارزها =====
+async function loadTrainCoins() {
+    const grid = document.getElementById('trainCoinsGrid');
+    grid.innerHTML = `
+        <div class="loading-container" style="padding:20px;width:100%;">
+            <div class="loading-spinner" style="width:24px;height:24px;"></div>
+            <p class="loading-text" style="font-size:0.7rem;">در حال بارگذاری ارزها...</p>
+        </div>
+    `;
+
+    try {
+        const data = await api.getCoinsList({ limit: 100 });
+        
+        if (data.success && data.data) {
+            trainAllCoins = data.data;
+            
+            // انتخاب پیش‌فرض: bitcoin و ethereum
+            const defaultCoins = ['bitcoin', 'ethereum'];
+            selectedTrainCoins = trainAllCoins
+                .filter(c => defaultCoins.includes(c.id))
+                .map(c => c.id);
+            
+            trainFilteredCoins = [...trainAllCoins];
+            renderTrainCoins();
+            updateSelectedCount();
+        } else {
+            grid.innerHTML = `
+                <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
+                    <span style="font-size:1.5rem;display:block;margin-bottom:4px;">📭</span>
+                    <p style="font-size:0.7rem;">هیچ ارزی یافت نشد</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Load train coins error:', error);
+        grid.innerHTML = `
+            <div style="text-align:center;padding:20px;color:var(--accent-red);width:100%;">
+                <span style="font-size:1.5rem;display:block;margin-bottom:4px;">❌</span>
+                <p style="font-size:0.7rem;">خطا در دریافت لیست ارزها</p>
+            </div>
+        `;
+    }
+}
+
+// ===== رندر لیست ارزهای آموزش =====
+function renderTrainCoins() {
+    const grid = document.getElementById('trainCoinsGrid');
+    
+    if (trainFilteredCoins.length === 0) {
+        grid.innerHTML = `
+            <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
+                <span style="font-size:1.5rem;display:block;margin-bottom:4px;">🔍</span>
+                <p style="font-size:0.7rem;">هیچ ارزی با این جستجو یافت نشد</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = trainFilteredCoins.map(coin => {
+        const isSelected = selectedTrainCoins.includes(coin.id);
+        const change = coin.priceChange1d || 0;
+        const changeColor = change > 0 ? 'var(--accent-green)' : change < 0 ? 'var(--accent-red)' : 'var(--text-muted)';
+        
+        return `
+            <label style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:${isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-input)'};border:1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s ease;font-size:0.65rem;color:var(--text-secondary);"
+                   onmouseover="this.style.borderColor='var(--border-hover)';"
+                   onmouseout="this.style.borderColor='${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'}';">
+                <input type="checkbox" 
+                       value="${coin.id}" 
+                       ${isSelected ? 'checked' : ''} 
+                       onchange="toggleTrainCoin('${coin.id}')"
+                       style="accent-color:var(--accent-cyan);width:14px;height:14px;cursor:pointer;">
+                <span style="font-weight:500;color:var(--text-primary);">${coin.symbol || coin.id.toUpperCase().slice(0,4)}</span>
+                <span style="color:var(--text-muted);font-size:0.55rem;">${coin.name || ''}</span>
+                <span style="color:${changeColor};font-size:0.55rem;font-weight:500;">${(change > 0 ? '+' : '') + change.toFixed(2)}%</span>
+            </label>
+        `;
+    }).join('');
+}
+
+// ===== فیلتر ارزهای آموزش =====
+function filterTrainCoins() {
+    const search = document.getElementById('trainCoinSearch').value.toLowerCase().trim();
+    const sort = document.getElementById('trainCoinSort').value;
+    
+    trainFilteredCoins = trainAllCoins.filter(coin => {
+        const name = (coin.name || '').toLowerCase();
+        const symbol = (coin.symbol || '').toLowerCase();
+        const id = (coin.id || '').toLowerCase();
+        return name.includes(search) || symbol.includes(search) || id.includes(search);
+    });
+    
+    switch(sort) {
+        case 'rank_asc':
+            trainFilteredCoins.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+            break;
+        case 'name_asc':
+            trainFilteredCoins.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+        case 'change_desc':
+            trainFilteredCoins.sort((a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0));
+            break;
+    }
+    
+    renderTrainCoins();
+}
+
+// ===== تغییر انتخاب یک ارز =====
+function toggleTrainCoin(coinId) {
+    const index = selectedTrainCoins.indexOf(coinId);
+    if (index > -1) {
+        selectedTrainCoins.splice(index, 1);
+    } else {
+        selectedTrainCoins.push(coinId);
+    }
+    updateSelectedCount();
+    renderTrainCoins();
+}
+
+// ===== انتخاب همه ارزها =====
+function selectAllCoins() {
+    selectedTrainCoins = trainAllCoins.map(c => c.id);
+    updateSelectedCount();
+    renderTrainCoins();
+}
+
+// ===== لغو انتخاب همه ارزها =====
+function deselectAllCoins() {
+    selectedTrainCoins = [];
+    updateSelectedCount();
+    renderTrainCoins();
+}
+
+// ===== بروزرسانی تعداد انتخاب‌ها =====
+function updateSelectedCount() {
+    document.getElementById('selectedCount').textContent = selectedTrainCoins.length + ' انتخاب';
+}
 
 // ===== شروع آموزش =====
 async function startTraining() {
     if (isTraining) return;
-
-    const period = document.getElementById('trainPeriod').value;
-    const coins = Array.from(document.querySelectorAll('.coin-checkbox:checked')).map(cb => cb.value);
-    const incremental = document.getElementById('incrementalToggle').checked;
-
-    if (coins.length === 0) {
+    if (selectedTrainCoins.length === 0) {
         showToast('⚠️ حداقل یک ارز را انتخاب کنید', 'warning');
         return;
     }
 
-    // ===== نمایش لودینگ =====
+    const period = document.getElementById('trainPeriod').value;
+    const incremental = document.getElementById('incrementalToggle').checked;
+
+    // نمایش لودینگ
     loading.show({
         messages: [
             'در حال آماده‌سازی داده‌ها...|دریافت اطلاعات از API',
@@ -156,17 +305,13 @@ async function startTraining() {
         ],
         duration: 30000,
         onComplete: function() {
-            // بعد از اتمام لودینگ، نتیجه رو بررسی کن
             checkTrainingResult();
         }
     });
 
-    // شروع آموزش
     isTraining = true;
     trainingStartTime = Date.now();
-    trainingLogs = [];
 
-    // بروزرسانی UI
     document.getElementById('startTrainBtn').style.display = 'none';
     document.getElementById('stopTrainBtn').style.display = 'inline-flex';
     document.getElementById('trainingProgress').style.display = 'block';
@@ -174,30 +319,26 @@ async function startTraining() {
     document.getElementById('trainingStatusBadge').textContent = '⏳ در حال آموزش';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
 
-    // پاک کردن لاگ قبلی
+    // پاک کردن لاگ
     const logEl = document.getElementById('trainingLog');
     logEl.innerHTML = '';
 
-    // اضافه کردن پیام شروع
-    addLog('🚀 شروع آموزش مدل XGBoost');
-    addLog(`📊 بازه زمانی: ${period}`);
-    addLog(`🪙 ارزها: ${coins.join(', ')}`);
-    addLog(`🔄 آموزش افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
-    addLog('⏳ در حال دریافت داده‌ها...');
+    addTrainLog('🚀 شروع آموزش مدل XGBoost');
+    addTrainLog(`📊 بازه زمانی: ${period}`);
+    addTrainLog(`🪙 ارزها: ${selectedTrainCoins.length} ارز (${selectedTrainCoins.join(', ')})`);
+    addTrainLog(`🔄 آموزش افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
+    addTrainLog('⏳ در حال دریافت داده‌ها...');
 
     try {
-        // ارسال درخواست آموزش
         const result = await api.trainModel({
             period: period,
-            coins: coins,
+            coins: selectedTrainCoins,
             incremental: incremental
         });
 
-        // ذخیره نتیجه برای بعد از لودینگ
-        window._trainingResult = result;
-        window._trainingComplete = true;
+        window._trainResult = result;
+        window._trainComplete = true;
 
-        // اگر خطایی رخ داد، لودینگ رو مخفی کن
         if (!result.success) {
             loading.hide();
             isTraining = false;
@@ -207,13 +348,8 @@ async function startTraining() {
             document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
             document.getElementById('trainingProgress').style.display = 'none';
             showToast('❌ ' + (result.message || 'خطا در آموزش'), 'error');
-            addLog('❌ ' + (result.message || 'خطا در آموزش'));
-            return;
+            addTrainLog('❌ ' + (result.message || 'خطا در آموزش'));
         }
-
-        // اگر نتیجه موفق بود، لودینگ خودش کامل میشه (با onComplete)
-        // و تابع checkTrainingResult صدا زده میشه
-
     } catch (error) {
         loading.hide();
         isTraining = false;
@@ -223,17 +359,14 @@ async function startTraining() {
         document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
         document.getElementById('trainingProgress').style.display = 'none';
         showToast('❌ خطا: ' + error.message, 'error');
-        addLog('❌ خطا: ' + error.message);
+        addTrainLog('❌ خطا: ' + error.message);
     }
 }
 
 // ===== بررسی نتیجه آموزش =====
 function checkTrainingResult() {
-    const result = window._trainingResult;
-    if (!result) {
-        showToast('❌ نتیجه‌ای دریافت نشد', 'error');
-        return;
-    }
+    const result = window._trainResult;
+    if (!result) return;
 
     isTraining = false;
     document.getElementById('startTrainBtn').style.display = 'inline-flex';
@@ -242,43 +375,26 @@ function checkTrainingResult() {
     document.getElementById('trainingStatusBadge').textContent = '✅ تکمیل';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-green)';
 
-    // نمایش نتیجه
     document.getElementById('trainingResult').style.display = 'block';
     document.getElementById('resultMessage').textContent = result.message || 'آموزش با موفقیت انجام شد';
+    document.getElementById('resultAccuracy').textContent = result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—';
     
-    if (result.accuracy !== undefined && result.accuracy !== null) {
-        document.getElementById('resultAccuracy').textContent = (result.accuracy * 100).toFixed(2) + '%';
-    } else {
-        document.getElementById('resultAccuracy').textContent = '—';
-    }
-
     if (result.improvement !== undefined && result.improvement !== null) {
         const imp = result.improvement * 100;
-        const color = imp > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
         document.getElementById('resultImprovement').textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
-        document.getElementById('resultImprovement').style.color = color;
+        document.getElementById('resultImprovement').style.color = imp > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
     } else {
         document.getElementById('resultImprovement').textContent = '—';
         document.getElementById('resultImprovement').style.color = 'var(--text-muted)';
     }
-
+    
     document.getElementById('resultVersion').textContent = result.version || 'N/A';
 
-    // اضافه کردن لاگ نهایی
-    addLog('✅ آموزش با موفقیت تکمیل شد');
-    addLog(`📊 دقت نهایی: ${(result.accuracy * 100).toFixed(2)}%`);
-    if (result.improvement !== undefined && result.improvement !== null) {
-        const imp = result.improvement * 100;
-        addLog(`📈 بهبود: ${(imp > 0 ? '+' : '') + imp.toFixed(2)}%`);
-    }
-    addLog(`📌 نسخه: ${result.version || 'N/A'}`);
+    addTrainLog('✅ آموزش با موفقیت تکمیل شد');
+    addTrainLog(`📊 دقت نهایی: ${result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—'}`);
+    addTrainLog(`📌 نسخه: ${result.version || 'N/A'}`);
 
     showToast('✅ آموزش با موفقیت انجام شد', 'success');
-
-    // بروزرسانی داشبورد
-    if (window.loadAll) {
-        setTimeout(window.loadAll, 1000);
-    }
 }
 
 // ===== توقف آموزش =====
@@ -290,9 +406,7 @@ async function stopTraining() {
         loading.show({
             messages: ['در حال توقف آموزش...'],
             duration: 3000,
-            onComplete: function() {
-                // ادامه
-            }
+            onComplete: function() { /* ادامه */ }
         });
 
         const result = await api.stopSchedule();
@@ -305,10 +419,8 @@ async function stopTraining() {
             document.getElementById('trainingProgress').style.display = 'none';
             document.getElementById('trainingStatusBadge').textContent = '⏹️ متوقف شد';
             document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
-            addLog('⏹️ آموزش توسط کاربر متوقف شد');
+            addTrainLog('⏹️ آموزش توسط کاربر متوقف شد');
             showToast('⏹️ آموزش متوقف شد', 'warning');
-        } else {
-            showToast('❌ ' + (result.message || 'خطا'), 'error');
         }
     } catch (error) {
         loading.hide();
@@ -317,7 +429,7 @@ async function stopTraining() {
 }
 
 // ===== افزودن لاگ =====
-function addLog(message) {
+function addTrainLog(message) {
     const logEl = document.getElementById('trainingLog');
     const time = new Date().toLocaleTimeString('fa-IR');
     const entry = document.createElement('div');
@@ -328,51 +440,27 @@ function addLog(message) {
     `;
     logEl.appendChild(entry);
     logEl.scrollTop = logEl.scrollHeight;
-    trainingLogs.push(message);
-}
-
-// ===== بروزرسانی پیشرفت (شبیه‌سازی) =====
-function updateProgress(percent, label, eta) {
-    document.getElementById('progressBar').style.width = Math.min(percent, 100) + '%';
-    document.getElementById('progressPercent').textContent = Math.min(percent, 100) + '%';
-    if (label) document.getElementById('progressLabel').textContent = label;
-    if (eta) document.getElementById('progressEta').textContent = '⏱️ زمان تخمینی: ' + eta;
-}
-
-// ===== شبیه‌سازی پیشرفت (در حین آموزش) =====
-function simulateProgress() {
-    if (!isTraining) return;
-    
-    const elapsed = (Date.now() - trainingStartTime) / 1000;
-    let progress = Math.min((elapsed / 60) * 100, 95);
-    
-    if (progress < 30) {
-        updateProgress(progress, 'در حال آماده‌سازی داده‌ها...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
-    } else if (progress < 60) {
-        updateProgress(progress, 'در حال آموزش مدل XGBoost...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
-    } else if (progress < 85) {
-        updateProgress(progress, 'بهینه‌سازی پارامترها...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
-    } else {
-        updateProgress(progress, 'ذخیره‌سازی مدل در دیتابیس...', 'لحظاتی دیگر');
-    }
 }
 
 // ===== مقداردهی اولیه =====
 window.init_training = function() {
     console.log('🎓 Training tab initializing...');
     
-    if (isTrainingInitialized) return;
-    isTrainingInitialized = true;
+    if (isTrainingLoaded) return;
+    isTrainingLoaded = true;
     
-    // تنظیم رویدادها
-    document.getElementById('startTrainBtn').addEventListener('click', startTraining);
-    document.getElementById('stopTrainBtn').addEventListener('click', stopTraining);
+    loadTrainCoins();
     
-    // شروع شبیه‌سازی پیشرفت
+    // بروزرسانی هر ۵ دقیقه
     if (trainingInterval) {
         clearInterval(trainingInterval);
     }
-    trainingInterval = setInterval(simulateProgress, 1000);
+    trainingInterval = setInterval(() => {
+        const activeTab = document.querySelector('#modelTabs .tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'training') {
+            loadTrainCoins();
+        }
+    }, 300000);
 };
 
 // ===== پاکسازی =====
@@ -381,9 +469,9 @@ window.cleanup_training = function() {
         clearInterval(trainingInterval);
         trainingInterval = null;
     }
-    isTrainingInitialized = false;
+    isTrainingLoaded = false;
     console.log('🧹 Training tab cleaned up');
 };
 
-console.log('✅ Training tab loaded');
+console.log('✅ Training tab loaded (dynamic coins)');
 </script>
