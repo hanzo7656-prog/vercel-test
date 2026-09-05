@@ -2280,7 +2280,7 @@ def get_coins_list():
         search = request.args.get('search')
         
         container = current_app.container
-        api_client = container.api_client()
+        api_client = container.get('api_client')
         
         coins = api_client.get_coins_list(limit=limit, page=page, currency=currency, search=search)
         
