@@ -1,0 +1,201 @@
+<!-- ============================================================
+     HISTORY TAB - تاریخچه پیش‌بینی‌ها
+     ============================================================ -->
+
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-history"></i> تاریخچه پیش‌بینی‌ها
+        <span class="badge-count" id="historyCount" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">۰</span>
+        <button class="btn btn-xs btn-outline" onclick="refreshHistory()" style="padding:2px 10px;font-size:0.6rem;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- ===== TOOLBAR ===== -->
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
+            <input type="text" id="historySearch" placeholder="🔍 جستجو..." onkeyup="filterHistory()" style="padding:4px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:120px;flex:1;">
+            <select id="historyFilter" onchange="filterHistory()" style="padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+                <option value="all">همه</option>
+                <option value="BUY">🟢 خرید</option>
+                <option value="SELL">🔴 فروش</option>
+                <option value="NEUTRAL">🟡 خنثی</option>
+            </select>
+        </div>
+        <button class="btn btn-xs btn-outline" onclick="exportHistoryCSV()" style="padding:2px 10px;font-size:0.6rem;">
+            <i class="fas fa-file-csv"></i> CSV
+        </button>
+    </div>
+
+    <!-- ===== TABLE ===== -->
+    <div style="overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+        <table style="width:100%;border-collapse:collapse;font-size:0.75rem;min-width:600px;">
+            <thead>
+                <tr>
+                    <th style="text-align:right;padding:8px 12px;color:var(--text-secondary);font-weight:500;font-size:0.6rem;text-transform:uppercase;border-bottom:2px solid var(--border-color);background:var(--bg-input);">ارز</th>
+                    <th style="text-align:right;padding:8px 12px;color:var(--text-secondary);font-weight:500;font-size:0.6rem;text-transform:uppercase;border-bottom:2px solid var(--border-color);background:var(--bg-input);">سیگنال</th>
+                    <th style="text-align:right;padding:8px 12px;color:var(--text-secondary);font-weight:500;font-size:0.6rem;text-transform:uppercase;border-bottom:2px solid var(--border-color);background:var(--bg-input);">قیمت</th>
+                    <th style="text-align:right;padding:8px 12px;color:var(--text-secondary);font-weight:500;font-size:0.6rem;text-transform:uppercase;border-bottom:2px solid var(--border-color);background:var(--bg-input);">اطمینان</th>
+                    <th style="text-align:right;padding:8px 12px;color:var(--text-secondary);font-weight:500;font-size:0.6rem;text-transform:uppercase;border-bottom:2px solid var(--border-color);background:var(--bg-input);">زمان</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>
+                    در حال بارگذاری...
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// HISTORY TAB - تاریخچه پیش‌بینی‌ها
+// ============================================================
+
+let historyData = [];
+let historyInterval = null;
+let isHistoryLoaded = false;
+
+// ===== بارگذاری تاریخچه =====
+async function loadHistory() {
+    const tbody = document.getElementById('historyBody');
+    const countEl = document.getElementById('historyCount');
+
+    try {
+        const data = await api.getPredictionHistory(50);
+        
+        if (data.success && data.data) {
+            historyData = data.data;
+            countEl.textContent = historyData.length;
+            renderHistory(historyData);
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت تاریخچه</td></tr>`;
+        }
+    } catch (error) {
+        console.error('History error:', error);
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در ارتباط با سرور</td></tr>`;
+    }
+}
+
+// ===== رندر تاریخچه =====
+function renderHistory(data) {
+    const tbody = document.getElementById('historyBody');
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">
+            <span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>
+            هیچ پیش‌بینی ذخیره‌ای یافت نشد
+        </td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = data.map(item => {
+        const signal = item.signal_type || 'NEUTRAL';
+        const emojis = { BUY: '🟢', SELL: '🔴', NEUTRAL: '🟡' };
+        const labels = { BUY: 'خرید', SELL: 'فروش', NEUTRAL: 'خنثی' };
+        const colors = { BUY: 'var(--accent-green)', SELL: 'var(--accent-red)', NEUTRAL: 'var(--accent-orange)' };
+        
+        return `
+            <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-weight:500;">
+                    ${item.coin_name || item.coin}
+                </td>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);color:${colors[signal]};font-weight:600;">
+                    ${emojis[signal]} ${labels[signal]}
+                </td>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-family:var(--font-mono);">
+                    ${formatCurrency(item.current_price)}
+                </td>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);">
+                    ${item.confidence || '—'}
+                </td>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-size:0.65rem;color:var(--text-muted);">
+                    ${formatDate(item.timestamp)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ===== فیلتر =====
+function filterHistory() {
+    const search = document.getElementById('historySearch').value.toLowerCase();
+    const filter = document.getElementById('historyFilter').value;
+    
+    let filtered = historyData;
+    
+    if (search) {
+        filtered = filtered.filter(item => 
+            (item.coin || '').toLowerCase().includes(search) ||
+            (item.coin_name || '').toLowerCase().includes(search)
+        );
+    }
+    
+    if (filter !== 'all') {
+        filtered = filtered.filter(item => item.signal_type === filter);
+    }
+    
+    renderHistory(filtered);
+}
+
+// ===== خروجی CSV =====
+function exportHistoryCSV() {
+    if (historyData.length === 0) {
+        showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
+        return;
+    }
+    
+    const headers = ['ارز', 'سیگنال', 'قیمت', 'اطمینان', 'زمان'];
+    const rows = historyData.map(item => [
+        item.coin_name || item.coin,
+        item.signal_type || 'NEUTRAL',
+        item.current_price || 0,
+        item.confidence || '—',
+        formatDate(item.timestamp)
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `predictions_history_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast('📥 دانلود CSV شروع شد', 'success');
+}
+
+// ===== رفرش =====
+function refreshHistory() {
+    showToast('🔄 بروزرسانی...', 'info');
+    loadHistory();
+}
+
+// ===== مقداردهی اولیه =====
+window.init_history = function() {
+    console.log('📋 History tab initializing...');
+    
+    if (isHistoryLoaded) return;
+    isHistoryLoaded = true;
+    
+    loadHistory();
+    
+    if (historyInterval) {
+        clearInterval(historyInterval);
+    }
+    historyInterval = setInterval(loadHistory, 60000);
+};
+
+// ===== پاکسازی =====
+window.cleanup_history = function() {
+    if (historyInterval) {
+        clearInterval(historyInterval);
+        historyInterval = null;
+    }
+    isHistoryLoaded = false;
+    console.log('🧹 History tab cleaned up');
+};
+
+console.log('✅ History tab loaded');
+</script>
