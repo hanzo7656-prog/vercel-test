@@ -1,14 +1,21 @@
 <!-- ============================================================
-     PREDICT TAB - پیش‌بینی لحظه‌ای با کلیک روی کارت‌ها
+     PREDICT TAB - پیش‌بینی لحظه‌ای با WebSocket
      ============================================================ -->
 
 <div class="card">
     <div class="card-title">
         <i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی لحظه‌ای
-        <span class="badge-count" id="predictStatus" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">✅ آماده</span>
-        <button class="btn btn-xs btn-outline" onclick="refreshCoins()" style="padding:2px 10px;font-size:0.6rem;">
-            <i class="fas fa-sync-alt"></i>
-        </button>
+        <div style="display:flex;align-items:center;gap:8px;margin-right:auto;">
+            <span class="badge" id="wsStatus" style="font-size:0.55rem;padding:2px 10px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">
+                <i class="fas fa-circle" style="color:var(--accent-orange);font-size:0.4rem;"></i> در حال اتصال...
+            </span>
+            <span class="badge" id="predictStatus" style="font-size:0.55rem;padding:2px 10px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">
+                ✅ آماده
+            </span>
+            <button class="btn btn-xs btn-outline" onclick="refreshCoins()" style="padding:2px 10px;font-size:0.6rem;">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
     </div>
 
     <!-- ===== TOOLBAR: Search + Filters ===== -->
@@ -28,18 +35,32 @@
                 <option value="change_desc">📈 بیشترین تغییر</option>
                 <option value="change_asc">📉 کمترین تغییر</option>
             </select>
+            <select id="changeFilter" onchange="filterCoins()" style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
+                <option value="all">🔄 همه</option>
+                <option value="positive">📈 مثبت</option>
+                <option value="negative">📉 منفی</option>
+                <option value="high">🔥 بیش از ۵٪</option>
+            </select>
         </div>
-        <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-muted);">
+        <div style="display:flex;gap:12px;font-size:0.6rem;color:var(--text-muted);">
             <span id="coinCount">۰ ارز</span>
+            <span id="wsPriceCount" style="color:var(--accent-cyan);">⚡ ۰</span>
         </div>
     </div>
 
     <!-- ===== COINS GRID ===== -->
-    <div id="coinsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-height:400px;overflow-y:auto;padding:4px 2px;">
-        <div class="loading-container" style="padding:30px;">
+    <div id="coinsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-height:400px;overflow-y:auto;padding:4px 2px;" class="custom-scroll">
+        <div class="loading-container" style="padding:30px;grid-column:1/-1;">
             <div class="loading-spinner" style="width:28px;height:28px;"></div>
             <p class="loading-text" style="font-size:0.8rem;">در حال بارگذاری ارزها...</p>
         </div>
+    </div>
+
+    <!-- ===== SELECTED COIN INDICATOR ===== -->
+    <div id="selectedIndicator" style="display:none;margin-top:10px;padding:6px 14px;background:rgba(0,212,255,0.06);border-radius:var(--radius-sm);border:1px solid rgba(0,212,255,0.08);font-size:0.7rem;color:var(--text-secondary);">
+        <i class="fas fa-check-circle" style="color:var(--accent-green);"></i>
+        ارز انتخاب شده: <span id="selectedCoinName" style="color:var(--text-primary);font-weight:600;">—</span>
+        <span style="color:var(--text-muted);font-size:0.6rem;">(برای پیش‌بینی کلیک کنید)</span>
     </div>
 
     <!-- ===== RESULT ===== -->
@@ -68,27 +89,34 @@
         <div style="margin-top:8px;font-size:0.6rem;color:var(--text-muted);" id="resultTime">—</div>
     </div>
 
-    <!-- ===== SELECTED COIN INDICATOR ===== -->
-    <div id="selectedIndicator" style="display:none;margin-top:10px;padding:6px 14px;background:rgba(0,212,255,0.06);border-radius:var(--radius-sm);border:1px solid rgba(0,212,255,0.08);font-size:0.7rem;color:var(--text-secondary);">
-        <i class="fas fa-check-circle" style="color:var(--accent-green);"></i>
-        ارز انتخاب شده: <span id="selectedCoinName" style="color:var(--text-primary);font-weight:600;">—</span>
-        <span style="color:var(--text-muted);font-size:0.6rem;">(برای پیش‌بینی کلیک کنید)</span>
+    <!-- ===== WebSocket Stats ===== -->
+    <div id="wsStats" style="display:none;margin-top:10px;padding:6px 14px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);border:1px solid var(--border-color);font-size:0.55rem;color:var(--text-muted);">
+        <span id="wsStatsText">🔄 در حال دریافت آمار...</span>
     </div>
 </div>
 
 <script>
 // ============================================================
-// PREDICT TAB - کامل با لیست داینامیک و فیلترها
+// PREDICT TAB - با WebSocket و بروزرسانی لحظه‌ای
 // ============================================================
 
 let allCoins = [];
 let filteredCoins = [];
 let selectedCoinId = null;
 let isPredictLoading = false;
-let predictInterval = null;
+let priceUpdateCount = 0;
+let wsConnected = false;
+
+// Intervals
+let wsInterval = null;
+let heartbeatInterval = null;
+let statsInterval = null;
 let isPredictLoaded = false;
 
-// ===== بارگذاری لیست ارزها از API =====
+// ============================================================
+// ۱. بارگذاری لیست ارزها
+// ============================================================
+
 async function loadCoins() {
     const grid = document.getElementById('coinsGrid');
     grid.innerHTML = `
@@ -101,11 +129,32 @@ async function loadCoins() {
     try {
         const data = await api.getCoinsList({ limit: 100 });
         
-        if (data.success && data.data && data.data.length > 0) {
+        if (data.success && data.data) {
             allCoins = data.data;
             filteredCoins = [...allCoins];
             document.getElementById('coinCount').textContent = allCoins.length + ' ارز';
+            
+            // انتخاب پیش‌فرض هوشمند
+            const defaultCoin = await getDefaultPredictCoin(allCoins);
+            selectedCoinId = defaultCoin;
+            
             renderCoins();
+            
+            // هایلایت انتخاب شده
+            const indicator = document.getElementById('selectedIndicator');
+            const selectedName = document.getElementById('selectedCoinName');
+            const coin = allCoins.find(c => c.id === defaultCoin);
+            if (coin) {
+                selectedName.textContent = coin.symbol + ' - ' + coin.name;
+                indicator.style.display = 'block';
+            }
+            
+            // خودکار پیش‌بینی کن
+            setTimeout(() => predictCoin(defaultCoin), 300);
+            
+            // شروع WebSocket
+            startWebSocketUpdates();
+            
         } else {
             grid.innerHTML = `
                 <div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1;">
@@ -131,7 +180,10 @@ async function loadCoins() {
     }
 }
 
-// ===== رندر کارت‌های ارزها =====
+// ============================================================
+// ۲. رندر کارت‌های ارزها
+// ============================================================
+
 function renderCoins() {
     const grid = document.getElementById('coinsGrid');
     
@@ -157,6 +209,7 @@ function renderCoins() {
         return `
             <div class="coin-card" 
                  data-coin-id="${coin.id}"
+                 data-symbol="${symbol}"
                  onclick="predictCoin('${coin.id}')"
                  style="background:${isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-input)'};
                         border:2px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};
@@ -180,18 +233,130 @@ function renderCoins() {
                     <span style="font-weight:700;font-size:0.85rem;color:var(--text-primary);">${symbol}</span>
                 </div>
                 <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-                <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">${formatCurrency(price)}</div>
+                <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);" class="coin-price" data-symbol="${symbol}">
+                    ${formatCurrency(price)}
+                </div>
                 <div style="font-size:0.6rem;font-weight:500;color:${changeColor};">${changeText}</div>
                 <div style="font-size:0.5rem;color:var(--text-muted);margin-top:4px;">#${coin.rank || '—'}</div>
+                <div id="ws-price-${symbol}" style="font-size:0.5rem;color:var(--accent-cyan);margin-top:2px;display:none;">
+                    <i class="fas fa-bolt"></i> <span class="ws-price-value">—</span>
+                </div>
             </div>
         `;
     }).join('');
 }
 
-// ===== فیلتر و جستجو =====
+// ============================================================
+// ۳. WebSocket - بروزرسانی قیمت‌ها
+// ============================================================
+
+function startWebSocketUpdates() {
+    // بروزرسانی قیمت‌ها هر ۱۰ ثانیه
+    if (wsInterval) clearInterval(wsInterval);
+    wsInterval = setInterval(updatePricesFromWebSocket, 10000);
+    
+    // ارسال Heartbeat هر ۱۵ ثانیه
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    heartbeatInterval = setInterval(sendHeartbeat, 15000);
+    
+    // بروزرسانی وضعیت WebSocket هر ۳۰ ثانیه
+    if (statsInterval) clearInterval(statsInterval);
+    statsInterval = setInterval(updateWebSocketStatus, 30000);
+    
+    // بروزرسانی اولیه
+    updatePricesFromWebSocket();
+    updateWebSocketStatus();
+}
+
+async function updatePricesFromWebSocket() {
+    try {
+        const symbols = allCoins.slice(0, 20).map(c => c.symbol);
+        const data = await api.getRealtimePrices(symbols);
+        
+        if (data.success && data.data) {
+            priceUpdateCount++;
+            
+            Object.keys(data.data).forEach(symbol => {
+                const priceData = data.data[symbol];
+                const price = priceData.price || 0;
+                
+                // به‌روزرسانی قیمت روی کارت
+                const priceElement = document.querySelector(`.coin-price[data-symbol="${symbol}"]`);
+                if (priceElement) {
+                    priceElement.textContent = formatCurrency(price);
+                }
+                
+                // نمایش نشانگر WebSocket
+                const wsElement = document.getElementById(`ws-price-${symbol}`);
+                if (wsElement) {
+                    wsElement.style.display = 'block';
+                    const valueEl = wsElement.querySelector('.ws-price-value');
+                    if (valueEl) {
+                        valueEl.textContent = formatCurrency(price);
+                    }
+                }
+            });
+            
+            document.getElementById('wsPriceCount').textContent = '⚡ ' + Object.keys(data.data).length;
+        }
+    } catch (error) {
+        console.error('WebSocket price update error:', error);
+    }
+}
+
+async function sendHeartbeat() {
+    try {
+        await api.sendHeartbeat();
+    } catch (error) {
+        // بی‌صدا خطا را نادیده بگیر
+    }
+}
+
+async function updateWebSocketStatus() {
+    try {
+        const data = await api.getCryptoStats();
+        const statusEl = document.getElementById('wsStatus');
+        
+        if (data.success && data.data) {
+            const ws = data.data.websocket || {};
+            const connected = ws.connected || false;
+            
+            if (connected) {
+                statusEl.innerHTML = `<i class="fas fa-circle" style="color:var(--accent-green);font-size:0.4rem;"></i> متصل (${ws.symbols_count || 0} ارز)`;
+                statusEl.style.borderColor = 'rgba(34,211,238,0.3)';
+                wsConnected = true;
+            } else {
+                statusEl.innerHTML = `<i class="fas fa-circle" style="color:var(--accent-orange);font-size:0.4rem;"></i> در حال اتصال...`;
+                statusEl.style.borderColor = 'var(--border-color)';
+                wsConnected = false;
+            }
+            
+            const statsEl = document.getElementById('wsStats');
+            const statsText = document.getElementById('wsStatsText');
+            if (statsEl && statsText) {
+                statsEl.style.display = 'block';
+                statsText.textContent = `📡 WebSocket: ${connected ? '🟢 متصل' : '🟡 در حال اتصال'} | پیام‌ها: ${ws.messages_received || 0} | بروزرسانی‌ها: ${priceUpdateCount}`;
+            }
+        }
+    } catch (error) {
+        console.error('WebSocket status error:', error);
+    }
+}
+
+function stopWebSocketUpdates() {
+    if (wsInterval) { clearInterval(wsInterval); wsInterval = null; }
+    if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+    if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
+}
+
+// ============================================================
+// ۴. فیلتر و جستجو
+// ============================================================
+
 function filterCoins() {
     const search = document.getElementById('coinSearch').value.toLowerCase().trim();
     const sort = document.getElementById('sortFilter').value;
+    const changeFilter = document.getElementById('changeFilter').value;
     
     // فیلتر بر اساس جستجو
     filteredCoins = allCoins.filter(coin => {
@@ -200,6 +365,15 @@ function filterCoins() {
         const id = (coin.id || '').toLowerCase();
         return name.includes(search) || symbol.includes(search) || id.includes(search);
     });
+    
+    // فیلتر بر اساس تغییرات
+    if (changeFilter === 'positive') {
+        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) > 0);
+    } else if (changeFilter === 'negative') {
+        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) < 0);
+    } else if (changeFilter === 'high') {
+        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) > 5);
+    }
     
     // مرتب‌سازی
     switch(sort) {
@@ -235,16 +409,18 @@ function filterCoins() {
     renderCoins();
 }
 
-// ===== پیش‌بینی با کلیک روی کارت =====
+// ============================================================
+// ۵. پیش‌بینی با کلیک روی کارت
+// ============================================================
+
 async function predictCoin(coinId) {
     if (isPredictLoading) return;
     if (!coinId) return;
     
-    // بروزرسانی انتخاب
     selectedCoinId = coinId;
+    localStorage.setItem('lastPredictedCoin', coinId);
     renderCoins();
     
-    // نمایش اندیکاتور انتخاب
     const indicator = document.getElementById('selectedIndicator');
     const selectedName = document.getElementById('selectedCoinName');
     const coin = allCoins.find(c => c.id === coinId);
@@ -253,7 +429,6 @@ async function predictCoin(coinId) {
         indicator.style.display = 'block';
     }
     
-    // شروع پیش‌بینی
     isPredictLoading = true;
     document.getElementById('predictStatus').textContent = '⏳ در حال پیش‌بینی...';
     document.getElementById('predictStatus').style.color = 'var(--accent-orange)';
@@ -290,9 +465,6 @@ async function predictCoin(coinId) {
             document.getElementById('predictStatus').textContent = '✅ پیش‌بینی انجام شد';
             document.getElementById('predictStatus').style.color = 'var(--accent-green)';
             
-            // ذخیره در localStorage
-            localStorage.setItem('lastPredictedCoin', coinId);
-            
         } else {
             document.getElementById('resultSignal').textContent = '❌ خطا';
             document.getElementById('resultSignal').style.color = 'var(--accent-red)';
@@ -312,66 +484,55 @@ async function predictCoin(coinId) {
     isPredictLoading = false;
 }
 
-// ===== رفرش لیست ارزها =====
-async function refreshCoins() {
-    showToast('🔄 بروزرسانی لیست ارزها...', 'info');
-    // پاک کردن کش در فرانت‌اند (با رفرش کامل)
-    allCoins = [];
-    filteredCoins = [];
-    await loadCoins();
-    showToast('✅ لیست ارزها بروزرسانی شد', 'success');
-}
+// ============================================================
+// ۶. پیش‌فرض هوشمند برای پیش‌بینی
+// ============================================================
 
-// ===== بارگذاری آخرین ارز انتخاب شده =====
-function loadLastSelectedCoin() {
+async function getDefaultPredictCoin(allCoins) {
+    // ۱. آخرین ارز انتخاب شده
     const lastCoin = localStorage.getItem('lastPredictedCoin');
     if (lastCoin && allCoins.some(c => c.id === lastCoin)) {
-        selectedCoinId = lastCoin;
-        renderCoins();
-        const indicator = document.getElementById('selectedIndicator');
-        const selectedName = document.getElementById('selectedCoinName');
-        const coin = allCoins.find(c => c.id === lastCoin);
-        if (coin) {
-            selectedName.textContent = coin.symbol + ' - ' + coin.name;
-            indicator.style.display = 'block';
-        }
-        // خودکار پیش‌بینی نکن، فقط نشان بده
+        return lastCoin;
     }
+    
+    // ۲. ارز با بالاترین امتیاز ترکیبی
+    const topCoins = getTripleScoreCoins(allCoins, 1);
+    if (topCoins.length > 0) {
+        return topCoins[0];
+    }
+    
+    // ۳. Fallback به بیت‌کوین
+    return 'bitcoin';
 }
 
-// ===== مقداردهی اولیه =====
+// ============================================================
+// ۷. رفرش
+// ============================================================
+
+function refreshCoins() {
+    showToast('🔄 بروزرسانی...', 'info');
+    stopWebSocketUpdates();
+    loadCoins();
+}
+
+// ============================================================
+// ۸. مقداردهی اولیه و پاکسازی
+// ============================================================
+
 window.init_predict = function() {
     console.log('🔮 Predict tab initializing...');
     
     if (isPredictLoaded) return;
     isPredictLoaded = true;
     
-    loadCoins().then(() => {
-        loadLastSelectedCoin();
-    });
-    
-    // بروزرسانی لیست هر ۵ دقیقه
-    if (predictInterval) {
-        clearInterval(predictInterval);
-    }
-    predictInterval = setInterval(() => {
-        // فقط اگه صفحه فعال باشه
-        const activeTab = document.querySelector('#analyzerTabs .tab-btn.active');
-        if (activeTab && activeTab.dataset.tab === 'predict') {
-            loadCoins();
-        }
-    }, 300000); // ۵ دقیقه
+    loadCoins();
 };
 
-// ===== پاکسازی =====
 window.cleanup_predict = function() {
-    if (predictInterval) {
-        clearInterval(predictInterval);
-        predictInterval = null;
-    }
+    stopWebSocketUpdates();
     isPredictLoaded = false;
     console.log('🧹 Predict tab cleaned up');
 };
 
-console.log('✅ Predict tab loaded');
+console.log('✅ Predict tab loaded with WebSocket');
 </script>
