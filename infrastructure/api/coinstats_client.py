@@ -1,16 +1,17 @@
 # infrastructure/api/coinstats_client.py
 # ============================================================
-# کلاینت API کوین‌استیتس - نسخه ۴.۰ (انتقال به Infrastructure)
+# کلاینت API کوین‌استیتس - نسخه ۴.۰
 # ============================================================
 
 import os
 import time
 import requests
 import logging
-from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
 
 from domain.interfaces.api_client import APIClient
+
+# ✅ Import مستقیم از cache_manager (نه از __init__)
 from infrastructure.api.cache_manager import cache_manager
 
 logger = logging.getLogger(__name__)
@@ -20,18 +21,12 @@ class CoinStatsClient(APIClient):
     """
     کلاینت رسمی API کوین‌استیتس
     پیاده‌سازی Interface APIClient
-    
-    ✅ نسخه ۴.۰: انتقال به لایه Infrastructure
-    ✅ استفاده از Redis برای کش
-    ✅ مدیریت Rate Limit پیشرفته
-    ✅ Retry با Backoff
     """
     
     def __init__(self, api_key: Optional[str] = None) -> None:
         self.api_key: str = api_key or os.getenv("COINSTATS_API_KEY", "")
         if not self.api_key:
             logger.warning("⚠️ COINSTATS_API_KEY not set in environment!")
-            # ⚠️ NOTE: این مورد طبق درخواست شما اصلاح نشد
         
         self.base_url: str = "https://api.coinstats.app"
         self.session: requests.Session = requests.Session()
@@ -41,7 +36,6 @@ class CoinStatsClient(APIClient):
             "Accept": "application/json"
         })
         
-        # آمار
         self._stats: Dict[str, Any] = {
             "total_requests": 0,
             "error_count": 0,
@@ -50,7 +44,6 @@ class CoinStatsClient(APIClient):
             "start_time": time.time()
         }
         
-        # Rate Limit
         self.rate_limit_remaining: int = 30
         self.rate_limit_reset: float = time.time()
         
@@ -61,7 +54,6 @@ class CoinStatsClient(APIClient):
         url: str = f"{self.base_url}{endpoint}"
         self._stats["total_requests"] += 1
         
-        # بررسی Rate Limit
         if self.rate_limit_remaining <= 0 and time.time() < self.rate_limit_reset:
             wait_time: float = self.rate_limit_reset - time.time() + 1
             logger.warning(f"⏳ Rate limit exceeded, waiting {wait_time:.1f}s")
@@ -75,7 +67,6 @@ class CoinStatsClient(APIClient):
                 timeout=15
             )
             
-            # به‌روزرسانی Rate Limit
             self.rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 30))
             reset_time: Optional[str] = response.headers.get('X-RateLimit-Reset')
             if reset_time:
@@ -115,31 +106,9 @@ class CoinStatsClient(APIClient):
             return {"error": str(e)}
     
     # ============================================================
-    # پیاده‌سازی Interface APIClient
+    # متدهای اصلی API
     # ============================================================
-    def get_coins_list(self, limit: int = 50, page: int = 1, currency: str = "USD", search: str = None) -> Optional[List[Dict]]:
-        """دریافت لیست ارزها از API (TTL: ۲۴ ساعت)"""
-        cache_key = f"coins_list_{limit}_{page}_{currency}_{search}"
     
-        cached = cache_manager.get(cache_key)
-        if cached:
-            self._stats["cache_hits"] += 1
-            return cached
-    
-        self._stats["cache_misses"] += 1
-        params = {"limit": limit, "page": page, "currency": currency}
-        if search:
-            params["search"] = search
-    
-        result = self._request("GET", "/v1/coins", params)
-    
-        if result and "result" in result:
-            coins = result.get("result", [])
-            cache_manager.set(cache_key, coins, 86400)  # ۲۴ ساعت
-            return coins
-    
-        return None
-        
     def get_chart(self, coin_id: str, period: str = "24h", currency: str = "USD") -> Union[List[List], Dict]:
         """دریافت داده‌های تاریخی (TTL: ۱ ساعت)"""
         cache_key: str = f"chart_{coin_id}_{period}"
@@ -281,6 +250,29 @@ class CoinStatsClient(APIClient):
         
         return result
     
+    def get_coins_list(self, limit: int = 50, page: int = 1, currency: str = "USD", search: str = None) -> Optional[List[Dict]]:
+        """دریافت لیست ارزها (TTL: ۲۴ ساعت)"""
+        cache_key: str = f"coins_list_{limit}_{page}_{currency}_{search}"
+        
+        cached = cache_manager.get(cache_key)
+        if cached is not None:
+            self._stats["cache_hits"] += 1
+            return cached
+        
+        self._stats["cache_misses"] += 1
+        params = {"limit": limit, "page": page, "currency": currency}
+        if search:
+            params["search"] = search
+        
+        result: Dict = self._request("GET", "/v1/coins", params)
+        
+        if result and "result" in result:
+            coins = result.get("result", [])
+            cache_manager.set(cache_key, coins, 86400)  # ۲۴ ساعت
+            return coins
+        
+        return None
+    
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار کلاینت"""
         uptime: int = int(time.time() - self._stats["start_time"])
@@ -299,5 +291,8 @@ class CoinStatsClient(APIClient):
         }
 
 
+# ============================================================
 # نمونه Singleton
+# ============================================================
+
 coinstats_client: CoinStatsClient = CoinStatsClient()
