@@ -1,10 +1,10 @@
 <!-- ============================================================
-     CHART TAB - نمودار قیمت با نشانگر سیگنال‌ها
+     CHART TAB - نمودار قیمت با RSI، SMA، EMA و MACD
      ============================================================ -->
 
 <div class="card">
     <div class="card-title">
-        <i class="fas fa-chart-line"></i> نمودار قیمت
+        <i class="fas fa-chart-line"></i> نمودار قیمت و اندیکاتورها
         <span class="badge-count" id="chartStatus" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">✅ آماده</span>
         <button class="btn btn-xs btn-outline" onclick="refreshChart()" style="padding:2px 10px;font-size:0.6rem;">
             <i class="fas fa-sync-alt"></i>
@@ -24,18 +24,30 @@
                 <option value="3m">۳ ماه</option>
                 <option value="6m">۶ ماه</option>
             </select>
-            <button class="btn btn-xs btn-outline" onclick="toggleIndicators()" style="padding:4px 12px;font-size:0.65rem;">
-                <i class="fas fa-chart-bar"></i> <span id="indicatorsToggle">نمایش</span> شاخص‌ها
-            </button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--text-secondary);">
+                <input type="checkbox" id="showRSI" checked onchange="loadChart()"> RSI
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--text-secondary);">
+                <input type="checkbox" id="showSMA" checked onchange="loadChart()"> SMA
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--text-secondary);">
+                <input type="checkbox" id="showEMA" onchange="loadChart()"> EMA
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--text-secondary);">
+                <input type="checkbox" id="showMACD" onchange="loadChart()"> MACD
+            </label>
         </div>
         <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-muted);">
             <span id="chartDataPoints">۰ نقطه</span>
+            <span id="rsiPoints" style="color:var(--accent-cyan);">۰ RSI</span>
         </div>
     </div>
 
     <!-- ===== CHART ===== -->
     <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);">
-        <div style="height:350px;position:relative;">
+        <div style="height:400px;position:relative;">
             <canvas id="priceChart"></canvas>
         </div>
     </div>
@@ -43,25 +55,28 @@
     <!-- ===== SIGNAL MARKERS ===== -->
     <div id="signalMarkers" style="display:none;margin-top:10px;padding:8px 14px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);border:1px solid var(--border-color);font-size:0.65rem;color:var(--text-secondary);">
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <span><span style="color:var(--accent-green);">🟢</span> خرید</span>
-            <span><span style="color:var(--accent-red);">🔴</span> فروش</span>
-            <span><span style="color:var(--accent-orange);">🟡</span> خنثی</span>
+            <span><span style="color:var(--accent-green);">🟢</span> خرید (BUY)</span>
+            <span><span style="color:var(--accent-red);">🔴</span> فروش (SELL)</span>
+            <span><span style="color:var(--accent-orange);">🟡</span> خنثی (NEUTRAL)</span>
             <span id="signalCount" style="color:var(--text-muted);">۰ سیگنال</span>
         </div>
+    </div>
+
+    <!-- ===== INDICATORS SUMMARY ===== -->
+    <div id="indicatorsSummary" style="display:none;margin-top:10px;padding:8px 14px;background:rgba(0,0,0,0.15);border-radius:var(--radius-sm);border:1px solid var(--border-color);font-size:0.6rem;color:var(--text-muted);">
+        <span id="summaryText">—</span>
     </div>
 </div>
 
 <script>
 // ============================================================
-// CHART TAB - نمودار قیمت با Chart.js و نشانگر سیگنال‌ها
+// CHART TAB - با RSI، SMA، EMA و MACD واقعی
 // ============================================================
 
 let priceChart = null;
-let chartData = [];
 let chartInterval = null;
 let isChartLoaded = false;
 let showIndicators = false;
-let signalData = [];
 
 // ===== بارگذاری ارزها در سلکت =====
 async function loadChartCoins() {
@@ -86,23 +101,36 @@ async function loadChart() {
     const period = document.getElementById('chartPeriod').value;
     const statusEl = document.getElementById('chartStatus');
     const pointsEl = document.getElementById('chartDataPoints');
+    const rsiPointsEl = document.getElementById('rsiPoints');
     
     statusEl.textContent = '⏳ در حال بارگذاری...';
     statusEl.style.color = 'var(--accent-orange)';
 
     try {
-        // دریافت داده‌های قیمت
-        const data = await api.predictSingle(coin, period);
+        const data = await api.getChartData(coin, period);
         
         if (data.success && data.data) {
-            // داده‌های نمودار رو از جای دیگه دریافت می‌کنیم
-            // برای این نسخه از داده‌های شبیه‌سازی شده استفاده می‌کنیم
-            const chartData = generateMockChartData(period);
+            const d = data.data;
+            const chartData = {
+                labels: d.timestamps.map(t => new Date(t).toLocaleDateString()),
+                prices: d.prices,
+                rsi: d.rsi || [],
+                sma_20: d.sma_20 || [],
+                sma_50: d.sma_50 || [],
+                ema_20: d.ema_20 || [],
+                macd: d.macd || { macd_line: [], signal_line: [], histogram: [] },
+                signals: d.signals || []
+            };
+            
             renderChart(chartData, coin, period);
             
             pointsEl.textContent = chartData.labels.length + ' نقطه';
+            rsiPointsEl.textContent = chartData.rsi.filter(v => v !== null).length + ' RSI';
             statusEl.textContent = '✅ بارگذاری شد';
             statusEl.style.color = 'var(--accent-green)';
+            
+            // نمایش خلاصه اندیکاتورها
+            updateIndicatorsSummary(chartData);
         } else {
             statusEl.textContent = '❌ خطا';
             statusEl.style.color = 'var(--accent-red)';
@@ -129,13 +157,17 @@ function renderChart(data, coin, period) {
     const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#94a3b8';
     const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.06)';
     
-    // پیدا کردن سیگنال‌ها (نقاط خرید/فروش)
-    const buySignals = data.signals?.filter(s => s.type === 'BUY') || [];
-    const sellSignals = data.signals?.filter(s => s.type === 'SELL') || [];
-    const neutralSignals = data.signals?.filter(s => s.type === 'NEUTRAL') || [];
+    const showRSI = document.getElementById('showRSI').checked;
+    const showSMA = document.getElementById('showSMA').checked;
+    const showEMA = document.getElementById('showEMA').checked;
+    const showMACD = document.getElementById('showMACD').checked;
     
-    signalData = data.signals || [];
-    document.getElementById('signalCount').textContent = signalData.length + ' سیگنال';
+    const signals = data.signals || [];
+    const buySignals = signals.filter(s => s.type === 'BUY');
+    const sellSignals = signals.filter(s => s.type === 'SELL');
+    
+    document.getElementById('signalCount').textContent = signals.length + ' سیگنال';
+    document.getElementById('signalMarkers').style.display = signals.length > 0 ? 'block' : 'none';
     
     // ساخت دیتاست‌ها
     const datasets = [
@@ -152,29 +184,132 @@ function renderChart(data, coin, period) {
         }
     ];
     
-    // اگر شاخص‌ها فعال باشه، RSI رو اضافه کن
-    if (showIndicators && data.rsi) {
+    // SMA 20
+    if (showSMA && data.sma_20 && data.sma_20.length > 0) {
         datasets.push({
-            label: 'RSI',
-            data: data.rsi,
+            label: 'SMA 20',
+            data: data.sma_20,
             borderColor: '#f59e0b',
             borderWidth: 1.5,
             pointRadius: 0,
             tension: 0.3,
             borderDash: [5, 5],
-            yAxisID: 'y1'
+            yAxisID: 'y'
         });
     }
     
-    // اضافه کردن نشانگرهای خرید/فروش
+    // SMA 50
+    if (showSMA && data.sma_50 && data.sma_50.length > 0) {
+        datasets.push({
+            label: 'SMA 50',
+            data: data.sma_50,
+            borderColor: '#ec4899',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            borderDash: [5, 5],
+            yAxisID: 'y'
+        });
+    }
+    
+    // EMA 20
+    if (showEMA && data.ema_20 && data.ema_20.length > 0) {
+        datasets.push({
+            label: 'EMA 20',
+            data: data.ema_20,
+            borderColor: '#8b5cf6',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            borderDash: [3, 3],
+            yAxisID: 'y'
+        });
+    }
+    
+    // RSI
+    if (showRSI && data.rsi && data.rsi.length > 0) {
+        const rsiData = data.rsi.map(v => v !== null ? v : null);
+        datasets.push({
+            label: 'RSI',
+            data: rsiData,
+            borderColor: '#22d3ee',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            borderDash: [2, 2],
+            yAxisID: 'y1',
+            fill: false
+        });
+        
+        // خطوط RSI (70 و 30)
+        datasets.push({
+            label: 'RSI 70',
+            data: data.rsi.map(() => 70),
+            borderColor: 'rgba(239,68,68,0.3)',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [10, 5],
+            yAxisID: 'y1',
+            fill: false
+        });
+        datasets.push({
+            label: 'RSI 30',
+            data: data.rsi.map(() => 30),
+            borderColor: 'rgba(34,211,238,0.3)',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [10, 5],
+            yAxisID: 'y1',
+            fill: false
+        });
+    }
+    
+    // MACD
+    if (showMACD && data.macd && data.macd.macd_line && data.macd.macd_line.length > 0) {
+        const macdData = data.macd.macd_line.map(v => v !== null ? v : null);
+        const signalData = data.macd.signal_line.map(v => v !== null ? v : null);
+        const histData = data.macd.histogram.map(v => v !== null ? v : 0);
+        
+        datasets.push({
+            label: 'MACD',
+            data: macdData,
+            borderColor: '#00d4ff',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            yAxisID: 'y2',
+            fill: false
+        });
+        datasets.push({
+            label: 'Signal',
+            data: signalData,
+            borderColor: '#f59e0b',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            yAxisID: 'y2',
+            fill: false
+        });
+        // هیستوگرام MACD
+        datasets.push({
+            label: 'Histogram',
+            data: histData,
+            backgroundColor: histData.map(v => v >= 0 ? 'rgba(34,211,238,0.6)' : 'rgba(239,68,68,0.6)'),
+            borderColor: 'transparent',
+            type: 'bar',
+            yAxisID: 'y2',
+            barPercentage: 0.8
+        });
+    }
+    
+    // سیگنال‌های خرید/فروش
     if (buySignals.length > 0) {
-        const buyPoints = buySignals.map(s => ({
-            x: s.index,
-            y: data.prices[s.index] * 0.98
-        }));
         datasets.push({
             label: '🟢 خرید',
-            data: buyPoints,
+            data: buySignals.map(s => ({
+                x: s.index,
+                y: data.prices[s.index] * 0.98
+            })),
             backgroundColor: 'rgba(34,211,238,0.8)',
             borderColor: '#22d3ee',
             pointRadius: 6,
@@ -185,13 +320,12 @@ function renderChart(data, coin, period) {
     }
     
     if (sellSignals.length > 0) {
-        const sellPoints = sellSignals.map(s => ({
-            x: s.index,
-            y: data.prices[s.index] * 1.02
-        }));
         datasets.push({
             label: '🔴 فروش',
-            data: sellPoints,
+            data: sellSignals.map(s => ({
+                x: s.index,
+                y: data.prices[s.index] * 1.02
+            })),
             backgroundColor: 'rgba(239,68,68,0.8)',
             borderColor: '#ef4444',
             pointRadius: 6,
@@ -202,6 +336,7 @@ function renderChart(data, coin, period) {
         });
     }
     
+    // ایجاد Chart
     priceChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -223,7 +358,7 @@ function renderChart(data, coin, period) {
                         font: { size: 8, family: 'inherit' },
                         boxWidth: 12,
                         usePointStyle: true,
-                        padding: 8
+                        padding: 6
                     }
                 },
                 tooltip: {
@@ -235,6 +370,9 @@ function renderChart(data, coin, period) {
                             }
                             if (context.dataset.yAxisID === 'y1') {
                                 return label + ': ' + context.parsed.y.toFixed(1);
+                            }
+                            if (context.dataset.yAxisID === 'y2') {
+                                return label + ': ' + context.parsed.y.toFixed(2);
                             }
                             return label + ': $' + context.parsed.y.toFixed(2);
                         }
@@ -282,65 +420,56 @@ function renderChart(data, coin, period) {
                     },
                     min: 0,
                     max: 100
+                },
+                y2: {
+                    position: 'left',
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 7, family: 'inherit' },
+                        callback: function(value) {
+                            return value.toFixed(2);
+                        }
+                    }
                 }
             }
         }
     });
     
     // نمایش نشانگرها
-    document.getElementById('signalMarkers').style.display = 'block';
+    document.getElementById('signalMarkers').style.display = signals.length > 0 ? 'block' : 'none';
 }
 
-// ===== تولید داده‌های شبیه‌سازی شده برای نمودار =====
-function generateMockChartData(period) {
-    const points = period === '24h' ? 24 : period === '1w' ? 168 : period === '1m' ? 720 : period === '3m' ? 2160 : 4320;
-    const step = Math.max(1, Math.floor(points / 100));
-    const labels = [];
-    const prices = [];
-    const rsi = [];
-    const signals = [];
+// ===== بروزرسانی خلاصه اندیکاتورها =====
+function updateIndicatorsSummary(data) {
+    const summaryEl = document.getElementById('indicatorsSummary');
+    const textEl = document.getElementById('summaryText');
     
-    let basePrice = 80000;
-    let volatility = 0.02;
-    
-    for (let i = 0; i < points; i += step) {
-        const change = (Math.random() - 0.48) * volatility;
-        basePrice = basePrice * (1 + change);
-        labels.push(i);
-        prices.push(basePrice);
+    if (data.rsi && data.rsi.length > 0) {
+        const lastRsi = data.rsi[data.rsi.length - 1];
+        const lastPrice = data.prices[data.prices.length - 1];
+        const lastSma = data.sma_20 ? data.sma_20[data.sma_20.length - 1] : null;
         
-        // RSI شبیه‌سازی شده
-        const rsiValue = 50 + Math.sin(i / 20) * 30 + (Math.random() - 0.5) * 10;
-        rsi.push(Math.min(100, Math.max(0, rsiValue)));
+        let rsiStatus = 'خنثی';
+        if (lastRsi > 70) rsiStatus = '🟢 اشباع خرید';
+        else if (lastRsi < 30) rsiStatus = '🔴 اشباع فروش';
         
-        // سیگنال‌های شبیه‌سازی شده
-        if (i > 0 && i % 20 === 0 && Math.random() > 0.7) {
-            const type = Math.random() > 0.5 ? 'BUY' : 'SELL';
-            signals.push({
-                index: i,
-                type: type,
-                price: basePrice,
-                confidence: 60 + Math.random() * 30
-            });
+        let smaStatus = '';
+        if (lastSma) {
+            smaStatus = lastPrice > lastSma ? '📈 بالای SMA' : '📉 پایین SMA';
         }
+        
+        textEl.textContent = `RSI: ${lastRsi || '—'} (${rsiStatus}) | قیمت: $${lastPrice?.toFixed(2) || '—'} ${smaStatus}`;
+        summaryEl.style.display = 'block';
+    } else {
+        summaryEl.style.display = 'none';
     }
-    
-    return {
-        labels: labels.map(i => i + ''),
-        prices: prices,
-        rsi: rsi,
-        signals: signals.slice(0, 10)
-    };
 }
 
-// ===== تغییر وضعیت نمایش شاخص‌ها =====
-function toggleIndicators() {
-    showIndicators = !showIndicators;
-    document.getElementById('indicatorsToggle').textContent = showIndicators ? 'مخفی' : 'نمایش';
-    loadChart();
-}
-
-// ===== رفرش نمودار =====
+// ===== رفرش =====
 function refreshChart() {
     showToast('🔄 بروزرسانی نمودار...', 'info');
     loadChart();
@@ -382,5 +511,5 @@ window.cleanup_chart = function() {
     console.log('🧹 Chart tab cleaned up');
 };
 
-console.log('✅ Chart tab loaded');
+console.log('✅ Chart tab loaded with real indicators');
 </script>
