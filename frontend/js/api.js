@@ -364,6 +364,32 @@ class ApiClient {
     }
 
     // ============================================================
+    // اضافه کردن به api.js - متدهای WebSocket
+    // ============================================================
+
+    // ===== قیمت‌های لحظه‌ای =====
+    getRealtimePrices(symbols = null) {
+        const params = new URLSearchParams();
+        if (symbols && symbols.length > 0) {
+            params.append('symbols', symbols.join(','));
+        }
+        return this.request(`/api/crypto/prices?${params}`);
+    }
+
+    getRealtimePrice(symbol) {
+        return this.request(`/api/crypto/price/${symbol}`);
+    }
+
+    getCryptoStats() {
+        return this.request('/api/crypto/stats');
+    }
+
+    sendHeartbeat() {
+        return this.request('/api/crypto/heartbeat', {
+            method: 'POST'
+        });
+    }
+    // ============================================================
     // ۱۱. هشدارها (ALERTS)
     // ============================================================
 
