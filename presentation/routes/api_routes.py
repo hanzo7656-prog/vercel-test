@@ -2193,7 +2193,7 @@ def predict_single():
         period = request.args.get('period', '24h')
         
         container = current_app.container
-        prediction_service: PredictionService = container.prediction_service()
+        prediction_service = container.get('prediction_service')  # ✅
         dto = prediction_service.predict_single(coin, period)
         
         return jsonify({
