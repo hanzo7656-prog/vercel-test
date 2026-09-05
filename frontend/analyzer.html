@@ -3,309 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>تحلیلگر</title>
+    <title>تحلیلگر بازار</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <style>
-        .analyzer-controls {
+        /* ============================================================
+           ANALYZER PAGE STYLES
+           ============================================================ */
+        
+        .tab-content-wrapper {
+            min-height: 400px;
+            position: relative;
+        }
+        
+        .tab-content-wrapper .loading-container {
             display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 18px 22px;
-            align-items: flex-end;
-            margin-bottom: 20px;
-        }
-        .analyzer-controls .control-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
-        .analyzer-controls .control-group label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-        .analyzer-controls select {
-            padding: 8px 14px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.85rem;
-            font-family: inherit;
-            width: 100%;
-            transition: var(--transition);
-        }
-        .analyzer-controls select:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.05); }
-        .analyzer-controls select option { background: var(--bg-secondary); }
-        .analyzer-controls .btn {
-            padding: 10px 28px;
-            border-radius: var(--radius-sm);
-            border: none;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: inherit;
-            font-size: 0.85rem;
-            min-width: 120px;
-            align-self: flex-end;
-        }
-        .analyzer-controls .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0, 212, 255, 0.25); }
-        .analyzer-controls .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-        .analyzer-controls .btn .spinner-sm {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            vertical-align: middle;
-            margin-left: 8px;
-        }
-
-        .result-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 24px 28px;
-            margin-bottom: 20px;
-            transition: var(--transition);
-        }
-        .result-card:hover { border-color: var(--border-hover); }
-        .result-card .signal-display {
-            text-align: center;
-            padding: 20px;
-            border-radius: var(--radius);
-            margin-bottom: 16px;
-            font-size: 2rem;
-            font-weight: 700;
-            transition: var(--transition);
-        }
-        .result-card .signal-display.buy { background: rgba(34, 211, 238, 0.05); color: var(--accent-green); border: 2px solid rgba(34, 211, 238, 0.1); }
-        .result-card .signal-display.sell { background: rgba(239, 68, 68, 0.05); color: var(--accent-red); border: 2px solid rgba(239, 68, 68, 0.1); }
-        .result-card .signal-display.neutral { background: rgba(245, 158, 11, 0.05); color: var(--accent-orange); border: 2px solid rgba(245, 158, 11, 0.1); }
-        .result-card .signal-display .signal-icon { display: block; font-size: 3rem; margin-bottom: 4px; }
-        .result-card .signal-display .signal-sub { font-size: 0.9rem; font-weight: 400; opacity: 0.7; }
-
-        .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .result-item { background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-sm); text-align: center; border: 1px solid var(--border-color); transition: var(--transition); }
-        .result-item:hover { border-color: var(--border-hover); }
-        .result-item .label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .result-item .value { font-size: 1.1rem; font-weight: 600; margin-top: 4px; font-family: var(--font-mono); }
-        .result-item .value.cyan { color: var(--accent-cyan); }
-        .result-item .value.green { color: var(--accent-green); }
-        .result-item .value.orange { color: var(--accent-orange); }
-        .result-item .value.purple { color: var(--accent-purple); }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            padding: 10px 16px;
-            background: var(--bg-input);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-color);
-            margin-bottom: 6px;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+        
+        .tab-content-wrapper .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tab-content-wrapper .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .tab-content-wrapper .error-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--accent-orange);
+        }
+        
+        .tab-content-wrapper .error-msg .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .tab-content-wrapper .error-msg button {
+            margin-top: 12px;
+            padding: 6px 16px;
+            background: var(--accent-cyan);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
             transition: var(--transition);
-            flex-wrap: wrap;
-            gap: 8px;
         }
-        .history-item:hover { border-color: var(--border-hover); background: var(--bg-hover); }
-        .history-item .h-signal { font-weight: 600; display: flex; align-items: center; gap: 6px; }
-        .history-item .h-signal.buy { color: var(--accent-green); }
-        .history-item .h-signal.sell { color: var(--accent-red); }
-        .history-item .h-signal.neutral { color: var(--accent-orange); }
-        .history-item .h-details { display: flex; align-items: center; gap: 16px; font-size: 0.8rem; color: var(--text-secondary); flex-wrap: wrap; }
-        .history-item .h-details .h-price { font-family: var(--font-mono); color: var(--text-primary); }
-        .history-item .h-details .h-time { font-size: 0.65rem; color: var(--text-muted); }
+        
+        .tab-content-wrapper .error-msg button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2);
+        }
 
-        @media (max-width: 1024px) { .result-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 768px) {
-            .analyzer-controls { flex-direction: column; padding: 14px 16px; }
-            .analyzer-controls .control-group { min-width: 100%; }
-            .analyzer-controls .btn { width: 100%; margin-top: 8px; justify-content: center; }
-            .result-card { padding: 16px 18px; }
-            .result-card .signal-display { font-size: 1.5rem; padding: 14px; }
-            .result-card .signal-display .signal-icon { font-size: 2rem; }
-            .result-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .result-item { padding: 8px 12px; }
-            .result-item .value { font-size: 0.9rem; }
-            .history-item { flex-direction: column; align-items: stretch; }
-            .history-item .h-details { justify-content: space-between; }
+        /* ===== LOADING OVERLAY (همون سیستم قبلی) ===== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 99999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            animation: overlayFadeIn 0.3s ease;
+            font-family: var(--font-family);
         }
-        @media (max-width: 480px) { .result-grid { grid-template-columns: 1fr; } .result-item .value { font-size: 0.85rem; } }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        @keyframes overlayFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .loading-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px 48px;
+            min-width: 280px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            animation: cardSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.03), transparent 70%);
+            pointer-events: none;
+            animation: cardGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes cardSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes cardGlow {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
+        }
+
+        .loading-spinner-wrapper {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+        }
+
+        .loading-spinner-wrapper svg {
+            width: 100%;
+            height: 100%;
+            animation: spinnerRotate 1.2s linear infinite;
+        }
+
+        @keyframes spinnerRotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-spinner-wrapper .spinner-circle-bg {
+            fill: none;
+            stroke-width: 3;
+            stroke: var(--border-color);
+            opacity: 0.3;
+        }
+
+        .loading-spinner-wrapper .spinner-circle-fg {
+            fill: none;
+            stroke-width: 3;
+            stroke: var(--accent-cyan);
+            stroke-linecap: round;
+            stroke-dasharray: 180;
+            stroke-dashoffset: 0;
+            animation: spinnerDash 1.2s ease-in-out infinite;
+        }
+
+        @keyframes spinnerDash {
+            0% { stroke-dashoffset: 180; }
+            50% { stroke-dashoffset: 40; }
+            100% { stroke-dashoffset: 180; }
+        }
+
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 8px 0 16px;
+        }
+
+        .loading-dots .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            opacity: 0.2;
+            transition: all 0.3s ease;
+        }
+
+        .loading-dots .dot.active {
+            opacity: 1;
+            background: var(--accent-cyan);
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .loading-dots .dot:nth-child(1).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0s;
+        }
+        .loading-dots .dot:nth-child(2).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0.2s;
+        }
+        .loading-dots .dot:nth-child(3).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0.4s;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% {
+                opacity: 0.2;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.3);
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            }
+        }
+
+        .loading-message {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-top: 4px;
+            min-height: 28px;
+            transition: all 0.3s ease;
+        }
+
+        .loading-submessage {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 3px;
+            background: var(--bg-input);
+            border-radius: var(--radius-full);
+            margin-top: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loading-progress .progress-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .loading-progress .progress-fill.indeterminate {
+            width: 30%;
+            animation: progressIndeterminate 1.5s ease-in-out infinite;
+        }
+
+        @keyframes progressIndeterminate {
+            0% { transform: translateX(0%); width: 30%; }
+            50% { width: 60%; }
+            100% { transform: translateX(300%); width: 30%; }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .tabs { flex-wrap: nowrap; overflow-x: auto; }
+            .tab-btn { font-size: 0.7rem; padding: 6px 12px; white-space: nowrap; }
+        }
+
+        @media (max-width: 768px) {
+            .tab-btn { font-size: 0.65rem; padding: 6px 10px; }
+            .tab-btn i { font-size: 0.7rem; }
+        }
+
+        @media (max-width: 480px) {
+            .loading-card {
+                padding: 28px 20px;
+                min-width: unset;
+            }
+            .loading-spinner-wrapper {
+                width: 56px;
+                height: 56px;
+            }
+            .loading-message {
+                font-size: 0.85rem;
+            }
+            .loading-dots .dot {
+                width: 8px;
+                height: 8px;
+            }
+        }
     </style>
 </head>
 <body>
 
+    <!-- ===== NAVIGATION ===== -->
     <div id="navContainer"></div>
 
+    <!-- ===== MAIN CONTENT ===== -->
     <div class="container">
+        
+        <!-- ===== HEADER ===== -->
         <div class="page-header">
-            <div><h1><i class="fas fa-robot" style="color:var(--accent-purple);"></i> تحلیلگر بازار</h1><span class="subtitle">پیش‌بینی لحظه‌ای با مدل XGBoost</span></div>
-            <span class="timestamp" id="pageTimestamp"></span>
-        </div>
-
-        <div class="analyzer-controls">
-            <div class="control-group">
-                <label>🪙 ارز دیجیتال</label>
-                <select id="coinSelect">
-                    <option value="bitcoin">₿ بیت‌کوین</option>
-                    <option value="ethereum">⟠ اتریوم</option>
-                    <option value="solana">◎ سولانا</option>
-                    <option value="cardano">₳ کاردانو</option>
-                    <option value="ripple">✕ ریپل</option>
-                    <option value="polkadot">◈ پولکادات</option>
-                    <option value="dogecoin">🐕 دوج‌کوین</option>
-                    <option value="avalanche">❄️ آوالانچ</option>
-                </select>
+            <div>
+                <h1><i class="fas fa-robot" style="color:var(--accent-purple);"></i> تحلیلگر بازار</h1>
+                <span class="subtitle">پیش‌بینی لحظه‌ای با مدل XGBoost</span>
             </div>
-            <div class="control-group">
-                <label>⏱️ بازه زمانی</label>
-                <select id="periodSelect">
-                    <option value="24h">۲۴ ساعت</option>
-                    <option value="1w">۱ هفته</option>
-                    <option value="1m" selected>۱ ماه</option>
-                    <option value="3m">۳ ماه</option>
-                </select>
-            </div>
-            <button class="btn" id="predictBtn"><i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی</button>
-        </div>
-
-        <div id="resultContainer">
-            <div class="result-card">
-                <div style="text-align:center;padding:30px 20px;color:var(--text-muted);">
-                    <div style="font-size:3rem;margin-bottom:12px;">🔮</div>
-                    <p style="font-size:1rem;">برای شروع پیش‌بینی، ارز و بازه را انتخاب کنید</p>
-                    <p style="font-size:0.8rem;margin-top:4px;">مدل XGBoost با دقت بالا آماده تحلیل است</p>
-                </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <span class="badge" id="analyzerStatusBadge">🟢 آماده</span>
+                <span class="timestamp" id="pageTimestamp"></span>
+                <button class="btn btn-xs btn-outline" onclick="refreshCurrentTab()" style="padding:2px 10px;font-size:0.6rem;">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-title">
-                <i class="fas fa-history"></i> تاریخچه پیش‌بینی‌ها
-                <span class="badge-count" id="historyCount" style="margin-right:auto;">۰</span>
+        <!-- ===== TABS ===== -->
+        <div class="tabs" id="analyzerTabs">
+            <button class="tab-btn active" data-tab="predict">
+                <i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی
+                <span class="badge" id="predictBadge" style="display:none;font-size:0.45rem;padding:1px 6px;background:var(--accent-cyan);color:#000;">0</span>
+            </button>
+            <button class="tab-btn" data-tab="chart">
+                <i class="fas fa-chart-line"></i> نمودار
+            </button>
+            <button class="tab-btn" data-tab="indicators">
+                <i class="fas fa-chart-bar"></i> شاخص‌ها
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <i class="fas fa-history"></i> تاریخچه
+            </button>
+        </div>
+
+        <!-- ===== TAB CONTENT ===== -->
+        <div class="tab-content-wrapper" id="analyzerTabContent">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">در حال بارگذاری...</p>
             </div>
-            <div id="historyContainer">
-                <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
+        </div>
+
+    </div>
+
+    <!-- ===== LOADING OVERLAY ===== -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-card">
+            <div class="loading-spinner-wrapper">
+                <svg viewBox="0 0 72 72">
+                    <circle class="spinner-circle-bg" cx="36" cy="36" r="28"/>
+                    <circle class="spinner-circle-fg" cx="36" cy="36" r="28"/>
+                </svg>
+            </div>
+            <div class="loading-dots" id="loadingDots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="loading-message" id="loadingMessage">در حال انجام...</div>
+            <div class="loading-submessage" id="loadingSubMessage">لطفاً صبر کنید</div>
+            <div class="loading-progress">
+                <div class="progress-fill indeterminate" id="loadingProgress"></div>
             </div>
         </div>
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
+    
     <script>
-        class AnalyzerController {
-            constructor() {
-                this.isLoading = false;
-                this.init();
+    // ============================================================
+    // LOADING SYSTEM (همون سیستم قبلی)
+    // ============================================================
+    
+    class LoadingSystem {
+        constructor() {
+            this.overlay = document.getElementById('loadingOverlay');
+            this.messageEl = document.getElementById('loadingMessage');
+            this.subMessageEl = document.getElementById('loadingSubMessage');
+            this.dots = document.querySelectorAll('#loadingDots .dot');
+            this.progress = document.getElementById('loadingProgress');
+            this.isActive = false;
+            this.dotsInterval = null;
+            this.progressTimer = null;
+            this.onComplete = null;
+            
+            this.messages = {
+                short: ['در حال انجام...'],
+                medium: ['در حال انجام...', 'لطفاً کمی صبر کنید'],
+                long: ['در حال انجام...', 'لطفاً کمی صبر کنید', 'تقریباً تمام است', 'پایان']
+            };
+        }
+
+        show(options = {}) {
+            const { messages = 'long', duration = null, onComplete = null } = options;
+            if (this.isActive) return;
+
+            this.isActive = true;
+            this.onComplete = onComplete;
+
+            let messageList;
+            if (Array.isArray(messages)) {
+                messageList = messages;
+            } else {
+                messageList = this.messages[messages] || this.messages.long;
             }
-            async init() {
-                console.log('🚀 Analyzer initializing...');
-                await this.loadNav();
-                this.setupEvents();
-                await this.loadHistory();
-                console.log('🚀 Analyzer ready');
+
+            this.messageQueue = messageList;
+            this.currentMessageIndex = 0;
+            this.updateMessage(0);
+            this.startDotsAnimation();
+
+            this.overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            if (duration) {
+                this.startProgressAnimation(duration);
             }
-            async loadNav() {
-                const container = document.getElementById('navContainer');
-                if (!container) return;
-                try {
-                    const res = await fetch('/nav.html');
-                    if (!res.ok) throw new Error('nav.html not found');
-                    const html = await res.text();
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                } catch (err) { console.error('❌ Nav error:', err); }
+
+            console.log('🔄 Loading started:', messageList[0]);
+        }
+
+        updateMessage(index) {
+            if (index >= this.messageQueue.length) {
+                this.complete();
+                return;
             }
-            setupEvents() {
-                document.getElementById('predictBtn').addEventListener('click', () => this.predict());
-                document.getElementById('coinSelect').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.predict(); });
-                document.getElementById('periodSelect').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.predict(); });
+
+            const message = this.messageQueue[index];
+            const parts = message.split('|');
+            const mainMsg = parts[0] || message;
+            const subMsg = parts[1] || '';
+
+            this.messageEl.textContent = mainMsg;
+            this.subMessageEl.textContent = subMsg;
+
+            if (index === this.messageQueue.length - 1) {
+                this.stopDotsAnimation();
             }
-            async predict() {
-                if (this.isLoading) return;
-                const coin = document.getElementById('coinSelect').value;
-                const period = document.getElementById('periodSelect').value;
-                const container = document.getElementById('resultContainer');
-                const btn = document.getElementById('predictBtn');
-                this.isLoading = true;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-sm"></span> در حال تحلیل...';
-                container.innerHTML = `<div class="result-card"><div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال دریافت پیش‌بینی از مدل...</p><p style="font-size:0.7rem;color:var(--text-muted);">${coin} • ${period}</p></div></div>`;
-                try {
-                    const data = await api.predictSingle(coin, period);
-                    if (data.success && data.data) {
-                        this.renderPrediction(data.data);
-                        await this.loadHistory();
-                    } else {
-                        this.renderError(data.error || 'خطا در پیش‌بینی');
+
+            this.currentMessageIndex = index;
+        }
+
+        startDotsAnimation() {
+            this.stopDotsAnimation();
+            let activeIndex = 0;
+            this.dots.forEach(d => d.classList.remove('active'));
+
+            this.dotsInterval = setInterval(() => {
+                this.dots.forEach(d => d.classList.remove('active'));
+                this.dots[activeIndex].classList.add('active');
+                activeIndex = (activeIndex + 1) % this.dots.length;
+            }, 400);
+        }
+
+        stopDotsAnimation() {
+            if (this.dotsInterval) {
+                clearInterval(this.dotsInterval);
+                this.dotsInterval = null;
+            }
+            this.dots.forEach(d => d.classList.remove('active'));
+        }
+
+        startProgressAnimation(duration) {
+            this.progress.classList.remove('indeterminate');
+            const startTime = Date.now();
+
+            const updateProgress = () => {
+                if (!this.isActive) return;
+                const elapsed = Date.now() - startTime;
+                const percent = Math.min((elapsed / duration) * 100, 100);
+                this.progress.style.width = percent + '%';
+
+                const ratio = elapsed / duration;
+                const totalMessages = this.messageQueue.length;
+
+                if (ratio > 0.85 && totalMessages > 1) {
+                    const lastIndex = totalMessages - 1;
+                    if (this.currentMessageIndex < lastIndex) {
+                        this.updateMessage(lastIndex);
                     }
-                } catch (err) { this.renderError('خطا در ارتباط با سرور'); }
-                this.isLoading = false;
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> پیش‌بینی';
-            }
-            renderPrediction(data) {
-                const container = document.getElementById('resultContainer');
-                const signalType = data.signal_type?.toLowerCase() || 'neutral';
-                const emojis = { buy: '🟢', sell: '🔴', neutral: '🟡' };
-                const labels = { buy: 'خرید', sell: 'فروش', neutral: 'خنثی' };
-                container.innerHTML = `
-                    <div class="result-card">
-                        <div class="signal-display ${signalType}">
-                            <span class="signal-icon">${emojis[signalType] || '🟡'}</span>
-                            ${labels[signalType] || 'خنثی'}
-                            <div class="signal-sub">${data.signal || 'سیگنال خنثی'}</div>
-                        </div>
-                        <div class="result-grid">
-                            <div class="result-item"><div class="label">💰 قیمت</div><div class="value cyan">${formatCurrency(data.current_price)}</div></div>
-                            <div class="result-item"><div class="label">🎯 اطمینان</div><div class="value green">${data.confidence || '—'}</div></div>
-                            <div class="result-item"><div class="label">📊 امتیاز</div><div class="value orange">${((data.prediction_score || 0) * 100).toFixed(1)}%</div></div>
-                            <div class="result-item"><div class="label">🧠 مدل</div><div class="value purple">${data.model_mode || 'DEMO'}</div></div>
-                            <div class="result-item" style="grid-column:1/-1;">
-                                <div class="label">🪙 ارز • ⏱️ زمان</div>
-                                <div class="value" style="font-size:0.9rem;color:var(--text-secondary);">${data.coin_name || data.coin} • ${data.timestamp ? formatDate(data.timestamp) : '—'}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            renderError(message) {
-                document.getElementById('resultContainer').innerHTML = `
-                    <div class="result-card"><div style="text-align:center;padding:30px 20px;"><div style="font-size:3rem;margin-bottom:12px;">❌</div><p style="color:var(--accent-red);font-size:1rem;">${message}</p><p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">لطفاً مجدداً تلاش کنید</p></div></div>
-                `;
-            }
-            async loadHistory() {
-                const container = document.getElementById('historyContainer');
-                const countEl = document.getElementById('historyCount');
-                try {
-                    const data = await api.getModelHistory(10);
-                    if (data.success && data.data && data.data.length > 0) {
-                        countEl.textContent = data.data.length;
-                        container.innerHTML = data.data.map(item => `
-                            <div class="history-item">
-                                <div class="h-signal ${item.is_active ? 'buy' : 'neutral'}">${item.is_active ? '🟢' : '🟡'} ${item.is_active ? 'فعال' : 'غیرفعال'}</div>
-                                <div class="h-details"><span class="h-price">نسخه: ${item.version || '—'}</span><span class="h-price">دقت: ${((item.accuracy || 0) * 100).toFixed(1)}%</span><span class="h-time">${formatDate(item.training_date)}</span></div>
-                            </div>
-                        `).join('');
-                    } else {
-                        countEl.textContent = '۰';
-                        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);">📭 هیچ پیش‌بینی ذخیره‌ای یافت نشد</div>`;
+                } else if (ratio > 0.5 && totalMessages > 2) {
+                    const midIndex = Math.min(Math.floor(totalMessages * 0.7), totalMessages - 2);
+                    if (this.currentMessageIndex < midIndex) {
+                        this.updateMessage(midIndex);
                     }
-                } catch (err) {
-                    container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--accent-red);">❌ خطا در دریافت تاریخچه</div>`;
                 }
+
+                if (percent < 100) {
+                    this.progressTimer = setTimeout(updateProgress, 50);
+                } else {
+                    this.progress.style.width = '100%';
+                }
+            };
+
+            updateProgress();
+        }
+
+        complete() {
+            if (!this.isActive) return;
+
+            this.messageEl.textContent = '✅ پایان';
+            this.subMessageEl.textContent = 'عملیات با موفقیت انجام شد';
+            this.progress.style.width = '100%';
+            this.stopDotsAnimation();
+
+            setTimeout(() => {
+                this.hide();
+                if (this.onComplete) {
+                    this.onComplete();
+                }
+            }, 800);
+        }
+
+        hide() {
+            if (!this.isActive) return;
+
+            this.isActive = false;
+            this.overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            this.stopDotsAnimation();
+            
+            if (this.progressTimer) {
+                clearTimeout(this.progressTimer);
+                this.progressTimer = null;
+            }
+
+            this.progress.classList.add('indeterminate');
+            this.progress.style.width = '0%';
+            this.dots.forEach(d => d.classList.remove('active'));
+
+            console.log('✅ Loading hidden');
+        }
+
+        setMessage(message) {
+            this.messageEl.textContent = message;
+        }
+
+        setSubMessage(message) {
+            this.subMessageEl.textContent = message;
+        }
+
+        setProgress(percent) {
+            if (this.progressMode) {
+                this.progress.classList.remove('indeterminate');
+                this.progress.style.width = Math.min(percent, 100) + '%';
             }
         }
-        document.addEventListener('DOMContentLoaded', function() { new AnalyzerController(); });
+    }
+
+    // ===== نمونه Singleton =====
+    const loading = new LoadingSystem();
+    window.loading = loading;
+
+    console.log('✅ Loading System v1.0 loaded');
     </script>
+
+    <!-- ===== ANALYZER LOADER ===== -->
+    <script src="/js/analyzer-loader.js"></script>
+
 </body>
 </html>
