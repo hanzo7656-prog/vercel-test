@@ -5,7 +5,14 @@
 <div class="card">
     <div class="card-title">
         <i class="fas fa-graduation-cap"></i> آموزش مدل
-        <span class="badge-count" id="trainingStatusBadge" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">⏹️ آماده</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-right:auto;">
+            <span class="badge" id="trainingStatusBadge" style="font-size:0.55rem;padding:2px 10px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">
+                ⏹️ آماده
+            </span>
+            <button class="btn btn-xs btn-outline" onclick="refreshTrainingCoins()" style="padding:2px 10px;font-size:0.6rem;">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
     </div>
 
     <!-- ===== CONTROLS ===== -->
@@ -38,8 +45,20 @@
             </div>
         </div>
 
+        <!-- تعداد ارزهای پیشنهادی -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
+                <i class="fas fa-list"></i> تعداد پیشنهاد
+            </label>
+            <select id="defaultCount" onchange="updateDefaultCount()" style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.8rem;font-family:inherit;">
+                <option value="3">۳ ارز</option>
+                <option value="5" selected>۵ ارز</option>
+                <option value="10">۱۰ ارز</option>
+            </select>
+        </div>
+
         <!-- دکمه‌ها -->
-        <div style="display:flex;gap:8px;grid-column:span 1;">
+        <div style="display:flex;gap:8px;">
             <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()" style="padding:8px 24px;font-size:0.8rem;">
                 <i class="fas fa-play"></i> شروع آموزش
             </button>
@@ -57,6 +76,9 @@
                     <i class="fas fa-coins"></i> انتخاب ارزها برای آموزش
                 </span>
                 <span class="badge badge-cyan" id="selectedCount" style="font-size:0.55rem;padding:2px 8px;">۰ انتخاب</span>
+                <span class="badge" id="trainedCount" style="font-size:0.5rem;padding:2px 8px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);display:none;">
+                    🧠 آموزش دیده: ۰
+                </span>
             </div>
             <div style="display:flex;gap:6px;">
                 <button class="btn btn-xs btn-outline" onclick="selectAllCoins()" style="padding:2px 10px;font-size:0.6rem;">
@@ -64,6 +86,9 @@
                 </button>
                 <button class="btn btn-xs btn-outline" onclick="deselectAllCoins()" style="padding:2px 10px;font-size:0.6rem;">
                     <i class="fas fa-times"></i> هیچ‌کدام
+                </button>
+                <button class="btn btn-xs btn-outline" onclick="selectTrainedCoins()" style="padding:2px 10px;font-size:0.6rem;display:none;" id="selectTrainedBtn">
+                    <i class="fas fa-brain"></i> آموزش‌دیده
                 </button>
             </div>
         </div>
@@ -76,14 +101,25 @@
                 <option value="name_asc">🔤 نام (الفبا)</option>
                 <option value="change_desc">📈 بیشترین تغییر</option>
             </select>
+            <select id="trainChangeFilter" onchange="filterTrainCoins()" style="padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+                <option value="all">🔄 همه</option>
+                <option value="positive">📈 مثبت</option>
+                <option value="negative">📉 منفی</option>
+                <option value="high">🔥 بیش از ۵٪</option>
+            </select>
         </div>
 
         <!-- لیست ارزها -->
-        <div id="trainCoinsGrid" style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;padding:4px 2px;">
+        <div id="trainCoinsGrid" style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;padding:4px 2px;" class="custom-scroll">
             <div class="loading-container" style="padding:20px;width:100%;">
                 <div class="loading-spinner" style="width:24px;height:24px;"></div>
                 <p class="loading-text" style="font-size:0.7rem;">در حال بارگذاری ارزها...</p>
             </div>
+        </div>
+
+        <!-- اطلاعات تکمیلی -->
+        <div id="trainInfo" style="display:none;margin-top:8px;padding:6px 12px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);font-size:0.55rem;color:var(--text-muted);">
+            <span id="trainInfoText"></span>
         </div>
     </div>
 
@@ -106,7 +142,7 @@
     <div style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);max-height:200px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);" id="trainingLog">
         <div style="color:var(--text-muted);padding:4px 0;">📋 منتظر شروع آموزش...</div>
         <div style="color:var(--text-muted);padding:4px 0;">💡 بازه پیش‌فرض: ۱ ماه</div>
-        <div style="color:var(--text-muted);padding:4px 0;">🪙 ارزهای پیش‌فرض: bitcoin, ethereum</div>
+        <div style="color:var(--text-muted);padding:4px 0;">🪙 ${selectedTrainCoins?.length || 0} ارز انتخاب شده</div>
     </div>
 
     <!-- ===== RESULT ===== -->
@@ -129,6 +165,10 @@
                     <div style="font-size:0.55rem;color:var(--text-muted);">نسخه</div>
                     <div style="font-size:1rem;font-weight:700;color:var(--accent-purple);font-family:var(--font-mono);" id="resultVersion">—</div>
                 </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.55rem;color:var(--text-muted);">ارزها</div>
+                    <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);" id="resultCoins">—</div>
+                </div>
             </div>
         </div>
     </div>
@@ -136,17 +176,22 @@
 
 <script>
 // ============================================================
-// TRAINING TAB - با انتخاب داینامیک ارزها
+// TRAINING TAB - با انتخاب داینامیک ارزها و ویژگی‌های جدید
 // ============================================================
 
 let trainAllCoins = [];
 let trainFilteredCoins = [];
 let selectedTrainCoins = [];
+let trainedCoins = [];
 let isTraining = false;
 let trainingInterval = null;
 let isTrainingLoaded = false;
+let defaultCount = 5;
 
-// ===== بارگذاری لیست ارزها =====
+// ============================================================
+// ۱. بارگذاری لیست ارزها
+// ============================================================
+
 async function loadTrainCoins() {
     const grid = document.getElementById('trainCoinsGrid');
     grid.innerHTML = `
@@ -157,20 +202,34 @@ async function loadTrainCoins() {
     `;
 
     try {
-        const data = await api.getCoinsList({ limit: 100 });
+        const data = await api.getCoinsList({ limit: 200 });
         
         if (data.success && data.data) {
             trainAllCoins = data.data;
             
-            // انتخاب پیش‌فرض: bitcoin و ethereum
-            const defaultCoins = ['bitcoin', 'ethereum'];
-            selectedTrainCoins = trainAllCoins
-                .filter(c => defaultCoins.includes(c.id))
-                .map(c => c.id);
+            // دریافت ارزهای آموزش‌دیده
+            await loadTrainedCoins();
+            
+            // دریافت پیش‌فرض هوشمند
+            const defaultCoins = await getSmartDefaultCoins(trainAllCoins);
+            
+            if (defaultCoins && defaultCoins.length > 0) {
+                selectedTrainCoins = defaultCoins;
+            } else {
+                selectedTrainCoins = ['bitcoin', 'ethereum'];
+            }
             
             trainFilteredCoins = [...trainAllCoins];
             renderTrainCoins();
             updateSelectedCount();
+            updateTrainInfo();
+            
+            // ذخیره در localStorage
+            saveUserCoinSelection(selectedTrainCoins);
+            
+            addTrainLog(`🪙 ${selectedTrainCoins.length} ارز به‌صورت پیش‌فرض انتخاب شد`);
+            addTrainLog(`📊 بر اساس ترکیبی از رتبه، تغییرات و حجم معاملات`);
+            
         } else {
             grid.innerHTML = `
                 <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
@@ -190,7 +249,41 @@ async function loadTrainCoins() {
     }
 }
 
-// ===== رندر لیست ارزهای آموزش =====
+// ============================================================
+// ۲. دریافت ارزهای آموزش‌دیده
+// ============================================================
+
+async function loadTrainedCoins() {
+    try {
+        const history = await api.getModelHistory(50);
+        if (history.success && history.data) {
+            const allTrained = [];
+            history.data.forEach(item => {
+                if (item.coins && Array.isArray(item.coins)) {
+                    allTrained.push(...item.coins);
+                }
+            });
+            trainedCoins = [...new Set(allTrained)];
+            
+            const trainedCount = document.getElementById('trainedCount');
+            if (trainedCoins.length > 0) {
+                trainedCount.style.display = 'inline';
+                trainedCount.textContent = `🧠 آموزش دیده: ${trainedCoins.length}`;
+                document.getElementById('selectTrainedBtn').style.display = 'inline-flex';
+            } else {
+                trainedCount.style.display = 'none';
+                document.getElementById('selectTrainedBtn').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Load trained coins error:', error);
+    }
+}
+
+// ============================================================
+// ۳. رندر لیست ارزها
+// ============================================================
+
 function renderTrainCoins() {
     const grid = document.getElementById('trainCoinsGrid');
     
@@ -206,11 +299,12 @@ function renderTrainCoins() {
 
     grid.innerHTML = trainFilteredCoins.map(coin => {
         const isSelected = selectedTrainCoins.includes(coin.id);
+        const isTrained = trainedCoins.includes(coin.id);
         const change = coin.priceChange1d || 0;
         const changeColor = change > 0 ? 'var(--accent-green)' : change < 0 ? 'var(--accent-red)' : 'var(--text-muted)';
         
         return `
-            <label style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:${isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-input)'};border:1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s ease;font-size:0.65rem;color:var(--text-secondary);"
+            <label style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:${isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-input)'};border:1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s ease;font-size:0.65rem;color:var(--text-secondary);position:relative;"
                    onmouseover="this.style.borderColor='var(--border-hover)';"
                    onmouseout="this.style.borderColor='${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'}';">
                 <input type="checkbox" 
@@ -221,15 +315,20 @@ function renderTrainCoins() {
                 <span style="font-weight:500;color:var(--text-primary);">${coin.symbol || coin.id.toUpperCase().slice(0,4)}</span>
                 <span style="color:var(--text-muted);font-size:0.55rem;">${coin.name || ''}</span>
                 <span style="color:${changeColor};font-size:0.55rem;font-weight:500;">${(change > 0 ? '+' : '') + change.toFixed(2)}%</span>
+                ${isTrained ? '<span style="font-size:0.45rem;color:var(--accent-green);margin-right:4px;">✅</span>' : ''}
             </label>
         `;
     }).join('');
 }
 
-// ===== فیلتر ارزهای آموزش =====
+// ============================================================
+// ۴. فیلتر و جستجو
+// ============================================================
+
 function filterTrainCoins() {
     const search = document.getElementById('trainCoinSearch').value.toLowerCase().trim();
     const sort = document.getElementById('trainCoinSort').value;
+    const changeFilter = document.getElementById('trainChangeFilter').value;
     
     trainFilteredCoins = trainAllCoins.filter(coin => {
         const name = (coin.name || '').toLowerCase();
@@ -237,6 +336,14 @@ function filterTrainCoins() {
         const id = (coin.id || '').toLowerCase();
         return name.includes(search) || symbol.includes(search) || id.includes(search);
     });
+    
+    if (changeFilter === 'positive') {
+        trainFilteredCoins = trainFilteredCoins.filter(c => (c.priceChange1d || 0) > 0);
+    } else if (changeFilter === 'negative') {
+        trainFilteredCoins = trainFilteredCoins.filter(c => (c.priceChange1d || 0) < 0);
+    } else if (changeFilter === 'high') {
+        trainFilteredCoins = trainFilteredCoins.filter(c => (c.priceChange1d || 0) > 5);
+    }
     
     switch(sort) {
         case 'rank_asc':
@@ -253,7 +360,10 @@ function filterTrainCoins() {
     renderTrainCoins();
 }
 
-// ===== تغییر انتخاب یک ارز =====
+// ============================================================
+// ۵. مدیریت انتخاب‌ها
+// ============================================================
+
 function toggleTrainCoin(coinId) {
     const index = selectedTrainCoins.indexOf(coinId);
     if (index > -1) {
@@ -261,30 +371,84 @@ function toggleTrainCoin(coinId) {
     } else {
         selectedTrainCoins.push(coinId);
     }
+    
+    saveUserCoinSelection(selectedTrainCoins);
     updateSelectedCount();
+    updateTrainInfo();
     renderTrainCoins();
 }
 
-// ===== انتخاب همه ارزها =====
 function selectAllCoins() {
     selectedTrainCoins = trainAllCoins.map(c => c.id);
+    saveUserCoinSelection(selectedTrainCoins);
     updateSelectedCount();
+    updateTrainInfo();
     renderTrainCoins();
 }
 
-// ===== لغو انتخاب همه ارزها =====
 function deselectAllCoins() {
     selectedTrainCoins = [];
+    saveUserCoinSelection(selectedTrainCoins);
     updateSelectedCount();
+    updateTrainInfo();
     renderTrainCoins();
 }
 
-// ===== بروزرسانی تعداد انتخاب‌ها =====
+function selectTrainedCoins() {
+    if (trainedCoins.length === 0) {
+        showToast('⚠️ هیچ ارزی قبلاً آموزش دیده نیست', 'warning');
+        return;
+    }
+    selectedTrainCoins = trainedCoins.filter(id => 
+        trainAllCoins.some(c => c.id === id)
+    );
+    saveUserCoinSelection(selectedTrainCoins);
+    updateSelectedCount();
+    updateTrainInfo();
+    renderTrainCoins();
+    showToast(`✅ ${selectedTrainCoins.length} ارز آموزش‌دیده انتخاب شد`, 'success');
+}
+
 function updateSelectedCount() {
     document.getElementById('selectedCount').textContent = selectedTrainCoins.length + ' انتخاب';
 }
 
-// ===== شروع آموزش =====
+function updateTrainInfo() {
+    const info = document.getElementById('trainInfo');
+    const text = document.getElementById('trainInfoText');
+    if (selectedTrainCoins.length > 0) {
+        info.style.display = 'block';
+        const selectedNames = selectedTrainCoins.slice(0, 5).map(id => {
+            const coin = trainAllCoins.find(c => c.id === id);
+            return coin ? coin.symbol : id;
+        }).join(', ');
+        text.textContent = `📌 ${selectedTrainCoins.length} ارز انتخاب شده: ${selectedNames}${selectedTrainCoins.length > 5 ? ' ...' : ''}`;
+    } else {
+        info.style.display = 'none';
+    }
+}
+
+// ============================================================
+// ۶. تعداد ارزهای پیشنهادی
+// ============================================================
+
+function updateDefaultCount() {
+    defaultCount = parseInt(document.getElementById('defaultCount').value);
+    const defaultCoins = getTripleScoreCoins(trainAllCoins, defaultCount);
+    if (defaultCoins.length > 0) {
+        selectedTrainCoins = defaultCoins;
+        saveUserCoinSelection(selectedTrainCoins);
+        updateSelectedCount();
+        updateTrainInfo();
+        renderTrainCoins();
+        addTrainLog(`🔄 تعداد پیشنهاد به ${defaultCount} ارز تغییر کرد`);
+    }
+}
+
+// ============================================================
+// ۷. شروع آموزش
+// ============================================================
+
 async function startTraining() {
     if (isTraining) return;
     if (selectedTrainCoins.length === 0) {
@@ -295,7 +459,6 @@ async function startTraining() {
     const period = document.getElementById('trainPeriod').value;
     const incremental = document.getElementById('incrementalToggle').checked;
 
-    // نمایش لودینگ
     loading.show({
         messages: [
             'در حال آماده‌سازی داده‌ها...|دریافت اطلاعات از API',
@@ -319,7 +482,6 @@ async function startTraining() {
     document.getElementById('trainingStatusBadge').textContent = '⏳ در حال آموزش';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
 
-    // پاک کردن لاگ
     const logEl = document.getElementById('trainingLog');
     logEl.innerHTML = '';
 
@@ -363,7 +525,10 @@ async function startTraining() {
     }
 }
 
-// ===== بررسی نتیجه آموزش =====
+// ============================================================
+// ۸. بررسی نتیجه آموزش
+// ============================================================
+
 function checkTrainingResult() {
     const result = window._trainResult;
     if (!result) return;
@@ -389,15 +554,23 @@ function checkTrainingResult() {
     }
     
     document.getElementById('resultVersion').textContent = result.version || 'N/A';
+    document.getElementById('resultCoins').textContent = selectedTrainCoins.length + ' ارز';
 
     addTrainLog('✅ آموزش با موفقیت تکمیل شد');
     addTrainLog(`📊 دقت نهایی: ${result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—'}`);
     addTrainLog(`📌 نسخه: ${result.version || 'N/A'}`);
+    addTrainLog(`🪙 ارزها: ${selectedTrainCoins.join(', ')}`);
 
     showToast('✅ آموزش با موفقیت انجام شد', 'success');
+    
+    // بروزرسانی ارزهای آموزش‌دیده
+    loadTrainedCoins();
 }
 
-// ===== توقف آموزش =====
+// ============================================================
+// ۹. توقف آموزش
+// ============================================================
+
 async function stopTraining() {
     if (!isTraining) return;
     if (!confirm('⚠️ آیا از توقف آموزش اطمینان دارید؟')) return;
@@ -406,7 +579,7 @@ async function stopTraining() {
         loading.show({
             messages: ['در حال توقف آموزش...'],
             duration: 3000,
-            onComplete: function() { /* ادامه */ }
+            onComplete: function() {}
         });
 
         const result = await api.stopSchedule();
@@ -428,7 +601,10 @@ async function stopTraining() {
     }
 }
 
-// ===== افزودن لاگ =====
+// ============================================================
+// ۱۰. ابزارهای کمکی
+// ============================================================
+
 function addTrainLog(message) {
     const logEl = document.getElementById('trainingLog');
     const time = new Date().toLocaleTimeString('fa-IR');
@@ -442,7 +618,15 @@ function addTrainLog(message) {
     logEl.scrollTop = logEl.scrollHeight;
 }
 
-// ===== مقداردهی اولیه =====
+function refreshTrainingCoins() {
+    showToast('🔄 بروزرسانی لیست ارزها...', 'info');
+    loadTrainCoins();
+}
+
+// ============================================================
+// ۱۱. مقداردهی اولیه و پاکسازی
+// ============================================================
+
 window.init_training = function() {
     console.log('🎓 Training tab initializing...');
     
@@ -463,7 +647,6 @@ window.init_training = function() {
     }, 300000);
 };
 
-// ===== پاکسازی =====
 window.cleanup_training = function() {
     if (trainingInterval) {
         clearInterval(trainingInterval);
@@ -473,5 +656,5 @@ window.cleanup_training = function() {
     console.log('🧹 Training tab cleaned up');
 };
 
-console.log('✅ Training tab loaded (dynamic coins)');
+console.log('✅ Training tab loaded with dynamic coins');
 </script>
