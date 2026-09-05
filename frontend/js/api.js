@@ -389,6 +389,10 @@ class ApiClient {
             method: 'POST'
         });
     }
+    // ===== دریافت داده‌های نمودار =====
+    getChartData(coin, period = '1m') {
+        return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
+    }
     // ============================================================
     // ۱۱. هشدارها (ALERTS)
     // ============================================================
