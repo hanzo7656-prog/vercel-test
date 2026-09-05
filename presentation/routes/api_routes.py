@@ -2269,7 +2269,38 @@ def predict_explain():
 # ============================================================
 # ۱۲. کوین‌استتس (COINSTATS)
 # ============================================================
-
+@api_bp.route('/coinstats/coins', methods=['GET'])
+@require_auth()
+def get_coins_list():
+    """دریافت لیست ارزها"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        page = request.args.get('page', 1, type=int)
+        currency = request.args.get('currency', 'USD')
+        search = request.args.get('search')
+        
+        container = current_app.container
+        api_client = container.api_client()
+        
+        coins = api_client.get_coins_list(limit=limit, page=page, currency=currency, search=search)
+        
+        if coins:
+            return jsonify({'success': True, 'data': coins, 'count': len(coins)})
+        
+        # Fallback
+        fallback = [
+            {"id": "bitcoin", "symbol": "BTC", "name": "Bitcoin"},
+            {"id": "ethereum", "symbol": "ETH", "name": "Ethereum"},
+            {"id": "solana", "symbol": "SOL", "name": "Solana"},
+            {"id": "cardano", "symbol": "ADA", "name": "Cardano"},
+            {"id": "ripple", "symbol": "XRP", "name": "XRP"},
+        ]
+        return jsonify({'success': True, 'data': fallback, 'count': len(fallback), 'from_cache': False})
+        
+    except Exception as e:
+        logger.error(f"Coins list error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 @api_bp.route('/coinstats/price/<coin>', methods=['GET'])
 @require_auth()
 def coinstats_price(coin):
