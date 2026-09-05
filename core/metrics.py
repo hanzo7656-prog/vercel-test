@@ -1,6 +1,6 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه نهایی با Self-Healer مقاوم
+# سیستم جمع‌آوری متریک - نسخه نهایی
 # ============================================================
 
 import time
@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsScheduler:
-    """
-    سیستم جمع‌آوری متریک با Self-Healer یکپارچه
-    """
+    """سیستم جمع‌آوری متریک با Self-Healer یکپارچه"""
     
     _instance = None
     
@@ -31,7 +29,6 @@ class MetricsScheduler:
         
         self._running = False
         self._stop_event = None
-        
         self.metrics_cache: Dict[str, Any] = {}
         self.stats = {
             "collections": 0,
@@ -42,88 +39,83 @@ class MetricsScheduler:
         }
         self.start_time = time.time()
         
-        # فواصل
         self.light_interval = 3
         self.medium_interval = 60
         self.heavy_interval = 300
         self.healing_interval = 30
         
-        # ===== Self-Healer =====
-        self.healer = None
-        self._init_self_healer()
+        # ===== ساخت SelfHealer به صورت مستقیم =====
+        self.healer = self._create_healer()
         
-        # ===== بررسی نهایی =====
         if self.healer is not None:
             logger.info("✅ SelfHealer initialized successfully")
+            try:
+                status = self.healer.get_healing_status()
+                logger.info(f"📊 SelfHealer status: {status}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not get healing status: {e}")
         else:
             logger.warning("⚠️ SelfHealer could not be initialized")
         
         logger.info("✅ MetricsScheduler v10.0 initialized")
     
-    def _init_self_healer(self):
-        """راه‌اندازی Self-Healer با مدیریت کامل خطاها"""
+    def _create_healer(self):
+        """ساخت SelfHealer با مدیریت کامل خطاها"""
         try:
+            from infrastructure.api.coinstats_client import coinstats_client
             from models.manager.model_manager import ModelManager
             from models.trainer.auto_trainer import AutoTrainer
-            from infrastructure.api.coinstats_client import coinstats_client
             from application.services.self_healer import SelfHealer
             
-            logger.info("✅ All SelfHealer imports successful")
+            logger.info("🔄 Creating SelfHealer...")
             
-            # ===== ایجاد ModelManager =====
             model_manager = ModelManager(api=coinstats_client)
             logger.info("✅ ModelManager created")
             
-            # ===== ایجاد AutoTrainer =====
             trainer = AutoTrainer(
                 api=coinstats_client,
                 model_manager=model_manager
             )
             logger.info("✅ AutoTrainer created")
             
-            # ===== ایجاد SelfHealer =====
-            self.healer = SelfHealer(
+            healer = SelfHealer(
                 model_manager=model_manager,
                 trainer=trainer,
                 api_client=coinstats_client
             )
             logger.info("✅ SelfHealer created")
             
-            # ===== تست =====
-            if self.healer:
-                status = self.healer.get_healing_status()
-                logger.info(f"📊 SelfHealer status: {status}")
+            return healer
             
+        except ImportError as e:
+            logger.error(f"❌ Import error: {e}")
+            return None
+        except TypeError as e:
+            logger.error(f"❌ TypeError: {e}")
+            return None
         except Exception as e:
-            logger.error(f"❌ SelfHealer init error: {e}")
+            logger.error(f"❌ SelfHealer creation error: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            self.healer = None
+            return None
     
     def _run_self_healing(self):
-        """اجرای Self-Healing"""
         if self.healer is None:
-            logger.warning("⚠️ SelfHealer not available")
             return
         
         try:
             metrics = self.get_alert_metrics()
             actions = self.healer.check_and_heal(metrics)
-            
             if any(actions.values()):
                 self.stats["healing_actions"] += 1
                 self.stats["last_healing"] = datetime.now().isoformat()
                 logger.info(f"🔄 Self-healing actions: {actions}")
-                
-                if actions.get("model_restored"):
-                    self._collect_medium_metrics()
-            
         except Exception as e:
             logger.error(f"❌ Self-healing error: {e}")
             self.stats["errors"] += 1
     
     # ============================================================
-    # بقیه متدها (بدون تغییر)
+    # بقیه متدها (همان‌هایی که قبلاً بود)
     # ============================================================
     
     def _collect_light_metrics(self):
@@ -466,6 +458,6 @@ class MetricsScheduler:
 
 
 # ============================================================
-# ایجاد نمونه
+# ایجاد نمونه واحد
 # ============================================================
 metrics_scheduler = MetricsScheduler()
