@@ -1,5 +1,6 @@
+# core/price_manager.py
 # ============================================================
-# price_manager.py - مدیریت قیمت‌های لحظه‌ای
+# مدیریت قیمت‌های لحظه‌ای با Redis Cache و مدیریت خطا
 # ============================================================
 
 import logging
@@ -21,6 +22,7 @@ class PriceManager:
     مدیریت قیمت‌های لحظه‌ای
     - اولویت اول: WebSocket (FreeCryptoAPI)
     - Fallback: CoinStats REST API
+    - کش در Redis برای دسترسی سریع
     - فقط زمانی که کاربر آنلاین است بروزرسانی می‌شود
     """
     
@@ -30,13 +32,15 @@ class PriceManager:
         user_tracker: UserTracker,
         cache=None,
         update_interval: int = 10,
-        fallback_interval: int = 60
+        fallback_interval: int = 60,
+        redis_ttl: int = 300  # ۵ دقیقه
     ):
         self.free_client = free_client
         self.user_tracker = user_tracker
         self.cache = cache or get_cache()
-        self.update_interval = update_interval  # ۱۰ ثانیه
-        self.fallback_interval = fallback_interval  # ۶۰ ثانیه
+        self.update_interval = update_interval
+        self.fallback_interval = fallback_interval
+        self.redis_ttl = redis_ttl
         self.is_running = False
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -44,12 +48,13 @@ class PriceManager:
         self._last_update = None
         self._last_fallback = None
         self._fallback_count = 0
+        self._error_count = 0
+        self._success_count = 0
         
         # لیست ارزهایی که باید بروزرسانی شوند
         self._watch_symbols = set()
-        self._coins_data = []
         
-        logger.info("✅ PriceManager initialized")
+        logger.info("✅ PriceManager initialized with Redis TTL: %ds", redis_ttl)
     
     def start(self) -> None:
         """شروع بروزرسانی قیمت‌ها"""
@@ -73,52 +78,71 @@ class PriceManager:
     
     def _run(self) -> None:
         """حلقه اصلی بروزرسانی"""
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+        
         while not self._stop_event.is_set():
             try:
-                # بررسی کاربران آنلاین
                 online_users = self.user_tracker.get_online_count()
                 
                 if online_users > 0:
-                    # بروزرسانی از WebSocket (هر ۱۰ ثانیه)
-                    self._update_from_websocket()
+                    # بروزرسانی از WebSocket
+                    ws_success = self._update_from_websocket()
                     
-                    # بروزرسانی از CoinStats (هر ۶۰ ثانیه) - Fallback
+                    # بروزرسانی از CoinStats (Fallback)
                     self._update_from_coinstats()
+                    
+                    if ws_success:
+                        consecutive_errors = 0
+                    else:
+                        consecutive_errors += 1
+                        if consecutive_errors >= max_consecutive_errors:
+                            logger.warning(f"⚠️ {consecutive_errors} consecutive WebSocket errors, trying reconnect...")
+                            self._try_reconnect_websocket()
+                            consecutive_errors = 0
+                    
+                    time.sleep(self.update_interval)
                 else:
-                    # اگر کاربری آنلاین نیست، صبر کن
+                    # اگر کاربری آنلاین نیست، کمتر چک کن
                     logger.debug("💤 No online users, waiting...")
                     time.sleep(30)
-                
+                    
             except Exception as e:
                 logger.error(f"❌ PriceManager error: {e}")
+                self._error_count += 1
                 time.sleep(5)
     
-    def _update_from_websocket(self) -> None:
+    def _update_from_websocket(self) -> bool:
         """بروزرسانی قیمت‌ها از WebSocket"""
         if not self.free_client.is_connected:
             logger.warning("⚠️ WebSocket not connected")
-            return
+            return False
         
-        # دریافت لیست ارزها از کش
-        symbols = self._get_watch_symbols()
-        if not symbols:
-            logger.debug("No symbols to watch")
-            time.sleep(5)
-            return
-        
-        # قیمت‌ها از کش WebSocket
-        prices = self.free_client.get_prices(symbols)
-        
-        if prices:
-            # ذخیره در Redis
-            for symbol, data in prices.items():
-                cache_key = f"price_{symbol}"
-                self.cache.set(cache_key, data, 60)  # TTL: ۶۰ ثانیه
+        try:
+            symbols = self._get_watch_symbols()
+            if not symbols:
+                return True
             
-            self._last_update = datetime.now().isoformat()
-            logger.debug(f"📡 WebSocket update: {len(prices)} symbols")
-        
-        time.sleep(self.update_interval)
+            prices = self.free_client.get_prices(symbols)
+            
+            if prices:
+                # ذخیره در Redis
+                for symbol, data in prices.items():
+                    cache_key = f"price_{symbol}"
+                    self.cache.set(cache_key, data, self.redis_ttl)
+                
+                self._last_update = datetime.now().isoformat()
+                self._success_count += 1
+                logger.debug(f"📡 WebSocket update: {len(prices)} symbols")
+                return True
+            else:
+                logger.debug("📡 WebSocket update: no prices received")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ WebSocket update error: {e}")
+            self._error_count += 1
+            return False
     
     def _update_from_coinstats(self) -> None:
         """بروزرسانی قیمت‌ها از CoinStats (Fallback)"""
@@ -132,7 +156,7 @@ class PriceManager:
         if not symbols:
             return
         
-        # فقط ارزهایی که در WebSocket نیستند
+        # فقط ارزهایی که در Redis نیستند یا منقضی شده‌اند
         missing_symbols = []
         for symbol in symbols:
             cache_key = f"price_{symbol}"
@@ -143,43 +167,61 @@ class PriceManager:
         if not missing_symbols:
             return
         
-        # دریافت از CoinStats
+        # دریافت از CoinStats با مدیریت خطا
         try:
-            # محدودیت: حداکثر ۱۰ ارز در هر درخواست
             batch_size = 10
             for i in range(0, len(missing_symbols), batch_size):
                 batch = missing_symbols[i:i+batch_size]
                 for symbol in batch:
-                    coin_data = coinstats_client.get_coin(symbol.lower())
-                    if coin_data and "error" not in coin_data:
-                        price_data = {
-                            "price": coin_data.get("price", 0),
-                            "change_24h": coin_data.get("priceChange1d", 0),
-                            "high_24h": coin_data.get("high24h", 0),
-                            "low_24h": coin_data.get("low24h", 0),
-                            "volume": coin_data.get("volume24h", 0),
-                            "timestamp": datetime.now().isoformat(),
-                            "source": "coinstats"
-                        }
-                        cache_key = f"price_{symbol.upper()}"
-                        self.cache.set(cache_key, price_data, 300)  # TTL: ۵ دقیقه
-                        self._fallback_count += 1
-                        logger.debug(f"🔄 Fallback: {symbol} from CoinStats")
+                    try:
+                        coin_data = coinstats_client.get_coin(symbol.lower())
+                        if coin_data and "error" not in coin_data:
+                            price_data = {
+                                "price": coin_data.get("price", 0),
+                                "change_24h": coin_data.get("priceChange1d", 0),
+                                "high_24h": coin_data.get("high24h", 0),
+                                "low_24h": coin_data.get("low24h", 0),
+                                "volume": coin_data.get("volume24h", 0),
+                                "timestamp": datetime.now().isoformat(),
+                                "source": "coinstats"
+                            }
+                            cache_key = f"price_{symbol.upper()}"
+                            self.cache.set(cache_key, price_data, self.redis_ttl)
+                            self._fallback_count += 1
+                            logger.debug(f"🔄 Fallback: {symbol} from CoinStats")
+                        else:
+                            logger.warning(f"⚠️ CoinStats returned error for {symbol}: {coin_data}")
+                    except Exception as e:
+                        logger.error(f"❌ CoinStats error for {symbol}: {e}")
+                        self._error_count += 1
             
             self._last_fallback = datetime.now().isoformat()
             
         except Exception as e:
             logger.error(f"❌ CoinStats fallback error: {e}")
+            self._error_count += 1
+    
+    def _try_reconnect_websocket(self) -> None:
+        """تلاش برای reconnect WebSocket"""
+        try:
+            logger.info("🔄 Attempting to reconnect WebSocket...")
+            self.free_client.stop()
+            time.sleep(2)
+            self.free_client.connect()
+            time.sleep(3)
+            if self.free_client.is_connected:
+                logger.info("✅ WebSocket reconnected successfully")
+            else:
+                logger.warning("⚠️ WebSocket reconnect failed")
+        except Exception as e:
+            logger.error(f"❌ WebSocket reconnect error: {e}")
     
     def _get_watch_symbols(self) -> List[str]:
         """دریافت لیست ارزهای مورد نظر برای بروزرسانی"""
-        # از Redis دریافت کن (لیست ارزها توسط CoinStats تنظیم شده)
         coins_list = self.cache.get("coins_list")
         if not coins_list:
-            # Fallback: ارزهای اصلی
             return ["BTC", "ETH", "SOL", "ADA", "XRP"]
         
-        # استخراج سمبل‌ها
         symbols = []
         for coin in coins_list:
             symbol = coin.get("symbol", "").upper()
@@ -189,12 +231,20 @@ class PriceManager:
         return symbols[:100]  # حداکثر ۱۰۰ ارز
     
     def get_price(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """دریافت قیمت یک ارز"""
+        """دریافت قیمت یک ارز (از کش Redis)"""
         symbol = symbol.upper()
         cache_key = f"price_{symbol}"
         cached = self.cache.get(cache_key)
         if cached:
             return cached
+        
+        # اگر در Redis نبود، از WebSocket کش دریافت کن
+        if self.free_client.is_connected:
+            ws_price = self.free_client.get_price(symbol)
+            if ws_price:
+                self.cache.set(cache_key, ws_price, self.redis_ttl)
+                return ws_price
+        
         return None
     
     def get_prices(self, symbols: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
@@ -208,12 +258,15 @@ class PriceManager:
                     result[symbol.upper()] = price
         else:
             # دریافت همه قیمت‌ها از Redis
-            keys = self.cache.keys("price_*")
-            for key in keys:
-                symbol = key.replace("price_", "")
-                price = self.cache.get(key)
-                if price:
-                    result[symbol] = price
+            try:
+                keys = self.cache.keys("price_*")
+                for key in keys:
+                    symbol = key.replace("price_", "")
+                    price = self.cache.get(key)
+                    if price:
+                        result[symbol] = price
+            except Exception as e:
+                logger.error(f"❌ Error getting prices from Redis: {e}")
         
         return result
     
@@ -224,6 +277,9 @@ class PriceManager:
             "last_update": self._last_update,
             "last_fallback": self._last_fallback,
             "fallback_count": self._fallback_count,
+            "success_count": self._success_count,
+            "error_count": self._error_count,
             "websocket_connected": self.free_client.is_connected,
-            "websocket_stats": self.free_client.get_stats()
+            "websocket_stats": self.free_client.get_stats(),
+            "cache_keys": len(self.cache.keys("price_*")) if self.cache else 0
         }
