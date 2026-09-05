@@ -2498,7 +2498,7 @@ def get_realtime_price(symbol):
     try:
         symbol = symbol.upper()
         container = current_app.container
-        price_manager = container.price_manager()
+        price_manager = container.get('price_manager')
         
         price = price_manager.get_price(symbol)
         
@@ -2545,9 +2545,9 @@ def get_crypto_stats():
     """
     try:
         container = current_app.container
-        price_manager = container.price_manager()
-        user_tracker = container.user_tracker()
-        free_client = container.free_crypto_client()
+        price_manager = container.get('price_manager')
+        user_tracker = container.get('user_tracker')
+        free_client = container.get('free_crypto_client')
         
         stats = {
             'websocket': {
@@ -2592,7 +2592,7 @@ def crypto_heartbeat():
             return jsonify({'success': False, 'error': 'No session'}), 401
         
         container = current_app.container
-        user_tracker = container.user_tracker()
+        user_tracker = container.get('user_tracker')
         user_tracker.heartbeat(session_id)
         
         return jsonify({
