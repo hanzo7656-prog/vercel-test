@@ -336,7 +336,13 @@ class ApiClient {
     // ============================================================
     // ۱۰. کوین‌استتس (COINSTATS)
     // ============================================================
-
+    // ===== دریافت لیست ارزها =====
+    getCoinsList(options = {}) {
+        const { limit = 50, page = 1, currency = 'USD', search = '' } = options;
+        const params = new URLSearchParams({ limit, page, currency });
+        if (search) params.append('search', search);
+        return this.request(`/api/coinstats/coins?${params}`);
+    }
     getCoinPrice(coin) {
         return this.request(`/api/coinstats/price/${coin}`);
     }
