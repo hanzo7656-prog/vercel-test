@@ -11,6 +11,7 @@ from domain.interfaces.api_client import APIClient
 # ✅ Import مستقیم از مسیرهای درست (بدون Circular Import)
 from infrastructure.api.coinstats_client import coinstats_client, CoinStatsClient
 from infrastructure.api.cache_manager import cache_manager, CacheManager
+from infrastructure.api.free_crypto_client import FreeCryptoClient, create_free_crypto_client
 from infrastructure.database import get_primary, get_cache, get_backup
 from infrastructure.repositories.model_repository import ModelRepository
 from infrastructure.repositories.prediction_repository import PredictionRepository
@@ -19,6 +20,8 @@ from infrastructure.auth.auth_manager import auth_manager, AuthManager
 from core.feature_engineering import FeatureEngineer
 from core.metrics import metrics_scheduler
 from core.threading_manager import threading_manager
+from core.user_tracker import UserTracker
+from core.price_manager import PriceManager
 
 from models.manager.model_manager import ModelManager
 from models.trainer.auto_trainer import AutoTrainer
@@ -106,6 +109,22 @@ class Container:
         return self.get('auth_manager')
     
     # ============================================================
+    # ✅ سرویس‌های جدید WebSocket
+    # ============================================================
+    
+    def free_crypto_client(self) -> FreeCryptoClient:
+        """دریافت نمونه FreeCryptoClient (WebSocket)"""
+        return self.get('free_crypto_client')
+    
+    def user_tracker(self) -> UserTracker:
+        """دریافت نمونه UserTracker"""
+        return self.get('user_tracker')
+    
+    def price_manager(self) -> PriceManager:
+        """دریافت نمونه PriceManager"""
+        return self.get('price_manager')
+    
+    # ============================================================
     # سرویس‌های لایه Core
     # ============================================================
     
@@ -147,6 +166,52 @@ class Container:
     def threading_manager(self):
         return self.get('threading_manager')
     
+    # ============================================================
+    # شروع و توقف سرویس‌ها
+    # ============================================================
+    
+    def start_services(self) -> None:
+        """شروع همه سرویس‌های پس‌زمینه"""
+        logger.info("🚀 Starting background services...")
+        
+        # شروع WebSocket
+        try:
+            self.free_crypto_client()
+            logger.info("✅ FreeCryptoClient started")
+        except Exception as e:
+            logger.error(f"❌ Failed to start FreeCryptoClient: {e}")
+        
+        # شروع PriceManager
+        try:
+            price_manager = self.price_manager()
+            if hasattr(price_manager, 'start'):
+                price_manager.start()
+                logger.info("✅ PriceManager started")
+        except Exception as e:
+            logger.error(f"❌ Failed to start PriceManager: {e}")
+        
+        logger.info("🚀 All background services started")
+    
+    def stop_services(self) -> None:
+        """توقف همه سرویس‌های پس‌زمینه"""
+        logger.info("⏹️ Stopping background services...")
+        
+        try:
+            price_manager = self.get('price_manager')
+            if price_manager and hasattr(price_manager, 'stop'):
+                price_manager.stop()
+        except Exception as e:
+            logger.error(f"❌ Error stopping PriceManager: {e}")
+        
+        try:
+            free_client = self.get('free_crypto_client')
+            if free_client and hasattr(free_client, 'stop'):
+                free_client.stop()
+        except Exception as e:
+            logger.error(f"❌ Error stopping FreeCryptoClient: {e}")
+        
+        logger.info("⏹️ All background services stopped")
+    
     def get_status(self) -> Dict[str, Any]:
         """دریافت وضعیت Container"""
         from datetime import datetime
@@ -179,7 +244,30 @@ def register_services() -> None:
     container.register('auth_manager', auth_manager, singleton=True)
     
     # ============================================================
-    # ۲. سرویس‌های Core (با Lazy Loading)
+    # ۲. سرویس‌های WebSocket (جدید)
+    # ============================================================
+    def create_free_crypto_client():
+        import os
+        api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
+        return create_free_crypto_client(api_key)
+    container.register('free_crypto_client', create_free_crypto_client, singleton=True)
+    
+    def create_user_tracker():
+        return UserTracker(timeout=30)
+    container.register('user_tracker', create_user_tracker, singleton=True)
+    
+    def create_price_manager():
+        return PriceManager(
+            free_client=container.free_crypto_client(),
+            user_tracker=container.user_tracker(),
+            cache=get_cache(),
+            update_interval=10,
+            fallback_interval=60
+        )
+    container.register('price_manager', create_price_manager, singleton=True)
+    
+    # ============================================================
+    # ۳. سرویس‌های Core (با Lazy Loading)
     # ============================================================
     def create_feature_engineer():
         return FeatureEngineer(container.api_client())
@@ -194,7 +282,7 @@ def register_services() -> None:
     container.register('trainer', create_trainer, singleton=True)
     
     # ============================================================
-    # ۳. سرویس‌های Application
+    # ۴. سرویس‌های Application
     # ============================================================
     def create_predict_use_case():
         return PredictCoinUseCase(
@@ -228,7 +316,7 @@ def register_services() -> None:
     container.register('monitoring_service', create_monitoring_service, singleton=True)
     
     # ============================================================
-    # ۴. سرویس‌های سیستم
+    # ۵. سرویس‌های سیستم
     # ============================================================
     container.register('metrics_scheduler', metrics_scheduler, singleton=True)
     container.register('threading_manager', threading_manager, singleton=True)
