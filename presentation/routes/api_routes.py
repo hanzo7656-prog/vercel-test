@@ -2604,36 +2604,82 @@ def crypto_heartbeat():
         logger.error(f"Heartbeat error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# api_routes.py
+# api_routes.py - اندپوینت دریافت داده‌های نمودار با اندیکاتورها
+
 @api_bp.route('/coinstats/chart/<coin>', methods=['GET'])
 @require_auth()
 def get_chart_data(coin):
+    """
+    دریافت داده‌های نمودار شامل قیمت، RSI، SMA، EMA، MACD و سیگنال‌ها
+    """
     try:
         period = request.args.get('period', '1m')
         container = current_app.container
         api_client = container.get('api_client')
+        indicators = container.get('indicators')
         
-        # دریافت داده‌های تاریخی
+        # دریافت داده‌های تاریخی از CoinStats
         chart_data = api_client.get_chart(coin, period)
         
-        # محاسبه RSI
-        rsi_values = calculate_rsi(chart_data)
+        if not chart_data or not isinstance(chart_data, list) or len(chart_data) < 30:
+            return jsonify({'success': False, 'error': 'Insufficient data'}), 404
         
-        # دریافت سیگنال‌ها از مدل
-        signals = get_signals(chart_data)
+        # استخراج قیمت‌ها
+        timestamps = []
+        prices = []
+        for point in chart_data:
+            if isinstance(point, list) and len(point) >= 2:
+                timestamps.append(point[0])
+                prices.append(float(point[1]))
+        
+        # ===== محاسبه همه اندیکاتورها =====
+        rsi_values = indicators['calculate_rsi'](prices, 14)
+        sma_20 = indicators['calculate_sma'](prices, 20)
+        sma_50 = indicators['calculate_sma'](prices, 50)
+        ema_20 = indicators['calculate_ema'](prices, 20)
+        macd_line, signal_line, histogram = indicators['calculate_macd'](prices, 12, 26, 9)
+        
+        # ===== دریافت سیگنال‌ها از مدل =====
+        signals = []
+        try:
+            predict_use_case = container.get('predict_use_case')
+            prediction = predict_use_case.execute(coin, period)
+            if prediction:
+                signals.append({
+                    'index': len(prices) - 1,
+                    'type': prediction.signal_type.value,
+                    'price': prediction.current_price,
+                    'confidence': prediction.confidence
+                })
+        except Exception as e:
+            logger.warning(f"Could not get prediction: {e}")
         
         return jsonify({
             'success': True,
             'data': {
-                'timestamps': [point[0] for point in chart_data],
-                'prices': [point[1] for point in chart_data],
+                'timestamps': timestamps,
+                'prices': prices,
                 'rsi': rsi_values,
-                'signals': signals
+                'sma_20': sma_20,
+                'sma_50': sma_50,
+                'ema_20': ema_20,
+                'macd': {
+                    'macd_line': macd_line,
+                    'signal_line': signal_line,
+                    'histogram': histogram
+                },
+                'signals': signals,
+                'meta': {
+                    'coin': coin,
+                    'period': period,
+                    'data_points': len(prices)
+                }
             }
         })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
         
+    except Exception as e:
+        logger.error(f"Chart data error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
 # ۱۳. هشدارها (ALERTS)
 # ============================================================
