@@ -1,0 +1,203 @@
+<!-- ============================================================
+     INDICATORS TAB - نمایش شاخص‌های تکنیکال و احساسات
+     ============================================================ -->
+
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-chart-bar"></i> شاخص‌های بازار
+        <span class="badge-count" id="indicatorsStatus" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">✅ آماده</span>
+        <button class="btn btn-xs btn-outline" onclick="refreshIndicators()" style="padding:2px 10px;font-size:0.6rem;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- ===== COIN SELECTOR ===== -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <select id="indicatorsCoin" onchange="loadIndicators()" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:150px;">
+            <option value="bitcoin">₿ بیت‌کوین</option>
+        </select>
+        <span style="font-size:0.6rem;color:var(--text-muted);">شاخص‌های تکنیکال و احساسات بازار</span>
+    </div>
+
+    <!-- ===== INDICATORS GRID ===== -->
+    <div id="indicatorsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <div class="loading-container" style="padding:30px;grid-column:1/-1;">
+            <div class="loading-spinner" style="width:28px;height:28px;"></div>
+            <p class="loading-text" style="font-size:0.8rem;">در حال بارگذاری شاخص‌ها...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// INDICATORS TAB - شاخص‌های تکنیکال و احساسات
+// ============================================================
+
+let indicatorsInterval = null;
+let isIndicatorsLoaded = false;
+
+// ===== بارگذاری ارزها در سلکت =====
+async function loadIndicatorsCoins() {
+    try {
+        const data = await api.getCoinsList({ limit: 20 });
+        if (data.success && data.data) {
+            const select = document.getElementById('indicatorsCoin');
+            const currentVal = select.value;
+            select.innerHTML = data.data.map(coin => 
+                `<option value="${coin.id}">${coin.symbol} - ${coin.name}</option>`
+            ).join('');
+            if (currentVal) select.value = currentVal;
+        }
+    } catch (error) {
+        console.error('Load indicators coins error:', error);
+    }
+}
+
+// ===== بارگذاری شاخص‌ها =====
+async function loadIndicators() {
+    const coin = document.getElementById('indicatorsCoin').value;
+    const grid = document.getElementById('indicatorsGrid');
+    const statusEl = document.getElementById('indicatorsStatus');
+
+    statusEl.textContent = '⏳ در حال بارگذاری...';
+    statusEl.style.color = 'var(--accent-orange)';
+
+    try {
+        // دریافت داده‌های مورد نیاز
+        const [coinData, fearGreed, dominance] = await Promise.all([
+            api.getCoinPrice(coin),
+            api.getFearGreed(),
+            api.getBTCDominance()
+        ]);
+
+        // دریافت داده‌های تکنیکال (از mock برای حال حاضر)
+        const technical = getMockTechnicalIndicators(coin);
+
+        // ترکیب همه شاخص‌ها
+        const indicators = {
+            price: coinData.data?.price || 0,
+            change24h: coinData.data?.change_24h || 0,
+            volume24h: coinData.data?.volume_24h || 0,
+            high24h: coinData.data?.high_24h || 0,
+            low24h: coinData.data?.low_24h || 0,
+            marketCap: coinData.data?.market_cap || 0,
+            rsi: technical.rsi || 50,
+            macd: technical.macd || 0,
+            macdSignal: technical.macdSignal || 0,
+            macdHistogram: technical.macdHistogram || 0,
+            support: technical.support || 0,
+            resistance: technical.resistance || 0,
+            volatility: technical.volatility || 0,
+            fearGreed: fearGreed.data?.value || 50,
+            fearGreedLabel: fearGreed.data?.classification || 'Neutral',
+            btcDominance: dominance.data?.value || 50
+        };
+
+        renderIndicators(indicators);
+        statusEl.textContent = '✅ بارگذاری شد';
+        statusEl.style.color = 'var(--accent-green)';
+
+    } catch (error) {
+        console.error('Indicators error:', error);
+        grid.innerHTML = `
+            <div style="text-align:center;padding:30px;color:var(--accent-red);grid-column:1/-1;">
+                <span style="font-size:2rem;display:block;margin-bottom:8px;">❌</span>
+                <p>خطا در دریافت شاخص‌ها</p>
+                <button class="btn btn-primary btn-sm" onclick="loadIndicators()" style="margin-top:8px;padding:4px 16px;font-size:0.7rem;">
+                    <i class="fas fa-sync-alt"></i> تلاش مجدد
+                </button>
+            </div>
+        `;
+        statusEl.textContent = '❌ خطا';
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+// ===== رندر شاخص‌ها =====
+function renderIndicators(data) {
+    const grid = document.getElementById('indicatorsGrid');
+
+    const items = [
+        { label: '💰 قیمت', value: formatCurrency(data.price), color: 'cyan', icon: '💰' },
+        { label: '📈 تغییر ۲۴h', value: formatPercent(data.change24h), color: data.change24h >= 0 ? 'green' : 'red', icon: '📈' },
+        { label: '📊 RSI', value: data.rsi.toFixed(1), color: data.rsi > 70 ? 'red' : data.rsi < 30 ? 'green' : 'orange', icon: '📊' },
+        { label: '📉 MACD', value: data.macd.toFixed(2), color: data.macd > 0 ? 'green' : 'red', icon: '📉' },
+        { label: '🛡️ حمایت', value: formatCurrency(data.support), color: 'cyan', icon: '🛡️' },
+        { label: '⚔️ مقاومت', value: formatCurrency(data.resistance), color: 'purple', icon: '⚔️' },
+        { label: '😨 ترس و طمع', value: data.fearGreed + ' (' + data.fearGreedLabel + ')', color: data.fearGreed > 70 ? 'red' : data.fearGreed < 30 ? 'green' : 'orange', icon: '😨' },
+        { label: '📊 سلطه BTC', value: data.btcDominance.toFixed(1) + '%', color: 'cyan', icon: '📊' },
+        { label: '📦 حجم ۲۴h', value: formatNumber(data.volume24h), color: 'cyan', icon: '📦' },
+        { label: '📈 نوسان', value: (data.volatility * 100).toFixed(1) + '%', color: data.volatility > 0.03 ? 'orange' : 'green', icon: '📈' },
+        { label: '⬆️ بالاترین', value: formatCurrency(data.high24h), color: 'green', icon: '⬆️' },
+        { label: '⬇️ پایین‌ترین', value: formatCurrency(data.low24h), color: 'red', icon: '⬇️' }
+    ];
+
+    grid.innerHTML = items.map(item => `
+        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px 16px;text-align:center;transition:var(--transition);">
+            <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:4px;">
+                ${item.icon} ${item.label}
+            </div>
+            <div style="font-size:1rem;font-weight:700;margin-top:4px;color:var(--accent-${item.color});font-family:var(--font-mono);">
+                ${item.value}
+            </div>
+        </div>
+    `).join('');
+}
+
+// ===== داده‌های تکنیکال شبیه‌سازی شده =====
+function getMockTechnicalIndicators(coin) {
+    const base = coin === 'bitcoin' ? 80000 : coin === 'ethereum' ? 2500 : 100;
+    const volatility = 0.02 + Math.random() * 0.02;
+    const randomFactor = 1 + (Math.random() - 0.5) * 0.2;
+    
+    return {
+        rsi: 30 + Math.random() * 40,
+        macd: (Math.random() - 0.5) * 100,
+        macdSignal: (Math.random() - 0.5) * 80,
+        macdHistogram: (Math.random() - 0.5) * 40,
+        support: base * (1 - volatility * 0.5),
+        resistance: base * (1 + volatility * 0.5),
+        volatility: volatility
+    };
+}
+
+// ===== رفرش =====
+function refreshIndicators() {
+    showToast('🔄 بروزرسانی شاخص‌ها...', 'info');
+    loadIndicators();
+}
+
+// ===== مقداردهی اولیه =====
+window.init_indicators = function() {
+    console.log('📊 Indicators tab initializing...');
+    
+    if (isIndicatorsLoaded) return;
+    isIndicatorsLoaded = true;
+    
+    loadIndicatorsCoins().then(() => {
+        loadIndicators();
+    });
+    
+    if (indicatorsInterval) {
+        clearInterval(indicatorsInterval);
+    }
+    indicatorsInterval = setInterval(() => {
+        const activeTab = document.querySelector('#analyzerTabs .tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'indicators') {
+            loadIndicators();
+        }
+    }, 30000);
+};
+
+// ===== پاکسازی =====
+window.cleanup_indicators = function() {
+    if (indicatorsInterval) {
+        clearInterval(indicatorsInterval);
+        indicatorsInterval = null;
+    }
+    isIndicatorsLoaded = false;
+    console.log('🧹 Indicators tab cleaned up');
+};
+
+console.log('✅ Indicators tab loaded');
+</script>
