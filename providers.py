@@ -40,78 +40,82 @@ def get_service(name: str) -> Any:
 # ============================================================
 
 def get_api_client():
-    """دریافت کلاینت API"""
     return get_service('api_client')
 
 
 def get_cache_manager():
-    """دریافت مدیریت کش"""
     return get_service('cache_manager')
 
 
 def get_model_repository():
-    """دریافت Repository مدل"""
     return get_service('model_repository')
 
 
 def get_prediction_repository():
-    """دریافت Repository پیش‌بینی"""
     return get_service('prediction_repository')
 
 
 def get_auth_manager():
-    """دریافت مدیریت احراز هویت"""
     return get_service('auth_manager')
 
 
 def get_feature_engineer():
-    """دریافت مهندس ویژگی"""
     return get_service('feature_engineer')
 
 
 def get_model_manager():
-    """دریافت مدیریت مدل"""
     return get_service('model_manager')
 
 
 def get_trainer():
-    """دریافت آموزش‌دهنده خودکار"""
     return get_service('trainer')
 
 
 def get_predict_use_case():
-    """دریافت Use Case پیش‌بینی"""
     return get_service('predict_use_case')
 
 
 def get_train_use_case():
-    """دریافت Use Case آموزش"""
     return get_service('train_use_case')
 
 
 def get_health_use_case():
-    """دریافت Use Case سلامت"""
     return get_service('health_use_case')
 
 
 def get_prediction_service():
-    """دریافت سرویس پیش‌بینی"""
     return get_service('prediction_service')
 
 
 def get_monitoring_service():
-    """دریافت سرویس مانیتورینگ"""
     return get_service('monitoring_service')
 
 
 def get_metrics_scheduler():
-    """دریافت Scheduler متریک"""
     return get_service('metrics_scheduler')
 
 
 def get_threading_manager():
-    """دریافت مدیریت Threadها"""
     return get_service('threading_manager')
+
+
+# ============================================================
+# ✅ Provider Functions جدید برای WebSocket
+# ============================================================
+
+def get_free_crypto_client():
+    """دریافت کلاینت WebSocket FreeCryptoAPI"""
+    return get_service('free_crypto_client')
+
+
+def get_user_tracker():
+    """دریافت UserTracker"""
+    return get_service('user_tracker')
+
+
+def get_price_manager():
+    """دریافت PriceManager"""
+    return get_service('price_manager')
 
 
 # ============================================================
@@ -139,7 +143,10 @@ def init_container(app) -> None:
     # ثبت Logging Middleware
     LoggingMiddleware.init_app(app)
     
-    logger.info("✅ Container initialized in Flask app")
+    # ✅ شروع سرویس‌های پس‌زمینه
+    container.start_services()
+    
+    logger.info("✅ Container initialized in Flask app with background services")
 
 
 # ============================================================
@@ -149,3 +156,13 @@ def init_container(app) -> None:
 def get_container_status() -> dict:
     """دریافت وضعیت Container"""
     return container.get_status()
+
+
+# ============================================================
+# تابع خاموش‌سازی
+# ============================================================
+
+def shutdown_services() -> None:
+    """خاموش کردن همه سرویس‌ها"""
+    container.stop_services()
+    logger.info("✅ All services shut down")
