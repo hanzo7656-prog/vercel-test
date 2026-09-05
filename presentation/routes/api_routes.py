@@ -2003,6 +2003,115 @@ def model_delete():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/predict/history', methods=['GET'])
+@require_auth()
+def predict_history():
+    """
+    دریافت تاریخچه پیش‌بینی‌های ذخیره شده
+    """
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        coin = request.args.get('coin')
+        
+        from infrastructure.repositories.prediction_repository import PredictionRepository
+        repo = PredictionRepository()
+        
+        if coin:
+            predictions = repo.find_by_coin(coin, limit)
+        else:
+            predictions = repo.find_all(limit)
+        
+        return jsonify({
+            'success': True,
+            'data': [p.to_dict() for p in predictions],
+            'count': len(predictions),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Predict history error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/performance', methods=['GET'])
+@require_auth()
+def model_performance():
+    """
+    دریافت داده‌های عملکرد مدل برای نمودار (تغییرات دقت)
+    """
+    try:
+        container = current_app.container
+        model_manager = container.model_manager()
+        
+        # دریافت تاریخچه نسخه‌ها
+        history = model_manager.get_version_history(limit=30)
+        
+        # تبدیل به داده‌های نمودار
+        chart_data = {
+            'labels': [],
+            'accuracy': [],
+            'training_samples': [],
+            'versions': []
+        }
+        
+        for item in reversed(history):  # قدیمی‌ترین به جدیدترین
+            chart_data['labels'].append(
+                item.get('training_date', '').split('T')[0] if item.get('training_date') else ''
+            )
+            chart_data['accuracy'].append(round((item.get('accuracy', 0) or 0) * 100, 2))
+            chart_data['training_samples'].append(item.get('training_samples', 0))
+            chart_data['versions'].append(item.get('version', ''))
+        
+        return jsonify({
+            'success': True,
+            'data': chart_data,
+            'count': len(chart_data['labels']),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Model performance error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/model/importance', methods=['GET'])
+@require_auth()
+def model_feature_importance():
+    """
+    دریافت اهمیت ویژگی‌های مدل XGBoost
+    """
+    try:
+        container = current_app.container
+        model_manager = container.model_manager()
+        
+        if not model_manager.current_model:
+            return jsonify({'success': False, 'error': 'No model loaded'}), 400
+        
+        # استخراج اهمیت ویژگی‌ها از XGBoost
+        importance = model_manager.current_model.get_score(importance_type='weight')
+        
+        if not importance:
+            return jsonify({'success': False, 'error': 'No feature importance available'}), 404
+        
+        # مرتب‌سازی نزولی
+        sorted_importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
+        
+        # نرمال‌سازی
+        total = sum(v for _, v in sorted_importance) or 1
+        
+        return jsonify({
+            'success': True,
+            'data': [
+                {
+                    'feature': k,
+                    'importance': v,
+                    'percentage': round((v / total) * 100, 2)
+                }
+                for k, v in sorted_importance
+            ],
+            'total_features': len(sorted_importance),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Feature importance error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500        
 # ============================================================
 # ۱۰. زمان‌بندی (SCHEDULE)
 # ============================================================
