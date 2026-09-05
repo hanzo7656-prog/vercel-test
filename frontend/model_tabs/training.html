@@ -1,0 +1,389 @@
+<!-- ============================================================
+     TRAINING TAB - آموزش مدل XGBoost با لاگ لحظه‌ای
+     ============================================================ -->
+
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-graduation-cap"></i> آموزش مدل
+        <span class="badge-count" id="trainingStatusBadge" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">⏹️ آماده</span>
+    </div>
+
+    <!-- ===== CONTROLS ===== -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-bottom:16px;align-items:end;">
+        <!-- بازه زمانی -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
+                <i class="fas fa-clock"></i> بازه زمانی
+            </label>
+            <select id="trainPeriod" style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.8rem;font-family:inherit;transition:var(--transition);">
+                <option value="24h">۲۴ ساعت</option>
+                <option value="1w">۱ هفته</option>
+                <option value="1m" selected>۱ ماه</option>
+                <option value="3m">۳ ماه</option>
+                <option value="6m">۶ ماه</option>
+            </select>
+        </div>
+
+        <!-- ارزها -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
+                <i class="fas fa-coins"></i> ارزها
+            </label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);min-height:40px;align-items:center;">
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="bitcoin" checked class="coin-checkbox"> ₿
+                </label>
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="ethereum" checked class="coin-checkbox"> ⟠
+                </label>
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="solana" class="coin-checkbox"> ◎
+                </label>
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="cardano" class="coin-checkbox"> ₳
+                </label>
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="ripple" class="coin-checkbox"> ✕
+                </label>
+                <label style="font-size:0.65rem;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                    <input type="checkbox" value="polkadot" class="coin-checkbox"> ◈
+                </label>
+            </div>
+        </div>
+
+        <!-- آموزش افزایشی -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
+                <i class="fas fa-sync-alt"></i> حالت آموزش
+            </label>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
+                <label style="font-size:0.7rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                    <input type="checkbox" id="incrementalToggle"> 
+                    <span>آموزش افزایشی</span>
+                </label>
+                <span style="font-size:0.55rem;color:var(--text-muted);">(با داده‌های جدید)</span>
+            </div>
+        </div>
+
+        <!-- دکمه‌ها -->
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()" style="padding:8px 24px;font-size:0.8rem;">
+                <i class="fas fa-play"></i> شروع آموزش
+            </button>
+            <button class="btn btn-danger" id="stopTrainBtn" onclick="stopTraining()" style="padding:8px 20px;font-size:0.8rem;display:none;">
+                <i class="fas fa-stop"></i> توقف
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== PROGRESS ===== -->
+    <div id="trainingProgress" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:0.7rem;color:var(--text-secondary);" id="progressLabel">در حال آماده‌سازی...</span>
+            <span style="font-size:0.7rem;font-weight:600;color:var(--accent-cyan);font-family:var(--font-mono);" id="progressPercent">۰%</span>
+        </div>
+        <div style="width:100%;height:6px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;">
+            <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-purple));border-radius:var(--radius-full);transition:width 0.5s ease;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.55rem;color:var(--text-muted);">
+            <span id="progressEta">زمان تخمینی: —</span>
+            <span id="progressStatus">⏳ در حال اجرا...</span>
+        </div>
+    </div>
+
+    <!-- ===== LOG CONSOLE ===== -->
+    <div style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);max-height:250px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);" id="trainingLog">
+        <div style="color:var(--text-muted);padding:4px 0;">📋 منتظر شروع آموزش...</div>
+        <div style="color:var(--text-muted);padding:4px 0;">💡 بازه پیش‌فرض: ۱ ماه • ارزها: bitcoin, ethereum</div>
+    </div>
+
+    <!-- ===== RESULT ===== -->
+    <div id="trainingResult" style="display:none;margin-top:16px;padding:14px 18px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-input);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+                <div style="font-size:0.7rem;color:var(--text-secondary);">نتیجه آموزش</div>
+                <div style="font-size:1rem;font-weight:600;" id="resultMessage">—</div>
+            </div>
+            <div style="display:flex;gap:16px;">
+                <div style="text-align:center;">
+                    <div style="font-size:0.55rem;color:var(--text-muted);">دقت جدید</div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--accent-cyan);font-family:var(--font-mono);" id="resultAccuracy">—</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.55rem;color:var(--text-muted);">بهبود</div>
+                    <div style="font-size:1rem;font-weight:700;font-family:var(--font-mono);" id="resultImprovement">—</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.55rem;color:var(--text-muted);">نسخه</div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--accent-purple);font-family:var(--font-mono);" id="resultVersion">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// TRAINING TAB - آموزش مدل با لاگ لحظه‌ای
+// ============================================================
+
+let isTraining = false;
+let trainingInterval = null;
+let trainingLogs = [];
+let trainingStartTime = 0;
+let isTrainingInitialized = false;
+
+// ===== شروع آموزش =====
+async function startTraining() {
+    if (isTraining) return;
+
+    const period = document.getElementById('trainPeriod').value;
+    const coins = Array.from(document.querySelectorAll('.coin-checkbox:checked')).map(cb => cb.value);
+    const incremental = document.getElementById('incrementalToggle').checked;
+
+    if (coins.length === 0) {
+        showToast('⚠️ حداقل یک ارز را انتخاب کنید', 'warning');
+        return;
+    }
+
+    // ===== نمایش لودینگ =====
+    loading.show({
+        messages: [
+            'در حال آماده‌سازی داده‌ها...|دریافت اطلاعات از API',
+            'در حال آموزش مدل XGBoost...|این کار چند دقیقه طول می‌کشد',
+            'تقریباً تمام است...|ذخیره‌سازی مدل در دیتابیس',
+            'پایان|مدل با موفقیت آموزش دید ✅'
+        ],
+        duration: 30000,
+        onComplete: function() {
+            // بعد از اتمام لودینگ، نتیجه رو بررسی کن
+            checkTrainingResult();
+        }
+    });
+
+    // شروع آموزش
+    isTraining = true;
+    trainingStartTime = Date.now();
+    trainingLogs = [];
+
+    // بروزرسانی UI
+    document.getElementById('startTrainBtn').style.display = 'none';
+    document.getElementById('stopTrainBtn').style.display = 'inline-flex';
+    document.getElementById('trainingProgress').style.display = 'block';
+    document.getElementById('trainingResult').style.display = 'none';
+    document.getElementById('trainingStatusBadge').textContent = '⏳ در حال آموزش';
+    document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
+
+    // پاک کردن لاگ قبلی
+    const logEl = document.getElementById('trainingLog');
+    logEl.innerHTML = '';
+
+    // اضافه کردن پیام شروع
+    addLog('🚀 شروع آموزش مدل XGBoost');
+    addLog(`📊 بازه زمانی: ${period}`);
+    addLog(`🪙 ارزها: ${coins.join(', ')}`);
+    addLog(`🔄 آموزش افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
+    addLog('⏳ در حال دریافت داده‌ها...');
+
+    try {
+        // ارسال درخواست آموزش
+        const result = await api.trainModel({
+            period: period,
+            coins: coins,
+            incremental: incremental
+        });
+
+        // ذخیره نتیجه برای بعد از لودینگ
+        window._trainingResult = result;
+        window._trainingComplete = true;
+
+        // اگر خطایی رخ داد، لودینگ رو مخفی کن
+        if (!result.success) {
+            loading.hide();
+            isTraining = false;
+            document.getElementById('startTrainBtn').style.display = 'inline-flex';
+            document.getElementById('stopTrainBtn').style.display = 'none';
+            document.getElementById('trainingStatusBadge').textContent = '❌ خطا';
+            document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
+            document.getElementById('trainingProgress').style.display = 'none';
+            showToast('❌ ' + (result.message || 'خطا در آموزش'), 'error');
+            addLog('❌ ' + (result.message || 'خطا در آموزش'));
+            return;
+        }
+
+        // اگر نتیجه موفق بود، لودینگ خودش کامل میشه (با onComplete)
+        // و تابع checkTrainingResult صدا زده میشه
+
+    } catch (error) {
+        loading.hide();
+        isTraining = false;
+        document.getElementById('startTrainBtn').style.display = 'inline-flex';
+        document.getElementById('stopTrainBtn').style.display = 'none';
+        document.getElementById('trainingStatusBadge').textContent = '❌ خطا';
+        document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
+        document.getElementById('trainingProgress').style.display = 'none';
+        showToast('❌ خطا: ' + error.message, 'error');
+        addLog('❌ خطا: ' + error.message);
+    }
+}
+
+// ===== بررسی نتیجه آموزش =====
+function checkTrainingResult() {
+    const result = window._trainingResult;
+    if (!result) {
+        showToast('❌ نتیجه‌ای دریافت نشد', 'error');
+        return;
+    }
+
+    isTraining = false;
+    document.getElementById('startTrainBtn').style.display = 'inline-flex';
+    document.getElementById('stopTrainBtn').style.display = 'none';
+    document.getElementById('trainingProgress').style.display = 'none';
+    document.getElementById('trainingStatusBadge').textContent = '✅ تکمیل';
+    document.getElementById('trainingStatusBadge').style.color = 'var(--accent-green)';
+
+    // نمایش نتیجه
+    document.getElementById('trainingResult').style.display = 'block';
+    document.getElementById('resultMessage').textContent = result.message || 'آموزش با موفقیت انجام شد';
+    
+    if (result.accuracy !== undefined && result.accuracy !== null) {
+        document.getElementById('resultAccuracy').textContent = (result.accuracy * 100).toFixed(2) + '%';
+    } else {
+        document.getElementById('resultAccuracy').textContent = '—';
+    }
+
+    if (result.improvement !== undefined && result.improvement !== null) {
+        const imp = result.improvement * 100;
+        const color = imp > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        document.getElementById('resultImprovement').textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
+        document.getElementById('resultImprovement').style.color = color;
+    } else {
+        document.getElementById('resultImprovement').textContent = '—';
+        document.getElementById('resultImprovement').style.color = 'var(--text-muted)';
+    }
+
+    document.getElementById('resultVersion').textContent = result.version || 'N/A';
+
+    // اضافه کردن لاگ نهایی
+    addLog('✅ آموزش با موفقیت تکمیل شد');
+    addLog(`📊 دقت نهایی: ${(result.accuracy * 100).toFixed(2)}%`);
+    if (result.improvement !== undefined && result.improvement !== null) {
+        const imp = result.improvement * 100;
+        addLog(`📈 بهبود: ${(imp > 0 ? '+' : '') + imp.toFixed(2)}%`);
+    }
+    addLog(`📌 نسخه: ${result.version || 'N/A'}`);
+
+    showToast('✅ آموزش با موفقیت انجام شد', 'success');
+
+    // بروزرسانی داشبورد
+    if (window.loadAll) {
+        setTimeout(window.loadAll, 1000);
+    }
+}
+
+// ===== توقف آموزش =====
+async function stopTraining() {
+    if (!isTraining) return;
+    if (!confirm('⚠️ آیا از توقف آموزش اطمینان دارید؟')) return;
+
+    try {
+        loading.show({
+            messages: ['در حال توقف آموزش...'],
+            duration: 3000,
+            onComplete: function() {
+                // ادامه
+            }
+        });
+
+        const result = await api.stopSchedule();
+        loading.hide();
+
+        if (result.success) {
+            isTraining = false;
+            document.getElementById('startTrainBtn').style.display = 'inline-flex';
+            document.getElementById('stopTrainBtn').style.display = 'none';
+            document.getElementById('trainingProgress').style.display = 'none';
+            document.getElementById('trainingStatusBadge').textContent = '⏹️ متوقف شد';
+            document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
+            addLog('⏹️ آموزش توسط کاربر متوقف شد');
+            showToast('⏹️ آموزش متوقف شد', 'warning');
+        } else {
+            showToast('❌ ' + (result.message || 'خطا'), 'error');
+        }
+    } catch (error) {
+        loading.hide();
+        showToast('❌ خطا: ' + error.message, 'error');
+    }
+}
+
+// ===== افزودن لاگ =====
+function addLog(message) {
+    const logEl = document.getElementById('trainingLog');
+    const time = new Date().toLocaleTimeString('fa-IR');
+    const entry = document.createElement('div');
+    entry.style.cssText = 'padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;';
+    entry.innerHTML = `
+        <span style="color:var(--text-muted);min-width:60px;font-size:0.6rem;">${time}</span>
+        <span style="color:var(--text-secondary);">${message}</span>
+    `;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+    trainingLogs.push(message);
+}
+
+// ===== بروزرسانی پیشرفت (شبیه‌سازی) =====
+function updateProgress(percent, label, eta) {
+    document.getElementById('progressBar').style.width = Math.min(percent, 100) + '%';
+    document.getElementById('progressPercent').textContent = Math.min(percent, 100) + '%';
+    if (label) document.getElementById('progressLabel').textContent = label;
+    if (eta) document.getElementById('progressEta').textContent = '⏱️ زمان تخمینی: ' + eta;
+}
+
+// ===== شبیه‌سازی پیشرفت (در حین آموزش) =====
+function simulateProgress() {
+    if (!isTraining) return;
+    
+    const elapsed = (Date.now() - trainingStartTime) / 1000;
+    let progress = Math.min((elapsed / 60) * 100, 95);
+    
+    if (progress < 30) {
+        updateProgress(progress, 'در حال آماده‌سازی داده‌ها...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
+    } else if (progress < 60) {
+        updateProgress(progress, 'در حال آموزش مدل XGBoost...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
+    } else if (progress < 85) {
+        updateProgress(progress, 'بهینه‌سازی پارامترها...', '~' + Math.round((60 - elapsed) / 60) + ' دقیقه');
+    } else {
+        updateProgress(progress, 'ذخیره‌سازی مدل در دیتابیس...', 'لحظاتی دیگر');
+    }
+}
+
+// ===== مقداردهی اولیه =====
+window.init_training = function() {
+    console.log('🎓 Training tab initializing...');
+    
+    if (isTrainingInitialized) return;
+    isTrainingInitialized = true;
+    
+    // تنظیم رویدادها
+    document.getElementById('startTrainBtn').addEventListener('click', startTraining);
+    document.getElementById('stopTrainBtn').addEventListener('click', stopTraining);
+    
+    // شروع شبیه‌سازی پیشرفت
+    if (trainingInterval) {
+        clearInterval(trainingInterval);
+    }
+    trainingInterval = setInterval(simulateProgress, 1000);
+};
+
+// ===== پاکسازی =====
+window.cleanup_training = function() {
+    if (trainingInterval) {
+        clearInterval(trainingInterval);
+        trainingInterval = null;
+    }
+    isTrainingInitialized = false;
+    console.log('🧹 Training tab cleaned up');
+};
+
+console.log('✅ Training tab loaded');
+</script>
