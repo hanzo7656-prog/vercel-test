@@ -6,7 +6,8 @@
     <title>مدیریت مدل</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
 
     <style>
         /* ============================================================
@@ -36,7 +37,7 @@
         /* ۲. کارت‌های ریسپانسیو */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 12px;
             width: 100%;
             overflow: hidden;
@@ -61,7 +62,25 @@
             white-space: normal;
         }
 
-        /* ۳. لاگ‌ها با دکمه کپی */
+        /* ۳. نمودارهای کنار هم */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .chart-box {
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            border: 1px solid var(--border-color);
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* ۴. لاگ‌ها با دکمه کپی */
         .log-container {
             background: rgba(0, 0, 0, 0.4);
             border-radius: var(--radius-sm);
@@ -119,7 +138,7 @@
             flex-wrap: wrap;
         }
 
-        /* ۴. Empty State */
+        /* ۵. Empty State */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -145,7 +164,13 @@
             color: var(--text-muted);
         }
 
-        /* ۵. ریسپانسیو */
+        /* ۶. ریسپانسیو */
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .btn-uniform {
                 width: 100%;
@@ -156,6 +181,10 @@
             .dashboard-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 8px;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
             }
 
             .stat-card {
@@ -183,7 +212,7 @@
             }
         }
 
-        /* ۶. Tab Content */
+        /* ۷. Tab Content */
         .tab-content-wrapper {
             min-height: 400px;
             position: relative;
@@ -208,7 +237,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .tab-content-wrapper .loading-text {
@@ -268,8 +299,12 @@
         }
 
         @keyframes overlayFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
 
         .loading-card {
@@ -313,8 +348,13 @@
         }
 
         @keyframes cardGlow {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.2) rotate(5deg); }
+            0%,
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.2) rotate(5deg);
+            }
         }
 
         .loading-spinner-wrapper {
@@ -331,7 +371,9 @@
         }
 
         @keyframes spinnerRotate {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-spinner-wrapper .spinner-circle-bg {
@@ -352,9 +394,15 @@
         }
 
         @keyframes spinnerDash {
-            0% { stroke-dashoffset: 180; }
-            50% { stroke-dashoffset: 40; }
-            100% { stroke-dashoffset: 180; }
+            0% {
+                stroke-dashoffset: 180;
+            }
+            50% {
+                stroke-dashoffset: 40;
+            }
+            100% {
+                stroke-dashoffset: 180;
+            }
         }
 
         .loading-dots {
@@ -391,7 +439,8 @@
         }
 
         @keyframes dotPulse {
-            0%, 100% {
+            0%,
+            100% {
                 opacity: 0.2;
                 transform: scale(1);
             }
@@ -443,9 +492,17 @@
         }
 
         @keyframes progressIndeterminate {
-            0% { transform: translateX(0%); width: 30%; }
-            50% { width: 60%; }
-            100% { transform: translateX(300%); width: 30%; }
+            0% {
+                transform: translateX(0%);
+                width: 30%;
+            }
+            50% {
+                width: 60%;
+            }
+            100% {
+                transform: translateX(300%);
+                width: 30%;
+            }
         }
 
         @media (max-width: 480px) {
@@ -605,391 +662,390 @@
     <script src="/js/app.js"></script>
 
     <script>
-    // ============================================================
-    // LOADING SYSTEM
-    // ============================================================
+        // ============================================================
+        // LOADING SYSTEM
+        // ============================================================
 
-    class LoadingSystem {
-        constructor() {
-            this.overlay = document.getElementById('loadingOverlay');
-            this.messageEl = document.getElementById('loadingMessage');
-            this.subMessageEl = document.getElementById('loadingSubMessage');
-            this.dots = document.querySelectorAll('#loadingDots .dot');
-            this.progress = document.getElementById('loadingProgress');
-            this.isActive = false;
-            this.dotsInterval = null;
-            this.progressTimer = null;
-            this.onComplete = null;
-
-            this.messages = {
-                short: ['در حال انجام...'],
-                medium: ['در حال انجام...', 'لطفاً کمی صبر کنید'],
-                long: ['در حال انجام...', 'لطفاً کمی صبر کنید', 'تقریباً تمام است', 'پایان']
-            };
-        }
-
-        show(options = {}) {
-            const { messages = 'long', duration = null, onComplete = null } = options;
-            if (this.isActive) return;
-
-            this.isActive = true;
-            this.onComplete = onComplete;
-
-            let messageList;
-            if (Array.isArray(messages)) {
-                messageList = messages;
-            } else {
-                messageList = this.messages[messages] || this.messages.long;
-            }
-
-            this.messageQueue = messageList;
-            this.currentMessageIndex = 0;
-            this.updateMessage(0);
-            this.startDotsAnimation();
-
-            this.overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-
-            if (duration) {
-                this.startProgressAnimation(duration);
-            }
-
-            console.log('🔄 Loading started:', messageList[0]);
-        }
-
-        updateMessage(index) {
-            if (index >= this.messageQueue.length) {
-                this.complete();
-                return;
-            }
-
-            const message = this.messageQueue[index];
-            const parts = message.split('|');
-            const mainMsg = parts[0] || message;
-            const subMsg = parts[1] || '';
-
-            this.messageEl.textContent = mainMsg;
-            this.subMessageEl.textContent = subMsg;
-
-            if (index === this.messageQueue.length - 1) {
-                this.stopDotsAnimation();
-            }
-
-            this.currentMessageIndex = index;
-        }
-
-        startDotsAnimation() {
-            this.stopDotsAnimation();
-            let activeIndex = 0;
-            this.dots.forEach(d => d.classList.remove('active'));
-
-            this.dotsInterval = setInterval(() => {
-                this.dots.forEach(d => d.classList.remove('active'));
-                this.dots[activeIndex].classList.add('active');
-                activeIndex = (activeIndex + 1) % this.dots.length;
-            }, 400);
-        }
-
-        stopDotsAnimation() {
-            if (this.dotsInterval) {
-                clearInterval(this.dotsInterval);
+        class LoadingSystem {
+            constructor() {
+                this.overlay = document.getElementById('loadingOverlay');
+                this.messageEl = document.getElementById('loadingMessage');
+                this.subMessageEl = document.getElementById('loadingSubMessage');
+                this.dots = document.querySelectorAll('#loadingDots .dot');
+                this.progress = document.getElementById('loadingProgress');
+                this.isActive = false;
                 this.dotsInterval = null;
-            }
-            this.dots.forEach(d => d.classList.remove('active'));
-        }
-
-        startProgressAnimation(duration) {
-            this.progress.classList.remove('indeterminate');
-            const startTime = Date.now();
-
-            const updateProgress = () => {
-                if (!this.isActive) return;
-                const elapsed = Date.now() - startTime;
-                const percent = Math.min((elapsed / duration) * 100, 100);
-                this.progress.style.width = percent + '%';
-
-                const ratio = elapsed / duration;
-                const totalMessages = this.messageQueue.length;
-
-                if (ratio > 0.85 && totalMessages > 1) {
-                    const lastIndex = totalMessages - 1;
-                    if (this.currentMessageIndex < lastIndex) {
-                        this.updateMessage(lastIndex);
-                    }
-                } else if (ratio > 0.5 && totalMessages > 2) {
-                    const midIndex = Math.min(Math.floor(totalMessages * 0.7), totalMessages - 2);
-                    if (this.currentMessageIndex < midIndex) {
-                        this.updateMessage(midIndex);
-                    }
-                }
-
-                if (percent < 100) {
-                    this.progressTimer = setTimeout(updateProgress, 50);
-                } else {
-                    this.progress.style.width = '100%';
-                }
-            };
-
-            updateProgress();
-        }
-
-        complete() {
-            if (!this.isActive) return;
-
-            this.messageEl.textContent = '✅ پایان';
-            this.subMessageEl.textContent = 'عملیات با موفقیت انجام شد';
-            this.progress.style.width = '100%';
-            this.stopDotsAnimation();
-
-            setTimeout(() => {
-                this.hide();
-                if (this.onComplete) {
-                    this.onComplete();
-                }
-            }, 800);
-        }
-
-        hide() {
-            if (!this.isActive) return;
-
-            this.isActive = false;
-            this.overlay.classList.remove('active');
-            document.body.style.overflow = '';
-            this.stopDotsAnimation();
-
-            if (this.progressTimer) {
-                clearTimeout(this.progressTimer);
                 this.progressTimer = null;
+                this.onComplete = null;
+
+                this.messages = {
+                    short: ['در حال انجام...'],
+                    medium: ['در حال انجام...', 'لطفاً کمی صبر کنید'],
+                    long: ['در حال انجام...', 'لطفاً کمی صبر کنید', 'تقریباً تمام است', 'پایان']
+                };
             }
 
-            this.progress.classList.add('indeterminate');
-            this.progress.style.width = '0%';
-            this.dots.forEach(d => d.classList.remove('active'));
+            show(options = {}) {
+                const { messages = 'long', duration = null, onComplete = null } = options;
+                if (this.isActive) return;
 
-            console.log('✅ Loading hidden');
-        }
+                this.isActive = true;
+                this.onComplete = onComplete;
 
-        setMessage(message) {
-            this.messageEl.textContent = message;
-        }
+                let messageList;
+                if (Array.isArray(messages)) {
+                    messageList = messages;
+                } else {
+                    messageList = this.messages[messages] || this.messages.long;
+                }
 
-        setSubMessage(message) {
-            this.subMessageEl.textContent = message;
-        }
+                this.messageQueue = messageList;
+                this.currentMessageIndex = 0;
+                this.updateMessage(0);
+                this.startDotsAnimation();
 
-        setProgress(percent) {
-            if (this.progressMode) {
+                this.overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+                if (duration) {
+                    this.startProgressAnimation(duration);
+                }
+
+                console.log('🔄 Loading started:', messageList[0]);
+            }
+
+            updateMessage(index) {
+                if (index >= this.messageQueue.length) {
+                    this.complete();
+                    return;
+                }
+
+                const message = this.messageQueue[index];
+                const parts = message.split('|');
+                const mainMsg = parts[0] || message;
+                const subMsg = parts[1] || '';
+
+                this.messageEl.textContent = mainMsg;
+                this.subMessageEl.textContent = subMsg;
+
+                if (index === this.messageQueue.length - 1) {
+                    this.stopDotsAnimation();
+                }
+
+                this.currentMessageIndex = index;
+            }
+
+            startDotsAnimation() {
+                this.stopDotsAnimation();
+                let activeIndex = 0;
+                this.dots.forEach(d => d.classList.remove('active'));
+
+                this.dotsInterval = setInterval(() => {
+                    this.dots.forEach(d => d.classList.remove('active'));
+                    this.dots[activeIndex].classList.add('active');
+                    activeIndex = (activeIndex + 1) % this.dots.length;
+                }, 400);
+            }
+
+            stopDotsAnimation() {
+                if (this.dotsInterval) {
+                    clearInterval(this.dotsInterval);
+                    this.dotsInterval = null;
+                }
+                this.dots.forEach(d => d.classList.remove('active'));
+            }
+
+            startProgressAnimation(duration) {
                 this.progress.classList.remove('indeterminate');
-                this.progress.style.width = Math.min(percent, 100) + '%';
+                const startTime = Date.now();
+
+                const updateProgress = () => {
+                    if (!this.isActive) return;
+                    const elapsed = Date.now() - startTime;
+                    const percent = Math.min((elapsed / duration) * 100, 100);
+                    this.progress.style.width = percent + '%';
+
+                    const ratio = elapsed / duration;
+                    const totalMessages = this.messageQueue.length;
+
+                    if (ratio > 0.85 && totalMessages > 1) {
+                        const lastIndex = totalMessages - 1;
+                        if (this.currentMessageIndex < lastIndex) {
+                            this.updateMessage(lastIndex);
+                        }
+                    } else if (ratio > 0.5 && totalMessages > 2) {
+                        const midIndex = Math.min(Math.floor(totalMessages * 0.7), totalMessages - 2);
+                        if (this.currentMessageIndex < midIndex) {
+                            this.updateMessage(midIndex);
+                        }
+                    }
+
+                    if (percent < 100) {
+                        this.progressTimer = setTimeout(updateProgress, 50);
+                    } else {
+                        this.progress.style.width = '100%';
+                    }
+                };
+
+                updateProgress();
+            }
+
+            complete() {
+                if (!this.isActive) return;
+
+                this.messageEl.textContent = '✅ پایان';
+                this.subMessageEl.textContent = 'عملیات با موفقیت انجام شد';
+                this.progress.style.width = '100%';
+                this.stopDotsAnimation();
+
+                setTimeout(() => {
+                    this.hide();
+                    if (this.onComplete) {
+                        this.onComplete();
+                    }
+                }, 800);
+            }
+
+            hide() {
+                if (!this.isActive) return;
+
+                this.isActive = false;
+                this.overlay.classList.remove('active');
+                document.body.style.overflow = '';
+                this.stopDotsAnimation();
+
+                if (this.progressTimer) {
+                    clearTimeout(this.progressTimer);
+                    this.progressTimer = null;
+                }
+
+                this.progress.classList.add('indeterminate');
+                this.progress.style.width = '0%';
+                this.dots.forEach(d => d.classList.remove('active'));
+
+                console.log('✅ Loading hidden');
+            }
+
+            setMessage(message) {
+                this.messageEl.textContent = message;
+            }
+
+            setSubMessage(message) {
+                this.subMessageEl.textContent = message;
+            }
+
+            setProgress(percent) {
+                if (this.progressMode) {
+                    this.progress.classList.remove('indeterminate');
+                    this.progress.style.width = Math.min(percent, 100) + '%';
+                }
             }
         }
-    }
 
-    const loading = new LoadingSystem();
-    window.loading = loading;
+        const loading = new LoadingSystem();
+        window.loading = loading;
 
-    console.log('✅ Loading System v1.0 loaded');
+        console.log('✅ Loading System v1.0 loaded');
     </script>
 
     <script>
-    // ============================================================
-    // MODEL LOADER
-    // ============================================================
+        // ============================================================
+        // MODEL LOADER
+        // ============================================================
 
-    const MODEL_TABS = {
-        dashboard: '/model_tabs/dashboard.html',
-        info: '/model_tabs/info.html',
-        training: '/model_tabs/training.html',
-        schedule: '/model_tabs/schedule.html',
-        history: '/model_tabs/history.html',
-        features: '/model_tabs/features.html',
-        tools: '/model_tabs/tools.html',
-    };
+        const MODEL_TABS = {
+            dashboard: '/model_tabs/dashboard.html',
+            info: '/model_tabs/info.html',
+            training: '/model_tabs/training.html',
+            schedule: '/model_tabs/schedule.html',
+            history: '/model_tabs/history.html',
+            features: '/model_tabs/features.html',
+            tools: '/model_tabs/tools.html',
+        };
 
-    let tabCache = {};
-    let currentTab = 'dashboard';
+        let tabCache = {};
+        let currentTab = 'dashboard';
 
-    function loadModelTab(tabName) {
-        const container = document.getElementById('modelTabContent');
-        currentTab = tabName;
+        function loadModelTab(tabName) {
+            const container = document.getElementById('modelTabContent');
+            currentTab = tabName;
 
-        if (tabCache[tabName]) {
-            container.innerHTML = tabCache[tabName];
-            executeTabScripts(container);
-            return;
-        }
-
-        container.innerHTML = `
-            <div class="loading-container">
-                <div class="loading-spinner"></div>
-                <p class="loading-text">در حال بارگذاری ${getTabLabel(tabName)}...</p>
-            </div>
-        `;
-
-        const url = MODEL_TABS[tabName];
-        if (!url) {
-            container.innerHTML = `<div class="error-msg"><span class="icon">❌</span><p>تب "${tabName}" یافت نشد</p></div>`;
-            return;
-        }
-
-        fetch(url)
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.text();
-            })
-            .then(html => {
-                tabCache[tabName] = html;
-                container.innerHTML = html;
+            if (tabCache[tabName]) {
+                container.innerHTML = tabCache[tabName];
                 executeTabScripts(container);
-            })
-            .catch(err => {
-                console.error(`Failed to load tab "${tabName}":`, err);
-                container.innerHTML = `
-                    <div class="error-msg">
-                        <span class="icon">⚠️</span>
-                        <p>خطا در بارگذاری تب</p>
-                        <button onclick="loadModelTab('${tabName}')" style="margin-top:12px;padding:6px 16px;background:var(--accent-cyan);color:#000;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
+                return;
+            }
+
+            container.innerHTML = `
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <p class="loading-text">در حال بارگذاری ${getTabLabel(tabName)}...</p>
                     </div>
                 `;
-            });
-    }
 
-    function executeTabScripts(container) {
-        const scripts = container.querySelectorAll('script');
-        scripts.forEach(oldScript => {
-            const newScript = document.createElement('script');
-            newScript.textContent = oldScript.textContent;
-            oldScript.parentNode.replaceChild(newScript, oldScript);
-        });
-
-        const initFn = window[`init_${currentTab}`];
-        if (typeof initFn === 'function') {
-            setTimeout(initFn, 150);
-        }
-    }
-
-    function getTabLabel(tabName) {
-        const labels = {
-            dashboard: 'داشبورد',
-            info: 'اطلاعات مدل',
-            training: 'آموزش',
-            schedule: 'زمان‌بندی',
-            history: 'تاریخچه',
-            features: 'اهمیت ویژگی‌ها',
-            tools: 'ابزارها'
-        };
-        return labels[tabName] || tabName;
-    }
-
-    function initModelTabs() {
-        const tabs = document.querySelectorAll('#modelTabs .tab-btn');
-
-        tabs.forEach(btn => {
-            btn.addEventListener('click', function() {
-                tabs.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                const tabName = this.dataset.tab;
-                loadModelTab(tabName);
-                history.replaceState(null, '', `?tab=${tabName}`);
-                // ذخیره تب فعال در localStorage
-                localStorage.setItem('modelActiveTab', tabName);
-            });
-        });
-
-        // بارگذاری تب از URL یا localStorage
-        const params = new URLSearchParams(window.location.search);
-        let defaultTab = params.get('tab');
-        if (!defaultTab) {
-            defaultTab = localStorage.getItem('modelActiveTab') || 'dashboard';
-        }
-
-        document.querySelector(`#modelTabs .tab-btn[data-tab="${defaultTab}"]`)?.classList.add('active');
-        loadModelTab(defaultTab);
-
-        loadNav();
-    }
-
-    async function loadNav() {
-        const container = document.getElementById('navContainer');
-        if (!container) return;
-        try {
-            const res = await fetch('/nav.html');
-            if (!res.ok) throw new Error('nav.html not found');
-            const html = await res.text();
-            container.innerHTML = html;
-            const scripts = container.querySelectorAll('script');
-            scripts.forEach(old => {
-                const ns = document.createElement('script');
-                ns.textContent = old.textContent;
-                old.parentNode.replaceChild(ns, old);
-            });
-        } catch (err) {
-            console.error('❌ Nav error:', err);
-        }
-    }
-
-    async function updateModelBadge() {
-        try {
-            const data = await api.getModelStatus();
-            if (data.success && data.data) {
-                const badge = document.getElementById('modelStatusBadge');
-                const loaded = data.data.loaded || false;
-                const isTraining = data.data.is_training || false;
-
-                if (isTraining) {
-                    badge.textContent = '⏳ در حال آموزش';
-                    badge.className = 'badge badge-orange';
-                } else if (loaded) {
-                    badge.textContent = '✅ فعال';
-                    badge.className = 'badge badge-green';
-                } else {
-                    badge.textContent = '📦 دمو';
-                    badge.className = 'badge badge-orange';
-                }
+            const url = MODEL_TABS[tabName];
+            if (!url) {
+                container.innerHTML =
+                    `<div class="error-msg"><span class="icon">❌</span><p>تب "${tabName}" یافت نشد</p></div>`;
+                return;
             }
-        } catch (err) {
-            console.error('Badge update error:', err);
-        }
-    }
 
-    // ===== ۱. ساعت لحظه‌ای =====
-    function updateClock() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('fa-IR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        const clockElement = document.getElementById('pageTimestamp');
-        if (clockElement) {
-            clockElement.textContent = timeString;
+            fetch(url)
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.text();
+                })
+                .then(html => {
+                    tabCache[tabName] = html;
+                    container.innerHTML = html;
+                    executeTabScripts(container);
+                })
+                .catch(err => {
+                    console.error(`Failed to load tab "${tabName}":`, err);
+                    container.innerHTML = `
+                            <div class="error-msg">
+                                <span class="icon">⚠️</span>
+                                <p>خطا در بارگذاری تب</p>
+                                <button onclick="loadModelTab('${tabName}')" style="margin-top:12px;padding:6px 16px;background:var(--accent-cyan);color:#000;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
+                            </div>
+                        `;
+                });
         }
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
 
-    // ===== ۲. نمایش زمان آخرین بروزرسانی =====
-    function updateLastUpdateTime() {
-        const el = document.getElementById('lastUpdateTime');
-        if (el) {
+        function executeTabScripts(container) {
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+
+            const initFn = window[`init_${currentTab}`];
+            if (typeof initFn === 'function') {
+                setTimeout(initFn, 150);
+            }
+        }
+
+        function getTabLabel(tabName) {
+            const labels = {
+                dashboard: 'داشبورد',
+                info: 'اطلاعات مدل',
+                training: 'آموزش',
+                schedule: 'زمان‌بندی',
+                history: 'تاریخچه',
+                features: 'اهمیت ویژگی‌ها',
+                tools: 'ابزارها'
+            };
+            return labels[tabName] || tabName;
+        }
+
+        function initModelTabs() {
+            const tabs = document.querySelectorAll('#modelTabs .tab-btn');
+
+            tabs.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabs.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const tabName = this.dataset.tab;
+                    loadModelTab(tabName);
+                    history.replaceState(null, '', `?tab=${tabName}`);
+                    localStorage.setItem('modelActiveTab', tabName);
+                });
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            let defaultTab = params.get('tab');
+            if (!defaultTab) {
+                defaultTab = localStorage.getItem('modelActiveTab') || 'dashboard';
+            }
+
+            document.querySelector(`#modelTabs .tab-btn[data-tab="${defaultTab}"]`)?.classList.add('active');
+            loadModelTab(defaultTab);
+
+            loadNav();
+        }
+
+        async function loadNav() {
+            const container = document.getElementById('navContainer');
+            if (!container) return;
+            try {
+                const res = await fetch('/nav.html');
+                if (!res.ok) throw new Error('nav.html not found');
+                const html = await res.text();
+                container.innerHTML = html;
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(old => {
+                    const ns = document.createElement('script');
+                    ns.textContent = old.textContent;
+                    old.parentNode.replaceChild(ns, old);
+                });
+            } catch (err) {
+                console.error('❌ Nav error:', err);
+            }
+        }
+
+        async function updateModelBadge() {
+            try {
+                const data = await api.getModelStatus();
+                if (data.success && data.data) {
+                    const badge = document.getElementById('modelStatusBadge');
+                    const loaded = data.data.loaded || false;
+                    const isTraining = data.data.is_training || false;
+
+                    if (isTraining) {
+                        badge.textContent = '⏳ در حال آموزش';
+                        badge.className = 'badge badge-orange';
+                    } else if (loaded) {
+                        badge.textContent = '✅ فعال';
+                        badge.className = 'badge badge-green';
+                    } else {
+                        badge.textContent = '📦 دمو';
+                        badge.className = 'badge badge-orange';
+                    }
+                }
+            } catch (err) {
+                console.error('Badge update error:', err);
+            }
+        }
+
+        // ===== ۱. ساعت لحظه‌ای =====
+        function updateClock() {
             const now = new Date();
-            el.textContent = `🔄 آخرین بروزرسانی: ${now.toLocaleTimeString('fa-IR')}`;
+            const timeString = now.toLocaleTimeString('fa-IR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const clockElement = document.getElementById('pageTimestamp');
+            if (clockElement) {
+                clockElement.textContent = timeString;
+            }
         }
-    }
-    updateLastUpdateTime();
-    setInterval(updateLastUpdateTime, 30000);
+        updateClock();
+        setInterval(updateClock, 1000);
 
-    // ============================================================
-    // مقداردهی اولیه
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        initModelTabs();
-        updateModelBadge();
-        setInterval(updateModelBadge, 15000);
-        console.log('🚀 Model page loaded');
-    });
+        // ===== ۲. نمایش زمان آخرین بروزرسانی =====
+        function updateLastUpdateTime() {
+            const el = document.getElementById('lastUpdateTime');
+            if (el) {
+                const now = new Date();
+                el.textContent = `🔄 آخرین بروزرسانی: ${now.toLocaleTimeString('fa-IR')}`;
+            }
+        }
+        updateLastUpdateTime();
+        setInterval(updateLastUpdateTime, 30000);
 
-    console.log('🚀 Model page ready');
+        // ============================================================
+        // مقداردهی اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            initModelTabs();
+            updateModelBadge();
+            setInterval(updateModelBadge, 15000);
+            console.log('🚀 Model page loaded');
+        });
+
+        console.log('🚀 Model page ready');
     </script>
 
 </body>
