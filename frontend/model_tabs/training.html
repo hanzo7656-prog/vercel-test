@@ -1,18 +1,11 @@
 <!-- ============================================================
-     TRAINING TAB - آموزش مدل با انتخاب داینامیک ارزها
+     TRAINING TAB - آموزش مدل با انتخاب داینامیک ارزها و لاگ پیشرفته
      ============================================================ -->
 
 <div class="card">
     <div class="card-title">
         <i class="fas fa-graduation-cap"></i> آموزش مدل
-        <div style="display:flex;align-items:center;gap:8px;margin-right:auto;">
-            <span class="badge" id="trainingStatusBadge" style="font-size:0.55rem;padding:2px 10px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">
-                ⏹️ آماده
-            </span>
-            <button class="btn btn-xs btn-outline" onclick="refreshTrainingCoins()" style="padding:2px 10px;font-size:0.6rem;">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-        </div>
+        <span class="badge-count" id="trainingStatusBadge" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">⏹️ آماده</span>
     </div>
 
     <!-- ===== CONTROLS ===== -->
@@ -38,7 +31,7 @@
             </label>
             <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
                 <label style="font-size:0.7rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <input type="checkbox" id="incrementalToggle"> 
+                    <input type="checkbox" id="incrementalToggle">
                     <span>آموزش افزایشی</span>
                 </label>
                 <span style="font-size:0.55rem;color:var(--text-muted);">(با داده‌های جدید)</span>
@@ -59,10 +52,10 @@
 
         <!-- دکمه‌ها -->
         <div style="display:flex;gap:8px;">
-            <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()" style="padding:8px 24px;font-size:0.8rem;">
+            <button class="btn btn-primary btn-uniform" id="startTrainBtn" onclick="startTraining()" style="padding:8px 24px;font-size:0.8rem;">
                 <i class="fas fa-play"></i> شروع آموزش
             </button>
-            <button class="btn btn-danger" id="stopTrainBtn" onclick="stopTraining()" style="padding:8px 20px;font-size:0.8rem;display:none;">
+            <button class="btn btn-danger btn-uniform" id="stopTrainBtn" onclick="stopTraining()" style="padding:8px 20px;font-size:0.8rem;display:none;">
                 <i class="fas fa-stop"></i> توقف
             </button>
         </div>
@@ -138,11 +131,30 @@
         </div>
     </div>
 
-    <!-- ===== LOG CONSOLE ===== -->
-    <div style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);max-height:200px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);" id="trainingLog">
-        <div style="color:var(--text-muted);padding:4px 0;">📋 منتظر شروع آموزش...</div>
-        <div style="color:var(--text-muted);padding:4px 0;">💡 بازه پیش‌فرض: ۱ ماه</div>
-        <div style="color:var(--text-muted);padding:4px 0;">🪙 ${selectedTrainCoins?.length || 0} ارز انتخاب شده</div>
+    <!-- ===== LOG CONSOLE با قابلیت کپی ===== -->
+    <div class="log-container">
+        <div class="log-toolbar">
+            <button class="btn btn-xs btn-outline" onclick="copyAllLogs()" style="padding:2px 10px;font-size:0.6rem;">
+                <i class="fas fa-copy"></i> کپی همه
+            </button>
+            <button class="btn btn-xs btn-danger" onclick="clearAllLogs()" style="padding:2px 10px;font-size:0.6rem;">
+                <i class="fas fa-trash"></i> پاک کردن همه
+            </button>
+        </div>
+        <div id="trainingLogContainer">
+            <div class="log-entry">
+                <span class="log-time">📋</span>
+                <span class="log-message" style="color:var(--text-muted);">منتظر شروع آموزش...</span>
+            </div>
+            <div class="log-entry">
+                <span class="log-time">💡</span>
+                <span class="log-message" style="color:var(--text-muted);">بازه پیش‌فرض: ۱ ماه</span>
+            </div>
+            <div class="log-entry">
+                <span class="log-time">🪙</span>
+                <span class="log-message" style="color:var(--text-muted);" id="defaultCoinsLog">۰ ارز انتخاب شده</span>
+            </div>
+        </div>
     </div>
 
     <!-- ===== RESULT ===== -->
@@ -176,7 +188,7 @@
 
 <script>
 // ============================================================
-// TRAINING TAB - با انتخاب داینامیک ارزها و ویژگی‌های جدید
+// TRAINING TAB - با انتخاب داینامیک ارزها و لاگ پیشرفته
 // ============================================================
 
 let trainAllCoins = [];
@@ -188,10 +200,71 @@ let trainingInterval = null;
 let isTrainingLoaded = false;
 let defaultCount = 5;
 
-// ============================================================
-// ۱. بارگذاری لیست ارزها
-// ============================================================
+// ===== مدیریت لاگ‌ها =====
+function addTrainLog(message) {
+    const container = document.getElementById('trainingLogContainer');
+    const time = new Date().toLocaleTimeString('fa-IR');
+    const logId = 'log-' + Date.now();
 
+    const entry = document.createElement('div');
+    entry.id = logId;
+    entry.className = 'log-entry';
+    entry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-message">${message}</span>
+        <button class="log-copy-btn" onclick="copySingleLog('${logId}')" title="کپی این خط">
+            <i class="fas fa-copy"></i>
+        </button>
+    `;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+}
+
+function copySingleLog(logId) {
+    const entry = document.getElementById(logId);
+    if (!entry) return;
+    const text = entry.textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 خط کپی شد', 'success');
+    }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('📋 خط کپی شد', 'success');
+    });
+}
+
+function copyAllLogs() {
+    const container = document.getElementById('trainingLogContainer');
+    const logs = container.textContent.trim();
+    if (!logs) {
+        showToast('⚠️ هیچ لاگی برای کپی وجود ندارد', 'warning');
+        return;
+    }
+    navigator.clipboard.writeText(logs).then(() => {
+        showToast('📋 همه لاگ‌ها کپی شدند', 'success');
+    }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = logs;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('📋 همه لاگ‌ها کپی شدند', 'success');
+    });
+}
+
+function clearAllLogs() {
+    const container = document.getElementById('trainingLogContainer');
+    if (!confirm('⚠️ آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+    container.innerHTML = '';
+    showToast('🗑️ همه لاگ‌ها پاک شدند', 'success');
+}
+
+// ===== بقیه توابع (بارگذاری ارزها، آموزش، و...) =====
 async function loadTrainCoins() {
     const grid = document.getElementById('trainCoinsGrid');
     grid.innerHTML = `
@@ -203,33 +276,32 @@ async function loadTrainCoins() {
 
     try {
         const data = await api.getCoinsList({ limit: 200 });
-        
+
         if (data.success && data.data) {
             trainAllCoins = data.data;
-            
-            // دریافت ارزهای آموزش‌دیده
             await loadTrainedCoins();
-            
-            // دریافت پیش‌فرض هوشمند
+
             const defaultCoins = await getSmartDefaultCoins(trainAllCoins);
-            
+
             if (defaultCoins && defaultCoins.length > 0) {
                 selectedTrainCoins = defaultCoins;
             } else {
                 selectedTrainCoins = ['bitcoin', 'ethereum'];
             }
-            
+
             trainFilteredCoins = [...trainAllCoins];
             renderTrainCoins();
             updateSelectedCount();
             updateTrainInfo();
-            
-            // ذخیره در localStorage
+
+            document.getElementById('defaultCoinsLog').textContent =
+                `${selectedTrainCoins.length} ارز انتخاب شده (${selectedTrainCoins.join(', ')})`;
+
             saveUserCoinSelection(selectedTrainCoins);
-            
+
             addTrainLog(`🪙 ${selectedTrainCoins.length} ارز به‌صورت پیش‌فرض انتخاب شد`);
             addTrainLog(`📊 بر اساس ترکیبی از رتبه، تغییرات و حجم معاملات`);
-            
+
         } else {
             grid.innerHTML = `
                 <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
@@ -249,10 +321,6 @@ async function loadTrainCoins() {
     }
 }
 
-// ============================================================
-// ۲. دریافت ارزهای آموزش‌دیده
-// ============================================================
-
 async function loadTrainedCoins() {
     try {
         const history = await api.getModelHistory(50);
@@ -264,7 +332,7 @@ async function loadTrainedCoins() {
                 }
             });
             trainedCoins = [...new Set(allTrained)];
-            
+
             const trainedCount = document.getElementById('trainedCount');
             if (trainedCoins.length > 0) {
                 trainedCount.style.display = 'inline';
@@ -280,13 +348,9 @@ async function loadTrainedCoins() {
     }
 }
 
-// ============================================================
-// ۳. رندر لیست ارزها
-// ============================================================
-
 function renderTrainCoins() {
     const grid = document.getElementById('trainCoinsGrid');
-    
+
     if (trainFilteredCoins.length === 0) {
         grid.innerHTML = `
             <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
@@ -302,14 +366,14 @@ function renderTrainCoins() {
         const isTrained = trainedCoins.includes(coin.id);
         const change = coin.priceChange1d || 0;
         const changeColor = change > 0 ? 'var(--accent-green)' : change < 0 ? 'var(--accent-red)' : 'var(--text-muted)';
-        
+
         return `
             <label style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:${isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-input)'};border:1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s ease;font-size:0.65rem;color:var(--text-secondary);position:relative;"
                    onmouseover="this.style.borderColor='var(--border-hover)';"
                    onmouseout="this.style.borderColor='${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'}';">
-                <input type="checkbox" 
-                       value="${coin.id}" 
-                       ${isSelected ? 'checked' : ''} 
+                <input type="checkbox"
+                       value="${coin.id}"
+                       ${isSelected ? 'checked' : ''}
                        onchange="toggleTrainCoin('${coin.id}')"
                        style="accent-color:var(--accent-cyan);width:14px;height:14px;cursor:pointer;">
                 <span style="font-weight:500;color:var(--text-primary);">${coin.symbol || coin.id.toUpperCase().slice(0,4)}</span>
@@ -321,22 +385,18 @@ function renderTrainCoins() {
     }).join('');
 }
 
-// ============================================================
-// ۴. فیلتر و جستجو
-// ============================================================
-
 function filterTrainCoins() {
     const search = document.getElementById('trainCoinSearch').value.toLowerCase().trim();
     const sort = document.getElementById('trainCoinSort').value;
     const changeFilter = document.getElementById('trainChangeFilter').value;
-    
+
     trainFilteredCoins = trainAllCoins.filter(coin => {
         const name = (coin.name || '').toLowerCase();
         const symbol = (coin.symbol || '').toLowerCase();
         const id = (coin.id || '').toLowerCase();
         return name.includes(search) || symbol.includes(search) || id.includes(search);
     });
-    
+
     if (changeFilter === 'positive') {
         trainFilteredCoins = trainFilteredCoins.filter(c => (c.priceChange1d || 0) > 0);
     } else if (changeFilter === 'negative') {
@@ -344,7 +404,7 @@ function filterTrainCoins() {
     } else if (changeFilter === 'high') {
         trainFilteredCoins = trainFilteredCoins.filter(c => (c.priceChange1d || 0) > 5);
     }
-    
+
     switch(sort) {
         case 'rank_asc':
             trainFilteredCoins.sort((a, b) => (a.rank || 999) - (b.rank || 999));
@@ -356,13 +416,9 @@ function filterTrainCoins() {
             trainFilteredCoins.sort((a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0));
             break;
     }
-    
+
     renderTrainCoins();
 }
-
-// ============================================================
-// ۵. مدیریت انتخاب‌ها
-// ============================================================
 
 function toggleTrainCoin(coinId) {
     const index = selectedTrainCoins.indexOf(coinId);
@@ -371,7 +427,7 @@ function toggleTrainCoin(coinId) {
     } else {
         selectedTrainCoins.push(coinId);
     }
-    
+
     saveUserCoinSelection(selectedTrainCoins);
     updateSelectedCount();
     updateTrainInfo();
@@ -399,7 +455,7 @@ function selectTrainedCoins() {
         showToast('⚠️ هیچ ارزی قبلاً آموزش دیده نیست', 'warning');
         return;
     }
-    selectedTrainCoins = trainedCoins.filter(id => 
+    selectedTrainCoins = trainedCoins.filter(id =>
         trainAllCoins.some(c => c.id === id)
     );
     saveUserCoinSelection(selectedTrainCoins);
@@ -428,10 +484,6 @@ function updateTrainInfo() {
     }
 }
 
-// ============================================================
-// ۶. تعداد ارزهای پیشنهادی
-// ============================================================
-
 function updateDefaultCount() {
     defaultCount = parseInt(document.getElementById('defaultCount').value);
     const defaultCoins = getTripleScoreCoins(trainAllCoins, defaultCount);
@@ -445,10 +497,7 @@ function updateDefaultCount() {
     }
 }
 
-// ============================================================
-// ۷. شروع آموزش
-// ============================================================
-
+// ===== شروع آموزش =====
 async function startTraining() {
     if (isTraining) return;
     if (selectedTrainCoins.length === 0) {
@@ -481,9 +530,6 @@ async function startTraining() {
     document.getElementById('trainingResult').style.display = 'none';
     document.getElementById('trainingStatusBadge').textContent = '⏳ در حال آموزش';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
-
-    const logEl = document.getElementById('trainingLog');
-    logEl.innerHTML = '';
 
     addTrainLog('🚀 شروع آموزش مدل XGBoost');
     addTrainLog(`📊 بازه زمانی: ${period}`);
@@ -525,10 +571,6 @@ async function startTraining() {
     }
 }
 
-// ============================================================
-// ۸. بررسی نتیجه آموزش
-// ============================================================
-
 function checkTrainingResult() {
     const result = window._trainResult;
     if (!result) return;
@@ -543,7 +585,7 @@ function checkTrainingResult() {
     document.getElementById('trainingResult').style.display = 'block';
     document.getElementById('resultMessage').textContent = result.message || 'آموزش با موفقیت انجام شد';
     document.getElementById('resultAccuracy').textContent = result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—';
-    
+
     if (result.improvement !== undefined && result.improvement !== null) {
         const imp = result.improvement * 100;
         document.getElementById('resultImprovement').textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
@@ -552,7 +594,7 @@ function checkTrainingResult() {
         document.getElementById('resultImprovement').textContent = '—';
         document.getElementById('resultImprovement').style.color = 'var(--text-muted)';
     }
-    
+
     document.getElementById('resultVersion').textContent = result.version || 'N/A';
     document.getElementById('resultCoins').textContent = selectedTrainCoins.length + ' ارز';
 
@@ -562,14 +604,9 @@ function checkTrainingResult() {
     addTrainLog(`🪙 ارزها: ${selectedTrainCoins.join(', ')}`);
 
     showToast('✅ آموزش با موفقیت انجام شد', 'success');
-    
-    // بروزرسانی ارزهای آموزش‌دیده
+
     loadTrainedCoins();
 }
-
-// ============================================================
-// ۹. توقف آموزش
-// ============================================================
 
 async function stopTraining() {
     if (!isTraining) return;
@@ -601,41 +638,15 @@ async function stopTraining() {
     }
 }
 
-// ============================================================
-// ۱۰. ابزارهای کمکی
-// ============================================================
-
-function addTrainLog(message) {
-    const logEl = document.getElementById('trainingLog');
-    const time = new Date().toLocaleTimeString('fa-IR');
-    const entry = document.createElement('div');
-    entry.style.cssText = 'padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;';
-    entry.innerHTML = `
-        <span style="color:var(--text-muted);min-width:60px;font-size:0.6rem;">${time}</span>
-        <span style="color:var(--text-secondary);">${message}</span>
-    `;
-    logEl.appendChild(entry);
-    logEl.scrollTop = logEl.scrollHeight;
-}
-
-function refreshTrainingCoins() {
-    showToast('🔄 بروزرسانی لیست ارزها...', 'info');
-    loadTrainCoins();
-}
-
-// ============================================================
-// ۱۱. مقداردهی اولیه و پاکسازی
-// ============================================================
-
+// ===== مقداردهی اولیه =====
 window.init_training = function() {
     console.log('🎓 Training tab initializing...');
-    
+
     if (isTrainingLoaded) return;
     isTrainingLoaded = true;
-    
+
     loadTrainCoins();
-    
-    // بروزرسانی هر ۵ دقیقه
+
     if (trainingInterval) {
         clearInterval(trainingInterval);
     }
