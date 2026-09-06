@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش مدل XGBoost</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        /* ============================================================
+           استایل حرفه‌ای گزارش
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Vazir', sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            color: #1a1a2e;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* ===== هدر ===== */
+        .header {
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            color: #fff;
+            padding: 24px 32px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .header .badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(4px);
+        }
+        .header .version-box {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header .download-btn {
+            background: #fff;
+            color: #0d6efd;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header .download-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+        }
+
+        /* ===== کارت‌های وضعیت ===== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background: #fff;
+            padding: 18px 20px;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e8ecf1;
+            transition: transform 0.2s;
+            text-align: center;
+        }
+        .summary-card:hover {
+            transform: translateY(-2px);
+            border-color: #0d6efd;
+        }
+        .summary-card .label {
+            font-size: 0.65rem;
+            color: #6c7a89;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .summary-card .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+        .value.green {
+            color: #0d6efd;
+        }
+        .value.orange {
+            color: #f59e0b;
+        }
+        .value.red {
+            color: #ef4444;
+        }
+        .value.purple {
+            color: #6610f2;
+        }
+
+        /* ===== کارت‌های اصلی ===== */
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e8ecf1;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1a1a2e;
+        }
+        .card-title .icon {
+            font-size: 1.2rem;
+        }
+
+        /* ===== جداول ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th {
+            background: #f8fafc;
+            text-align: right;
+            padding: 10px 14px;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            color: #1a1a2e;
+        }
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid #e8ecf1;
+        }
+        .feature-bar {
+            display: inline-block;
+            height: 8px;
+            border-radius: 6px;
+            background: #0d6efd;
+            transition: width 0.5s ease;
+        }
+        .status-badge {
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-badge.active {
+            background: #dbeafe;
+            color: #0d6efd;
+        }
+        .status-badge.inactive {
+            background: #f3f4f6;
+            color: #6c7a89;
+        }
+
+        /* ===== پیشنهادات ===== */
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .rec-card {
+            background: #f8fafc;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border-right: 4px solid #0d6efd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .rec-card .coin {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .rec-card .signal {
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .signal.buy {
+            background: #dbeafe;
+            color: #0d6efd;
+        }
+        .signal.sell {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+        .signal.neutral {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+        .rec-card .confidence {
+            font-size: 0.7rem;
+            color: #6c7a89;
+        }
+
+        /* ===== نمودارها ===== */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .chart-box {
+            background: #fafbfc;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #e8ecf1;
+        }
+        .chart-box canvas {
+            max-height: 200px;
+        }
+
+        /* ===== فوتر ===== */
+        .footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 0.7rem;
+            color: #6c7a89;
+            border-top: 1px solid #e8ecf1;
+            margin-top: 12px;
+        }
+
+        /* ===== ریسپانسیو ===== */
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* ===== Print Styles ===== */
+        @media print {
+            body {
+                background: #fff;
+                padding: 10px;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                break-inside: avoid;
+            }
+            .summary-card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            .header {
+                background: #0d6efd !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .badge {
+                background: rgba(255, 255, 255, 0.2) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .signal {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .header .download-btn {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="reportContainer">
+
+        <!-- ===== HEADER با نسخه و دکمه دانلود ===== -->
+        <div class="header" id="reportHeader">
+            <div>
+                <h1>📊 گزارش مدل XGBoost</h1>
+                <div style="font-size:0.8rem;opacity:0.8;margin-top:4px;" id="reportDate">
+                    تولید شده: —
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span class="version-box" id="versionDisplay">
+                    📌 نسخه: <strong>—</strong>
+                </span>
+                <a href="#" class="download-btn" onclick="downloadModel(event)" id="downloadModelBtn">
+                    ⬇️ دانلود مدل (.xgb)
+                </a>
+                <span class="badge" id="statusBadge">🚀 PRODUCTION</span>
+            </div>
+        </div>
+
+        <!-- ===== کارت‌های وضعیت ===== -->
+        <div class="summary-grid" id="summaryGrid">
+            <!-- توسط JavaScript پر می‌شود -->
+        </div>
+
+        <!-- ===== پیشنهادات مدل ===== -->
+        <div class="card" id="signalsCard">
+            <div class="card-title"><span class="icon">🧠</span> پیشنهادات لحظه‌ای مدل</div>
+            <div class="recommendation-grid" id="signalsGrid">
+                <!-- توسط JavaScript پر می‌شود -->
+            </div>
+        </div>
+
+        <!-- ===== نمودارها ===== -->
+        <div class="card">
+            <div class="card-title"><span class="icon">📈</span> تحلیل عملکرد</div>
+            <div class="chart-grid">
+                <div class="chart-box">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <canvas id="featureChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== اطلاعات مدل ===== -->
+        <div class="card">
+            <div class="card-title"><span class="icon">⚙️</span> اطلاعات تکمیلی</div>
+            <table id="infoTable">
+                <tbody>
+                    <!-- توسط JavaScript پر می‌شود -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== تاریخچه ===== -->
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> تاریخچه آموزش</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>نسخه</th>
+                        <th>دقت</th>
+                        <th>تاریخ</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <!-- توسط JavaScript پر می‌شود -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            🚀 سیستم تحلیلگر v10.0 · مدل XGBoost · گزارش لحظه‌ای
+            <br>
+            <span style="font-size:0.6rem;">برای دانلود مدل، روی دکمه آبی در هدر کلیک کنید</span>
+        </div>
+
+    </div>
+
+    <script>
+        // ============================================================
+        // ۱. دریافت داده از URL (با استفاده از query string)
+        // ============================================================
+        function getReportData() {
+            const params = new URLSearchParams(window.location.search);
+            const version = params.get('version');
+            const apiUrl = version ?
+                `/api/model/report/${version}` :
+                '/api/model/latest-report';
+
+            return fetch(apiUrl, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        return data;
+                    } else {
+                        throw new Error(data.error || 'Failed to load report data');
+                    }
+                });
+        }
+
+        // ============================================================
+        // ۲. رندر گزارش با داده‌های دریافتی
+        // ============================================================
+        function renderReport(reportData) {
+            const data = reportData.data;
+            const model = data.model || {};
+            const stats = data.stats || {};
+            const signals = data.signals || [];
+            const history = data.history || [];
+            const features = data.feature_importance || [];
+            const hyper = data.hyperparameters || {};
+
+            // ===== هدر =====
+            document.getElementById('versionDisplay').innerHTML =
+                `📌 نسخه: <strong>${model.version || 'N/A'}</strong>`;
+            document.getElementById('reportDate').textContent =
+                `تولید شده: ${new Date().toLocaleDateString('fa-IR')} - ${new Date().toLocaleTimeString('fa-IR')}`;
+
+            const statusBadge = document.getElementById('statusBadge');
+            if (model.is_active) {
+                statusBadge.textContent = '🚀 PRODUCTION';
+                statusBadge.style.background = 'rgba(255,255,255,0.2)';
+            } else {
+                statusBadge.textContent = '📦 DEMO';
+                statusBadge.style.background = 'rgba(255,255,255,0.1)';
+            }
+
+            // دکمه دانلود مدل
+            const downloadBtn = document.getElementById('downloadModelBtn');
+            downloadBtn.onclick = function(e) {
+                e.preventDefault();
+                downloadModel(model.version);
+            };
+
+            // ===== کارت‌های وضعیت =====
+            const summaryGrid = document.getElementById('summaryGrid');
+            const summaryItems = [
+                { label: '🧠 وضعیت مدل', value: model.is_active ? '✅ فعال' : '📦 دمو', color: model.is_active ? 'green' :
+                        'orange' },
+                { label: '🎯 دقت (Accuracy)', value: (model.accuracy * 100).toFixed(2) + '%', color: 'green' },
+                { label: '📊 تعداد آموزش', value: stats.total_trainings || 0, color: 'purple' },
+                { label: '🪙 ارزهای پشتیبانی', value: (model.coins || []).length + ' ارز', color: 'purple' },
+                { label: '📈 آخرین بهبود', value: stats.latest_improvement !== null ? `+${stats.latest_improvement}%` :
+                        '—', color: 'green' },
+                { label: '📊 بهترین دقت', value: (stats.best_accuracy * 100).toFixed(2) + '%', color: 'green' }
+            ];
+
+            summaryGrid.innerHTML = summaryItems.map(item =>
+                `
+                <div class="summary-card">
+                    <div class="label">${item.label}</div>
+                    <div class="value ${item.color}">${item.value}</div>
+                </div>
+            `
+            ).join('');
+
+            // ===== پیشنهادات مدل =====
+            const signalsGrid = document.getElementById('signalsGrid');
+            if (signals.length > 0) {
+                const signalMap = {
+                    'BUY': { class: 'buy', label: 'خرید' },
+                    'SELL': { class: 'sell', label: 'فروش' },
+                    'NEUTRAL': { class: 'neutral', label: 'خنثی' }
+                };
+                signalsGrid.innerHTML = signals.map(s => {
+                    const sig = signalMap[s.signal_type] || signalMap['NEUTRAL'];
+                    return `
+                        <div class="rec-card" style="border-right-color: ${s.signal_type === 'BUY' ? '#0d6efd' : s.signal_type === 'SELL' ? '#ef4444' : '#f59e0b'};">
+                            <span class="coin">${s.coin}</span>
+                            <span class="signal ${sig.class}">${sig.label}</span>
+                            <span class="confidence">اطمینان: ${s.confidence || 50}%</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                signalsGrid.innerHTML = `
+                    <div style="text-align:center;padding:20px;color:#6c7a89;grid-column:1/-1;">
+                        ⚠️ داده‌ای برای نمایش وجود ندارد
+                    </div>
+                `;
+            }
+
+            // ===== اطلاعات مدل =====
+            const infoTable = document.getElementById('infoTable');
+            const infoRows = [
+                { label: 'نسخه مدل', value: model.version || 'N/A' },
+                { label: 'ارزهای استفاده شده', value: (model.coins || []).join(', ') || '—' },
+                { label: 'تعداد ویژگی‌ها', value: model.features_count || 0 },
+                { label: 'تعداد نمونه‌های آموزش', value: model.training_samples || 0 },
+                { label: 'بازه زمانی', value: model.period || '1m' },
+                { label: 'Hyperparameters', value: `max_depth=${hyper.max_depth || 4}, lr=${hyper.learning_rate || 0.1}, n_estimators=${hyper.n_estimators || 50}` },
+                { label: 'آخرین به‌روزرسانی', value: model.training_date ? new Date(model.training_date).toLocaleString(
+                        'fa-IR') : '—' }
+            ];
+            infoTable.innerHTML = infoRows.map(row =>
+                `
+                <tr>
+                    <td style="width:35%;color:#6c7a89;">${row.label}</td>
+                    <td><strong>${row.value}</strong></td>
+                </tr>
+            `
+            ).join('');
+
+            // ===== تاریخچه =====
+            const historyBody = document.getElementById('historyBody');
+            if (history.length > 0) {
+                historyBody.innerHTML = history.map(item =>
+                    `
+                    <tr>
+                        <td>${item.version || 'N/A'}</td>
+                        <td>${((item.accuracy || 0) * 100).toFixed(2)}%</td>
+                        <td>${item.training_date ? new Date(item.training_date).toLocaleDateString('fa-IR') : '—'}</td>
+                        <td>
+                            <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                                ${item.is_active ? '✅ فعال' : '📦 غیرفعال'}
+                            </span>
+                        </td>
+                    </tr>
+                `
+                ).join('');
+            } else {
+                historyBody.innerHTML =
+                    `<tr><td colspan="4" style="text-align:center;color:#6c7a89;">📭 هیچ نسخه‌ای یافت نشد</td></tr>`;
+            }
+
+            // ===== نمودارها =====
+            renderCharts(history, features);
+        }
+
+        // ============================================================
+        // ۳. نمودارها
+        // ============================================================
+        function renderCharts(history, features) {
+            const textColor = '#6c7a89';
+
+            // ===== نمودار عملکرد (تاریخچه دقت) =====
+            const ctx1 = document.getElementById('performanceChart');
+            if (ctx1) {
+                const labels = history.map(item =>
+                    item.training_date ? new Date(item.training_date).toLocaleDateString('fa-IR') : '—'
+                ).reverse();
+                const data = history.map(item => (item.accuracy || 0) * 100).reverse();
+
+                if (labels.length === 0) {
+                    labels.push('بدون داده');
+                    data.push(0);
+                }
+
+                new Chart(ctx1, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'دقت (%)',
+                            data: data,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13,110,253,0.05)',
+                            tension: 0.3,
+                            pointBackgroundColor: '#0d6efd',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { labels: { color: textColor, font: { size: 10 } } }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: textColor, font: { size: 8 } },
+                                grid: { color: 'rgba(0,0,0,0.04)' }
+                            },
+                            y: {
+                                min: 0,
+                                max: 100,
+                                ticks: { color: textColor, font: { size: 8 }, callback: v => v + '%' },
+                                grid: { color: 'rgba(0,0,0,0.04)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ===== نمودار ویژگی‌ها =====
+            const ctx2 = document.getElementById('featureChart');
+            if (ctx2) {
+                const featureLabels = features.map(f => f.feature || '—').slice(0, 10);
+                const featureData = features.map(f => f.percentage || 0).slice(0, 10);
+                const colors = ['#0d6efd', '#6610f2', '#f59e0b', '#22d3ee', '#ec4899', '#84cc16', '#f43f5e', '#14b8a6',
+                    '#a855f7', '#eab308'
+                ];
+
+                if (featureLabels.length === 0) {
+                    featureLabels.push('بدون داده');
+                    featureData.push(0);
+                }
+
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: featureLabels,
+                        datasets: [{
+                            label: 'اهمیت (%)',
+                            data: featureData,
+                            backgroundColor: colors.slice(0, featureData.length),
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: textColor, font: { size: 8 }, callback: v => v + '%' },
+                                grid: { color: 'rgba(0,0,0,0.04)' }
+                            },
+                            y: {
+                                ticks: { color: textColor, font: { size: 8 } },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============================================================
+        // ۴. دانلود مدل (بدون استفاده از سرور)
+        // ============================================================
+        function downloadModel(version) {
+            if (!version) {
+                alert('⚠️ نسخه مدل مشخص نیست!');
+                return;
+            }
+
+            // دریافت فایل مدل از سرور
+            fetch(`/api/model/export?version=${version}`, { credentials: 'include' })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to download model');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `model_${version}.xgb`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    alert('✅ دانلود مدل آغاز شد!');
+                })
+                .catch(err => {
+                    alert('❌ خطا در دانلود مدل: ' + err.message);
+                });
+        }
+
+        // ============================================================
+        // ۵. بارگذاری اولیه
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            getReportData()
+                .then(reportData => {
+                    renderReport(reportData);
+                })
+                .catch(err => {
+                    document.getElementById('reportContainer').innerHTML = `
+                        <div style="text-align:center;padding:60px 20px;color:#ef4444;">
+                            <span style="font-size:3rem;display:block;margin-bottom:16px;">❌</span>
+                            <h2>خطا در بارگذاری گزارش</h2>
+                            <p style="color:#6c7a89;margin-top:8px;">${err.message}</p>
+                            <button onclick="location.reload()" style="margin-top:16px;padding:8px 24px;background:#0d6efd;color:#fff;border:none;border-radius:8px;cursor:pointer;">
+                                🔄 تلاش مجدد
+                            </button>
+                        </div>
+                    `;
+                });
+        });
+    </script>
+
+</body>
+</html>
