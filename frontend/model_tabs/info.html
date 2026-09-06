@@ -143,11 +143,9 @@ async function loadModelInfo() {
             const accuracy = data.last_score || null;
             const totalTrainings = data.total_trainings || 0;
 
-            // اطلاعات پایه
             document.getElementById('infoVersion').textContent = version;
             document.getElementById('infoVersion').style.color = loaded ? 'var(--accent-cyan)' : 'var(--text-muted)';
-            
-            // حالت مدل
+
             const modeEl = document.getElementById('infoMode');
             if (isTraining) {
                 modeEl.textContent = '⏳ در حال آموزش';
@@ -160,7 +158,6 @@ async function loadModelInfo() {
                 modeEl.style.color = 'var(--accent-orange)';
             }
 
-            // دقت
             const accEl = document.getElementById('infoAccuracy');
             if (accuracy !== null && accuracy !== undefined) {
                 accEl.textContent = (accuracy * 100).toFixed(2) + '%';
@@ -170,44 +167,36 @@ async function loadModelInfo() {
                 accEl.style.color = 'var(--text-muted)';
             }
 
-            // تعداد آموزش
             document.getElementById('infoSamples').textContent = totalTrainings || '—';
         }
 
-        // تاریخچه برای اطلاعات بیشتر
         if (history.success && history.data && history.data.length > 0) {
             const latest = history.data[0];
-            
-            // تاریخ ایجاد
+
             if (latest.training_date) {
                 document.getElementById('infoDate').textContent = formatDate(latest.training_date);
             }
-            
-            // بازه زمانی
+
             document.getElementById('infoPeriod').textContent = latest.period || '—';
-            
-            // ارزها
+
             if (latest.coins && latest.coins.length > 0) {
                 document.getElementById('infoCoins').textContent = latest.coins.join(', ');
             } else {
                 document.getElementById('infoCoins').textContent = 'bitcoin, ethereum';
             }
 
-            // تعداد ویژگی‌ها
             if (latest.features && latest.features.length > 0) {
                 document.getElementById('infoFeatures').textContent = latest.features.length;
             } else {
                 document.getElementById('infoFeatures').textContent = '۱۳';
             }
 
-            // F1-Score (اگر موجود باشد)
             if (latest.f1_score !== undefined && latest.f1_score !== null) {
                 document.getElementById('infoF1').textContent = (latest.f1_score * 100).toFixed(2) + '%';
             } else {
                 document.getElementById('infoF1').textContent = '—';
             }
 
-            // Hyperparameters (از config یا پیش‌فرض)
             const hyperParams = latest.hyperparameters || {
                 max_depth: 4,
                 learning_rate: 0.1,
@@ -215,7 +204,7 @@ async function loadModelInfo() {
                 subsample: 0.8,
                 colsample_bytree: 0.8
             };
-            
+
             document.getElementById('infoMaxDepth').textContent = hyperParams.max_depth || '—';
             document.getElementById('infoLearningRate').textContent = hyperParams.learning_rate || '—';
             document.getElementById('infoEstimators').textContent = hyperParams.n_estimators || '—';
@@ -223,7 +212,6 @@ async function loadModelInfo() {
             document.getElementById('infoColsample').textContent = hyperParams.colsample_bytree || '—';
         }
 
-        // زمان آخرین بروزرسانی
         document.getElementById('infoLastUpdate').textContent = new Date().toLocaleString('fa-IR');
         document.getElementById('infoUpdateTime').textContent = '🕐 ' + new Date().toLocaleTimeString('fa-IR');
 
@@ -243,12 +231,12 @@ async function refreshInfo() {
 // ===== مقداردهی اولیه =====
 window.init_info = function() {
     console.log('ℹ️ Info tab initializing...');
-    
+
     if (isInfoLoaded) return;
     isInfoLoaded = true;
-    
+
     loadModelInfo();
-    
+
     if (infoInterval) {
         clearInterval(infoInterval);
     }
