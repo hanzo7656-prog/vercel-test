@@ -1,5 +1,5 @@
 <!-- ============================================================
-     INDICATORS TAB - نمایش شاخص‌های تکنیکال و احساسات
+     INDICATORS TAB - شاخص‌های تکنیکال و احساسات (ریسپانسیو)
      ============================================================ -->
 
 <div class="card">
@@ -13,14 +13,14 @@
 
     <!-- ===== COIN SELECTOR ===== -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-        <select id="indicatorsCoin" onchange="loadIndicators()" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:150px;">
+        <select id="indicatorsCoin" onchange="loadIndicators()" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;min-width:150px;max-width:100%;">
             <option value="bitcoin">₿ بیت‌کوین</option>
         </select>
-        <span style="font-size:0.6rem;color:var(--text-muted);">شاخص‌های تکنیکال و احساسات بازار</span>
+        <span style="font-size:0.7rem;color:var(--text-muted);">شاخص‌های تکنیکال و احساسات بازار</span>
     </div>
 
     <!-- ===== INDICATORS GRID ===== -->
-    <div id="indicatorsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+    <div id="indicatorsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
         <div class="loading-container" style="padding:30px;grid-column:1/-1;">
             <div class="loading-spinner" style="width:28px;height:28px;"></div>
             <p class="loading-text" style="font-size:0.8rem;">در حال بارگذاری شاخص‌ها...</p>
@@ -30,7 +30,7 @@
 
 <script>
 // ============================================================
-// INDICATORS TAB - شاخص‌های تکنیکال و احساسات
+// INDICATORS TAB - شاخص‌های تکنیکال و احساسات (ریسپانسیو)
 // ============================================================
 
 let indicatorsInterval = null;
@@ -63,17 +63,14 @@ async function loadIndicators() {
     statusEl.style.color = 'var(--accent-orange)';
 
     try {
-        // دریافت داده‌های مورد نیاز
         const [coinData, fearGreed, dominance] = await Promise.all([
             api.getCoinPrice(coin),
             api.getFearGreed(),
             api.getBTCDominance()
         ]);
 
-        // دریافت داده‌های تکنیکال (از mock برای حال حاضر)
         const technical = getMockTechnicalIndicators(coin);
 
-        // ترکیب همه شاخص‌ها
         const indicators = {
             price: coinData.data?.price || 0,
             change24h: coinData.data?.change_24h || 0,
@@ -113,31 +110,54 @@ async function loadIndicators() {
     }
 }
 
-// ===== رندر شاخص‌ها =====
+// ===== رندر شاخص‌ها (ریسپانسیو) =====
 function renderIndicators(data) {
     const grid = document.getElementById('indicatorsGrid');
 
     const items = [
-        { label: '💰 قیمت', value: formatCurrency(data.price), color: 'cyan', icon: '💰' },
-        { label: '📈 تغییر ۲۴h', value: formatPercent(data.change24h), color: data.change24h >= 0 ? 'green' : 'red', icon: '📈' },
-        { label: '📊 RSI', value: data.rsi.toFixed(1), color: data.rsi > 70 ? 'red' : data.rsi < 30 ? 'green' : 'orange', icon: '📊' },
-        { label: '📉 MACD', value: data.macd.toFixed(2), color: data.macd > 0 ? 'green' : 'red', icon: '📉' },
-        { label: '🛡️ حمایت', value: formatCurrency(data.support), color: 'cyan', icon: '🛡️' },
-        { label: '⚔️ مقاومت', value: formatCurrency(data.resistance), color: 'purple', icon: '⚔️' },
-        { label: '😨 ترس و طمع', value: data.fearGreed + ' (' + data.fearGreedLabel + ')', color: data.fearGreed > 70 ? 'red' : data.fearGreed < 30 ? 'green' : 'orange', icon: '😨' },
-        { label: '📊 سلطه BTC', value: data.btcDominance.toFixed(1) + '%', color: 'cyan', icon: '📊' },
-        { label: '📦 حجم ۲۴h', value: formatNumber(data.volume24h), color: 'cyan', icon: '📦' },
-        { label: '📈 نوسان', value: (data.volatility * 100).toFixed(1) + '%', color: data.volatility > 0.03 ? 'orange' : 'green', icon: '📈' },
-        { label: '⬆️ بالاترین', value: formatCurrency(data.high24h), color: 'green', icon: '⬆️' },
-        { label: '⬇️ پایین‌ترین', value: formatCurrency(data.low24h), color: 'red', icon: '⬇️' }
+        { label: '💰 قیمت', value: formatCurrency(data.price), color: 'var(--accent-cyan)', icon: '💰' },
+        { label: '📈 تغییر ۲۴h', value: formatPercent(data.change24h), color: data.change24h >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', icon: '📈' },
+        { label: '📊 RSI', value: data.rsi.toFixed(1), color: data.rsi > 70 ? 'var(--accent-red)' : data.rsi < 30 ? 'var(--accent-green)' : 'var(--accent-orange)', icon: '📊' },
+        { label: '📉 MACD', value: data.macd.toFixed(2), color: data.macd > 0 ? 'var(--accent-green)' : 'var(--accent-red)', icon: '📉' },
+        { label: '🛡️ حمایت', value: formatCurrency(data.support), color: 'var(--accent-cyan)', icon: '🛡️' },
+        { label: '⚔️ مقاومت', value: formatCurrency(data.resistance), color: 'var(--accent-purple)', icon: '⚔️' },
+        { label: '😨 ترس و طمع', value: data.fearGreed + ' (' + data.fearGreedLabel + ')', color: data.fearGreed > 70 ? 'var(--accent-red)' : data.fearGreed < 30 ? 'var(--accent-green)' : 'var(--accent-orange)', icon: '😨' },
+        { label: '📊 سلطه BTC', value: data.btcDominance.toFixed(1) + '%', color: 'var(--accent-cyan)', icon: '📊' },
+        { label: '📦 حجم ۲۴h', value: formatNumber(data.volume24h), color: 'var(--accent-cyan)', icon: '📦' },
+        { label: '📈 نوسان', value: (data.volatility * 100).toFixed(1) + '%', color: data.volatility > 0.03 ? 'var(--accent-orange)' : 'var(--accent-green)', icon: '📈' },
+        { label: '⬆️ بالاترین', value: formatCurrency(data.high24h), color: 'var(--accent-green)', icon: '⬆️' },
+        { label: '⬇️ پایین‌ترین', value: formatCurrency(data.low24h), color: 'var(--accent-red)', icon: '⬇️' }
     ];
 
     grid.innerHTML = items.map(item => `
-        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px 16px;text-align:center;transition:var(--transition);">
-            <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:4px;">
+        <div style="background:var(--bg-input);
+                    border:1px solid var(--border-color);
+                    border-radius:var(--radius-sm);
+                    padding:10px 12px;
+                    text-align:center;
+                    transition:var(--transition);
+                    overflow:hidden;
+                    word-break:break-word;">
+            <div style="font-size:0.65rem;
+                        color:var(--text-muted);
+                        text-transform:uppercase;
+                        letter-spacing:0.3px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        gap:4px;
+                        font-weight:500;">
                 ${item.icon} ${item.label}
             </div>
-            <div style="font-size:1rem;font-weight:700;margin-top:4px;color:var(--accent-${item.color});font-family:var(--font-mono);">
+            <div style="font-size:0.95rem;
+                        font-weight:600;
+                        margin-top:4px;
+                        color:${item.color};
+                        font-family:var(--font-mono);
+                        line-height:1.3;
+                        overflow:hidden;
+                        text-overflow:ellipsis;
+                        white-space:nowrap;">
                 ${item.value}
             </div>
         </div>
@@ -148,7 +168,6 @@ function renderIndicators(data) {
 function getMockTechnicalIndicators(coin) {
     const base = coin === 'bitcoin' ? 80000 : coin === 'ethereum' ? 2500 : 100;
     const volatility = 0.02 + Math.random() * 0.02;
-    const randomFactor = 1 + (Math.random() - 0.5) * 0.2;
     
     return {
         rsi: 30 + Math.random() * 40,
@@ -199,5 +218,5 @@ window.cleanup_indicators = function() {
     console.log('🧹 Indicators tab cleaned up');
 };
 
-console.log('✅ Indicators tab loaded');
+console.log('✅ Indicators tab loaded (responsive)');
 </script>
