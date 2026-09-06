@@ -1,5 +1,5 @@
 <!-- ============================================================
-     DASHBOARD TAB - داشبورد مدل با نمودارهای حرفه‌ای
+     DASHBOARD TAB - با کارت گزارش فوری
      ============================================================ -->
 
 <div class="card">
@@ -64,8 +64,8 @@
         </div>
     </div>
 
-    <!-- ===== BOTTOM ROW ===== -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <!-- ===== BOTTOM ROW (با کارت گزارش فوری) ===== -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
         <!-- آخرین پیش‌بینی -->
         <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);">
             <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
@@ -93,138 +93,188 @@
                 <span class="badge" style="font-size:0.55rem;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">🔄 در حال بارگذاری...</span>
             </div>
         </div>
+
+        <!-- ===== کارت جدید: گزارش فوری ===== -->
+        <div style="background:linear-gradient(135deg, rgba(13,110,253,0.05), rgba(102,16,242,0.05));border-radius:var(--radius-sm);padding:12px 14px;border:1px solid rgba(13,110,253,0.15);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">
+                <i class="fas fa-file-alt" style="color:var(--accent-cyan);"></i> گزارش فوری
+            </div>
+            <div style="font-size:0.7rem;font-weight:600;color:var(--text-primary);margin-bottom:4px;" id="reportVersionDisplay">نسخه: —</div>
+            <button class="btn btn-primary btn-xs" onclick="generateQuickReport()" style="padding:4px 14px;font-size:0.6rem;min-height:28px;">
+                <i class="fas fa-eye"></i> مشاهده گزارش
+            </button>
+            <div style="font-size:0.5rem;color:var(--text-muted);margin-top:4px;" id="reportQuickStatus">✅ آماده</div>
+        </div>
     </div>
 </div>
 
 <script>
-// ============================================================
-// DASHBOARD TAB - کامل با نمودارهای Chart.js
-// ============================================================
+    // ============================================================
+    // DASHBOARD TAB - با گزارش فوری
+    // ============================================================
 
-let performanceChart = null;
-let featureMiniChart = null;
-let dashboardInterval = null;
-let isDashboardLoaded = false;
+    let performanceChart = null;
+    let featureMiniChart = null;
+    let dashboardInterval = null;
+    let isDashboardLoaded = false;
 
-// ===== توابع اصلی =====
-async function loadDashboardData() {
-    try {
-        const [status, performance, credits, dbHealth] = await Promise.all([
-            api.getModelStatus(),
-            api.getModelPerformance(),
-            api.getCredits(),
-            api.getDatabaseHealth()
-        ]);
+    // ===== توابع اصلی (همان قبلی) =====
+    async function loadDashboardData() {
+        try {
+            const [status, performance, credits, dbHealth] = await Promise.all([
+                api.getModelStatus(),
+                api.getModelPerformance(),
+                api.getCredits(),
+                api.getDatabaseHealth()
+            ]);
 
-        updateStatusCards(status);
-        updatePerformanceChart(performance);
-        updateCredits(credits);
-        updateDatabases(dbHealth);
+            updateStatusCards(status);
+            updatePerformanceChart(performance);
+            updateCredits(credits);
+            updateDatabases(dbHealth);
+            updateReportVersion(status);
 
-        document.getElementById('lastUpdateTime').textContent =
-            '🕐 ' + new Date().toLocaleTimeString('fa-IR');
+            document.getElementById('lastUpdateTime').textContent =
+                '🕐 ' + new Date().toLocaleTimeString('fa-IR');
 
-    } catch (error) {
-        console.error('Dashboard error:', error);
-    }
-}
-
-async function loadFeatureImportance() {
-    try {
-        const data = await api.getModelImportance();
-        if (data.success && data.data && data.data.length > 0) {
-            updateFeatureMiniChart(data.data);
+        } catch (error) {
+            console.error('Dashboard error:', error);
         }
-    } catch (err) {
-        console.error('Feature importance error:', err);
     }
-}
 
-async function loadLastPrediction() {
-    try {
-        const data = await api.getPredictionHistory(1);
-        if (data.success && data.data && data.data.length > 0) {
-            const pred = data.data[0];
-            const signal = pred.signal_type || 'NEUTRAL';
-            const emojis = { BUY: '🟢 خرید', SELL: '🔴 فروش', NEUTRAL: '🟡 خنثی' };
-            document.getElementById('lastPrediction').textContent =
-                `${pred.coin_name || pred.coin}: ${emojis[signal] || signal}`;
-            document.getElementById('lastPredictionTime').textContent =
-                formatDate(pred.timestamp);
+    // ===== بروزرسانی نسخه در کارت گزارش =====
+    function updateReportVersion(status) {
+        const versionDisplay = document.getElementById('reportVersionDisplay');
+        if (status.success && status.data) {
+            const version = status.data.version || 'N/A';
+            const isActive = status.data.loaded || false;
+            versionDisplay.textContent = `نسخه: ${version} ${isActive ? '✅' : '📦'}`;
         } else {
-            document.getElementById('lastPrediction').textContent = '—';
-            document.getElementById('lastPredictionTime').textContent = 'هیچ پیش‌بینی ذخیره‌ای نیست';
+            versionDisplay.textContent = 'نسخه: —';
         }
-    } catch (err) {
-        console.error('Last prediction error:', err);
     }
-}
 
-// ===== بروزرسانی کارت‌های وضعیت =====
-function updateStatusCards(status) {
-    if (!status.success) return;
-    const data = status.data || {};
-
-    const loaded = data.loaded || false;
-    const isTraining = data.is_training || false;
-    const accuracy = data.last_score || null;
-
-    const statusEl = document.getElementById('dashStatus');
-    if (isTraining) {
-        statusEl.textContent = '⏳ در حال آموزش';
-        statusEl.className = 'stat-value orange';
+    // ===== گزارش فوری =====
+    function generateQuickReport() {
+        const statusEl = document.getElementById('reportQuickStatus');
+        statusEl.textContent = '⏳ در حال تولید...';
         statusEl.style.color = 'var(--accent-orange)';
-    } else if (loaded) {
-        statusEl.textContent = '✅ فعال';
-        statusEl.className = 'stat-value green';
+
+        // باز کردن گزارش در تب جدید
+        const newWindow = window.open('/report_template.html', '_blank');
+        if (!newWindow) {
+            showToast('⚠️ لطفاً باز شدن پنجره جدید را مجاز کنید', 'warning');
+            statusEl.textContent = '⚠️ نیاز به تأیید';
+            statusEl.style.color = 'var(--accent-orange)';
+            return;
+        }
+
+        statusEl.textContent = '✅ گزارش باز شد';
         statusEl.style.color = 'var(--accent-green)';
-    } else {
-        statusEl.textContent = '📦 دمو';
-        statusEl.className = 'stat-value orange';
-        statusEl.style.color = 'var(--accent-orange)';
+        showToast('📊 گزارش در تب جدید باز شد', 'success');
     }
 
-    document.getElementById('dashVersion').textContent = data.version || 'N/A';
+    // ===== بقیه توابع (همان قبلی) =====
+    function updateStatusCards(status) {
+        if (!status.success) return;
+        const data = status.data || {};
 
-    const accEl = document.getElementById('dashAccuracy');
-    if (accuracy !== null && accuracy !== undefined) {
-        accEl.textContent = (accuracy * 100).toFixed(1) + '%';
-        accEl.style.color = accuracy > 0.6 ? 'var(--accent-green)' : 'var(--accent-orange)';
-    } else {
-        accEl.textContent = '—';
-        accEl.style.color = 'var(--text-muted)';
+        const loaded = data.loaded || false;
+        const isTraining = data.is_training || false;
+        const accuracy = data.last_score || null;
+
+        const statusEl = document.getElementById('dashStatus');
+        if (isTraining) {
+            statusEl.textContent = '⏳ در حال آموزش';
+            statusEl.className = 'stat-value orange';
+            statusEl.style.color = 'var(--accent-orange)';
+        } else if (loaded) {
+            statusEl.textContent = '✅ فعال';
+            statusEl.className = 'stat-value green';
+            statusEl.style.color = 'var(--accent-green)';
+        } else {
+            statusEl.textContent = '📦 دمو';
+            statusEl.className = 'stat-value orange';
+            statusEl.style.color = 'var(--accent-orange)';
+        }
+
+        document.getElementById('dashVersion').textContent = data.version || 'N/A';
+
+        const accEl = document.getElementById('dashAccuracy');
+        if (accuracy !== null && accuracy !== undefined) {
+            accEl.textContent = (accuracy * 100).toFixed(1) + '%';
+            accEl.style.color = accuracy > 0.6 ? 'var(--accent-green)' : 'var(--accent-orange)';
+        } else {
+            accEl.textContent = '—';
+            accEl.style.color = 'var(--text-muted)';
+        }
+
+        document.getElementById('dashTrainings').textContent = data.total_trainings || 0;
     }
 
-    document.getElementById('dashTrainings').textContent = data.total_trainings || 0;
-}
+    function updatePerformanceChart(performance) {
+        const ctx = document.getElementById('performanceChart');
+        if (!ctx) return;
 
-// ===== نمودار عملکرد =====
-function updatePerformanceChart(performance) {
-    const ctx = document.getElementById('performanceChart');
-    if (!ctx) return;
+        if (performanceChart) {
+            performanceChart.destroy();
+            performanceChart = null;
+        }
 
-    if (performanceChart) {
-        performanceChart.destroy();
-        performanceChart = null;
-    }
+        const labels = performance.data?.labels || [];
+        const accuracyData = performance.data?.accuracy || [];
+        const versions = performance.data?.versions || [];
 
-    const labels = performance.data?.labels || [];
-    const accuracyData = performance.data?.accuracy || [];
-    const versions = performance.data?.versions || [];
+        if (labels.length === 0) {
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['بدون داده'],
+                    datasets: [{
+                        label: 'دقت',
+                        data: [0],
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0,212,255,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { display: false } },
+                        y: { grid: { display: false }, ticks: { display: false } }
+                    }
+                }
+            });
+            return;
+        }
 
-    if (labels.length === 0) {
-        // Empty state
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(0,212,255,0.3)');
+        gradient.addColorStop(1, 'rgba(0,212,255,0.01)');
+
         performanceChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['بدون داده'],
+                labels: labels,
                 datasets: [{
-                    label: 'دقت',
-                    data: [0],
+                    label: 'دقت (%)',
+                    data: accuracyData,
                     borderColor: '#00d4ff',
-                    backgroundColor: 'rgba(0,212,255,0.08)',
-                    borderWidth: 2,
-                    pointRadius: 0,
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#00d4ff',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1,
                     tension: 0.3,
                     fill: true
                 }]
@@ -234,239 +284,223 @@ function updatePerformanceChart(performance) {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false }
-                },
-                scales: {
-                    x: { grid: { display: false }, ticks: { display: false } },
-                    y: { grid: { display: false }, ticks: { display: false } }
-                }
-            }
-        });
-        return;
-    }
-
-    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, 'rgba(0,212,255,0.3)');
-    gradient.addColorStop(1, 'rgba(0,212,255,0.01)');
-
-    performanceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'دقت (%)',
-                data: accuracyData,
-                borderColor: '#00d4ff',
-                backgroundColor: gradient,
-                borderWidth: 2.5,
-                pointRadius: 3,
-                pointBackgroundColor: '#00d4ff',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 1,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        afterLabel: function(context) {
-                            const idx = context.dataIndex;
-                            return versions[idx] ? 'نسخه: ' + versions[idx] : '';
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                return versions[idx] ? 'نسخه: ' + versions[idx] : '';
+                            }
                         }
                     }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                    ticks: { color: 'var(--text-muted)', font: { size: 8, family: 'inherit' }, maxTicksLimit: 10 }
                 },
-                y: {
-                    min: 0,
-                    max: 100,
-                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                    ticks: { color: 'var(--text-muted)', font: { size: 8, family: 'inherit' }, callback: function(v) { return v + '%'; } }
-                }
-            },
-            interaction: { intersect: false, mode: 'index' }
-        }
-    });
-}
-
-// ===== نمودار ویژگی‌های برتر =====
-function updateFeatureMiniChart(features) {
-    const ctx = document.getElementById('featureMiniChart');
-    if (!ctx) return;
-
-    if (featureMiniChart) {
-        featureMiniChart.destroy();
-        featureMiniChart = null;
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: 'var(--text-muted)', font: { size: 8, family: 'inherit' }, maxTicksLimit: 10 }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: 'var(--text-muted)', font: { size: 8, family: 'inherit' },
+                        callback: function(v) { return v + '%'; } }
+                    }
+                },
+                interaction: { intersect: false, mode: 'index' }
+            }
+        });
     }
 
-    const top5 = features.slice(0, 5);
-    const colors = ['#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee'];
+    async function loadFeatureImportance() {
+        try {
+            const data = await api.getModelImportance();
+            if (data.success && data.data && data.data.length > 0) {
+                updateFeatureMiniChart(data.data);
+            }
+        } catch (err) {
+            console.error('Feature importance error:', err);
+        }
+    }
 
-    document.getElementById('featureCountBadge').textContent = features.length;
+    function updateFeatureMiniChart(features) {
+        const ctx = document.getElementById('featureMiniChart');
+        if (!ctx) return;
 
-    if (top5.length === 0) {
+        if (featureMiniChart) {
+            featureMiniChart.destroy();
+            featureMiniChart = null;
+        }
+
+        const top5 = features.slice(0, 5);
+        const colors = ['#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee'];
+
+        document.getElementById('featureCountBadge').textContent = features.length;
+
+        if (top5.length === 0) {
+            featureMiniChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['بدون داده'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['rgba(255,255,255,0.1)'],
+                        borderColor: ['rgba(255,255,255,0.05)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+            return;
+        }
+
         featureMiniChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['بدون داده'],
+                labels: top5.map(f => f.feature),
                 datasets: [{
-                    data: [1],
-                    backgroundColor: ['rgba(255,255,255,0.1)'],
-                    borderColor: ['rgba(255,255,255,0.05)'],
-                    borderWidth: 1
+                    data: top5.map(f => f.importance),
+                    backgroundColor: colors.slice(0, top5.length),
+                    borderColor: 'var(--bg-input)',
+                    borderWidth: 2,
+                    hoverOffset: 8
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
-            }
-        });
-        return;
-    }
-
-    featureMiniChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: top5.map(f => f.feature),
-            datasets: [{
-                data: top5.map(f => f.importance),
-                backgroundColor: colors.slice(0, top5.length),
-                borderColor: 'var(--bg-input)',
-                borderWidth: 2,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: 'var(--text-secondary)',
-                        font: { size: 7, family: 'inherit' },
-                        boxWidth: 10,
-                        padding: 4,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a,b) => a + b, 0);
-                            const percentage = ((context.parsed / total) * 100).toFixed(1);
-                            return context.label + ': ' + percentage + '%';
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: 'var(--text-secondary)',
+                            font: { size: 7, family: 'inherit' },
+                            boxWidth: 10,
+                            padding: 4,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + percentage + '%';
+                            }
                         }
                     }
                 }
             }
+        });
+    }
+
+    function updateCredits(credits) {
+        const remaining = credits.data?.remainingCredits || 0;
+        document.getElementById('dashCredits').textContent = remaining.toLocaleString();
+
+        const statusEl = document.getElementById('dashCreditsStatus');
+        if (remaining > 100) {
+            statusEl.textContent = '✅ به اندازه';
+            statusEl.style.color = 'var(--accent-green)';
+        } else if (remaining > 20) {
+            statusEl.textContent = '⚠️ کم';
+            statusEl.style.color = 'var(--accent-orange)';
+        } else {
+            statusEl.textContent = '🚨 بحرانی';
+            statusEl.style.color = 'var(--accent-red)';
         }
-    });
-}
-
-// ===== بروزرسانی اعتبار API =====
-function updateCredits(credits) {
-    const remaining = credits.data?.remainingCredits || 0;
-
-    document.getElementById('dashCredits').textContent = remaining.toLocaleString();
-
-    const statusEl = document.getElementById('dashCreditsStatus');
-    if (remaining > 100) {
-        statusEl.textContent = '✅ به اندازه';
-        statusEl.style.color = 'var(--accent-green)';
-    } else if (remaining > 20) {
-        statusEl.textContent = '⚠️ کم';
-        statusEl.style.color = 'var(--accent-orange)';
-    } else {
-        statusEl.textContent = '🚨 بحرانی';
-        statusEl.style.color = 'var(--accent-red)';
-    }
-}
-
-// ===== بروزرسانی دیتابیس‌ها =====
-function updateDatabases(dbHealth) {
-    const container = document.getElementById('dbStatusContainer');
-    if (!dbHealth.success) {
-        container.innerHTML = '<span class="badge badge-red" style="font-size:0.55rem;">❌ خطا</span>';
-        return;
     }
 
-    const dbs = dbHealth.data || {};
-    const icons = { postgresql: '🐘', redis: '⚡', sqlite: '📄' };
-    const labels = { postgresql: 'PostgreSQL', redis: 'Redis', sqlite: 'SQLite' };
+    function updateDatabases(dbHealth) {
+        const container = document.getElementById('dbStatusContainer');
+        if (!dbHealth.success) {
+            container.innerHTML = '<span class="badge badge-red" style="font-size:0.55rem;">❌ خطا</span>';
+            return;
+        }
 
-    let html = '';
-    for (const [name, info] of Object.entries(dbs)) {
-        const connected = info.connected || false;
-        const icon = icons[name] || '📦';
-        const label = labels[name] || name;
-        html += `
-            <span class="badge ${connected ? 'badge-green' : 'badge-red'}" style="font-size:0.55rem;padding:2px 8px;">
-                ${connected ? '🟢' : '🔴'} ${label}
-            </span>
-        `;
+        const dbs = dbHealth.data || {};
+        const icons = { postgresql: '🐘', redis: '⚡', sqlite: '📄' };
+        const labels = { postgresql: 'PostgreSQL', redis: 'Redis', sqlite: 'SQLite' };
+
+        let html = '';
+        for (const [name, info] of Object.entries(dbs)) {
+            const connected = info.connected || false;
+            const icon = icons[name] || '📦';
+            const label = labels[name] || name;
+            html += `
+                    <span class="badge ${connected ? 'badge-green' : 'badge-red'}" style="font-size:0.55rem;padding:2px 8px;">
+                        ${connected ? '🟢' : '🔴'} ${label}
+                    </span>
+                `;
+        }
+
+        container.innerHTML = html || '<span class="badge" style="font-size:0.55rem;">—</span>';
     }
 
-    container.innerHTML = html || '<span class="badge" style="font-size:0.55rem;">—</span>';
-}
-
-// ===== بارگذاری همه =====
-async function loadAll() {
-    await loadDashboardData();
-    await loadFeatureImportance();
-    await loadLastPrediction();
-}
-
-// ===== رفرش دستی =====
-async function refreshDashboard() {
-    showToast('🔄 بروزرسانی داشبورد...', 'info');
-    await loadAll();
-    showToast('✅ بروزرسانی شد', 'success');
-}
-
-// ===== مقداردهی اولیه =====
-window.init_dashboard = function() {
-    console.log('📊 Dashboard tab initializing...');
-
-    if (isDashboardLoaded) return;
-    isDashboardLoaded = true;
-
-    loadAll();
-
-    if (dashboardInterval) {
-        clearInterval(dashboardInterval);
+    async function loadLastPrediction() {
+        try {
+            const data = await api.getPredictionHistory(1);
+            if (data.success && data.data && data.data.length > 0) {
+                const pred = data.data[0];
+                const signal = pred.signal_type || 'NEUTRAL';
+                const emojis = { BUY: '🟢 خرید', SELL: '🔴 فروش', NEUTRAL: '🟡 خنثی' };
+                document.getElementById('lastPrediction').textContent =
+                    `${pred.coin_name || pred.coin}: ${emojis[signal] || signal}`;
+                document.getElementById('lastPredictionTime').textContent =
+                    formatDate(pred.timestamp);
+            } else {
+                document.getElementById('lastPrediction').textContent = '—';
+                document.getElementById('lastPredictionTime').textContent = 'هیچ پیش‌بینی ذخیره‌ای نیست';
+            }
+        } catch (err) {
+            console.error('Last prediction error:', err);
+        }
     }
-    dashboardInterval = setInterval(loadAll, 15000);
-};
 
-// ===== پاکسازی =====
-window.cleanup_dashboard = function() {
-    if (dashboardInterval) {
-        clearInterval(dashboardInterval);
-        dashboardInterval = null;
+    async function loadAll() {
+        await loadDashboardData();
+        await loadFeatureImportance();
+        await loadLastPrediction();
     }
-    if (performanceChart) {
-        performanceChart.destroy();
-        performanceChart = null;
-    }
-    if (featureMiniChart) {
-        featureMiniChart.destroy();
-        featureMiniChart = null;
-    }
-    isDashboardLoaded = false;
-    console.log('🧹 Dashboard cleaned up');
-};
 
-console.log('✅ Dashboard tab loaded');
+    async function refreshDashboard() {
+        showToast('🔄 بروزرسانی داشبورد...', 'info');
+        await loadAll();
+        showToast('✅ بروزرسانی شد', 'success');
+    }
+
+    window.init_dashboard = function() {
+        console.log('📊 Dashboard tab initializing...');
+        if (isDashboardLoaded) return;
+        isDashboardLoaded = true;
+        loadAll();
+
+        if (dashboardInterval) {
+            clearInterval(dashboardInterval);
+        }
+        dashboardInterval = setInterval(loadAll, 15000);
+    };
+
+    window.cleanup_dashboard = function() {
+        if (dashboardInterval) {
+            clearInterval(dashboardInterval);
+            dashboardInterval = null;
+        }
+        if (performanceChart) {
+            performanceChart.destroy();
+            performanceChart = null;
+        }
+        if (featureMiniChart) {
+            featureMiniChart.destroy();
+            featureMiniChart = null;
+        }
+        isDashboardLoaded = false;
+        console.log('🧹 Dashboard cleaned up');
+    };
+
+    console.log('✅ Dashboard tab loaded');
 </script>
