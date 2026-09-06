@@ -110,13 +110,13 @@
             </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" onclick="exportVersion()" style="padding:6px 16px;font-size:0.75rem;">
+            <button class="btn btn-primary btn-sm btn-uniform" onclick="exportVersion()" style="padding:6px 16px;font-size:0.75rem;">
                 <i class="fas fa-download"></i> دانلود
             </button>
-            <button class="btn btn-success btn-sm" onclick="activateVersion()" style="padding:6px 16px;font-size:0.75rem;">
+            <button class="btn btn-success btn-sm btn-uniform" onclick="activateVersion()" style="padding:6px 16px;font-size:0.75rem;">
                 <i class="fas fa-check-circle"></i> فعال‌سازی
             </button>
-            <button class="btn btn-danger btn-sm" onclick="deleteVersion()" style="padding:6px 16px;font-size:0.75rem;">
+            <button class="btn btn-danger btn-sm btn-uniform" onclick="deleteVersion()" style="padding:6px 16px;font-size:0.75rem;">
                 <i class="fas fa-trash"></i> حذف
             </button>
         </div>
@@ -136,7 +136,6 @@ let selectedVersion = null;
 let historyInterval = null;
 let isHistoryLoaded = false;
 
-// ===== بارگذاری تاریخچه =====
 async function loadHistory() {
     const limit = parseInt(document.getElementById('historyLimit').value);
     pageSize = limit;
@@ -150,7 +149,7 @@ async function loadHistory() {
 
     try {
         const data = await api.getModelHistory(100);
-        
+
         if (data.success && data.data) {
             historyData = data.data;
             filteredData = [...historyData];
@@ -165,16 +164,15 @@ async function loadHistory() {
     }
 }
 
-// ===== رندر تاریخچه =====
 function renderHistory() {
     const tbody = document.getElementById('historyBody');
     const start = (currentPage - 1) * pageSize;
     const end = Math.min(start + pageSize, filteredData.length);
     const pageData = filteredData.slice(start, end);
 
-    document.getElementById('historyPaginationInfo').textContent = 
+    document.getElementById('historyPaginationInfo').textContent =
         `نمایش ${start + 1}-${end} از ${filteredData.length}`;
-    
+
     const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
     document.getElementById('historyPageInfo').textContent = `صفحه ${currentPage} از ${totalPages}`;
     document.getElementById('historyPrevBtn').disabled = currentPage <= 1;
@@ -192,7 +190,7 @@ function renderHistory() {
         const accuracy = (item.accuracy || 0) * 100;
         const isActive = item.is_active || false;
         const isEnsemble = item.is_ensemble || false;
-        
+
         return `
             <tr style="cursor:pointer;transition:var(--transition);" onclick="showDetail('${item.version}')" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
                 <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-family:var(--font-mono);font-size:0.7rem;color:var(--text-primary);">
@@ -237,18 +235,16 @@ function renderHistory() {
     }).join('');
 }
 
-// ===== فیلتر و جستجو =====
 function filterHistory() {
     const search = document.getElementById('historySearch').value.toLowerCase();
     const sort = document.getElementById('historySort').value;
-    
+
     filteredData = historyData.filter(item => {
         const version = (item.version || '').toLowerCase();
         const period = (item.period || '').toLowerCase();
         return version.includes(search) || period.includes(search);
     });
 
-    // مرتب‌سازی
     switch(sort) {
         case 'date_desc':
             filteredData.sort((a, b) => new Date(b.training_date) - new Date(a.training_date));
@@ -268,7 +264,6 @@ function filterHistory() {
     renderHistory();
 }
 
-// ===== صفحه‌بندی =====
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
@@ -284,11 +279,10 @@ function nextPage() {
     }
 }
 
-// ===== نمایش جزئیات =====
 function showDetail(version) {
     const item = historyData.find(h => h.version === version);
     if (!item) return;
-    
+
     selectedVersion = version;
     document.getElementById('detailVersion').textContent = item.version || 'N/A';
     document.getElementById('detailAccuracy').textContent = ((item.accuracy || 0) * 100).toFixed(2) + '%';
@@ -298,7 +292,7 @@ function showDetail(version) {
     document.getElementById('detailStatus').textContent = item.is_active ? '✅ فعال' : '📦 غیرفعال';
     document.getElementById('detailStatus').style.color = item.is_active ? 'var(--accent-green)' : 'var(--text-muted)';
     document.getElementById('detailCoins').textContent = item.coins ? item.coins.join(', ') : '—';
-    
+
     document.getElementById('historyDetailModal').style.display = 'flex';
 }
 
@@ -306,7 +300,6 @@ function closeDetailModal() {
     document.getElementById('historyDetailModal').style.display = 'none';
 }
 
-// ===== فعال‌سازی نسخه =====
 async function activateVersion(version) {
     if (!version) version = selectedVersion;
     if (!version) return;
@@ -335,7 +328,6 @@ async function activateVersion(version) {
     }
 }
 
-// ===== حذف نسخه =====
 async function deleteVersion(version) {
     if (!version) version = selectedVersion;
     if (!version) return;
@@ -364,7 +356,6 @@ async function deleteVersion(version) {
     }
 }
 
-// ===== خروجی گرفتن =====
 function exportVersion(version) {
     if (!version) version = selectedVersion;
     if (!version) return;
@@ -372,13 +363,12 @@ function exportVersion(version) {
     showToast('📥 دانلود شروع شد', 'success');
 }
 
-// ===== خروجی CSV =====
 function exportHistoryCSV() {
     if (historyData.length === 0) {
         showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
         return;
     }
-    
+
     const headers = ['نسخه', 'دقت', 'بازه', 'نمونه‌ها', 'تاریخ', 'وضعیت'];
     const rows = historyData.map(item => [
         item.version || 'N/A',
@@ -388,7 +378,7 @@ function exportHistoryCSV() {
         formatDate(item.training_date),
         item.is_active ? 'فعال' : 'غیرفعال'
     ]);
-    
+
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -399,13 +389,12 @@ function exportHistoryCSV() {
     showToast('📥 دانلود CSV شروع شد', 'success');
 }
 
-// ===== خروجی JSON =====
 function exportHistoryJSON() {
     if (historyData.length === 0) {
         showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
         return;
     }
-    
+
     const blob = new Blob([JSON.stringify(historyData, null, 2)], { type: 'application/json;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -415,28 +404,25 @@ function exportHistoryJSON() {
     showToast('📥 دانلود JSON شروع شد', 'success');
 }
 
-// ===== رفرش دستی =====
 function refreshHistory() {
     showToast('🔄 بروزرسانی...', 'info');
     loadHistory();
 }
 
-// ===== مقداردهی اولیه =====
 window.init_history = function() {
     console.log('📋 History tab initializing...');
-    
+
     if (isHistoryLoaded) return;
     isHistoryLoaded = true;
-    
+
     loadHistory();
-    
+
     if (historyInterval) {
         clearInterval(historyInterval);
     }
     historyInterval = setInterval(loadHistory, 60000);
 };
 
-// ===== پاکسازی =====
 window.cleanup_history = function() {
     if (historyInterval) {
         clearInterval(historyInterval);
