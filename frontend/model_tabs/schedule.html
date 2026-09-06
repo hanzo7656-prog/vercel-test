@@ -67,7 +67,7 @@
             </label>
             <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
                 <label style="font-size:0.7rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <input type="checkbox" id="scheduleIncremental" checked> 
+                    <input type="checkbox" id="scheduleIncremental" checked>
                     <span>آموزش افزایشی</span>
                 </label>
             </div>
@@ -75,13 +75,13 @@
 
         <!-- دکمه‌ها -->
         <div style="display:flex;gap:8px;">
-            <button class="btn btn-success" id="startScheduleBtn" onclick="toggleSchedule(true)" style="padding:8px 20px;font-size:0.8rem;">
+            <button class="btn btn-success btn-uniform" id="startScheduleBtn" onclick="toggleSchedule(true)" style="padding:8px 20px;font-size:0.8rem;">
                 <i class="fas fa-play"></i> فعال‌سازی
             </button>
-            <button class="btn btn-danger" id="stopScheduleBtn" onclick="toggleSchedule(false)" style="padding:8px 20px;font-size:0.8rem;display:none;">
+            <button class="btn btn-danger btn-uniform" id="stopScheduleBtn" onclick="toggleSchedule(false)" style="padding:8px 20px;font-size:0.8rem;display:none;">
                 <i class="fas fa-stop"></i> غیرفعال‌سازی
             </button>
-            <button class="btn btn-outline" onclick="runNow()" style="padding:8px 16px;font-size:0.8rem;">
+            <button class="btn btn-outline btn-uniform" onclick="runNow()" style="padding:8px 16px;font-size:0.8rem;">
                 <i class="fas fa-bolt"></i> اجرا الان
             </button>
         </div>
@@ -122,11 +122,10 @@
 let scheduleInterval = null;
 let isScheduleLoaded = false;
 
-// ===== بارگذاری وضعیت زمان‌بندی =====
 async function loadScheduleStatus() {
     try {
         const data = await api.getScheduleStatus();
-        
+
         if (data.success && data.data) {
             const s = data.data;
             const isRunning = s.is_running || false;
@@ -137,7 +136,6 @@ async function loadScheduleStatus() {
             const errorCount = s.error_count || 0;
             const totalCount = s.total_executions || 0;
 
-            // بروزرسانی وضعیت
             const statusEl = document.getElementById('schedStatus');
             const badgeEl = document.getElementById('scheduleStatusBadge');
             if (isRunning) {
@@ -156,22 +154,16 @@ async function loadScheduleStatus() {
                 document.getElementById('stopScheduleBtn').style.display = 'none';
             }
 
-            // فاصله زمانی
             document.getElementById('schedInterval').textContent = interval + ' ساعت';
             document.getElementById('scheduleInterval').value = interval;
 
-            // آخرین اجرا
             document.getElementById('schedLast').textContent = lastTraining ? formatDate(lastTraining) : '—';
-
-            // اجرای بعدی
             document.getElementById('schedNext').textContent = nextTraining ? formatDate(nextTraining) : '—';
 
-            // آمار
             document.getElementById('schedSuccess').textContent = successCount;
             document.getElementById('schedErrors').textContent = errorCount;
             document.getElementById('schedTotal').textContent = totalCount;
 
-            // بارگذاری تاریخچه
             loadScheduleHistory();
         }
     } catch (error) {
@@ -179,12 +171,11 @@ async function loadScheduleStatus() {
     }
 }
 
-// ===== بارگذاری تاریخچه اجراها =====
 async function loadScheduleHistory() {
     try {
         const data = await api.getModelHistory(10);
         const container = document.getElementById('scheduleHistory');
-        
+
         if (data.success && data.data && data.data.length > 0) {
             container.innerHTML = data.data.map(item => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);font-size:0.7rem;">
@@ -207,7 +198,6 @@ async function loadScheduleHistory() {
     }
 }
 
-// ===== تغییر وضعیت زمان‌بندی =====
 async function toggleSchedule(enabled) {
     const interval = parseInt(document.getElementById('scheduleInterval').value);
     const period = document.getElementById('schedulePeriod').value;
@@ -215,7 +205,6 @@ async function toggleSchedule(enabled) {
 
     try {
         if (enabled) {
-            // ===== نمایش لودینگ =====
             loading.show({
                 messages: [
                     'در حال فعال‌سازی زمان‌بندی...',
@@ -243,7 +232,6 @@ async function toggleSchedule(enabled) {
             showToast('✅ زمان‌بندی فعال شد (هر ' + interval + ' ساعت)', 'success');
 
         } else {
-            // ===== نمایش لودینگ =====
             loading.show({
                 messages: [
                     'در حال غیرفعال‌سازی زمان‌بندی...',
@@ -272,7 +260,6 @@ async function toggleSchedule(enabled) {
     }
 }
 
-// ===== اجرای فوری =====
 async function runNow() {
     if (!confirm('⚠️ آیا از اجرای فوری آموزش اطمینان دارید؟')) return;
 
@@ -306,36 +293,32 @@ async function runNow() {
             return;
         }
 
-        // لودینگ خودش کامل میشه
     } catch (error) {
         loading.hide();
         showToast('❌ خطا: ' + error.message, 'error');
     }
 }
 
-// ===== رفرش دستی =====
 async function refreshSchedule() {
     showToast('🔄 بروزرسانی...', 'info');
     await loadScheduleStatus();
     showToast('✅ بروزرسانی شد', 'success');
 }
 
-// ===== مقداردهی اولیه =====
 window.init_schedule = function() {
     console.log('⏰ Schedule tab initializing...');
-    
+
     if (isScheduleLoaded) return;
     isScheduleLoaded = true;
-    
+
     loadScheduleStatus();
-    
+
     if (scheduleInterval) {
         clearInterval(scheduleInterval);
     }
     scheduleInterval = setInterval(loadScheduleStatus, 30000);
 };
 
-// ===== پاکسازی =====
 window.cleanup_schedule = function() {
     if (scheduleInterval) {
         clearInterval(scheduleInterval);
