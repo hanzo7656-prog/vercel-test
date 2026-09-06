@@ -173,7 +173,16 @@ def register_services() -> None:
             api_client=container.get('api_client'),
             model_manager=container.get('model_manager')
         )
-    
+    # container.py - مطمئن شو این بخش وجود دارد
+
+    def get_trainer():
+        from models.trainer.auto_trainer import AutoTrainer
+        return AutoTrainer(
+            api=container.get('api_client'),
+            model_manager=container.get('model_manager')
+        )
+
+    container.register('trainer', get_trainer, singleton=True)
     # container.py - اضافه کردن به register_services()
 
     def get_prediction_service():
