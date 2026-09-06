@@ -461,3 +461,159 @@ class ModelManager:
                 return np.sum(predictions, axis=0)
         
         return WeightedEnsemble([model1, model2], weights)
+
+
+# ============================================================
+# گزارش مدل
+# ============================================================
+    
+    def get_report_data(self, version: str) -> Dict[str, Any]:
+        """
+        جمع‌آوری اطلاعات کامل یک نسخه از مدل برای تولید گزارش
+        
+        پارامترها:
+            version: نسخه مدل
+        
+        خروجی:
+            دیکشنری شامل همه اطلاعات مورد نیاز گزارش
+        """
+        if not self._ensure_db_connection():
+            return {}
+        
+        try:
+            # ۱. دریافت اطلاعات مدل از دیتابیس
+            result = self.db.execute(
+                """SELECT 
+                    id, version, accuracy, training_date, period, 
+                    coins, features, training_samples, is_active, is_ensemble
+                FROM models 
+                WHERE version = %s""",
+                (version,)
+            )
+            
+            if not result:
+                return {}
+            
+            row = result[0]
+            
+            # ۲. دریافت تاریخچه آموزش (۵ نسخه آخر)
+            history = self.get_version_history(limit=5)
+            
+            # ۳. دریافت اهمیت ویژگی‌ها (اگر مدل بارگذاری شده باشد)
+            feature_importance = []
+            if self.current_model and self.current_version == version:
+                try:
+                    importance = self.current_model.get_score(importance_type='weight')
+                    if importance:
+                        total = sum(importance.values()) or 1
+                        feature_importance = [
+                            {'feature': k, 'importance': v, 'percentage': round((v / total) * 100, 2)}
+                            for k, v in sorted(importance.items(), key=lambda x: x[1], reverse=True)
+                        ][:10]  # ۱۰ ویژگی برتر
+                except Exception as e:
+                    logger.warning(f"Could not get feature importance: {e}")
+            
+            # ۴. دریافت سیگنال‌های اخیر (برای پیشنهادات)
+            recent_signals = []
+            try:
+                from application.use_cases.predict_coin import PredictCoinUseCase
+                from core.feature_engineering import FeatureEngineer
+                
+                predict_use_case = PredictCoinUseCase(
+                    api_client=self.api,
+                    model_manager=self,
+                    feature_engineer=FeatureEngineer(self.api)
+                )
+                
+                # برای ارزهای اصلی
+                coins = row.get('coins', ['bitcoin', 'ethereum'])[:4]
+                for coin in coins:
+                    try:
+                        pred = predict_use_case.execute(coin, '24h')
+                        recent_signals.append({
+                            'coin': coin,
+                            'signal': pred.signal,
+                            'signal_type': pred.signal_type.value,
+                            'confidence': pred.confidence,
+                            'price': pred.current_price
+                        })
+                    except Exception as e:
+                        logger.warning(f"Could not predict {coin}: {e}")
+            except Exception as e:
+                logger.warning(f"Could not get recent signals: {e}")
+            
+            # ۵. ساختار نهایی داده‌های گزارش
+            return {
+                'model': {
+                    'version': row.get('version', 'N/A'),
+                    'accuracy': row.get('accuracy', 0),
+                    'training_date': row.get('training_date'),
+                    'period': row.get('period', '1m'),
+                    'coins': row.get('coins', ['bitcoin', 'ethereum']),
+                    'features_count': len(row.get('features', [])),
+                    'is_active': row.get('is_active', False),
+                    'is_ensemble': row.get('is_ensemble', False),
+                    'training_samples': row.get('training_samples', 0)
+                },
+                'feature_importance': feature_importance,
+                'history': history,
+                'signals': recent_signals,
+                'hyperparameters': {
+                    'max_depth': 4,
+                    'learning_rate': 0.1,
+                    'n_estimators': 50,
+                    'subsample': 0.8,
+                    'colsample_bytree': 0.8
+                },
+                'stats': {
+                    'total_trainings': len(history),
+                    'best_accuracy': max([h.get('accuracy', 0) for h in history]) if history else 0,
+                    'latest_improvement': self._calculate_improvement(history)
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting report data for {version}: {e}")
+            return {}
+    
+    def _calculate_improvement(self, history: List[Dict]) -> Optional[float]:
+        """محاسبه آخرین بهبود دقت"""
+        if len(history) < 2:
+            return None
+        
+        latest = history[0].get('accuracy', 0)
+        previous = history[1].get('accuracy', 0)
+        
+        if previous == 0:
+            return None
+        
+        return round(((latest - previous) / previous) * 100, 2)
+        
+    
+    def get_model_file(self, version: str) -> Optional[bytes]:
+        """
+        دریافت فایل مدل به صورت bytes برای دانلود
+        
+        پارامترها:
+            version: نسخه مدل
+        
+        خروجی:
+            bytes داده‌های مدل یا None
+        """
+        if not self._ensure_db_connection():
+            return None
+        
+        try:
+            result = self.db.execute(
+                "SELECT model_data FROM models WHERE version = %s",
+                (version,)
+            )
+            
+            if result:
+                return result[0].get('model_data')
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting model file for {version}: {e}")
+            return None
