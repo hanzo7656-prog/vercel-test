@@ -2222,7 +2222,7 @@ def predict_multiple():
             return jsonify({'success': False, 'error': 'No coins provided'}), 400
         
         container = current_app.container
-        prediction_service: PredictionService = container.prediction_service()
+        prediction_service: PredictionService = container.get('prediction_service')
         dto = prediction_service.predict_multiple(coins, period)
         
         return jsonify({
