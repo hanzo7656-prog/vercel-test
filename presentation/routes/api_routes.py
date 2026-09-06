@@ -1770,7 +1770,7 @@ def model_status():
     """دریافت وضعیت مدل فعلی"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         trainer = container.trainer()
         
         train_status = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
@@ -1798,7 +1798,7 @@ def model_history():
     """دریافت تاریخچه نسخه‌های مدل"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         limit = request.args.get('limit', 20, type=int)
         
         history = model_manager.get_version_history(limit=limit)
@@ -1814,7 +1814,7 @@ def model_features():
     """دریافت ویژگی‌های مدل"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         if model_manager.current_model:
             features = model_manager.config.get('features', [])
@@ -1857,7 +1857,7 @@ def model_train():
     """آموزش مدل جدید"""
     try:
         container = current_app.container
-        trainer = container.trainer()
+        trainer = container.get('trainer')
         
         data = request.json or {}
         period = data.get('period', '1m')
@@ -1877,7 +1877,7 @@ def model_export():
     """خروجی گرفتن از مدل (دانلود فایل .xgb)"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         version = request.args.get('version')
         
@@ -1912,7 +1912,7 @@ def model_import():
     """واردات مدل از فایل .xgb"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         if 'file' not in request.files:
             return jsonify({'success': False, 'error': 'No file uploaded'}), 400
@@ -1957,7 +1957,7 @@ def model_activate():
     """فعال‌سازی یک نسخه خاص از مدل"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         data = request.json or {}
         version = data.get('version')
@@ -1982,7 +1982,7 @@ def model_delete():
     """حذف یک نسخه از مدل"""
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         data = request.json or {}
         version = data.get('version')
@@ -2040,7 +2040,7 @@ def model_performance():
     """
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         # دریافت تاریخچه نسخه‌ها
         history = model_manager.get_version_history(limit=30)
@@ -2079,7 +2079,7 @@ def model_feature_importance():
     """
     try:
         container = current_app.container
-        model_manager = container.model_manager()
+        model_manager = container.get('model_manager')
         
         if not model_manager.current_model:
             return jsonify({'success': False, 'error': 'No model loaded'}), 400
@@ -2122,7 +2122,7 @@ def schedule_status():
     """دریافت وضعیت زمان‌بندی آموزش"""
     try:
         container = current_app.container
-        trainer = container.trainer()
+        trainer = container.get('trainer')
         
         stats = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
         return jsonify({
@@ -2147,7 +2147,7 @@ def schedule_start():
     """شروع زمان‌بندی آموزش خودکار"""
     try:
         container = current_app.container
-        trainer = container.trainer()
+        trainer = container.get('trainer')
         
         data = request.json or {}
         interval = data.get('interval', 6)
@@ -2172,7 +2172,7 @@ def schedule_stop():
     """توقف زمان‌بندی آموزش خودکار"""
     try:
         container = current_app.container
-        trainer = container.trainer()
+        trainer = container.get('trainer')
         
         result = trainer.stop_auto_train()
         return jsonify(result), 200 if result.get('success') else 400
