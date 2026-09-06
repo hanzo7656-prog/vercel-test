@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
+
     <style>
         /* ============================================================
            اصلاحات ظاهری جدید
            ============================================================ */
-        
+
         /* ۱. دکمه‌های یکدست */
         .btn-uniform {
             display: inline-flex;
@@ -32,7 +32,7 @@
             min-width: 100px;
             flex-shrink: 0;
         }
-        
+
         /* ۲. کارت‌های ریسپانسیو */
         .dashboard-grid {
             display: grid;
@@ -41,7 +41,7 @@
             width: 100%;
             overflow: hidden;
         }
-        
+
         .stat-card {
             background: var(--bg-input);
             border: 1px solid var(--border-color);
@@ -52,7 +52,7 @@
             min-width: 0;
             overflow: hidden;
         }
-        
+
         .stat-card .stat-value {
             font-size: 1rem;
             font-weight: 700;
@@ -60,7 +60,7 @@
             word-break: break-word;
             white-space: normal;
         }
-        
+
         /* ۳. لاگ‌ها با دکمه کپی */
         .log-container {
             background: rgba(0, 0, 0, 0.4);
@@ -74,7 +74,7 @@
             color: var(--text-secondary);
             position: relative;
         }
-        
+
         .log-entry {
             padding: 3px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.02);
@@ -82,20 +82,20 @@
             gap: 10px;
             align-items: center;
         }
-        
+
         .log-entry .log-time {
             color: var(--text-muted);
             min-width: 60px;
             font-size: 0.6rem;
             flex-shrink: 0;
         }
-        
+
         .log-entry .log-message {
             color: var(--text-secondary);
             flex: 1;
             word-break: break-word;
         }
-        
+
         .log-entry .log-copy-btn {
             background: transparent;
             border: none;
@@ -107,37 +107,44 @@
             flex-shrink: 0;
             transition: var(--transition);
         }
-        
+
         .log-entry .log-copy-btn:hover {
             color: var(--accent-cyan);
         }
-        
+
+        .log-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
         /* ۴. Empty State */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: var(--text-muted);
         }
-        
+
         .empty-state .icon {
             font-size: 3rem;
             display: block;
             margin-bottom: 12px;
             opacity: 0.5;
         }
-        
+
         .empty-state .title {
             font-size: 1rem;
             font-weight: 600;
             color: var(--text-secondary);
             margin-bottom: 4px;
         }
-        
+
         .empty-state .subtitle {
             font-size: 0.75rem;
             color: var(--text-muted);
         }
-        
+
         /* ۵. ریسپانسیو */
         @media (max-width: 768px) {
             .btn-uniform {
@@ -145,43 +152,379 @@
                 justify-content: center;
                 min-width: unset;
             }
-            
+
             .dashboard-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 8px;
             }
-            
+
             .stat-card {
                 padding: 8px 10px;
             }
-            
+
             .stat-card .stat-value {
                 font-size: 0.85rem;
             }
-            
+
             .log-container {
                 max-height: 200px;
                 font-size: 0.6rem;
             }
         }
-        
+
         @media (max-width: 480px) {
             .dashboard-grid {
                 grid-template-columns: 1fr 1fr;
                 gap: 6px;
             }
-            
+
             .stat-card .stat-value {
                 font-size: 0.75rem;
+            }
+        }
+
+        /* ۶. Tab Content */
+        .tab-content-wrapper {
+            min-height: 400px;
+            position: relative;
+        }
+
+        .tab-content-wrapper .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+
+        .tab-content-wrapper .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tab-content-wrapper .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .tab-content-wrapper .error-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--accent-orange);
+        }
+
+        .tab-content-wrapper .error-msg .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .tab-content-wrapper .error-msg button {
+            margin-top: 12px;
+            padding: 6px 16px;
+            background: var(--accent-cyan);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .tab-content-wrapper .error-msg button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2);
+        }
+
+        /* ===== LOADING OVERLAY ===== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 99999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            animation: overlayFadeIn 0.3s ease;
+            font-family: var(--font-family);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        @keyframes overlayFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .loading-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px 48px;
+            min-width: 280px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            animation: cardSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.03), transparent 70%);
+            pointer-events: none;
+            animation: cardGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes cardSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes cardGlow {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
+        }
+
+        .loading-spinner-wrapper {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+        }
+
+        .loading-spinner-wrapper svg {
+            width: 100%;
+            height: 100%;
+            animation: spinnerRotate 1.2s linear infinite;
+        }
+
+        @keyframes spinnerRotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-spinner-wrapper .spinner-circle-bg {
+            fill: none;
+            stroke-width: 3;
+            stroke: var(--border-color);
+            opacity: 0.3;
+        }
+
+        .loading-spinner-wrapper .spinner-circle-fg {
+            fill: none;
+            stroke-width: 3;
+            stroke: var(--accent-cyan);
+            stroke-linecap: round;
+            stroke-dasharray: 180;
+            stroke-dashoffset: 0;
+            animation: spinnerDash 1.2s ease-in-out infinite;
+        }
+
+        @keyframes spinnerDash {
+            0% { stroke-dashoffset: 180; }
+            50% { stroke-dashoffset: 40; }
+            100% { stroke-dashoffset: 180; }
+        }
+
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 8px 0 16px;
+        }
+
+        .loading-dots .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            opacity: 0.2;
+            transition: all 0.3s ease;
+        }
+
+        .loading-dots .dot.active {
+            opacity: 1;
+            background: var(--accent-cyan);
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .loading-dots .dot:nth-child(1).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0s;
+        }
+        .loading-dots .dot:nth-child(2).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0.2s;
+        }
+        .loading-dots .dot:nth-child(3).active {
+            animation: dotPulse 1.2s ease-in-out infinite 0.4s;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% {
+                opacity: 0.2;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.3);
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            }
+        }
+
+        .loading-message {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-top: 4px;
+            min-height: 28px;
+            transition: all 0.3s ease;
+        }
+
+        .loading-submessage {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 3px;
+            background: var(--bg-input);
+            border-radius: var(--radius-full);
+            margin-top: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loading-progress .progress-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .loading-progress .progress-fill.indeterminate {
+            width: 30%;
+            animation: progressIndeterminate 1.5s ease-in-out infinite;
+        }
+
+        @keyframes progressIndeterminate {
+            0% { transform: translateX(0%); width: 30%; }
+            50% { width: 60%; }
+            100% { transform: translateX(300%); width: 30%; }
+        }
+
+        @media (max-width: 480px) {
+            .loading-card {
+                padding: 28px 20px;
+                min-width: unset;
+            }
+            .loading-spinner-wrapper {
+                width: 56px;
+                height: 56px;
+            }
+            .loading-message {
+                font-size: 0.85rem;
+            }
+            .loading-dots .dot {
+                width: 8px;
+                height: 8px;
+            }
+        }
+
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            margin-bottom: 16px;
+            flex-wrap: nowrap;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.75rem;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-cyan);
+        }
+
+        @media (max-width: 768px) {
+            .tab-btn {
+                font-size: 0.65rem;
+                padding: 6px 10px;
+            }
+            .tab-btn i {
+                font-size: 0.7rem;
             }
         }
     </style>
 </head>
 <body>
 
+    <!-- ===== NAVIGATION ===== -->
     <div id="navContainer"></div>
 
+    <!-- ===== MAIN CONTENT ===== -->
     <div class="container">
+
+        <!-- ===== HEADER ===== -->
         <div class="page-header">
             <div>
                 <h1><i class="fas fa-brain" style="color:var(--accent-purple);"></i> مدیریت مدل</h1>
@@ -226,6 +569,7 @@
                 <p class="loading-text">در حال بارگذاری...</p>
             </div>
         </div>
+
     </div>
 
     <!-- ===== LOADING OVERLAY ===== -->
@@ -253,15 +597,18 @@
     <!-- ===== TOAST ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
-    
+
     <script>
     // ============================================================
     // LOADING SYSTEM
     // ============================================================
-    
+
     class LoadingSystem {
         constructor() {
             this.overlay = document.getElementById('loadingOverlay');
@@ -273,7 +620,7 @@
             this.dotsInterval = null;
             this.progressTimer = null;
             this.onComplete = null;
-            
+
             this.messages = {
                 short: ['در حال انجام...'],
                 medium: ['در حال انجام...', 'لطفاً کمی صبر کنید'],
@@ -409,7 +756,7 @@
             this.overlay.classList.remove('active');
             document.body.style.overflow = '';
             this.stopDotsAnimation();
-            
+
             if (this.progressTimer) {
                 clearTimeout(this.progressTimer);
                 this.progressTimer = null;
@@ -448,7 +795,7 @@
     // ============================================================
     // MODEL LOADER
     // ============================================================
-    
+
     const MODEL_TABS = {
         dashboard: '/model_tabs/dashboard.html',
         info: '/model_tabs/info.html',
@@ -465,26 +812,26 @@
     function loadModelTab(tabName) {
         const container = document.getElementById('modelTabContent');
         currentTab = tabName;
-        
+
         if (tabCache[tabName]) {
             container.innerHTML = tabCache[tabName];
             executeTabScripts(container);
             return;
         }
-        
+
         container.innerHTML = `
             <div class="loading-container">
                 <div class="loading-spinner"></div>
                 <p class="loading-text">در حال بارگذاری ${getTabLabel(tabName)}...</p>
             </div>
         `;
-        
+
         const url = MODEL_TABS[tabName];
         if (!url) {
             container.innerHTML = `<div class="error-msg"><span class="icon">❌</span><p>تب "${tabName}" یافت نشد</p></div>`;
             return;
         }
-        
+
         fetch(url)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -514,7 +861,7 @@
             newScript.textContent = oldScript.textContent;
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
-        
+
         const initFn = window[`init_${currentTab}`];
         if (typeof initFn === 'function') {
             setTimeout(initFn, 150);
@@ -536,7 +883,7 @@
 
     function initModelTabs() {
         const tabs = document.querySelectorAll('#modelTabs .tab-btn');
-        
+
         tabs.forEach(btn => {
             btn.addEventListener('click', function() {
                 tabs.forEach(b => b.classList.remove('active'));
@@ -548,17 +895,17 @@
                 localStorage.setItem('modelActiveTab', tabName);
             });
         });
-        
+
         // بارگذاری تب از URL یا localStorage
         const params = new URLSearchParams(window.location.search);
         let defaultTab = params.get('tab');
         if (!defaultTab) {
             defaultTab = localStorage.getItem('modelActiveTab') || 'dashboard';
         }
-        
+
         document.querySelector(`#modelTabs .tab-btn[data-tab="${defaultTab}"]`)?.classList.add('active');
         loadModelTab(defaultTab);
-        
+
         loadNav();
     }
 
@@ -588,7 +935,7 @@
                 const badge = document.getElementById('modelStatusBadge');
                 const loaded = data.data.loaded || false;
                 const isTraining = data.data.is_training || false;
-                
+
                 if (isTraining) {
                     badge.textContent = '⏳ در حال آموزش';
                     badge.className = 'badge badge-orange';
@@ -639,7 +986,6 @@
         initModelTabs();
         updateModelBadge();
         setInterval(updateModelBadge, 15000);
-        // ذخیره آخرین وضعیت کاربر (LocalStorage)
         console.log('🚀 Model page loaded');
     });
 
