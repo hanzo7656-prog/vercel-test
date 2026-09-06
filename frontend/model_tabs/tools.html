@@ -1,5 +1,5 @@
 <!-- ============================================================
-     TOOLS TAB - ابزارهای مدیریت مدل
+     TOOLS TAB - ابزارهای مدیریت مدل (با قابلیت گزارش HTML)
      ============================================================ -->
 
 <div class="card">
@@ -129,25 +129,28 @@
             </div>
         </div>
 
-        <!-- ===== ۶. گزارش مدل ===== -->
+        <!-- ===== ۶. گزارش HTML ===== -->
         <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:16px 18px;border:1px solid var(--border-color);transition:var(--transition);">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                 <span style="font-size:1.2rem;">📊</span>
-                <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary);">گزارش مدل</span>
+                <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary);">گزارش HTML</span>
             </div>
             <p style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px;">
-                تولید گزارش کامل از وضعیت مدل شامل آمار و ویژگی‌ها
+                تولید گزارش کامل از مدل به صورت HTML با نمودارها و پیشنهادات
             </p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-primary btn-uniform btn-sm" onclick="generateReport()" style="padding:6px 16px;font-size:0.75rem;">
-                    <i class="fas fa-file-alt"></i> تولید گزارش
+                    <i class="fas fa-file-alt"></i> 📊 گزارش HTML
                 </button>
-                <button class="btn btn-outline btn-uniform btn-sm" onclick="downloadReport()" style="padding:6px 16px;font-size:0.75rem;display:none;" id="downloadReportBtn">
-                    <i class="fas fa-download"></i> دانلود
+                <button class="btn btn-outline btn-uniform btn-sm" onclick="generateReportWithVersion()" style="padding:6px 16px;font-size:0.75rem;">
+                    <i class="fas fa-history"></i> انتخاب نسخه
                 </button>
             </div>
-            <div id="reportResult" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);font-size:0.7rem;border:1px solid var(--border-color);max-height:150px;overflow-y:auto;">
-                <div id="reportContent"></div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <select id="reportVersionSelect" style="flex:1;min-width:120px;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+                    <option value="latest">— آخرین نسخه —</option>
+                </select>
+                <span id="reportStatus" style="font-size:0.6rem;color:var(--text-muted);">✅ آماده</span>
             </div>
         </div>
 
@@ -174,339 +177,296 @@
 </div>
 
 <script>
-// ============================================================
-// TOOLS TAB - ابزارهای مدیریت مدل
-// ============================================================
+    // ============================================================
+    // TOOLS TAB - ابزارهای مدیریت مدل با گزارش HTML
+    // ============================================================
 
-let isToolsLoaded = false;
-let reportData = null;
+    let isToolsLoaded = false;
+    let reportData = null;
 
-// ===== ۱. خروجی مدل =====
-function exportCurrentModel() {
-    api.exportModel();
-    showToast('📥 دانلود مدل فعلی شروع شد', 'success');
-}
-
-function exportSpecificModel() {
-    const version = document.getElementById('exportVersionInput').value.trim();
-    if (!version) {
-        showToast('⚠️ لطفاً نسخه را وارد کنید', 'warning');
-        return;
-    }
-    api.exportModel(version);
-    showToast('📥 دانلود نسخه ' + version + ' شروع شد', 'success');
-}
-
-// ===== ۲. واردات مدل =====
-async function handleImport() {
-    const input = document.getElementById('importFileInput');
-    const file = input.files[0];
-    if (!file) return;
-
-    document.getElementById('importFileName').textContent = file.name;
-
-    const accuracy = parseFloat(document.getElementById('importAccuracy').value);
-    const period = document.getElementById('importPeriod').value;
-
-    if (!confirm(`⚠️ آیا از واردات مدل "${file.name}" اطمینان دارید؟`)) {
-        input.value = '';
-        document.getElementById('importFileName').textContent = 'هیچ فایلی انتخاب نشده';
-        return;
+    // ===== ۱. خروجی مدل =====
+    function exportCurrentModel() {
+        api.exportModel();
+        showToast('📥 دانلود مدل فعلی شروع شد', 'success');
     }
 
-    loading.show({
-        messages: [
-            'در حال آپلود و پردازش مدل...',
-            'ذخیره‌سازی در دیتابیس...',
-            'پایان|مدل با موفقیت وارد شد ✅'
-        ],
-        duration: 5000,
-        onComplete: function() {
-            loadVersionSelect();
-            showToast('✅ مدل با موفقیت وارد شد', 'success');
-        }
-    });
-
-    try {
-        const result = await api.importModel(file, accuracy, period);
-        if (!result.success) {
-            loading.hide();
-            showToast('❌ ' + (result.message || 'خطا در واردات'), 'error');
+    function exportSpecificModel() {
+        const version = document.getElementById('exportVersionInput').value.trim();
+        if (!version) {
+            showToast('⚠️ لطفاً نسخه را وارد کنید', 'warning');
             return;
         }
-    } catch (error) {
-        loading.hide();
-        showToast('❌ خطا: ' + error.message, 'error');
-    }
-}
-
-// ===== ۳. فعال‌سازی نسخه =====
-async function loadVersionSelect() {
-    try {
-        const data = await api.getModelHistory(50);
-        const select = document.getElementById('activateVersionSelect');
-        select.innerHTML = '<option value="">— انتخاب نسخه —</option>';
-
-        if (data.success && data.data) {
-            data.data.forEach(item => {
-                const accuracy = ((item.accuracy || 0) * 100).toFixed(1);
-                const isActive = item.is_active ? ' ✅' : '';
-                select.innerHTML += `
-                    <option value="${item.version}" ${item.is_active ? 'selected' : ''}>
-                        ${item.version} (${accuracy}%)${isActive}
-                    </option>
-                `;
-            });
-        }
-    } catch (error) {
-        console.error('Load versions error:', error);
-    }
-}
-
-async function activateSelectedVersion() {
-    const version = document.getElementById('activateVersionSelect').value;
-    if (!version) {
-        showToast('⚠️ لطفاً یک نسخه را انتخاب کنید', 'warning');
-        return;
+        api.exportModel(version);
+        showToast('📥 دانلود نسخه ' + version + ' شروع شد', 'success');
     }
 
-    if (!confirm(`⚠️ آیا از فعال‌سازی نسخه "${version}" اطمینان دارید؟`)) return;
+    // ===== ۲. واردات مدل =====
+    async function handleImport() {
+        const input = document.getElementById('importFileInput');
+        const file = input.files[0];
+        if (!file) return;
 
-    loading.show({
-        messages: ['در حال فعال‌سازی نسخه...', 'پایان|نسخه فعال شد ✅'],
-        duration: 3000,
-        onComplete: function() {
-            loadVersionSelect();
-            showToast('✅ نسخه ' + version + ' فعال شد', 'success');
-        }
-    });
+        document.getElementById('importFileName').textContent = file.name;
 
-    try {
-        const result = await api.activateModel(version);
-        if (!result.success) {
-            loading.hide();
-            showToast('❌ ' + (result.message || 'خطا'), 'error');
+        const accuracy = parseFloat(document.getElementById('importAccuracy').value);
+        const period = document.getElementById('importPeriod').value;
+
+        if (!confirm(`⚠️ آیا از واردات مدل "${file.name}" اطمینان دارید؟`)) {
+            input.value = '';
+            document.getElementById('importFileName').textContent = 'هیچ فایلی انتخاب نشده';
             return;
         }
-    } catch (error) {
-        loading.hide();
-        showToast('❌ خطا: ' + error.message, 'error');
-    }
-}
 
-// ===== ۴. تست مدل =====
-async function testModel() {
-    const coin = document.getElementById('testCoin').value;
-    const period = document.getElementById('testPeriod').value;
+        loading.show({
+            messages: [
+                'در حال آپلود و پردازش مدل...',
+                'ذخیره‌سازی در دیتابیس...',
+                'پایان|مدل با موفقیت وارد شد ✅'
+            ],
+            duration: 5000,
+            onComplete: function() {
+                loadVersionSelect();
+                showToast('✅ مدل با موفقیت وارد شد', 'success');
+            }
+        });
 
-    const resultEl = document.getElementById('testResult');
-    const contentEl = document.getElementById('testResultContent');
-    resultEl.style.display = 'block';
-    contentEl.innerHTML = '<span style="color:var(--text-muted);">⏳ در حال تست...</span>';
-
-    try {
-        const data = await api.predictSingle(coin, period);
-        if (data.success && data.data) {
-            const d = data.data;
-            const signal = d.signal_type || 'NEUTRAL';
-            const emojis = { BUY: '🟢', SELL: '🔴', NEUTRAL: '🟡' };
-            const labels = { BUY: 'خرید', SELL: 'فروش', NEUTRAL: 'خنثی' };
-
-            contentEl.innerHTML = `
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                    <div><span style="color:var(--text-muted);">ارز:</span> <strong>${d.coin_name || d.coin}</strong></div>
-                    <div><span style="color:var(--text-muted);">سیگنال:</span> <strong style="color:${signal === 'BUY' ? 'var(--accent-green)' : signal === 'SELL' ? 'var(--accent-red)' : 'var(--accent-orange)'};">${emojis[signal]} ${labels[signal]}</strong></div>
-                    <div><span style="color:var(--text-muted);">اطمینان:</span> <strong>${d.confidence || '—'}</strong></div>
-                    <div><span style="color:var(--text-muted);">قیمت:</span> <strong>${formatCurrency(d.current_price)}</strong></div>
-                    <div><span style="color:var(--text-muted);">امتیاز:</span> <strong>${((d.prediction_score || 0) * 100).toFixed(1)}%</strong></div>
-                    <div><span style="color:var(--text-muted);">مدل:</span> <strong>${d.model_mode || 'DEMO'}</strong></div>
-                </div>
-            `;
-        } else {
-            contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${data.error || 'خطا در پیش‌بینی'}</span>`;
+        try {
+            const result = await api.importModel(file, accuracy, period);
+            if (!result.success) {
+                loading.hide();
+                showToast('❌ ' + (result.message || 'خطا در واردات'), 'error');
+                return;
+            }
+        } catch (error) {
+            loading.hide();
+            showToast('❌ خطا: ' + error.message, 'error');
         }
-    } catch (error) {
-        contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ خطا: ${error.message}</span>`;
     }
-}
 
-// ===== ۵. پاکسازی کش =====
-async function clearModelCache() {
-    if (!confirm('⚠️ آیا از پاکسازی کش مدل اطمینان دارید؟')) return;
+    // ===== ۳. فعال‌سازی نسخه =====
+    async function loadVersionSelect() {
+        try {
+            const data = await api.getModelHistory(50);
+            const select = document.getElementById('activateVersionSelect');
+            const reportSelect = document.getElementById('reportVersionSelect');
+            select.innerHTML = '<option value="">— انتخاب نسخه —</option>';
+            reportSelect.innerHTML = '<option value="latest">— آخرین نسخه —</option>';
 
-    const statusEl = document.getElementById('cacheClearStatus');
-    statusEl.textContent = '⏳ در حال پاکسازی...';
-    statusEl.style.color = 'var(--accent-orange)';
+            if (data.success && data.data) {
+                data.data.forEach(item => {
+                    const accuracy = ((item.accuracy || 0) * 100).toFixed(1);
+                    const isActive = item.is_active ? ' ✅' : '';
+                    const option = `${item.version} (${accuracy}%)${isActive}`;
+                    select.innerHTML +=
+                        `<option value="${item.version}" ${item.is_active ? 'selected' : ''}>${option}</option>`;
+                    reportSelect.innerHTML +=
+                        `<option value="${item.version}">${item.version} (${accuracy}%)</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('Load versions error:', error);
+        }
+    }
 
-    try {
-        const result = await api.clearRedis(true);
-        if (result.success) {
-            statusEl.textContent = '✅ کش پاک شد';
-            statusEl.style.color = 'var(--accent-green)';
-            showToast('🧹 کش مدل پاکسازی شد', 'success');
-        } else {
+    async function activateSelectedVersion() {
+        const version = document.getElementById('activateVersionSelect').value;
+        if (!version) {
+            showToast('⚠️ لطفاً یک نسخه را انتخاب کنید', 'warning');
+            return;
+        }
+
+        if (!confirm(`⚠️ آیا از فعال‌سازی نسخه "${version}" اطمینان دارید؟`)) return;
+
+        loading.show({
+            messages: ['در حال فعال‌سازی نسخه...', 'پایان|نسخه فعال شد ✅'],
+            duration: 3000,
+            onComplete: function() {
+                loadVersionSelect();
+                showToast('✅ نسخه ' + version + ' فعال شد', 'success');
+            }
+        });
+
+        try {
+            const result = await api.activateModel(version);
+            if (!result.success) {
+                loading.hide();
+                showToast('❌ ' + (result.message || 'خطا'), 'error');
+                return;
+            }
+        } catch (error) {
+            loading.hide();
+            showToast('❌ خطا: ' + error.message, 'error');
+        }
+    }
+
+    // ===== ۴. تست مدل =====
+    async function testModel() {
+        const coin = document.getElementById('testCoin').value;
+        const period = document.getElementById('testPeriod').value;
+
+        const resultEl = document.getElementById('testResult');
+        const contentEl = document.getElementById('testResultContent');
+        resultEl.style.display = 'block';
+        contentEl.innerHTML = '<span style="color:var(--text-muted);">⏳ در حال تست...</span>';
+
+        try {
+            const data = await api.predictSingle(coin, period);
+            if (data.success && data.data) {
+                const d = data.data;
+                const signal = d.signal_type || 'NEUTRAL';
+                const emojis = { BUY: '🟢', SELL: '🔴', NEUTRAL: '🟡' };
+                const labels = { BUY: 'خرید', SELL: 'فروش', NEUTRAL: 'خنثی' };
+
+                contentEl.innerHTML = `
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                            <div><span style="color:var(--text-muted);">ارز:</span> <strong>${d.coin_name || d.coin}</strong></div>
+                            <div><span style="color:var(--text-muted);">سیگنال:</span> <strong style="color:${signal === 'BUY' ? 'var(--accent-green)' : signal === 'SELL' ? 'var(--accent-red)' : 'var(--accent-orange)'};">${emojis[signal]} ${labels[signal]}</strong></div>
+                            <div><span style="color:var(--text-muted);">اطمینان:</span> <strong>${d.confidence || '—'}</strong></div>
+                            <div><span style="color:var(--text-muted);">قیمت:</span> <strong>${formatCurrency(d.current_price)}</strong></div>
+                            <div><span style="color:var(--text-muted);">امتیاز:</span> <strong>${((d.prediction_score || 0) * 100).toFixed(1)}%</strong></div>
+                            <div><span style="color:var(--text-muted);">مدل:</span> <strong>${d.model_mode || 'DEMO'}</strong></div>
+                        </div>
+                    `;
+            } else {
+                contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${data.error || 'خطا در پیش‌بینی'}</span>`;
+            }
+        } catch (error) {
+            contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ خطا: ${error.message}</span>`;
+        }
+    }
+
+    // ===== ۵. پاکسازی کش =====
+    async function clearModelCache() {
+        if (!confirm('⚠️ آیا از پاکسازی کش مدل اطمینان دارید؟')) return;
+
+        const statusEl = document.getElementById('cacheClearStatus');
+        statusEl.textContent = '⏳ در حال پاکسازی...';
+        statusEl.style.color = 'var(--accent-orange)';
+
+        try {
+            const result = await api.clearRedis(true);
+            if (result.success) {
+                statusEl.textContent = '✅ کش پاک شد';
+                statusEl.style.color = 'var(--accent-green)';
+                showToast('🧹 کش مدل پاکسازی شد', 'success');
+            } else {
+                statusEl.textContent = '❌ خطا';
+                statusEl.style.color = 'var(--accent-red)';
+                showToast('❌ ' + (result.error || 'خطا'), 'error');
+            }
+        } catch (error) {
             statusEl.textContent = '❌ خطا';
             statusEl.style.color = 'var(--accent-red)';
-            showToast('❌ ' + (result.error || 'خطا'), 'error');
+            showToast('❌ خطا: ' + error.message, 'error');
         }
-    } catch (error) {
-        statusEl.textContent = '❌ خطا';
-        statusEl.style.color = 'var(--accent-red)';
-        showToast('❌ خطا: ' + error.message, 'error');
-    }
-}
-
-// ===== ۶. گزارش مدل =====
-async function generateReport() {
-    const reportEl = document.getElementById('reportResult');
-    const contentEl = document.getElementById('reportContent');
-    const downloadBtn = document.getElementById('downloadReportBtn');
-
-    reportEl.style.display = 'block';
-    contentEl.innerHTML = '<span style="color:var(--text-muted);">⏳ در حال تولید گزارش...</span>';
-    downloadBtn.style.display = 'none';
-
-    try {
-        const [status, history, features] = await Promise.all([
-            api.getModelStatus(),
-            api.getModelHistory(5),
-            api.getModelImportance()
-        ]);
-
-        reportData = { status, history, features };
-
-        let html = `
-            <div style="font-size:0.65rem;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:8px;">
-                    <div><span style="color:var(--text-muted);">وضعیت:</span> ${status.data?.loaded ? '✅ فعال' : '📦 دمو'}</div>
-                    <div><span style="color:var(--text-muted);">نسخه:</span> ${status.data?.version || 'N/A'}</div>
-                    <div><span style="color:var(--text-muted);">دقت:</span> ${status.data?.last_score ? (status.data.last_score * 100).toFixed(2) + '%' : '—'}</div>
-                    <div><span style="color:var(--text-muted);">تعداد آموزش:</span> ${status.data?.total_trainings || 0}</div>
-                </div>
-                <div style="border-top:1px solid var(--border-color);padding-top:6px;">
-                    <span style="color:var(--text-muted);">ویژگی‌ها:</span> ${features.data?.length || 0} ویژگی
-                    ${features.data?.slice(0, 5).map(f => f.feature).join(', ') || '—'}
-                </div>
-            </div>
-        `;
-
-        contentEl.innerHTML = html;
-        downloadBtn.style.display = 'inline-flex';
-        showToast('✅ گزارش تولید شد', 'success');
-
-    } catch (error) {
-        contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ خطا: ${error.message}</span>`;
-    }
-}
-
-function downloadReport() {
-    if (!reportData) {
-        showToast('⚠️ لطفاً ابتدا گزارش را تولید کنید', 'warning');
-        return;
     }
 
-    const timestamp = new Date().toISOString().slice(0,10);
-    const reportText = `
-========================================
-   گزارش وضعیت مدل
-   تاریخ: ${new Date().toLocaleString('fa-IR')}
-========================================
+    // ===== ۶. گزارش HTML (جدید) =====
+    function generateReport() {
+        const version = document.getElementById('reportVersionSelect').value;
+        const statusEl = document.getElementById('reportStatus');
 
-📊 وضعیت کلی:
-  - وضعیت: ${reportData.status.data?.loaded ? 'فعال' : 'دمو'}
-  - نسخه: ${reportData.status.data?.version || 'N/A'}
-  - دقت: ${reportData.status.data?.last_score ? (reportData.status.data.last_score * 100).toFixed(2) + '%' : '—'}
-  - تعداد آموزش: ${reportData.status.data?.total_trainings || 0}
+        statusEl.textContent = '⏳ در حال تولید...';
+        statusEl.style.color = 'var(--accent-orange)';
 
-📋 تاریخچه (۵ مورد آخر):
-${reportData.history.data?.slice(0, 5).map((item, i) => `
-  ${i+1}. نسخه ${item.version || 'N/A'}
-     - دقت: ${((item.accuracy || 0) * 100).toFixed(2)}%
-     - تاریخ: ${formatDate(item.training_date)}
-     - وضعیت: ${item.is_active ? 'فعال' : 'غیرفعال'}`
-).join('\n') || '  — هیچ داده‌ای موجود نیست'}
+        let url = '/report_template.html';
+        if (version && version !== 'latest') {
+            url += `?version=${version}`;
+        }
 
-🔧 ویژگی‌ها (۵ مورد برتر):
-${reportData.features.data?.slice(0, 5).map((f, i) => `
-  ${i+1}. ${f.feature}: ${f.percentage ? f.percentage.toFixed(2) : (f.importance * 100).toFixed(2)}%`
-).join('\n') || '  — هیچ ویژگی‌ای موجود نیست'}
+        // باز کردن گزارش در تب جدید
+        const newWindow = window.open(url, '_blank');
+        if (!newWindow) {
+            showToast('⚠️ لطفاً باز شدن پنجره جدید را مجاز کنید', 'warning');
+            statusEl.textContent = '⚠️ نیاز به تأیید';
+            statusEl.style.color = 'var(--accent-orange)';
+            return;
+        }
 
-========================================
-   پایان گزارش
-========================================
-`;
-
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `model_report_${timestamp}.txt`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    showToast('📥 دانلود گزارش شروع شد', 'success');
-}
-
-// ===== ۷. بازنشانی مدل =====
-document.addEventListener('DOMContentLoaded', function() {
-    const resetInput = document.getElementById('resetConfirmInput');
-    const resetBtn = document.getElementById('resetModelBtn');
-
-    if (resetInput && resetBtn) {
-        resetInput.addEventListener('input', function() {
-            resetBtn.disabled = this.value.trim().toUpperCase() !== 'RESET';
-        });
-    }
-});
-
-async function resetModel() {
-    const confirmInput = document.getElementById('resetConfirmInput').value.trim();
-    if (confirmInput.toUpperCase() !== 'RESET') {
-        showToast('⚠️ لطفاً "RESET" را برای تأیید وارد کنید', 'warning');
-        return;
+        statusEl.textContent = '✅ گزارش باز شد';
+        statusEl.style.color = 'var(--accent-green)';
+        showToast('📊 گزارش در تب جدید باز شد', 'success');
     }
 
-    if (!confirm('⚠️⚠️⚠️ آیا از بازنشانی کامل مدل اطمینان دارید؟\nاین عمل غیرقابل بازگشت است!')) return;
+    function generateReportWithVersion() {
+        const select = document.getElementById('reportVersionSelect');
+        if (select) {
+            select.focus();
+            // اگر نسخه‌ای انتخاب نشده، اولین گزینه رو انتخاب کن
+            if (!select.value || select.value === 'latest') {
+                const firstOption = select.querySelector('option[value!="latest"]');
+                if (firstOption) {
+                    select.value = firstOption.value;
+                }
+            }
+        }
+        generateReport();
+    }
 
-    loading.show({
-        messages: [
-            'در حال بازنشانی مدل...',
-            'حذف مدل فعال...',
-            'پایان|مدل به حالت DEMO بازگشت 🔄'
-        ],
-        duration: 5000,
-        onComplete: function() {
-            document.getElementById('resetConfirmInput').value = '';
-            document.getElementById('resetModelBtn').disabled = true;
-            showToast('🔄 مدل به حالت DEMO بازگشت', 'warning');
-            loadVersionSelect();
+    // ===== ۷. بازنشانی مدل =====
+    document.addEventListener('DOMContentLoaded', function() {
+        const resetInput = document.getElementById('resetConfirmInput');
+        const resetBtn = document.getElementById('resetModelBtn');
+
+        if (resetInput && resetBtn) {
+            resetInput.addEventListener('input', function() {
+                resetBtn.disabled = this.value.trim().toUpperCase() !== 'RESET';
+            });
         }
     });
 
-    try {
-        const status = await api.getModelStatus();
-        if (status.data?.version) {
-            await api.deleteModel(status.data.version);
+    async function resetModel() {
+        const confirmInput = document.getElementById('resetConfirmInput').value.trim();
+        if (confirmInput.toUpperCase() !== 'RESET') {
+            showToast('⚠️ لطفاً "RESET" را برای تأیید وارد کنید', 'warning');
+            return;
         }
-        showToast('🔄 مدل به حالت DEMO بازگشت', 'warning');
-    } catch (error) {
-        loading.hide();
-        showToast('❌ خطا: ' + error.message, 'error');
+
+        if (!confirm('⚠️⚠️⚠️ آیا از بازنشانی کامل مدل اطمینان دارید؟\nاین عمل غیرقابل بازگشت است!')) return;
+
+        loading.show({
+            messages: [
+                'در حال بازنشانی مدل...',
+                'حذف مدل فعال...',
+                'پایان|مدل به حالت DEMO بازگشت 🔄'
+            ],
+            duration: 5000,
+            onComplete: function() {
+                document.getElementById('resetConfirmInput').value = '';
+                document.getElementById('resetModelBtn').disabled = true;
+                showToast('🔄 مدل به حالت DEMO بازگشت', 'warning');
+                loadVersionSelect();
+            }
+        });
+
+        try {
+            const status = await api.getModelStatus();
+            if (status.data?.version) {
+                await api.deleteModel(status.data.version);
+            }
+            showToast('🔄 مدل به حالت DEMO بازگشت', 'warning');
+        } catch (error) {
+            loading.hide();
+            showToast('❌ خطا: ' + error.message, 'error');
+        }
     }
-}
 
-// ===== مقداردهی اولیه =====
-window.init_tools = function() {
-    console.log('🔧 Tools tab initializing...');
+    // ============================================================
+    // ۸. مقداردهی اولیه
+    // ============================================================
+    window.init_tools = function() {
+        console.log('🔧 Tools tab initializing...');
 
-    if (isToolsLoaded) return;
-    isToolsLoaded = true;
+        if (isToolsLoaded) return;
+        isToolsLoaded = true;
 
-    loadVersionSelect();
-};
+        loadVersionSelect();
+    };
 
-window.cleanup_tools = function() {
-    isToolsLoaded = false;
-    console.log('🧹 Tools tab cleaned up');
-};
+    window.cleanup_tools = function() {
+        isToolsLoaded = false;
+        console.log('🧹 Tools tab cleaned up');
+    };
 
-console.log('✅ Tools tab loaded');
+    console.log('✅ Tools tab loaded with HTML report');
 </script>
