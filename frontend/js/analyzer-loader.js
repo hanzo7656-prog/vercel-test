@@ -4,7 +4,6 @@
 
 const ANALYZER_TABS = {
     predict: '/analyzer_tabs/predict.html',
-    chart: '/analyzer_tabs/chart.html',
     indicators: '/analyzer_tabs/indicators.html',
     history: '/analyzer_tabs/history.html',
 };
