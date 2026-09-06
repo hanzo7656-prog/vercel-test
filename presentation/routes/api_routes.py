@@ -3645,3 +3645,82 @@ def healing_reset():
     except Exception as e:
         logger.error(f"Healing reset error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================
+# ۲۰. گزارش مدل (HTML Report)
+# ============================================================
+
+@api_bp.route('/model/latest-report', methods=['GET'])
+@require_auth()
+def get_latest_model_report():
+    """
+    دریافت داده‌های آخرین نسخه فعال مدل برای تولید گزارش
+    """
+    try:
+        container = current_app.container
+        model_manager = container.get('model_manager')
+        
+        # دریافت آخرین مدل فعال
+        if not model_manager.current_model:
+            return jsonify({
+                'success': False,
+                'error': 'No active model found'
+            }), 404
+        
+        version = model_manager.current_version
+        report_data = model_manager.get_report_data(version)
+        
+        if report_data:
+            return jsonify({
+                'success': True,
+                'data': report_data,
+                'version': version,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate report data'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Latest report error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/report/<version>', methods=['GET'])
+@require_auth()
+def get_model_report_by_version(version):
+    """
+    دریافت داده‌های یک نسخه خاص از مدل برای تولید گزارش
+    """
+    try:
+        container = current_app.container
+        model_manager = container.get('model_manager')
+        
+        # بررسی وجود نسخه
+        model = model_manager.get_model_by_version(version)
+        if not model:
+            return jsonify({
+                'success': False,
+                'error': f'Version {version} not found'
+            }), 404
+        
+        report_data = model_manager.get_report_data(version)
+        
+        if report_data:
+            return jsonify({
+                'success': True,
+                'data': report_data,
+                'version': version,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate report data'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Report by version error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
