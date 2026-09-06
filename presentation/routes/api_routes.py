@@ -1767,13 +1767,17 @@ def export_redis_key(key):
 @api_bp.route('/model/status', methods=['GET'])
 @require_auth()
 def model_status():
-    """دریافت وضعیت مدل فعلی"""
     try:
         container = current_app.container
         model_manager = container.get('model_manager')
-        trainer = container.trainer()
         
-        train_status = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
+        # ✅ مدیریت trainer با try/except
+        try:
+            trainer = container.get('trainer')
+            train_status = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
+        except KeyError:
+            train_status = {}
+            logger.warning("⚠️ Trainer not available in container")
         
         return jsonify({
             'success': True,
@@ -1790,7 +1794,6 @@ def model_status():
     except Exception as e:
         logger.error(f"Model status error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @api_bp.route('/model/history', methods=['GET'])
 @require_auth()
