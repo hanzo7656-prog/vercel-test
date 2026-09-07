@@ -1,41 +1,40 @@
 # infrastructure/api/free_crypto_client.py
 # ============================================================
-# کلاینت WebSocket FreeCryptoAPI با Auto-Reconnect
+# کلاینت REST برای FreeCryptoAPI (جایگزین WebSocket)
 # ============================================================
 
 import json
 import logging
-import threading
 import time
+import threading
 from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime
 
-import websocket
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class FreeCryptoClient:
     """
-    کلاینت WebSocket برای FreeCryptoAPI
-    با Auto-Reconnect و Backoff
+    کلاینت REST برای FreeCryptoAPI
+    دریافت قیمت‌های لحظه‌ای با Polling
     """
     
     def __init__(self, api_key: str, auto_reconnect: bool = True):
         self.api_key: str = api_key
         self.auto_reconnect: bool = auto_reconnect
-        self.ws: Optional[websocket.WebSocketApp] = None
+        self.base_url: str = "https://api.freecryptoapi.com/v1"
         self.is_connected: bool = False
         self.price_cache: Dict[str, Dict[str, Any]] = {}
         self._callbacks: List[Callable] = []
-        self._reconnect_delay: int = 1
-        self._max_reconnect_delay: int = 60
         self._stop_event: threading.Event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._lock: threading.Lock = threading.Lock()
-        self._last_heartbeat: Optional[datetime] = None
-        self._subscribed_symbols: set = set()
-        self._connection_attempts: int = 0
+        self._last_request_time: float = 0
+        self._min_interval: float = 0.5
+        self._failure_count: int = 0
+        self._max_failures: int = 3
         
         # آمار
         self.stats = {
@@ -47,171 +46,121 @@ class FreeCryptoClient:
             "connection_attempts": 0
         }
         
-        logger.info("✅ FreeCryptoClient initialized")
+        logger.info("✅ FreeCryptoClient (REST) initialized")
     
     def connect(self) -> None:
-        """اتصال به WebSocket"""
+        """شروع Polling برای دریافت قیمت‌ها"""
         if self._thread and self._thread.is_alive():
-            logger.warning("⚠️ WebSocket already running")
+            logger.warning("⚠️ Client already running")
             return
         
         self._stop_event.clear()
+        self.is_connected = True
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
-        logger.info("🔄 WebSocket connection thread started")
+        logger.info("🔄 FreeCryptoClient (REST) started")
     
     def _run(self) -> None:
-        """اجرای WebSocket در thread جداگانه"""
+        """حلقه اصلی Polling"""
         while not self._stop_event.is_set():
             try:
-                self._connect_ws()
-                if not self.auto_reconnect:
-                    break
-                
-                # در صورت قطع، با backoff reconnect
-                self._reconnect_delay = min(self._reconnect_delay * 2, self._max_reconnect_delay)
-                time.sleep(self._reconnect_delay)
-                
+                # هر ۱۰ ثانیه یکبار درخواست بزن
+                if self._should_poll():
+                    self._poll_prices()
+                time.sleep(10)
             except Exception as e:
-                logger.error(f"❌ WebSocket error: {e}")
+                logger.error(f"❌ Polling error: {e}")
                 self.stats["errors"] += 1
-                time.sleep(self._reconnect_delay)
+                time.sleep(5)
     
-    def _connect_ws(self) -> None:
-        """اتصال به WebSocket و نگهداری اتصال"""
-        ws_url = "wss://freecryptoapi.com/ws"
-        self._connection_attempts += 1
-        self.stats["connection_attempts"] = self._connection_attempts
-        
-        self.ws = websocket.WebSocketApp(
-            ws_url,
-            on_open=self._on_open,
-            on_message=self._on_message,
-            on_error=self._on_error,
-            on_close=self._on_close
-        )
-        
-        self.ws.run_forever(
-            ping_interval=30,
-            ping_timeout=10,
-            reconnect=5
-        )
+    def _should_poll(self) -> bool:
+        """بررسی زمان مناسب برای Polling"""
+        now = time.time()
+        if now - self._last_request_time < 10:
+            return False
+        return True
     
-    def _on_open(self, ws) -> None:
-        """وقتی اتصال برقرار شد"""
-        logger.info("✅ WebSocket connected to FreeCryptoAPI")
-        self.is_connected = True
-        self._reconnect_delay = 1
-        self._connection_attempts = 0
+    def _poll_prices(self) -> None:
+        """دریافت قیمت‌های لحظه‌ای"""
+        symbols = self._get_watch_symbols()
+        if not symbols:
+            return
         
-        # ارسال احراز هویت
-        auth_msg = json.dumps({
-            "action": "auth",
-            "apiKey": self.api_key
-        })
-        ws.send(auth_msg)
-        logger.info("🔑 Authentication sent")
-        
-        # اشتراک مجدد نمادهای قبلی
-        if self._subscribed_symbols:
-            symbols = list(self._subscribed_symbols)
-            self.subscribe_symbols(ws, symbols)
+        for symbol in symbols:
+            try:
+                price_data = self._request_price(symbol)
+                if price_data:
+                    with self._lock:
+                        self.price_cache[symbol] = price_data
+                        self.stats["last_update"] = datetime.now().isoformat()
+                        self.stats["symbols_count"] = len(self.price_cache)
+                        self.stats["messages_received"] += 1
+                        self.is_connected = True
+                        self._failure_count = 0
+            except Exception as e:
+                logger.error(f"❌ Error fetching {symbol}: {e}")
+                self._failure_count += 1
+                if self._failure_count >= self._max_failures:
+                    self.is_connected = False
+                    logger.warning(f"⚠️ FreeCryptoAPI marked as unavailable after {self._max_failures} failures")
     
-    def _on_message(self, ws, message: str) -> None:
-        """دریافت پیام از WebSocket"""
+    def _request_price(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """درخواست قیمت یک ارز از REST API"""
+        # محدودیت نرخ
+        now = time.time()
+        if now - self._last_request_time < self._min_interval:
+            time.sleep(self._min_interval - (now - self._last_request_time))
+        
+        url = f"{self.base_url}/getData?symbol={symbol}"
+        headers = {"X-API-Key": self.api_key}
+        
         try:
-            data = json.loads(message)
-            self.stats["messages_received"] += 1
+            response = requests.get(url, headers=headers, timeout=5)
+            self._last_request_time = time.time()
             
-            if "type" in data:
-                if data["type"] == "auth":
-                    if data.get("status") == "success":
-                        logger.info("✅ Authentication successful")
-                    else:
-                        logger.error(f"❌ Authentication failed: {data}")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "success" and data.get("symbols"):
+                    item = data["symbols"][0]
+                    return {
+                        "price": float(item.get("last", 0)),
+                        "change_24h": float(item.get("daily_change_percentage", 0)),
+                        "high_24h": float(item.get("highest", 0)),
+                        "low_24h": float(item.get("lowest", 0)),
+                        "timestamp": item.get("date", datetime.now().isoformat()),
+                        "source": item.get("source_exchange", "freecryptoapi")
+                    }
+                else:
+                    logger.debug(f"⚠️ API returned error for {symbol}: {data.get('error')}")
+                    return None
+            else:
+                logger.debug(f"⚠️ HTTP {response.status_code} for {symbol}")
+                return None
                 
-                elif data["type"] == "price":
-                    self._handle_price_update(data.get("data", {}))
-                
-                elif data["type"] == "ping":
-                    ws.send(json.dumps({"type": "pong"}))
-                    self._last_heartbeat = datetime.now()
-            
-            for cb in self._callbacks:
-                try:
-                    cb(data)
-                except Exception as e:
-                    logger.error(f"Callback error: {e}")
-                    
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {e}")
+        except requests.exceptions.Timeout:
+            logger.debug(f"⏳ Timeout for {symbol}")
+            return None
         except Exception as e:
-            logger.error(f"Message handling error: {e}")
+            logger.error(f"❌ Request error for {symbol}: {e}")
+            return None
     
-    def _handle_price_update(self, data: Dict) -> None:
-        if not data or "symbols" not in data:
-            return
-    
-        for item in data.get("symbols", []):
-            symbol = item.get("symbol", "").upper()
-            if not symbol:
-                continue
-        
-            with self._lock:
-                self.price_cache[symbol] = {
-                    "price": float(item.get("last", 0)),           # ✅ اصلاح شد
-                    "change_24h": float(item.get("daily_change_percentage", 0)),  # ✅ اصلاح شد
-                    "high_24h": float(item.get("highest", 0)),      # ✅ اصلاح شد
-                    "low_24h": float(item.get("lowest", 0)),        # ✅ اصلاح شد
-                    "timestamp": item.get("date", datetime.now().isoformat()),  # ✅ اصلاح شد
-                    "source": item.get("source_exchange", "freecryptoapi"),
-                    "source_exchange": item.get("source_exchange", "binance")
-                }
-            
-                self.stats["last_update"] = datetime.now().isoformat()
-                self.stats["symbols_count"] = len(self.price_cache)
-                
-    def _on_error(self, ws, error) -> None:
-        """وقتی خطایی رخ می‌دهد"""
-        logger.error(f"❌ WebSocket error: {error}")
-        self.is_connected = False
-        self.stats["errors"] += 1
-    
-    def _on_close(self, ws, close_status_code, close_msg) -> None:
-        """وقتی اتصال بسته می‌شود"""
-        logger.warning(f"⚠️ WebSocket closed: {close_status_code} - {close_msg}")
-        self.is_connected = False
-        self.stats["reconnects"] += 1
-    
-    def subscribe_symbols(self, ws, symbols: List[str]) -> None:
-        """اشتراک در قیمت یک یا چند ارز"""
-        if not symbols:
-            return
-        
-        batch_size = 50
-        for i in range(0, len(symbols), batch_size):
-            batch = symbols[i:i+batch_size]
-            msg = json.dumps({
-                "action": "subscribe",
-                "symbols": batch
-            })
-            ws.send(msg)
-            self._subscribed_symbols.update(batch)
-            logger.info(f"📡 Subscribed to {len(batch)} symbols")
-    
-    def unsubscribe_symbols(self, ws, symbols: List[str]) -> None:
-        """لغو اشتراک قیمت ارزها"""
-        if not symbols:
-            return
-        
-        msg = json.dumps({
-            "action": "unsubscribe",
-            "symbols": symbols
-        })
-        ws.send(msg)
-        for s in symbols:
-            self._subscribed_symbols.discard(s)
-        logger.info(f"📡 Unsubscribed from {len(symbols)} symbols")
+    def _get_watch_symbols(self) -> List[str]:
+        """دریافت لیست ارزهای مورد نظر"""
+        # از کش یا پیش‌فرض
+        try:
+            from infrastructure.database import get_cache
+            cache = get_cache()
+            coins_list = cache.get("coins_list_50_1_USD_None")
+            if coins_list:
+                symbols = []
+                for coin in coins_list[:20]:
+                    symbol = coin.get("symbol", "").upper()
+                    if symbol:
+                        symbols.append(symbol)
+                return symbols or ["BTC", "ETH", "SOL", "ADA", "XRP"]
+        except:
+            pass
+        return ["BTC", "ETH", "SOL", "ADA", "XRP"]
     
     def get_price(self, symbol: str) -> Optional[Dict[str, Any]]:
         """دریافت آخرین قیمت از کش"""
@@ -249,15 +198,13 @@ class FreeCryptoClient:
         }
     
     def stop(self) -> None:
-        """متوقف کردن WebSocket"""
-        logger.info("⏹️ Stopping WebSocket...")
+        """متوقف کردن کلاینت"""
+        logger.info("⏹️ Stopping FreeCryptoClient...")
         self._stop_event.set()
-        if self.ws:
-            self.ws.close()
+        self.is_connected = False
         if self._thread:
             self._thread.join(timeout=5)
-        self.is_connected = False
-        logger.info("✅ WebSocket stopped")
+        logger.info("✅ FreeCryptoClient stopped")
 
 
 def create_free_crypto_client(api_key: str) -> FreeCryptoClient:
