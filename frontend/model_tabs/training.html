@@ -497,17 +497,34 @@ function updateDefaultCount() {
     }
 }
 
-// ===== شروع آموزش =====
+// ============================================================
+// شروع آموزش با اعتبارسنجی کامل و دیباگ
+// ============================================================
 async function startTraining() {
-    if (isTraining) return;
-    if (selectedTrainCoins.length === 0) {
-        showToast('⚠️ حداقل یک ارز را انتخاب کنید', 'warning');
+    // ۱. جلوگیری از اجرای همزمان
+    if (isTraining) {
+        showToast('⏳ آموزش در حال انجام است...', 'warning');
         return;
     }
 
+    // ۲. اعتبارسنجی: حداقل یک ارز انتخاب شده باشد
+    if (!selectedTrainCoins || selectedTrainCoins.length === 0) {
+        showToast('⚠️ حداقل یک ارز را برای آموزش انتخاب کنید', 'warning');
+        return;
+    }
+
+    // ۳. دریافت مقادیر از UI
     const period = document.getElementById('trainPeriod').value;
     const incremental = document.getElementById('incrementalToggle').checked;
 
+    // ۴. دیباگ: نمایش داده‌های ارسالی
+    console.log('📤 ===== STARTING TRAINING =====');
+    console.log('  📊 Period:', period);
+    console.log('  🪙 Coins:', selectedTrainCoins);
+    console.log('  🔄 Incremental:', incremental);
+    console.log('  📦 Coins count:', selectedTrainCoins.length);
+
+    // ۵. نمایش لودینگ به کاربر
     loading.show({
         messages: [
             'در حال آماده‌سازی داده‌ها...|دریافت اطلاعات از API',
@@ -521,6 +538,7 @@ async function startTraining() {
         }
     });
 
+    // ۶. بروزرسانی UI
     isTraining = true;
     trainingStartTime = Date.now();
 
@@ -531,23 +549,36 @@ async function startTraining() {
     document.getElementById('trainingStatusBadge').textContent = '⏳ در حال آموزش';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-orange)';
 
+    // ۷. پاک کردن لاگ قبلی و اضافه کردن لاگ شروع
+    const logEl = document.getElementById('trainingLogContainer');
+    logEl.innerHTML = '';
     addTrainLog('🚀 شروع آموزش مدل XGBoost');
     addTrainLog(`📊 بازه زمانی: ${period}`);
     addTrainLog(`🪙 ارزها: ${selectedTrainCoins.length} ارز (${selectedTrainCoins.join(', ')})`);
     addTrainLog(`🔄 آموزش افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
-    addTrainLog('⏳ در حال دریافت داده‌ها...');
+    addTrainLog('⏳ در حال ارسال درخواست به سرور...');
 
     try {
-        const result = await api.trainModel({
+        // ۸. ارسال درخواست به API
+        const requestData = {
             period: period,
             coins: selectedTrainCoins,
             incremental: incremental
-        });
+        };
 
+        console.log('📡 Sending API request:', requestData);
+
+        const result = await api.trainModel(requestData);
+
+        console.log('📥 API Response:', result);
+
+        // ۹. ذخیره نتیجه برای بررسی بعد از لودینگ
         window._trainResult = result;
         window._trainComplete = true;
 
+        // ۱۰. بررسی نتیجه
         if (!result.success) {
+            // خطا در آموزش
             loading.hide();
             isTraining = false;
             document.getElementById('startTrainBtn').style.display = 'inline-flex';
@@ -555,10 +586,24 @@ async function startTraining() {
             document.getElementById('trainingStatusBadge').textContent = '❌ خطا';
             document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
             document.getElementById('trainingProgress').style.display = 'none';
-            showToast('❌ ' + (result.message || 'خطا در آموزش'), 'error');
-            addTrainLog('❌ ' + (result.message || 'خطا در آموزش'));
+
+            const errorMsg = result.message || result.error || 'خطا در آموزش';
+            showToast('❌ ' + errorMsg, 'error');
+            addTrainLog('❌ ' + errorMsg);
+
+            // نمایش جزئیات خطا در کنسول
+            console.error('❌ Training failed:', result);
+            return;
         }
+
+        // ۱۱. اگر موفق بود، لودینگ خودش کامل می‌شود (با onComplete)
+        addTrainLog('✅ درخواست آموزش با موفقیت ارسال شد');
+        addTrainLog('⏳ منتظر تکمیل آموزش...');
+
     } catch (error) {
+        // ۱۲. مدیریت خطاهای network و غیره
+        console.error('❌ Training request error:', error);
+
         loading.hide();
         isTraining = false;
         document.getElementById('startTrainBtn').style.display = 'inline-flex';
@@ -566,14 +611,27 @@ async function startTraining() {
         document.getElementById('trainingStatusBadge').textContent = '❌ خطا';
         document.getElementById('trainingStatusBadge').style.color = 'var(--accent-red)';
         document.getElementById('trainingProgress').style.display = 'none';
-        showToast('❌ خطا: ' + error.message, 'error');
-        addTrainLog('❌ خطا: ' + error.message);
+
+        const errorMsg = error.message || 'خطا در ارتباط با سرور';
+        showToast('❌ خطا: ' + errorMsg, 'error');
+        addTrainLog('❌ خطا: ' + errorMsg);
     }
 }
 
+// ============================================================
+// بررسی نتیجه آموزش (بعد از اتمام لودینگ)
+// ============================================================
+
 function checkTrainingResult() {
     const result = window._trainResult;
-    if (!result) return;
+
+    console.log('📊 ===== TRAINING RESULT =====');
+    console.log('  Result:', result);
+
+    if (!result) {
+        showToast('❌ نتیجه‌ای دریافت نشد', 'error');
+        return;
+    }
 
     isTraining = false;
     document.getElementById('startTrainBtn').style.display = 'inline-flex';
@@ -582,10 +640,18 @@ function checkTrainingResult() {
     document.getElementById('trainingStatusBadge').textContent = '✅ تکمیل';
     document.getElementById('trainingStatusBadge').style.color = 'var(--accent-green)';
 
+    // نمایش نتیجه
     document.getElementById('trainingResult').style.display = 'block';
     document.getElementById('resultMessage').textContent = result.message || 'آموزش با موفقیت انجام شد';
-    document.getElementById('resultAccuracy').textContent = result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—';
 
+    // دقت
+    if (result.accuracy !== undefined && result.accuracy !== null) {
+        document.getElementById('resultAccuracy').textContent = (result.accuracy * 100).toFixed(2) + '%';
+    } else {
+        document.getElementById('resultAccuracy').textContent = '—';
+    }
+
+    // بهبود
     if (result.improvement !== undefined && result.improvement !== null) {
         const imp = result.improvement * 100;
         document.getElementById('resultImprovement').textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
@@ -595,9 +661,13 @@ function checkTrainingResult() {
         document.getElementById('resultImprovement').style.color = 'var(--text-muted)';
     }
 
+    // نسخه
     document.getElementById('resultVersion').textContent = result.version || 'N/A';
+
+    // ارزها
     document.getElementById('resultCoins').textContent = selectedTrainCoins.length + ' ارز';
 
+    // لاگ نهایی
     addTrainLog('✅ آموزش با موفقیت تکمیل شد');
     addTrainLog(`📊 دقت نهایی: ${result.accuracy ? (result.accuracy * 100).toFixed(2) + '%' : '—'}`);
     addTrainLog(`📌 نسخه: ${result.version || 'N/A'}`);
@@ -605,9 +675,15 @@ function checkTrainingResult() {
 
     showToast('✅ آموزش با موفقیت انجام شد', 'success');
 
+    // بروزرسانی ارزهای آموزش‌دیده
     loadTrainedCoins();
-}
 
+    // پاک کردن نتیجه از حافظه
+    window._trainResult = null;
+    window._trainComplete = false;
+}
+            
+    
 async function stopTraining() {
     if (!isTraining) return;
     if (!confirm('⚠️ آیا از توقف آموزش اطمینان دارید؟')) return;
