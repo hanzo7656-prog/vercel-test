@@ -125,7 +125,17 @@ def register_services() -> None:
             fallback_interval=60
         )
 
-
+    def create_price_manager():
+        from core.price_manager import PriceManager
+        from infrastructure.database import get_cache  # ✅ این خط باید باشد
+        return PriceManager(
+            free_client=container.free_crypto_client(),
+            user_tracker=container.user_tracker(),
+            cache=get_cache(),  # ✅ این خط باید باشد
+            update_interval=10,
+            fallback_interval=60
+        )
+ 
     # container.py
     def get_indicators():
         from core.indicators import get_all_indicators, calculate_rsi, calculate_sma, calculate_ema, calculate_macd
