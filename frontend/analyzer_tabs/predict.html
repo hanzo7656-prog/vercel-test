@@ -99,23 +99,8 @@
 
 <script>
 // ============================================================
-// PREDICT TAB - با REST API و اسپینر لودینگ مرحله‌ای
+// PREDICT TAB - با REST API (بدون اسپینر داخلی)
 // ============================================================
-
-// ============================================================
-// ۰. اسپینر لودینگ مرحله‌ای (واقعی)
-// ============================================================
-
-const LOADING_STEPS = [
-    { id: 1, label: 'اتصال به CoinStats API...', weight: 1 },
-    { id: 2, label: 'دریافت لیست ارزها...', weight: 2 },
-    { id: 3, label: 'بروزرسانی کش Redis...', weight: 1 },
-    { id: 4, label: 'بارگذاری مدل XGBoost...', weight: 2 },
-    { id: 5, label: 'بررسی اعتبار API...', weight: 1 },
-    { id: 6, label: 'آماده‌سازی رابط کاربری...', weight: 1 },
-    { id: 7, label: 'اتصال به سرویس قیمت‌های لحظه‌ای...', weight: 1 },
-    { id: 8, label: 'بارگذاری داده‌های قیمت...', weight: 2 },
-];
 
 let allCoins = [];
 let filteredCoins = [];
@@ -123,101 +108,73 @@ let selectedCoinId = null;
 let isPredictLoading = false;
 let priceUpdateCount = 0;
 let apiConnected = false;
-let loadingInterval = null;
 let isPredictLoaded = false;
-let currentStep = 0;
 
 // ============================================================
-// ۱. نمایش اسپینر لودینگ مرحله‌ای
+// ۱. بارگذاری لیست ارزها
 // ============================================================
 
-function showStepLoading(step, total) {
+async function loadCoins() {
     const grid = document.getElementById('coinsGrid');
-    const percent = Math.round((step / total) * 100);
-    const stepLabel = LOADING_STEPS[step - 1]?.label || 'در حال آماده‌سازی...';
     grid.innerHTML = `
         <div class="loading-container" style="padding:30px;grid-column:1/-1;">
             <div class="loading-spinner" style="width:28px;height:28px;"></div>
-            <p class="loading-text" style="font-size:0.8rem;font-weight:600;color:var(--text-primary);">
-                ${stepLabel}
-            </p>
-            <p style="font-size:0.7rem;color:var(--text-muted);">
-                ${step} / ${total} مرحله
-            </p>
-            <div style="width:60%;max-width:300px;height:4px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;margin-top:4px;">
-                <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-purple));border-radius:var(--radius-full);transition:width 0.5s ease;"></div>
-            </div>
-            <p style="font-size:0.6rem;color:var(--text-muted);margin-top:4px;">${percent}%</p>
+            <p class="loading-text" style="font-size:0.8rem;">در حال بارگذاری ارزها...</p>
         </div>
     `;
-}
-
-// ============================================================
-// ۲. بارگذاری واقعی با مراحل
-// ============================================================
-
-async function loadCoinsWithSteps() {
-    const totalSteps = LOADING_STEPS.length;
-    let step = 0;
-
-    const nextStep = () => {
-        step++;
-        if (step <= totalSteps) {
-            showStepLoading(step, totalSteps);
-        }
-        return step;
-    };
 
     try {
-        // مرحله ۱: اتصال به CoinStats API
-        nextStep();
-        await new Promise(r => setTimeout(r, 300));
-
-        // مرحله ۲: دریافت لیست ارزها
-        nextStep();
-        const data = await api.getCoinsList({ limit: 100 });
-
-        // مرحله ۳: بروزرسانی کش (شبیه‌سازی)
-        nextStep();
-        await new Promise(r => setTimeout(r, 200));
-
-        // مرحله ۴: بارگذاری مدل (شبیه‌سازی)
-        nextStep();
-        await new Promise(r => setTimeout(r, 400));
-
-        // مرحله ۵: بررسی اعتبار API
-        nextStep();
+        // وضعیت API را به‌روز می‌کنیم
         await checkApiHealth();
 
-        // مرحله ۶: آماده‌سازی UI
-        nextStep();
+        const data = await api.getCoinsList({ limit: 100 });
+
         if (data.success && data.data) {
             allCoins = data.data;
             filteredCoins = [...allCoins];
             document.getElementById('coinCount').textContent = allCoins.length + ' ارز';
+
+            // انتخاب پیش‌فرض
+            const defaultCoin = allCoins.find(c => c.id === 'bitcoin') || allCoins[0];
+            if (defaultCoin) {
+                selectedCoinId = defaultCoin.id;
+                const indicator = document.getElementById('selectedIndicator');
+                const selectedName = document.getElementById('selectedCoinName');
+                selectedName.textContent = defaultCoin.symbol + ' - ' + defaultCoin.name;
+                indicator.style.display = 'block';
+            }
+
+            renderCoins();
+            
+            // دریافت قیمت‌های اولیه
+            await updatePricesFromAPI();
+
+            // اگر ارزی انتخاب شده، پیش‌بینی خودکار انجام شود
+            if (selectedCoinId) {
+                setTimeout(() => predictCoin(selectedCoinId), 500);
+            }
+
+            // شروع بروزرسانی خودکار قیمت‌ها
+            startAutoPriceUpdate();
+
+        } else {
+            grid.innerHTML = `
+                <div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1;">
+                    <span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>
+                    <p>هیچ ارزی یافت نشد</p>
+                    <button class="btn btn-primary btn-sm" onclick="loadCoins()" style="margin-top:8px;padding:4px 16px;font-size:0.7rem;">
+                        <i class="fas fa-sync-alt"></i> تلاش مجدد
+                    </button>
+                </div>
+            `;
         }
-
-        // مرحله ۷: اتصال به سرویس قیمت‌ها
-        nextStep();
-        await startPriceService();
-
-        // مرحله ۸: بارگذاری قیمت‌ها
-        nextStep();
-        await updatePricesFromAPI();
-
-        // تمام شد!
-        renderCoins();
-        updateSelectedCoin();
-        document.getElementById('predictStatus').textContent = '✅ آماده';
-        document.getElementById('predictStatus').style.color = 'var(--accent-green)';
-
     } catch (error) {
-        console.error('❌ Load error:', error);
-        document.getElementById('coinsGrid').innerHTML = `
+        console.error('Load coins error:', error);
+        grid.innerHTML = `
             <div style="text-align:center;padding:30px;color:var(--accent-red);grid-column:1/-1;">
                 <span style="font-size:2rem;display:block;margin-bottom:8px;">❌</span>
-                <p>خطا در بارگذاری داده‌ها</p>
-                <button class="btn btn-primary btn-sm" onclick="loadCoinsWithSteps()" style="margin-top:8px;padding:4px 16px;font-size:0.7rem;">
+                <p>خطا در دریافت لیست ارزها</p>
+                <button class="btn btn-primary btn-sm" onclick="loadCoins()" style="margin-top:8px;padding:4px 16px;font-size:0.7rem;">
                     <i class="fas fa-sync-alt"></i> تلاش مجدد
                 </button>
             </div>
@@ -226,7 +183,7 @@ async function loadCoinsWithSteps() {
 }
 
 // ============================================================
-// ۳. وضعیت API
+// ۲. وضعیت API
 // ============================================================
 
 async function checkApiHealth() {
@@ -252,13 +209,8 @@ function updateApiStatus(connected) {
 }
 
 // ============================================================
-// ۴. سرویس قیمت‌های لحظه‌ای (REST)
+// ۳. قیمت‌های لحظه‌ای (REST)
 // ============================================================
-
-async function startPriceService() {
-    // فقط وضعیت را به‌روز می‌کند
-    await checkApiHealth();
-}
 
 async function updatePricesFromAPI() {
     try {
@@ -289,8 +241,17 @@ async function updatePricesFromAPI() {
     }
 }
 
+function startAutoPriceUpdate() {
+    // بروزرسانی قیمت‌ها هر ۱۵ ثانیه
+    setInterval(() => {
+        if (allCoins.length > 0) {
+            updatePricesFromAPI();
+        }
+    }, 15000);
+}
+
 // ============================================================
-// ۵. بقیه توابع (رندر، فیلتر، پیش‌بینی)
+// ۴. رندر و فیلتر
 // ============================================================
 
 function renderCoins() {
@@ -392,18 +353,9 @@ function filterCoins() {
     renderCoins();
 }
 
-function updateSelectedCoin() {
-    const defaultCoin = allCoins.find(c => c.id === 'bitcoin');
-    if (defaultCoin) {
-        selectedCoinId = defaultCoin.id;
-        const indicator = document.getElementById('selectedIndicator');
-        const selectedName = document.getElementById('selectedCoinName');
-        selectedName.textContent = defaultCoin.symbol + ' - ' + defaultCoin.name;
-        indicator.style.display = 'block';
-        renderCoins();
-        setTimeout(() => predictCoin(defaultCoin.id), 300);
-    }
-}
+// ============================================================
+// ۵. پیش‌بینی
+// ============================================================
 
 async function predictCoin(coinId) {
     if (isPredictLoading) return;
@@ -477,7 +429,7 @@ async function predictCoin(coinId) {
 
 function refreshCoins() {
     showToast('🔄 بروزرسانی...', 'info');
-    loadCoinsWithSteps();
+    loadCoins();
 }
 
 // ============================================================
@@ -488,14 +440,7 @@ window.init_predict = function() {
     console.log('🔮 Predict tab initializing (REST)...');
     if (isPredictLoaded) return;
     isPredictLoaded = true;
-    loadCoinsWithSteps();
-
-    // بروزرسانی خودکار قیمت‌ها هر ۱۵ ثانیه
-    setInterval(() => {
-        if (allCoins.length > 0) {
-            updatePricesFromAPI();
-        }
-    }, 15000);
+    loadCoins();
 };
 
 window.cleanup_predict = function() {
