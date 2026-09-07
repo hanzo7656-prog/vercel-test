@@ -89,11 +89,25 @@ def register_services() -> None:
         from infrastructure.api.cache_manager import cache_manager
         return cache_manager
     
-    def get_free_crypto_client():
-        from infrastructure.api.free_crypto_client import create_free_crypto_client
+    # container.py - بخش register_services()
+
+# ============================================================
+# ۲. سرویس‌های WebSocket/REST (FreeCryptoAPI)
+# ============================================================
+
+    def create_free_crypto_client():
+        """
+        ایجاد نمونه کلاینت FreeCryptoAPI (REST)
+        """
+        from infrastructure.api.free_crypto_client import create_free_crypto_client as _createa   
+    # دریافت کلید API از محیط یا استفاده از مقدار پیش‌فرض
         api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
-        return create_free_crypto_client(api_key)
-    
+    # ایجاد کلاینت (REST)
+        client = _create(api_key)
+    # لاگ برای تأیید
+        logger.info(f"✅ FreeCryptoClient created (REST mode)")
+        return client
+
     container.register('api_client', get_api_client, singleton=True)
     container.register('cache_manager', get_cache_manager, singleton=True)
     container.register('free_crypto_client', get_free_crypto_client, singleton=True)
