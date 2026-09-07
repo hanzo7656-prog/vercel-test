@@ -108,7 +108,7 @@ def register_services() -> None:
         logger.info(f"✅ FreeCryptoClient created (REST mode)")
         return client
 
-    container.register('api_client', create_get_api_client, singleton=True)
+    container.register('api_client', create_free_crypto_client, singleton=True)
     container.register('cache_manager', get_cache_manager, singleton=True)
     container.register('free_crypto_client', get_free_crypto_client, singleton=True)
     
