@@ -149,27 +149,28 @@ class FreeCryptoClient:
             logger.error(f"Message handling error: {e}")
     
     def _handle_price_update(self, data: Dict) -> None:
-        """پردازش بروزرسانی قیمت"""
-        if not data:
+        if not data or "symbols" not in data:
             return
-        
-        symbol = data.get("symbol", "").upper()
-        if not symbol:
-            return
-        
-        with self._lock:
-            self.price_cache[symbol] = {
-                "price": data.get("price", 0),
-                "change_24h": data.get("change24h", 0),
-                "high_24h": data.get("high24h", 0),
-                "low_24h": data.get("low24h", 0),
-                "volume": data.get("volume", 0),
-                "timestamp": datetime.now().isoformat(),
-                "source": "websocket"
-            }
-            self.stats["last_update"] = datetime.now().isoformat()
-            self.stats["symbols_count"] = len(self.price_cache)
     
+        for item in data.get("symbols", []):
+            symbol = item.get("symbol", "").upper()
+            if not symbol:
+                continue
+        
+            with self._lock:
+                self.price_cache[symbol] = {
+                    "price": float(item.get("last", 0)),           # ✅ اصلاح شد
+                    "change_24h": float(item.get("daily_change_percentage", 0)),  # ✅ اصلاح شد
+                    "high_24h": float(item.get("highest", 0)),      # ✅ اصلاح شد
+                    "low_24h": float(item.get("lowest", 0)),        # ✅ اصلاح شد
+                    "timestamp": item.get("date", datetime.now().isoformat()),  # ✅ اصلاح شد
+                    "source": item.get("source_exchange", "freecryptoapi"),
+                    "source_exchange": item.get("source_exchange", "binance")
+                }
+            
+                self.stats["last_update"] = datetime.now().isoformat()
+                self.stats["symbols_count"] = len(self.price_cache)
+                
     def _on_error(self, ws, error) -> None:
         """وقتی خطایی رخ می‌دهد"""
         logger.error(f"❌ WebSocket error: {error}")
