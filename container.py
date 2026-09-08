@@ -28,7 +28,6 @@ class Container:
             logger.info("✅ Container initialized")
     
     def register(self, name: str, service: Any, singleton: bool = True) -> None:
-        """ثبت سرویس در Container"""
         if singleton:
             self._singletons[name] = service
         else:
@@ -36,7 +35,6 @@ class Container:
         logger.debug(f"✅ Service registered: {name}")
     
     def get(self, name: str) -> Any:
-        """دریافت سرویس از Container"""
         if name in self._singletons:
             service = self._singletons[name]
             if callable(service) and not isinstance(service, type):
@@ -53,11 +51,9 @@ class Container:
         raise KeyError(f"Service '{name}' not found in container")
     
     def has(self, name: str) -> bool:
-        """بررسی وجود سرویس"""
         return name in self._singletons or name in self._services
     
     def clear(self) -> None:
-        """پاک کردن همه سرویس‌ها"""
         self._singletons.clear()
         self._services.clear()
         logger.info("🧹 Container cleared")
@@ -78,39 +74,26 @@ def register_services() -> None:
     # ۱. سرویس‌های Infrastructure
     # ============================================================
     
-    # container.py - این قبلاً ثبت شده، اما مطمئن شو که درست است
     def get_api_client():
         from infrastructure.api.coinstats_client import coinstats_client
         return coinstats_client
-
-    container.register('api_client', get_api_client, singleton=True)
     
     def get_cache_manager():
         from infrastructure.api.cache_manager import cache_manager
         return cache_manager
     
-    # container.py - بخش register_services()
-
-# ============================================================
-# ۲. سرویس‌های WebSocket/REST (FreeCryptoAPI)
-# ============================================================
-
     def create_free_crypto_client():
-        """
-        ایجاد نمونه کلاینت FreeCryptoAPI (REST)
-        """
-        from infrastructure.api.free_crypto_client import create_free_crypto_client as _createa   
-    # دریافت کلید API از محیط یا استفاده از مقدار پیش‌فرض
+        """ایجاد نمونه کلاینت FreeCryptoAPI (REST)"""
+        from infrastructure.api.free_crypto_client import create_free_crypto_client as _create
         api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
-    # ایجاد کلاینت (REST)
         client = _create(api_key)
-    # لاگ برای تأیید
-        logger.info(f"✅ FreeCryptoClient created (REST mode)")
+        logger.info("✅ FreeCryptoClient created (REST mode)")
         return client
-
-    container.register('api_client', create_free_crypto_client, singleton=True)
+    
+    # ✅ ثبت صحیح سرویس‌های Infrastructure
+    container.register('api_client', get_api_client, singleton=True)
     container.register('cache_manager', get_cache_manager, singleton=True)
-    container.register('free_crypto_client', get_free_crypto_client, singleton=True)
+    container.register('free_crypto_client', create_free_crypto_client, singleton=True)  # ✅ اصلاح شد
     
     # ============================================================
     # ۲. سرویس‌های Core
@@ -138,19 +121,7 @@ def register_services() -> None:
             update_interval=10,
             fallback_interval=60
         )
-
-    def create_price_manager():
-        from core.price_manager import PriceManager
-        from infrastructure.database import get_cache  # ✅ این خط باید باشد
-        return PriceManager(
-            free_client=container.free_crypto_client(),
-            user_tracker=container.user_tracker(),
-            cache=get_cache(),  # ✅ این خط باید باشد
-            update_interval=10,
-            fallback_interval=60
-        )
- 
-    # container.py
+    
     def get_indicators():
         from core.indicators import get_all_indicators, calculate_rsi, calculate_sma, calculate_ema, calculate_macd
         return {
@@ -160,16 +131,24 @@ def register_services() -> None:
             'calculate_ema': calculate_ema,
             'calculate_macd': calculate_macd
         }
-
-    container.register('indicators', get_indicators, singleton=True)
+    
+    # ✅ ثبت سرویس‌های Core
     container.register('model_manager', get_model_manager, singleton=True)
     container.register('feature_engineer', get_feature_engineer, singleton=True)
     container.register('user_tracker', get_user_tracker, singleton=True)
     container.register('price_manager', get_price_manager, singleton=True)
+    container.register('indicators', get_indicators, singleton=True)
     
     # ============================================================
     # ۳. سرویس‌های Application
     # ============================================================
+    
+    def get_trainer():
+        from models.trainer.auto_trainer import AutoTrainer
+        return AutoTrainer(
+            api=container.get('api_client'),
+            model_manager=container.get('model_manager')
+        )
     
     def get_predict_use_case():
         from application.use_cases.predict_coin import PredictCoinUseCase
@@ -181,14 +160,10 @@ def register_services() -> None:
     
     def get_train_use_case():
         from application.use_cases.train_model import TrainModelUseCase
-        from models.trainer.auto_trainer import AutoTrainer
         return TrainModelUseCase(
             api_client=container.get('api_client'),
             model_manager=container.get('model_manager'),
-            trainer=AutoTrainer(
-                api=container.get('api_client'),
-                model_manager=container.get('model_manager')
-            )
+            trainer=container.get('trainer')
         )
     
     def get_health_use_case():
@@ -197,28 +172,17 @@ def register_services() -> None:
             api_client=container.get('api_client'),
             model_manager=container.get('model_manager')
         )
-    # container.py - مطمئن شو این بخش وجود دارد
-
-    def get_trainer():
-        from models.trainer.auto_trainer import AutoTrainer
-        return AutoTrainer(
-            api=container.get('api_client'),
-            model_manager=container.get('model_manager')
-        )
-
-    container.register('trainer', get_trainer, singleton=True)
-    # container.py - اضافه کردن به register_services()
-
+    
     def get_prediction_service():
         from application.services.prediction_service import PredictionService
         return PredictionService(container.get('predict_use_case'))
-  
-    container.register('prediction_service', get_prediction_service, singleton=True)
     
     def get_monitoring_service():
         from application.services.monitoring_service import MonitoringService
         return MonitoringService(container.get('health_use_case'))
     
+    # ✅ ثبت سرویس‌های Application
+    container.register('trainer', get_trainer, singleton=True)
     container.register('predict_use_case', get_predict_use_case, singleton=True)
     container.register('train_use_case', get_train_use_case, singleton=True)
     container.register('health_use_case', get_health_use_case, singleton=True)
