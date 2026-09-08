@@ -9,7 +9,7 @@ import threading
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from infrastructure.api.free_crypto_rest import FreeCryptoRESTClient
+from infrastructure.api.free_crypto_client import FreeCryptoClient
 from infrastructure.api.coinstats_client import coinstats_client
 from infrastructure.database import get_cache
 from core.user_tracker import UserTracker
