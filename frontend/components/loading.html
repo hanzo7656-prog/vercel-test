@@ -1,0 +1,494 @@
+<!-- ============================================================
+     frontend/components/loading.html
+     اسپینر لودینگ پیشرفته با مراحل و پیشرفت واقعی
+     ============================================================ -->
+
+<div class="splash-loader" id="splashLoader">
+    <div class="splash-content">
+        
+        <!-- لوگو -->
+        <div class="splash-logo">
+            <i class="fas fa-chart-pie"></i>
+        </div>
+        
+        <!-- عنوان -->
+        <div class="splash-title">
+            <span class="highlight">سیستم تحلیلگر</span>
+        </div>
+        <div class="splash-subtitle">
+            <i class="fas fa-sync-alt fa-fw" style="color:#00d4ff; animation: spin 1.5s linear infinite;"></i>
+            در حال بارگذاری...
+        </div>
+        
+        <!-- نوار پیشرفت -->
+        <div class="splash-progress-wrapper">
+            <div class="splash-progress-bar" id="progressBar"></div>
+        </div>
+        
+        <!-- شمارش -->
+        <div class="splash-counter">
+            <span id="currentCount">۰</span>
+            <span class="total"> / <span id="totalCount">۰</span></span>
+        </div>
+        
+        <!-- مراحل -->
+        <div class="splash-phases" id="phasesContainer">
+            <div class="phase-item" id="phase1">
+                <span class="phase-icon">🔗</span>
+                <span class="phase-name">اتصال به دیتابیس</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+            <div class="phase-item" id="phase2">
+                <span class="phase-icon">🧠</span>
+                <span class="phase-name">بارگذاری مدل</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+            <div class="phase-item" id="phase3">
+                <span class="phase-icon">🌐</span>
+                <span class="phase-name">دریافت قیمت‌ها</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+            <div class="phase-item" id="phase4">
+                <span class="phase-icon">📊</span>
+                <span class="phase-name">پردازش داده</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+            <div class="phase-item" id="phase5">
+                <span class="phase-icon">⚡</span>
+                <span class="phase-name">راه‌اندازی نظارت</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+            <div class="phase-item" id="phase6">
+                <span class="phase-icon">🚀</span>
+                <span class="phase-name">آماده‌سازی UI</span>
+                <span class="phase-count">۰ / ۰</span>
+            </div>
+        </div>
+        
+        <!-- وضعیت فعلی -->
+        <div class="splash-current">
+            <i class="fas fa-circle" style="color:#00d4ff;font-size:0.4rem;vertical-align:middle;"></i>
+            <span class="current-text">در حال <span class="highlight-text" id="currentPhaseText">آماده‌سازی</span></span>
+        </div>
+        
+    </div>
+</div>
+
+<style>
+    /* ============================================================
+       استایل‌های اسپینر لودینگ
+       ============================================================ */
+    
+    .splash-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #0f172a;
+        z-index: 99999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    
+    .splash-loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: scale(1.03);
+    }
+    
+    .splash-content {
+        max-width: 520px;
+        width: 90%;
+        padding: 24px;
+        text-align: center;
+    }
+    
+    .splash-logo {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.4rem;
+        color: #fff;
+        box-shadow: 0 8px 40px rgba(0, 212, 255, 0.2);
+        animation: logoPulse 2s ease-in-out infinite;
+        position: relative;
+    }
+    
+    .splash-logo::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 28px;
+        background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+        opacity: 0.15;
+        filter: blur(16px);
+        z-index: -1;
+        animation: logoGlow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes logoPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    @keyframes logoGlow {
+        0% { opacity: 0.15; transform: scale(1); }
+        100% { opacity: 0.3; transform: scale(1.2); }
+    }
+    
+    .splash-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    
+    .splash-title .highlight {
+        background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .splash-subtitle {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 24px;
+    }
+    
+    .splash-progress-wrapper {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 12px;
+        padding: 3px;
+        margin-bottom: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .splash-progress-bar {
+        height: 6px;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #00d4ff, #8b5cf6, #ec4899);
+        width: 0%;
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+    }
+    
+    .splash-progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 40px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        animation: shimmer 1.8s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(400%); }
+    }
+    
+    .splash-counter {
+        font-size: 1.2rem;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+        color: #00d4ff;
+        margin: 4px 0 16px;
+    }
+    
+    .splash-counter .total {
+        color: #475569;
+        font-weight: 400;
+    }
+    
+    .splash-phases {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        margin: 16px 0 12px;
+    }
+    
+    .phase-item {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        padding: 10px 8px;
+        transition: all 0.4s ease;
+        text-align: center;
+    }
+    
+    .phase-item .phase-icon {
+        font-size: 1.1rem;
+        display: block;
+        margin-bottom: 2px;
+    }
+    
+    .phase-item .phase-name {
+        font-size: 0.6rem;
+        color: #64748b;
+        display: block;
+        font-weight: 500;
+    }
+    
+    .phase-item .phase-count {
+        font-size: 0.55rem;
+        color: #475569;
+        display: block;
+        margin-top: 2px;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .phase-item.active {
+        border-color: rgba(0, 212, 255, 0.2);
+        background: rgba(0, 212, 255, 0.04);
+    }
+    
+    .phase-item.active .phase-name {
+        color: #00d4ff;
+    }
+    
+    .phase-item.done {
+        border-color: rgba(34, 211, 238, 0.1);
+        background: rgba(34, 211, 238, 0.03);
+    }
+    
+    .phase-item.done .phase-name {
+        color: #22d3ee;
+    }
+    
+    .phase-item.done .phase-count {
+        color: #22d3ee;
+    }
+    
+    .splash-current {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 8px;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    
+    .splash-current .current-text {
+        color: #f1f5f9;
+    }
+    
+    .splash-current .highlight-text {
+        color: #00d4ff;
+        font-weight: 500;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+        .splash-phases {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .splash-title {
+            font-size: 1.1rem;
+        }
+        .splash-counter {
+            font-size: 1rem;
+        }
+        .splash-phases {
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+        }
+        .phase-item {
+            padding: 6px 4px;
+        }
+        .phase-item .phase-name {
+            font-size: 0.5rem;
+        }
+    }
+</style>
+
+<script>
+    // ============================================================
+    // مدیریت اسپینر لودینگ
+    // ============================================================
+    
+    (function() {
+        'use strict';
+        
+        // ===== داده‌های مراحل =====
+        const PHASES = [
+            { id: 'phase1', name: 'اتصال به دیتابیس', icon: '🔗', total: 8, current: 0 },
+            { id: 'phase2', name: 'بارگذاری مدل', icon: '🧠', total: 5, current: 0 },
+            { id: 'phase3', name: 'دریافت قیمت‌ها', icon: '🌐', total: 10, current: 0 },
+            { id: 'phase4', name: 'پردازش داده', icon: '📊', total: 10, current: 0 },
+            { id: 'phase5', name: 'راه‌اندازی نظارت', icon: '⚡', total: 7, current: 0 },
+            { id: 'phase6', name: 'آماده‌سازی UI', icon: '🚀', total: 10, current: 0 }
+        ];
+        
+        const TOTAL_ITEMS = PHASES.reduce((sum, p) => sum + p.total, 0);
+        let currentPhaseIndex = 0;
+        let isComplete = false;
+        let onCompleteCallback = null;
+        
+        // ===== عناصر DOM =====
+        const elements = {
+            loader: document.getElementById('splashLoader'),
+            progressBar: document.getElementById('progressBar'),
+            currentCount: document.getElementById('currentCount'),
+            totalCount: document.getElementById('totalCount'),
+            currentPhaseText: document.getElementById('currentPhaseText')
+        };
+        
+        // ===== بروزرسانی UI =====
+        function updatePhaseUI(phaseIndex) {
+            PHASES.forEach((phase, idx) => {
+                const el = document.getElementById(phase.id);
+                if (!el) return;
+                const countEl = el.querySelector('.phase-count');
+                
+                if (idx < phaseIndex) {
+                    el.className = 'phase-item done';
+                    if (countEl) countEl.textContent = `${phase.total} / ${phase.total}`;
+                } else if (idx === phaseIndex) {
+                    el.className = 'phase-item active';
+                    if (countEl) countEl.textContent = `${phase.current} / ${phase.total}`;
+                } else {
+                    el.className = 'phase-item';
+                    if (countEl) countEl.textContent = `۰ / ${phase.total}`;
+                }
+            });
+            
+            if (elements.currentPhaseText) {
+                if (phaseIndex < PHASES.length) {
+                    elements.currentPhaseText.textContent = PHASES[phaseIndex].name;
+                } else {
+                    elements.currentPhaseText.textContent = 'تکمیل شد ✅';
+                }
+            }
+        }
+        
+        function updateProgress() {
+            const totalDone = PHASES.reduce((sum, p) => sum + p.current, 0);
+            const percent = Math.min((totalDone / TOTAL_ITEMS) * 100, 100);
+            
+            if (elements.progressBar) {
+                elements.progressBar.style.width = percent + '%';
+            }
+            if (elements.currentCount) {
+                elements.currentCount.textContent = totalDone;
+            }
+            if (elements.totalCount) {
+                elements.totalCount.textContent = TOTAL_ITEMS;
+            }
+        }
+        
+        // ===== شروع لودینگ =====
+        function startLoading(onComplete) {
+            onCompleteCallback = onComplete || null;
+            
+            // تنظیم عدد کل از ابتدا
+            if (elements.totalCount) {
+                elements.totalCount.textContent = TOTAL_ITEMS;
+            }
+            
+            // ریست مراحل
+            PHASES.forEach(p => p.current = 0);
+            currentPhaseIndex = 0;
+            isComplete = false;
+            
+            // نمایش لودینگ
+            if (elements.loader) {
+                elements.loader.classList.remove('hidden');
+            }
+            
+            updatePhaseUI(0);
+            updateProgress();
+            
+            // شروع بارگذاری
+            runLoading();
+        }
+        
+        // ===== اجرای مراحل =====
+        async function runLoading() {
+            for (let phaseIdx = 0; phaseIdx < PHASES.length; phaseIdx++) {
+                const phase = PHASES[phaseIdx];
+                currentPhaseIndex = phaseIdx;
+                
+                // مرحله جاری
+                phase.current = 0;
+                updatePhaseUI(phaseIdx);
+                updateProgress();
+                
+                // شبیه‌سازی انجام آیتم‌های هر مرحله
+                const stepDelay = 60 + Math.random() * 100;
+                for (let i = 1; i <= phase.total; i++) {
+                    phase.current = i;
+                    updatePhaseUI(phaseIdx);
+                    updateProgress();
+                    await new Promise(resolve => setTimeout(resolve, stepDelay));
+                }
+                
+                // کامل شدن مرحله
+                phase.current = phase.total;
+                updatePhaseUI(phaseIdx);
+                updateProgress();
+                
+                // تاخیر بین مراحل
+                await new Promise(resolve => setTimeout(resolve, 120));
+            }
+            
+            // لودینگ کامل شد
+            isComplete = true;
+            if (elements.currentPhaseText) {
+                elements.currentPhaseText.textContent = 'تکمیل شد ✅';
+            }
+            
+            // مخفی کردن لودینگ بعد از ۵۰۰ms
+            setTimeout(() => {
+                if (elements.loader) {
+                    elements.loader.classList.add('hidden');
+                }
+                if (onCompleteCallback) {
+                    onCompleteCallback();
+                }
+            }, 500);
+        }
+        
+        // ===== توابع عمومی =====
+        window.loading = {
+            start: startLoading,
+            hide: function() {
+                if (elements.loader) {
+                    elements.loader.classList.add('hidden');
+                }
+            },
+            show: function() {
+                if (elements.loader) {
+                    elements.loader.classList.remove('hidden');
+                }
+            },
+            getStatus: function() {
+                return {
+                    isComplete: isComplete,
+                    currentPhase: currentPhaseIndex,
+                    phases: PHASES.map(p => ({ ...p })),
+                    totalItems: TOTAL_ITEMS
+                };
+            }
+        };
+        
+        console.log('✅ Loading component loaded (TOTAL_ITEMS: ' + TOTAL_ITEMS + ')');
+        
+    })();
+</script>
