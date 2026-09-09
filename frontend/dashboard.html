@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>داشبورد</title>
+    <title>داشبورد | سیستم تحلیلگر</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
-    </script>
     
     <style>
         /* ============================================================
-           طراحی Liquid Glass - کاملاً شفاف با انیمیشن
+           DASHBOARD STYLES - LIQUID GLASS DESIGN
            ============================================================ */
         
-        /* ---- متغیرهای اصلی ---- */
+        /* ---- متغیرهای اختصاصی ---- */
         :root {
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.06);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            --glass-blur: blur(16px);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            --glass-blur: blur(18px);
+            --primary-glow: rgba(0, 212, 255, 0.12);
+            --secondary-glow: rgba(139, 92, 246, 0.08);
+            --card-radius: 20px;
+            --transition-smooth: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        [data-theme="light"] {
+            --glass-bg: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(0, 0, 0, 0.06);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
             --primary-glow: rgba(0, 212, 255, 0.15);
-            --secondary-glow: rgba(139, 92, 246, 0.12);
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #475569;
         }
 
         * {
@@ -43,32 +47,42 @@
             overflow-x: hidden;
         }
 
+        [data-theme="light"] body {
+            background: radial-gradient(ellipse at 20% 50%, #f1f5f9 0%, #e2e8f0 100%);
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            animation: fadeIn 0.6s ease;
         }
 
         /* ============================================================
-           انیمیشن‌های اصلی
+           ANIMATIONS
            ============================================================ */
-        @keyframes shimmer {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-8px) rotate(2deg); }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
         }
 
         @keyframes pulseGlow {
             0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.05); }
-            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.15); }
+            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.12); }
         }
 
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
         }
 
         @keyframes rotateGlow {
@@ -76,18 +90,23 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes counterIn {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
         /* ============================================================
-           کارت‌های Glass
+           GLASS CARD
            ============================================================ */
         .glass-card {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
+            border-radius: var(--card-radius);
             padding: 20px 24px;
             box-shadow: var(--glass-shadow);
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: var(--transition-smooth);
             position: relative;
             overflow: hidden;
         }
@@ -99,7 +118,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.03), transparent 70%);
+            background: radial-gradient(circle at center, var(--primary-glow), transparent 70%);
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.6s ease;
@@ -110,9 +129,9 @@
         }
 
         .glass-card:hover {
-            border-color: rgba(0, 212, 255, 0.12);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), var(--primary-glow);
+            border-color: rgba(0, 212, 255, 0.15);
+            transform: translateY(-3px);
+            box-shadow: var(--glass-shadow), var(--primary-glow);
         }
 
         .glass-card .card-glow {
@@ -121,46 +140,46 @@
             right: -50%;
             width: 200%;
             height: 200%;
-            background: conic-gradient(from 0deg, transparent, rgba(0, 212, 255, 0.05), transparent, rgba(139, 92, 246, 0.05), transparent);
-            animation: rotateGlow 20s linear infinite;
+            background: conic-gradient(from 0deg, transparent, rgba(0, 212, 255, 0.04), transparent, rgba(139, 92, 246, 0.04), transparent);
+            animation: rotateGlow 25s linear infinite;
             pointer-events: none;
-            opacity: 0.3;
+            opacity: 0.2;
         }
 
         /* ============================================================
-           هدر خوش‌آمدگویی
+           HEADER
            ============================================================ */
-        .welcome-header {
+        .dashboard-header {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 24px 28px;
+            border-radius: var(--card-radius);
+            padding: 22px 28px;
             margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 14px;
-            animation: slideUp 0.4s ease;
             box-shadow: var(--glass-shadow);
+            animation: slideUp 0.4s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .welcome-header::before {
+        .dashboard-header::before {
             content: '';
             position: absolute;
             top: -50%;
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at 30% 40%, rgba(0, 212, 255, 0.04), transparent 60%);
+            background: radial-gradient(circle at 30% 40%, rgba(0, 212, 255, 0.05), transparent 60%);
             pointer-events: none;
         }
 
-        .welcome-header .greeting {
+        .dashboard-header .greeting {
             font-size: 1.3rem;
             font-weight: 700;
             background: linear-gradient(135deg, #f1f5f9, #94a3b8);
@@ -170,56 +189,112 @@
             z-index: 1;
         }
 
-        .welcome-header .greeting .highlight {
+        [data-theme="light"] .dashboard-header .greeting {
+            background: linear-gradient(135deg, #0f172a, #475569);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dashboard-header .greeting .highlight {
             background: linear-gradient(135deg, #00d4ff, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .welcome-header .status {
+        .dashboard-header .status-group {
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
+            gap: 16px;
             position: relative;
             z-index: 1;
+            flex-wrap: wrap;
         }
 
-        .welcome-header .status .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #22d3ee;
-            animation: pulse-dot 2s infinite;
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
         }
+
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-badge .dot.online { background: #22d3ee; box-shadow: 0 0 12px rgba(34, 211, 238, 0.3); }
+        .status-badge .dot.warning { background: #f59e0b; box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+        .status-badge .dot.offline { background: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.3); }
 
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.4; transform: scale(0.8); }
         }
 
-        .welcome-header .quick-stats {
-            display: flex;
-            gap: 18px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .welcome-header .quick-stats .num {
+        .status-badge .value {
             color: var(--text-primary);
             font-weight: 600;
         }
 
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-glass {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-glass:hover {
+            border-color: rgba(0, 212, 255, 0.2);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--primary-glow);
+        }
+
+        .btn-glass-primary {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
+            border-color: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+        }
+
+        .btn-glass-primary:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+        }
+
         /* ============================================================
-           کارت‌های آماری (Liquid Glass)
+           STATS GRID
            ============================================================ */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 14px;
             margin-bottom: 24px;
         }
@@ -232,13 +307,20 @@
             border-radius: 16px;
             padding: 16px 18px;
             text-align: center;
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-            min-width: 0;
-            overflow: hidden;
-            position: relative;
+            transition: var(--transition-smooth);
             box-shadow: var(--glass-shadow);
-            animation: slideUp 0.6s ease;
+            animation: slideUp 0.5s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: default;
         }
+
+        .stat-card:nth-child(1) { animation-delay: 0.05s; }
+        .stat-card:nth-child(2) { animation-delay: 0.10s; }
+        .stat-card:nth-child(3) { animation-delay: 0.15s; }
+        .stat-card:nth-child(4) { animation-delay: 0.20s; }
+        .stat-card:nth-child(5) { animation-delay: 0.25s; }
+        .stat-card:nth-child(6) { animation-delay: 0.30s; }
 
         .stat-card::before {
             content: '';
@@ -247,7 +329,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.04), transparent 70%);
+            background: radial-gradient(circle at center, var(--primary-glow), transparent 70%);
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.6s ease;
@@ -258,9 +340,9 @@
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
             border-color: rgba(0, 212, 255, 0.12);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), var(--primary-glow);
+            box-shadow: var(--glass-shadow), var(--primary-glow);
         }
 
         .stat-card .stat-icon {
@@ -268,6 +350,8 @@
             margin-bottom: 4px;
             display: block;
             animation: float 4s ease-in-out infinite;
+            position: relative;
+            z-index: 1;
         }
 
         .stat-card .stat-label {
@@ -276,6 +360,8 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             font-weight: 600;
+            position: relative;
+            z-index: 1;
         }
 
         .stat-card .stat-value {
@@ -286,80 +372,96 @@
             background: linear-gradient(135deg, #f1f5f9, #94a3b8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 1;
+            animation: counterIn 0.4s ease;
+        }
+
+        [data-theme="light"] .stat-card .stat-value {
+            background: linear-gradient(135deg, #0f172a, #475569);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .stat-card .stat-value.cyan { background: linear-gradient(135deg, #00d4ff, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.green { background: linear-gradient(135deg, #22d3ee, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-card .stat-value.purple { background: linear-gradient(135deg, #8b5cf6, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.pink { background: linear-gradient(135deg, #ec4899, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-card .stat-value.orange { background: linear-gradient(135deg, #f59e0b, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card .stat-value.green { background: linear-gradient(135deg, #22d3ee, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card .stat-value.pink { background: linear-gradient(135deg, #ec4899, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card .stat-value.teal { background: linear-gradient(135deg, #14b8a6, #2dd4bf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .stat-card .stat-change {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 500;
+            position: relative;
+            z-index: 1;
         }
+
         .stat-card .stat-change.up { color: #22d3ee; }
-        .stat-card .stat-change.down { color: #ef4444; }
-        .stat-card .stat-change.neutral { color: #94a3b8; }
         .stat-card .stat-change.up::before { content: '▲ '; }
+        .stat-card .stat-change.down { color: #ef4444; }
         .stat-card .stat-change.down::before { content: '▼ '; }
+        .stat-card .stat-change.neutral { color: var(--text-muted); }
+
+        .stat-card .stat-sub {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 1;
+            margin-top: 2px;
+        }
 
         /* ============================================================
-           نمودارها
+           ACTIVITY SECTION
            ============================================================ */
-        .chart-card {
+        .activity-section {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 18px 22px;
-            margin-bottom: 20px;
+            border-radius: var(--card-radius);
+            padding: 20px 24px;
             box-shadow: var(--glass-shadow);
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-            animation: slideUp 0.6s ease;
+            animation: slideUp 0.8s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .chart-card:hover {
-            border-color: rgba(0, 212, 255, 0.08);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), var(--primary-glow);
-        }
-
-        .chart-card .card-glow {
+        .activity-section .card-glow {
             position: absolute;
             top: -50%;
             right: -50%;
             width: 200%;
             height: 200%;
-            background: conic-gradient(from 0deg, transparent, rgba(0, 212, 255, 0.04), transparent, rgba(139, 92, 246, 0.04), transparent);
-            animation: rotateGlow 25s linear infinite;
+            background: conic-gradient(from 0deg, transparent, rgba(245, 158, 11, 0.04), transparent, rgba(0, 212, 255, 0.04), transparent);
+            animation: rotateGlow 30s linear infinite;
             pointer-events: none;
-            opacity: 0.2;
+            opacity: 0.15;
         }
 
-        .chart-card .chart-header {
+        .activity-section .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             position: relative;
             z-index: 1;
         }
 
-        .chart-card .chart-title {
+        .activity-section .section-title {
             font-size: 0.85rem;
             font-weight: 600;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
-        .chart-card .chart-title i { color: #00d4ff; }
+        .activity-section .section-title i {
+            color: #f59e0b;
+        }
 
-        .chart-card .chart-badge {
+        .activity-section .section-badge {
             font-size: 0.5rem;
             padding: 3px 12px;
             background: rgba(34, 211, 238, 0.08);
@@ -368,52 +470,6 @@
             border: 1px solid rgba(34, 211, 238, 0.08);
             animation: pulseGlow 2s infinite;
         }
-
-        .chart-card .chart-wrapper {
-            height: 200px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .chart-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        /* ============================================================
-           فعالیت‌های اخیر
-           ============================================================ */
-        .activity-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 18px 22px;
-            box-shadow: var(--glass-shadow);
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-            animation: slideUp 1s ease;
-        }
-
-        .activity-card:hover {
-            border-color: rgba(0, 212, 255, 0.08);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), var(--primary-glow);
-        }
-
-        .activity-card .activity-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .activity-card .activity-title i { color: #f59e0b; }
 
         .activity-item {
             display: flex;
@@ -425,6 +481,8 @@
             margin-bottom: 4px;
             transition: all 0.3s ease;
             border: 1px solid transparent;
+            position: relative;
+            z-index: 1;
         }
 
         .activity-item:hover {
@@ -450,6 +508,8 @@
         .activity-item .a-icon.sell { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
         .activity-item .a-icon.neutral { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
         .activity-item .a-icon.model { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+        .activity-item .a-icon.system { background: rgba(0, 212, 255, 0.12); color: #00d4ff; }
+        .activity-item .a-icon.alert { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
 
         .activity-item .a-text {
             flex: 1;
@@ -457,7 +517,10 @@
             color: var(--text-primary);
         }
 
-        .activity-item .a-text .highlight { color: #00d4ff; font-weight: 500; }
+        .activity-item .a-text .highlight {
+            color: #00d4ff;
+            font-weight: 500;
+        }
 
         .activity-item .a-time {
             font-size: 0.6rem;
@@ -466,10 +529,75 @@
             padding: 2px 10px;
             border-radius: 20px;
             background: rgba(255, 255, 255, 0.03);
+            white-space: nowrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 1;
+        }
+
+        .empty-state .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        .empty-state .title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .subtitle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .activity-skeleton {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-bottom: 4px;
+        }
+
+        .activity-skeleton .skeleton-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--bg-input);
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+        }
+
+        .activity-skeleton .skeleton-text {
+            flex: 1;
+            height: 14px;
+            border-radius: 6px;
+            background: var(--bg-input);
+            animation: skeletonPulse 1.5s ease-in-out infinite 0.2s;
+        }
+
+        .activity-skeleton .skeleton-time {
+            width: 60px;
+            height: 12px;
+            border-radius: 6px;
+            background: var(--bg-input);
+            animation: skeletonPulse 1.5s ease-in-out infinite 0.4s;
+        }
+
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
         }
 
         /* ============================================================
-           دکمه‌های سریع
+           QUICK ACTIONS
            ============================================================ */
         .quick-actions {
             display: flex;
@@ -478,713 +606,603 @@
             margin-top: 20px;
         }
 
-        .btn-glass {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-            text-decoration: none;
-            font-family: inherit;
-            box-shadow: var(--glass-shadow);
-        }
-
-        .btn-glass:hover {
-            border-color: rgba(0, 212, 255, 0.15);
-            color: var(--text-primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), var(--primary-glow);
-        }
-
-        .btn-glass-primary {
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
-            border-color: rgba(0, 212, 255, 0.12);
-            color: #00d4ff;
-        }
-
-        .btn-glass-primary:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+        .quick-actions .btn-glass {
+            flex: 1;
+            min-width: 100px;
+            justify-content: center;
+            padding: 10px 18px;
         }
 
         /* ============================================================
-           ریسپانسیو
+           RESPONSIVE
            ============================================================ */
         @media (max-width: 1024px) {
-            .chart-grid { grid-template-columns: 1fr 1fr; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
         @media (max-width: 768px) {
             body { padding: 12px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .chart-grid { grid-template-columns: 1fr; }
+            .dashboard-header { flex-direction: column; align-items: stretch; padding: 16px 18px; }
+            .dashboard-header .status-group { flex-wrap: wrap; }
+            .header-actions { width: 100%; }
+            .header-actions .btn-glass { flex: 1; justify-content: center; }
             .stat-card { padding: 12px 14px; }
             .stat-card .stat-value { font-size: 1rem; }
-            .welcome-header { flex-direction: column; align-items: stretch; padding: 16px 18px; }
-            .welcome-header .quick-stats { flex-wrap: wrap; }
-            .chart-card .chart-wrapper { height: 150px; }
             .activity-item { flex-wrap: wrap; }
             .activity-item .a-time { width: 100%; text-align: left; }
-            .quick-actions .btn-glass { flex: 1; justify-content: center; }
+            .quick-actions .btn-glass { flex: 1; min-width: 80px; font-size: 0.7rem; }
         }
 
         @media (max-width: 480px) {
+            body { padding: 8px; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
             .stat-card .stat-value { font-size: 0.85rem; }
             .stat-card .stat-icon { font-size: 1.2rem; }
-        }
-
-        /* ============================================================
-           اسپینر لودینگ سراسری
-           ============================================================ */
-        .global-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(ellipse at 20% 50%, #0f172a 0%, #020617 100%);
-            z-index: 99999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.8s ease;
-        }
-
-        .global-loader.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .global-loader .loader-content {
-            text-align: center;
-            max-width: 400px;
-            padding: 20px;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: var(--glass-shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .global-loader .loader-content::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.03), transparent 70%);
-            pointer-events: none;
-        }
-
-        .global-loader .loader-spinner {
-            width: 64px;
-            height: 64px;
-            border: 3px solid rgba(255, 255, 255, 0.05);
-            border-top-color: #00d4ff;
-            border-right-color: #8b5cf6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .global-loader .loader-spinner::after {
-            content: '';
-            position: absolute;
-            inset: -6px;
-            border-radius: 50%;
-            border: 1px solid rgba(0, 212, 255, 0.1);
-            animation: spin 1.5s linear infinite reverse;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .global-loader .loader-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .global-loader .loader-title .highlight {
-            background: linear-gradient(135deg, #00d4ff, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .global-loader .loader-subtitle {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .global-loader .loader-steps {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 16px 0;
-            text-align: right;
-            position: relative;
-            z-index: 1;
-        }
-
-        .global-loader .loader-steps li {
-            padding: 6px 0;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            transition: all 0.4s ease;
-        }
-
-        .global-loader .loader-steps li .step-icon {
-            font-size: 1rem;
-            min-width: 28px;
-            text-align: center;
-        }
-
-        .global-loader .loader-steps li.done {
-            color: #22d3ee;
-        }
-
-        .global-loader .loader-steps li.active {
-            color: #00d4ff;
-            font-weight: 500;
-        }
-
-        .global-loader .loader-steps li .step-status {
-            margin-right: auto;
-            font-size: 0.65rem;
-            color: var(--text-muted);
-        }
-
-        .global-loader .loader-steps li.done .step-status {
-            color: #22d3ee;
-        }
-
-        .global-loader .loader-steps li.active .step-status {
-            color: #00d4ff;
-        }
-
-        .global-loader .loader-progress {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 4px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .global-loader .loader-progress .progress-fill {
-            height: 100%;
-            border-radius: 10px;
-            background: linear-gradient(90deg, #00d4ff, #8b5cf6, #ec4899);
-            width: 0%;
-            transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            .stat-card .stat-label { font-size: 0.5rem; }
+            .dashboard-header .greeting { font-size: 1rem; }
+            .status-badge { font-size: 0.65rem; padding: 4px 10px; }
+            .activity-item .a-text { font-size: 0.7rem; }
+            .quick-actions .btn-glass { padding: 6px 12px; font-size: 0.65rem; }
         }
     </style>
 </head>
 <body>
 
     <!-- ============================================================
-    اسپینر لودینگ سراسری
+    SPLASH LOADER (بارگذاری اولیه وب سرویس)
     ============================================================ -->
-    <div class="global-loader" id="globalLoader">
-        <div class="loader-content">
-            <div class="loader-spinner"></div>
-            <div class="loader-title">🚀 <span class="highlight">سیستم تحلیلگر</span></div>
-            <div class="loader-subtitle">در حال آماده‌سازی...</div>
-            <ul class="loader-steps" id="loaderSteps">
-                <li id="step1"><span class="step-icon">⏳</span> اتصال به دیتابیس‌ها<span class="step-status">در انتظار</span></li>
-                <li id="step2"><span class="step-icon">⏳</span> بارگذاری مدل<span class="step-status">در انتظار</span></li>
-                <li id="step3"><span class="step-icon">⏳</span> اتصال به API<span class="step-status">در انتظار</span></li>
-                <li id="step4"><span class="step-icon">⏳</span> دریافت لیست ارزها<span class="step-status">در انتظار</span></li>
-                <li id="step5"><span class="step-icon">⏳</span> دریافت قیمت‌ها<span class="step-status">در انتظار</span></li>
-                <li id="step6"><span class="step-icon">⏳</span> آماده‌سازی داشبورد<span class="step-status">در انتظار</span></li>
-            </ul>
-            <div class="loader-progress">
-                <div class="progress-fill" id="loaderProgress"></div>
-            </div>
-        </div>
-    </div>
+    <div id="splashLoaderContainer"></div>
 
     <!-- ============================================================
-    نویگیشن
+    LOADING OVERLAY (لودینگ داخلی برای پروسه‌ها)
+    ============================================================ -->
+    <div id="loadingOverlayContainer"></div>
+
+    <!-- ============================================================
+    NAVIGATION
     ============================================================ -->
     <div id="navContainer"></div>
 
     <!-- ============================================================
-    محتوای اصلی
+    MAIN CONTENT
     ============================================================ -->
     <div class="container" id="dashboardContent" style="display:none;">
 
-        <!-- ===== هدر خوش‌آمدگویی ===== -->
-        <div class="welcome-header">
+        <!-- ===== HEADER ===== -->
+        <div class="dashboard-header">
             <div>
                 <div class="greeting">👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span></div>
-                <div class="status">
-                    <span class="dot"></span>
-                    <span id="statusMessage">سیستم در وضعیت پایدار است</span>
-                </div>
             </div>
-            <div class="quick-stats">
-                <span>🧠 مدل: <span class="num" id="modelStatus">—</span></span>
-                <span>📊 جمع‌آوری‌ها: <span class="num" id="collectionsDisplay">—</span></span>
+            <div class="status-group">
+                <div class="status-badge">
+                    <span class="dot online" id="statusDot"></span>
+                    <span id="statusText">سیستم پایدار</span>
+                </div>
+                <div class="status-badge">
+                    <i class="fas fa-brain" style="color:#8b5cf6;"></i>
+                    <span>مدل:</span>
+                    <span class="value" id="modelStatus">—</span>
+                </div>
+                <div class="status-badge">
+                    <i class="fas fa-database" style="color:#00d4ff;"></i>
+                    <span>داده:</span>
+                    <span class="value" id="dataCount">—</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-glass btn-glass-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> بروزرسانی
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- ===== کارت‌های آماری ===== -->
+        <!-- ===== STATS GRID ===== -->
         <div class="stats-grid" id="statsGrid">
+            <!-- بیت‌کوین -->
             <div class="stat-card">
                 <span class="stat-icon">₿</span>
                 <span class="stat-label">بیت‌کوین</span>
                 <div class="stat-value cyan" id="btcPrice">—</div>
                 <div class="stat-change up" id="btcChange">—</div>
             </div>
+
+            <!-- اتریوم -->
             <div class="stat-card">
                 <span class="stat-icon">⟠</span>
                 <span class="stat-label">اتریوم</span>
                 <div class="stat-value purple" id="ethPrice">—</div>
                 <div class="stat-change up" id="ethChange">—</div>
             </div>
+
+            <!-- ترس و طمع -->
             <div class="stat-card">
                 <span class="stat-icon">😨</span>
-                <span class="stat-label">ترس و طمع</span>
+                <span class="stat-label">شاخص ترس و طمع</span>
                 <div class="stat-value orange" id="fearGreedValue">—</div>
                 <div class="stat-change neutral" id="fearGreedLabel">—</div>
             </div>
+
+            <!-- سلطه بیت‌کوین -->
             <div class="stat-card">
                 <span class="stat-icon">📊</span>
-                <span class="stat-label">سلطه BTC</span>
+                <span class="stat-label">سلطه بیت‌کوین</span>
                 <div class="stat-value cyan" id="btcDominance">—</div>
                 <div class="stat-change neutral" id="btcDominanceChange">—</div>
             </div>
+
+            <!-- سیگنال خرید -->
             <div class="stat-card">
                 <span class="stat-icon">📈</span>
                 <span class="stat-label">سیگنال خرید</span>
                 <div class="stat-value green" id="buySignals">—</div>
-                <div class="stat-change up" id="buyChange">—</div>
+                <div class="stat-sub" id="buySub">پیش‌بینی‌های اخیر</div>
             </div>
+
+            <!-- سیگنال فروش -->
             <div class="stat-card">
                 <span class="stat-icon">📉</span>
                 <span class="stat-label">سیگنال فروش</span>
                 <div class="stat-value pink" id="sellSignals">—</div>
-                <div class="stat-change down" id="sellChange">—</div>
+                <div class="stat-sub" id="sellSub">پیش‌بینی‌های اخیر</div>
             </div>
         </div>
 
-        <!-- ===== نمودارها ===== -->
-        <div class="chart-grid">
-            <div class="chart-card">
-                <div class="card-glow"></div>
-                <div class="chart-header">
-                    <div class="chart-title"><i class="fas fa-microchip"></i> منابع سیستم (CPU / RAM)</div>
-                    <span class="chart-badge">● LIVE</span>
+        <!-- ===== ACTIVITIES ===== -->
+        <div class="activity-section">
+            <div class="card-glow"></div>
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-bolt"></i>
+                    فعالیت‌های اخیر
                 </div>
-                <div class="chart-wrapper"><canvas id="cpuRamChart"></canvas></div>
+                <span class="section-badge">● لحظه‌ای</span>
             </div>
-            <div class="chart-card">
-                <div class="card-glow"></div>
-                <div class="chart-header">
-                    <div class="chart-title"><i class="fas fa-plug"></i> درخواست‌های API</div>
-                    <span class="chart-badge">● LIVE</span>
-                </div>
-                <div class="chart-wrapper"><canvas id="apiChart"></canvas></div>
-            </div>
-        </div>
-
-        <!-- ===== فعالیت‌های اخیر ===== -->
-        <div class="activity-card">
-            <div class="activity-title"><i class="fas fa-bolt"></i> فعالیت‌های اخیر</div>
             <div id="activityList">
-                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
-                    <div class="loading-spinner" style="width:24px;height:24px;border:3px solid rgba(255,255,255,0.05);border-top-color:#00d4ff;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></div>
-                    <p style="margin-top:10px;">در حال بارگذاری...</p>
+                <!-- Skeleton Loading -->
+                <div class="activity-skeleton">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-time"></div>
+                </div>
+                <div class="activity-skeleton">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-time"></div>
+                </div>
+                <div class="activity-skeleton">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-time"></div>
+                </div>
+                <div class="activity-skeleton">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-time"></div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== دکمه‌های سریع ===== -->
+        <!-- ===== QUICK ACTIONS ===== -->
         <div class="quick-actions">
-            <a href="/analyzer" class="btn-glass btn-glass-primary"><i class="fas fa-robot"></i> تحلیلگر</a>
-            <a href="/model" class="btn-glass"><i class="fas fa-brain"></i> مدل</a>
-            <a href="/database" class="btn-glass"><i class="fas fa-database"></i> دیتابیس</a>
-            <a href="/chart" class="btn-glass"><i class="fas fa-chart-line"></i> نمودار</a>
-            <button class="btn-glass" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> بروزرسانی</button>
+            <a href="/analyzer" class="btn-glass btn-glass-primary">
+                <i class="fas fa-robot"></i> تحلیلگر
+            </a>
+            <a href="/model" class="btn-glass">
+                <i class="fas fa-brain"></i> مدل
+            </a>
+            <a href="/database" class="btn-glass">
+                <i class="fas fa-database"></i> دیتابیس
+            </a>
+            <a href="/chart" class="btn-glass">
+                <i class="fas fa-chart-line"></i> نمودار
+            </a>
+            <a href="/alerts" class="btn-glass">
+                <i class="fas fa-bell"></i> هشدارها
+                <span class="nav-badge" id="alertBadge" style="display:none;">0</span>
+            </a>
         </div>
 
     </div>
 
     <!-- ============================================================
-    اسکریپت‌ها
+    SCRIPTS
     ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
-    <script src="/js/loading.js"></script>
 
     <script>
         // ============================================================
-        // ۱. بارگذاری نویگیشن
+        // 1. LOAD COMPONENTS
         // ============================================================
-        function loadNav() {
-            const container = document.getElementById('navContainer');
+
+        async function loadComponent(id, url) {
+            const container = document.getElementById(id);
             if (!container) return;
-            fetch('/nav.html')
-                .then(res => {
-                    if (!res.ok) throw new Error('nav.html not found');
-                    return res.text();
-                })
-                .then(html => {
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                    console.log('✅ Navigation loaded');
-                })
-                .catch(err => {
-                    console.error('❌ Nav error:', err);
-                    container.innerHTML = `
-                        <div style="padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;border:1px solid rgba(255,255,255,0.05);color:#94a3b8;text-align:center;margin:16px;">
-                            ⚠️ خطا در بارگذاری منو
-                            <button onclick="location.reload()" style="display:block;margin:8px auto 0;padding:4px 16px;background:#00d4ff;color:#0f172a;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
-                        </div>
-                    `;
-                });
-        }
-
-        // ============================================================
-        // ۲. مدیریت لودینگ با loading.js
-        // ============================================================
-        function startLoading() {
-            if (typeof Loading === 'undefined') {
-                console.warn('⚠️ Loading.js not loaded, using fallback');
-                setTimeout(() => {
-                    document.getElementById('globalLoader').classList.add('hidden');
-                    document.getElementById('dashboardContent').style.display = 'block';
-                    initDashboard();
-                }, 2000);
-                return;
-            }
-
-            const loader = new Loading({
-                steps: [
-                    { id: 'step1', label: 'اتصال به دیتابیس‌ها' },
-                    { id: 'step2', label: 'بارگذاری مدل' },
-                    { id: 'step3', label: 'اتصال به API' },
-                    { id: 'step4', label: 'دریافت لیست ارزها' },
-                    { id: 'step5', label: 'دریافت قیمت‌ها' },
-                    { id: 'step6', label: 'آماده‌سازی داشبورد' }
-                ],
-                onComplete: () => {
-                    document.getElementById('globalLoader').classList.add('hidden');
-                    document.getElementById('dashboardContent').style.display = 'block';
-                    initDashboard();
-                }
-            });
-
-            loader.start();
-        }
-
-        // ============================================================
-        // ۳. داشبورد
-        // ============================================================
-        let charts = {};
-        let chartData = { cpu: [], ram: [], api: [], labels: [] };
-        const MAX_DATA = 20;
-        let statsInterval = null;
-
-        function initCharts() {
-            const textColor = '#94a3b8';
-            const gridColor = 'rgba(255,255,255,0.04)';
-
-            const ctx1 = document.getElementById('cpuRamChart')?.getContext('2d');
-            if (ctx1) {
-                charts.cpuRam = new Chart(ctx1, {
-                    type: 'line',
-                    data: {
-                        labels: chartData.labels,
-                        datasets: [
-                            { label: 'CPU (%)', data: chartData.cpu, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true },
-                            { label: 'RAM (%)', data: chartData.ram, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'top', labels: { color: textColor, font: { size: 8, family: 'inherit' }, boxWidth: 10, usePointStyle: true, padding: 6 } } },
-                        scales: {
-                            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 6, family: 'inherit' } } },
-                            y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 6, family: 'inherit' }, callback: v => v + '%' } }
-                        },
-                        animation: { duration: 300 }
-                    }
-                });
-            }
-
-            const ctx2 = document.getElementById('apiChart')?.getContext('2d');
-            if (ctx2) {
-                charts.api = new Chart(ctx2, {
-                    type: 'bar',
-                    data: {
-                        labels: chartData.labels,
-                        datasets: [{ label: 'درخواست‌ها', data: chartData.api, backgroundColor: 'rgba(236,72,153,0.4)', borderColor: '#ec4899', borderWidth: 1.5, borderRadius: 4 }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { labels: { color: textColor, font: { size: 8, family: 'inherit' } } } },
-                        scales: {
-                            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 6, family: 'inherit' } } },
-                            y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 6, family: 'inherit' } } }
-                        },
-                        animation: { duration: 300 }
-                    }
-                });
-            }
-        }
-
-        function updateCharts(stats) {
-            const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-            const ramPercent = Math.min((stats?.ram?.used_mb || 0) / 512 * 100, 100);
-            const cpuPercent = stats?.cpu?.percent || 0;
-            const apiCount = parseInt(document.getElementById('collectionsDisplay')?.textContent) || 0;
-
-            chartData.cpu.push(cpuPercent);
-            chartData.ram.push(ramPercent);
-            chartData.api.push(apiCount);
-            chartData.labels.push(now);
-
-            if (chartData.cpu.length > MAX_DATA) {
-                chartData.cpu.shift();
-                chartData.ram.shift();
-                chartData.api.shift();
-                chartData.labels.shift();
-            }
-
-            if (charts.cpuRam) {
-                charts.cpuRam.data.labels = chartData.labels;
-                charts.cpuRam.data.datasets[0].data = chartData.cpu;
-                charts.cpuRam.data.datasets[1].data = chartData.ram;
-                charts.cpuRam.update('none');
-            }
-            if (charts.api) {
-                charts.api.data.labels = chartData.labels;
-                charts.api.data.datasets[0].data = chartData.api;
-                charts.api.update('none');
-            }
-        }
-
-        async function loadAppStats() {
             try {
-                const res = await fetch('/api/app/stats', { credentials: 'include' });
-                const result = await res.json();
-                if (result.success) {
-                    const stats = result.data;
-                    const cpuEl = document.getElementById('cpuValue');
-                    const ramEl = document.getElementById('ramValue');
-                    const ramBar = document.getElementById('ramBar');
-                    const ramLabel = document.getElementById('ramLabel');
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const html = await res.text();
+                container.innerHTML = html;
 
-                    if (cpuEl) {
-                        cpuEl.textContent = stats.cpu.percent + '%';
-                        cpuEl.className = 'stat-value ' + (stats.cpu.percent > 80 ? 'red' : stats.cpu.percent > 60 ? 'orange' : 'cyan');
-                    }
-                    if (ramEl) {
-                        const pct = Math.min((stats.ram.used_mb / 512) * 100, 100);
-                        ramEl.textContent = stats.ram.used_mb.toFixed(1) + ' MB (' + pct.toFixed(1) + '%)';
-                        ramEl.className = 'stat-value ' + (pct > 80 ? 'red' : pct > 60 ? 'orange' : 'cyan');
-                    }
-                    if (ramBar) {
-                        const pct = Math.min((stats.ram.used_mb / 512) * 100, 100);
-                        ramBar.style.width = pct + '%';
-                        ramBar.style.background = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#22d3ee';
-                    }
-                    if (ramLabel) {
-                        ramLabel.textContent = stats.ram.used_mb.toFixed(1) + ' MB / 512 MB';
-                    }
+                // اجرای اسکریپت‌های داخل کامپوننت
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(old => {
+                    const ns = document.createElement('script');
+                    ns.textContent = old.textContent;
+                    old.parentNode.replaceChild(ns, old);
+                });
+                return true;
+            } catch (err) {
+                console.error(`❌ Failed to load ${url}:`, err);
+                return false;
+            }
+        }
 
-                    updateCharts(stats);
+        // ============================================================
+        // 2. INITIALIZE
+        // ============================================================
+
+        let statsInterval = null;
+        let isDashboardReady = false;
+
+        async function initializeDashboard() {
+            console.log('🚀 Initializing dashboard...');
+
+            // بارگذاری کامپوننت‌ها
+            await Promise.all([
+                loadComponent('splashLoaderContainer', '/components/loading.html'),
+                loadComponent('loadingOverlayContainer', '/components/loading-overlay.html'),
+                loadComponent('navContainer', '/components/nav.html')
+            ]);
+
+            // شروع لودینگ اولیه (splash loader)
+            if (window.loading && typeof window.loading.start === 'function') {
+                window.loading.start(() => {
+                    // بعد از کامل شدن لودینگ اولیه
+                    showDashboard();
+                });
+            } else {
+                // Fallback اگر کامپوننت لود نشد
+                console.warn('⚠️ Loading component not loaded, using fallback');
+                setTimeout(showDashboard, 1500);
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboardContent').style.display = 'block';
+            initDashboard();
+        }
+
+        // ============================================================
+        // 3. DASHBOARD LOGIC
+        // ============================================================
+
+        async function initDashboard() {
+            if (isDashboardReady) return;
+            isDashboardReady = true;
+
+            console.log('📊 Loading dashboard data...');
+
+            // نمایش لودینگ داخلی
+            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+                window.loadingSystem.show({
+                    messages: ['بارگذاری داده‌ها...', 'دریافت قیمت‌ها|لطفاً صبر کنید', 'بروزرسانی فعالیت‌ها|تقریباً تمام است'],
+                    duration: 2000                });
+            }
+
+            try {
+                await Promise.all([
+                    loadUserInfo(),
+                    loadMarketData(),
+                    loadActivities()
+                ]);
+
+                // شروع آپدیت خودکار
+                startAutoUpdate();
+
+                // مخفی کردن لودینگ داخلی
+                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                    window.loadingSystem.hide();
                 }
-            } catch (e) { console.error('App stats error:', e); }
+
+                console.log('✅ Dashboard ready');
+            } catch (err) {
+                console.error('❌ Dashboard init error:', err);
+                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                    window.loadingSystem.hide();
+                }
+                showToast('⚠️ خطا در بارگذاری داده‌ها', 'warning');
+            }
+        }
+
+        // ============================================================
+        // 4. DATA LOADERS
+        // ============================================================
+
+        async function loadUserInfo() {
+            try {
+                const data = await api.getUserInfo();
+                if (data.success) {
+                    document.getElementById('userName').textContent = data.data.username || 'کاربر';
+                }
+            } catch (err) {
+                console.error('User info error:', err);
+            }
         }
 
         async function loadMarketData() {
             try {
-                const metrics = await app.loadMetrics();
-                if (metrics) {
-                    const m = metrics.metrics || {};
-                    const btc = m.btc_price || {};
-                    document.getElementById('btcPrice').textContent = btc.value ? formatCurrency(btc.value) : '—';
-                    const btcChange = document.getElementById('btcChange');
+                // دریافت متریک‌ها از API
+                const metricsData = await api.getMetrics();
+                if (!metricsData.success) {
+                    console.warn('Metrics API failed, using fallback');
+                    return;
+                }
+
+                const metrics = metricsData.data?.metrics || {};
+                
+                // ===== بیت‌کوین =====
+                const btc = metrics.btc_price || {};
+                const btcEl = document.getElementById('btcPrice');
+                const btcChangeEl = document.getElementById('btcChange');
+                if (btc.value) {
+                    btcEl.textContent = formatCurrency(btc.value);
                     if (btc.change_24h !== undefined) {
-                        btcChange.textContent = formatPercent(btc.change_24h);
-                        btcChange.className = 'stat-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
-                    }
-
-                    const eth = m.eth_price || {};
-                    document.getElementById('ethPrice').textContent = eth.value ? formatCurrency(eth.value) : '—';
-                    const ethChange = document.getElementById('ethChange');
-                    if (eth.change_24h !== undefined) {
-                        ethChange.textContent = formatPercent(eth.change_24h);
-                        ethChange.className = 'stat-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
-                    }
-
-                    const fg = m.fear_greed || {};
-                    document.getElementById('fearGreedValue').textContent = fg.value || '—';
-                    document.getElementById('fearGreedLabel').textContent = fg.classification || '—';
-
-                    const dom = m.btc_dominance || {};
-                    document.getElementById('btcDominance').textContent = dom.value ? dom.value + '%' : '—';
-
-                    const stats = metrics.stats || {};
-                    document.getElementById('collectionsDisplay').textContent = stats.collections || 0;
-
-                    const model = m.model_status?.value || {};
-                    document.getElementById('modelStatus').textContent = model.loaded ? '✅ فعال' : '📦 دمو';
-
-                    const apiStatus = m.api_status?.value || 'unknown';
-                    const dot = document.getElementById('statusDot');
-                    const msg = document.getElementById('statusMessage');
-                    dot.className = 'status-dot';
-                    if (apiStatus === 'ok') { dot.classList.add('online');
-                        msg.textContent = 'سیستم در وضعیت پایدار است'; } else if (apiStatus === 'degraded') { dot.classList.add('warning');
-                        msg.textContent = 'سیستم با عملکرد کاهش یافته کار می‌کند'; } else { dot.classList.add('offline');
-                        msg.textContent = 'سیستم با مشکل مواجه است'; }
-
-                    // سیگنال‌ها
-                    const predictions = await api.getPredictionHistory(50);
-                    if (predictions.success) {
-                        const buy = predictions.data.filter(p => p.signal_type === 'BUY').length;
-                        const sell = predictions.data.filter(p => p.signal_type === 'SELL').length;
-                        document.getElementById('buySignals').textContent = buy;
-                        document.getElementById('sellSignals').textContent = sell;
+                        btcChangeEl.textContent = formatPercent(btc.change_24h);
+                        btcChangeEl.className = 'stat-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
                     }
                 }
-            } catch (e) { console.error('Market data error:', e); }
+
+                // ===== اتریوم =====
+                const eth = metrics.eth_price || {};
+                const ethEl = document.getElementById('ethPrice');
+                const ethChangeEl = document.getElementById('ethChange');
+                if (eth.value) {
+                    ethEl.textContent = formatCurrency(eth.value);
+                    if (eth.change_24h !== undefined) {
+                        ethChangeEl.textContent = formatPercent(eth.change_24h);
+                        ethChangeEl.className = 'stat-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
+                    }
+                }
+
+                // ===== ترس و طمع =====
+                const fg = metrics.fear_greed || {};
+                const fgEl = document.getElementById('fearGreedValue');
+                const fgLabelEl = document.getElementById('fearGreedLabel');
+                if (fg.value) {
+                    fgEl.textContent = fg.value;
+                    fgLabelEl.textContent = fg.classification || '—';
+                    fgLabelEl.className = 'stat-change neutral';
+                }
+
+                // ===== سلطه بیت‌کوین =====
+                const dom = metrics.btc_dominance || {};
+                const domEl = document.getElementById('btcDominance');
+                const domChangeEl = document.getElementById('btcDominanceChange');
+                if (dom.value) {
+                    domEl.textContent = dom.value + '%';
+                    if (dom.change_24h !== undefined) {
+                        domChangeEl.textContent = formatPercent(dom.change_24h);
+                        domChangeEl.className = 'stat-change ' + (dom.change_24h >= 0 ? 'up' : 'down');
+                    }
+                }
+
+                // ===== وضعیت مدل =====
+                const model = metrics.model_status?.value || {};
+                const modelEl = document.getElementById('modelStatus');
+                modelEl.textContent = model.loaded ? '✅ فعال' : '📦 دمو';
+
+                // ===== تعداد داده‌ها =====
+                const stats = metricsData.data?.stats || {};
+                document.getElementById('dataCount').textContent = stats.collections || '—';
+
+                // ===== وضعیت سیستم =====
+                const apiStatus = metrics.api_status?.value || 'unknown';
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                dot.className = 'dot';
+                if (apiStatus === 'ok') {
+                    dot.classList.add('online');
+                    text.textContent = 'سیستم پایدار';
+                } else if (apiStatus === 'degraded') {
+                    dot.classList.add('warning');
+                    text.textContent = 'عملکرد کاهش یافته';
+                } else {
+                    dot.classList.add('offline');
+                    text.textContent = 'مشکل در سیستم';
+                }
+
+                // ===== سیگنال‌ها (از تاریخچه پیش‌بینی) =====
+                try {
+                    const predData = await api.getPredictionHistory(100);
+                    if (predData.success && predData.data) {
+                        const predictions = predData.data;
+                        const buyCount = predictions.filter(p => p.signal_type === 'BUY').length;
+                        const sellCount = predictions.filter(p => p.signal_type === 'SELL').length;
+                        document.getElementById('buySignals').textContent = buyCount || '—';
+                        document.getElementById('sellSignals').textContent = sellCount || '—';
+                    }
+                } catch (predErr) {
+                    console.warn('Prediction history error:', predErr);
+                }
+
+                // ===== شماره هشدارها =====
+                try {
+                    const alertData = await api.getAlerts({ limit: 1, resolved: false });
+                    const badge = document.getElementById('alertBadge');
+                    if (alertData.success && alertData.data) {
+                        const count = alertData.data.length || 0;
+                        badge.textContent = count;
+                        badge.style.display = count > 0 ? 'inline' : 'none';
+                    }
+                } catch (alertErr) {
+                    console.warn('Alert error:', alertErr);
+                }
+
+            } catch (err) {
+                console.error('Market data error:', err);
+                throw err;
+            }
         }
 
         async function loadActivities() {
+            const container = document.getElementById('activityList');
+            
             try {
-                const [alerts, history] = await Promise.all([
-                    api.getAlerts({ limit: 5, resolved: false }),
-                    api.getModelHistory(3)
+                // دریافت از چند منبع
+                const [alertsData, historyData] = await Promise.all([
+                    api.getAlerts({ limit: 5, resolved: false }).catch(() => ({ success: false, data: [] })),
+                    api.getModelHistory(3).catch(() => ({ success: false, data: [] }))
                 ]);
-                const container = document.getElementById('activityList');
-                let items = [];
 
-                if (alerts.success && alerts.data) {
-                    alerts.data.forEach(a => {
+                const items = [];
+
+                // هشدارها
+                if (alertsData.success && alertsData.data) {
+                    alertsData.data.forEach(a => {
+                        const levelMap = {
+                            'CRITICAL': { icon: '🚨', cls: 'alert', label: 'بحرانی' },
+                            'WARNING': { icon: '⚠️', cls: 'neutral', label: 'هشدار' },
+                            'INFO': { icon: 'ℹ️', cls: 'system', label: 'اطلاعیه' }
+                        };
+                        const info = levelMap[a.level] || levelMap.INFO;
                         items.push({
-                            icon: a.level === 'CRITICAL' ? '🚨' : a.level === 'WARNING' ? '⚠️' : 'ℹ️',
-                            cls: a.level === 'CRITICAL' ? 'sell' : a.level === 'WARNING' ? 'neutral' : 'buy',
-                            text: a.message || 'هشدار جدید',
+                            icon: info.icon,
+                            cls: info.cls,
+                            text: `${info.label}: ${a.message || 'رویداد جدید'}`,
                             time: new Date(a.timestamp)
                         });
                     });
                 }
 
-                if (history.success && history.data) {
-                    history.data.slice(0, 3).forEach(h => {
+                // تاریخچه مدل
+                if (historyData.success && historyData.data) {
+                    historyData.data.slice(0, 3).forEach(h => {
+                        const acc = ((h.accuracy || 0) * 100).toFixed(1);
                         items.push({
                             icon: '🧠',
                             cls: 'model',
-                            text: `مدل جدید <span class="highlight">${h.version || 'v1'}</span> با دقت ${((h.accuracy || 0) * 100).toFixed(1)}%`,
+                            text: `مدل جدید <span class="highlight">${h.version || 'v1'}</span> با دقت ${acc}%`,
                             time: new Date(h.training_date)
                         });
                     });
                 }
 
+                // مرتب‌سازی بر اساس زمان
                 items.sort((a, b) => b.time - a.time);
-                items = items.slice(0, 10);
+                const displayItems = items.slice(0, 10);
 
-                if (items.length === 0) {
-                    container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">📭 هیچ فعالیتی ثبت نشده است</div>`;
+                if (displayItems.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="icon">📭</span>
+                            <div class="title">هیچ فعالیتی ثبت نشده</div>
+                            <div class="subtitle">با تحلیل و آموزش مدل، فعالیت‌ها در اینجا نمایش داده می‌شوند</div>
+                        </div>
+                    `;
                     return;
                 }
 
-                container.innerHTML = items.map(item => `
+                container.innerHTML = displayItems.map(item => `
                     <div class="activity-item">
                         <div class="a-icon ${item.cls}">${item.icon}</div>
                         <div class="a-text">${item.text}</div>
                         <div class="a-time">${formatTimeAgo(item.time)}</div>
                     </div>
                 `).join('');
-            } catch (e) { console.error('Activities error:', e); }
+
+            } catch (err) {
+                console.error('Activities error:', err);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">⚠️</span>
+                        <div class="title">خطا در بارگذاری</div>
+                        <div class="subtitle">لطفاً صفحه را بروزرسانی کنید</div>
+                    </div>
+                `;
+            }
         }
 
-        async function loadUser() {
-            try {
-                const user = await app.loadUser();
-                if (user) document.getElementById('userName').textContent = user.username || 'کاربر';
-            } catch (e) { console.error('User error:', e); }
+        // ============================================================
+        // 5. AUTO UPDATE
+        // ============================================================
+
+        function startAutoUpdate() {
+            if (statsInterval) {
+                clearInterval(statsInterval);
+                statsInterval = null;
+            }
+
+            statsInterval = setInterval(async () => {
+                try {
+                    await loadMarketData();
+                    await loadActivities();
+                } catch (err) {
+                    console.warn('Auto update error:', err);
+                }
+            }, 30000); // هر ۳۰ ثانیه
         }
 
-        async function initDashboard() {
-            console.log('🚀 Initializing dashboard...');
-            initCharts();
-            await loadUser();
-            await loadAppStats();
-            await loadMarketData();
-            await loadActivities();
-
-            if (statsInterval) clearInterval(statsInterval);
-            statsInterval = setInterval(() => {
-                loadAppStats();
-                loadMarketData();
-            }, 15000);
-            console.log('✅ Dashboard ready');
+        function stopAutoUpdate() {
+            if (statsInterval) {
+                clearInterval(statsInterval);
+                statsInterval = null;
+            }
         }
+
+        // ============================================================
+        // 6. REFRESH
+        // ============================================================
 
         async function refreshDashboard() {
-            showToast('🔄 بروزرسانی...', 'info');
-            await loadAppStats();
-            await loadMarketData();
-            await loadActivities();
-            showToast('✅ بروزرسانی شد', 'success');
+            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+                window.loadingSystem.show({
+                    messages: ['بروزرسانی داده‌ها...', 'دریافت جدیدترین اطلاعات|لطفاً صبر کنید'],
+                    duration: 1500
+                });
+            }
+
+            try {
+                await Promise.all([
+                    loadUserInfo(),
+                    loadMarketData(),
+                    loadActivities()
+                ]);
+                showToast('✅ بروزرسانی کامل شد', 'success');
+            } catch (err) {
+                showToast('❌ خطا در بروزرسانی', 'error');
+            } finally {
+                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                    window.loadingSystem.hide();
+                }
+            }
         }
 
         // ============================================================
-        // ۴. مقداردهی اولیه
+        // 7. START
         // ============================================================
+
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Dashboard loading...');
-            loadNav();
-            startLoading();
+            console.log('🚀 Dashboard starting...');
+            initializeDashboard();
         });
 
+        // توابع سراسری
         window.refreshDashboard = refreshDashboard;
-        window.loadAppStats = loadAppStats;
+        window.loadMarketData = loadMarketData;
+        window.loadActivities = loadActivities;
+
+        // ===== اضافه کردن toast اگر وجود نداشت =====
+        if (typeof showToast !== 'function') {
+            window.showToast = function(message, type = 'info', duration = 3000) {
+                console.log(`[${type}] ${message}`);
+                alert(message);
+            };
+        }
+
+        console.log('✅ Dashboard script loaded');
     </script>
 
 </body>
