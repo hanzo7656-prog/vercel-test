@@ -783,11 +783,46 @@
     <!-- ============================================================
     بارگذاری فایل‌های JS سیستم
     ============================================================ -->
-    <script src="/js/utils.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/app.js"></script>
+    
 
+<!-- اسکریپت‌های اصلی سیستم -->
+    <script src="/frontend/js/utils.js"></script>
+    <script src="/frontend/js/api.js"></script>
+    <script src="/frontend/js/app.js"></script>
+
+<!-- کانتینر نویگیشن -->
+    <div id="navContainer"></div>
+
+<!-- بارگذاری نویگیشن -->
     <script>
+        fetch('/frontend/nav.html')
+            .then(res => {
+                if (!res.ok) throw new Error('nav.html not found');
+                return res.text();
+            })
+            .then(html => {
+                document.getElementById('navContainer').innerHTML = html;
+            
+                // اجرای اسکریپت‌های داخل nav.html
+                const scripts = document.querySelectorAll('#navContainer script');
+                scripts.forEach(old => {
+                    const newScript = document.createElement('script');
+                    newScript.textContent = old.textContent;
+                    old.parentNode.replaceChild(newScript, old);
+                });
+            
+                console.log('✅ Navigation loaded');
+            })
+            .catch(err => {
+                console.error('❌ Navigation error:', err);
+                document.getElementById('navContainer').innerHTML = `
+                    <div style="padding:12px;background:#1e293b;border-radius:8px;border:1px solid rgba(255,255,255,0.05);color:#94a3b8;text-align:center;">
+                        ⚠️ خطا در بارگذاری منو
+                        <button onclick="location.reload()" style="display:block;margin:8px auto 0;padding:4px 16px;background:#00d4ff;color:#0f172a;border:none;border-radius:4px;cursor:pointer;">🔄 تلاش مجدد</button>
+                    </div>
+                `;
+            });
+    </script>
         // ============================================================
         // ۱. داده‌های لودینگ (با مقداردهی اولیه)
         // ============================================================
