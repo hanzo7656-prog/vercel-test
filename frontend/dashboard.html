@@ -645,39 +645,39 @@
 
             <div class="splash-counter">
                 <span id="currentCount">۰</span>
-                <span class="total"> / <span id="totalCount">۰</span></span>
+                <span class="total"> / <span id="totalCount">۵۰</span></span>
             </div>
 
             <div class="splash-phases" id="phasesContainer">
                 <div class="phase-item" id="phase1">
                     <span class="phase-icon">🔗</span>
                     <span class="phase-name">اتصال به دیتابیس</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۸</span>
                 </div>
                 <div class="phase-item" id="phase2">
                     <span class="phase-icon">🧠</span>
                     <span class="phase-name">بارگذاری مدل</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۵</span>
                 </div>
                 <div class="phase-item" id="phase3">
                     <span class="phase-icon">🌐</span>
                     <span class="phase-name">دریافت قیمت‌ها</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۱۰</span>
                 </div>
                 <div class="phase-item" id="phase4">
                     <span class="phase-icon">📊</span>
                     <span class="phase-name">پردازش داده</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۱۰</span>
                 </div>
                 <div class="phase-item" id="phase5">
                     <span class="phase-icon">⚡</span>
                     <span class="phase-name">راه‌اندازی نظارت</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۷</span>
                 </div>
                 <div class="phase-item" id="phase6">
                     <span class="phase-icon">🚀</span>
                     <span class="phase-name">آماده‌سازی UI</span>
-                    <span class="phase-count">۰ / ۰</span>
+                    <span class="phase-count">۰ / ۱۰</span>
                 </div>
             </div>
 
@@ -711,30 +711,39 @@
 
         <!-- کارت‌های آماری -->
         <div class="stats-grid" id="statsGrid">
+            <!-- کارت ارزش کل (BTC + ETH) -->
             <div class="stat-card">
-                <div class="stat-icon">💰</div>
-                <div class="stat-label">ارزش کل</div>
+                <div class="stat-icon">₿</div>
+                <div class="stat-label">ارزش BTC + ETH</div>
                 <div class="stat-value" id="statTotalValue">$۰</div>
                 <div class="stat-change up" id="statTotalChange">۰%</div>
             </div>
+            
+            <!-- سیگنال خرید -->
             <div class="stat-card">
                 <div class="stat-icon">📈</div>
                 <div class="stat-label">سیگنال خرید</div>
                 <div class="stat-value" id="statBuySignals">۰</div>
                 <div class="stat-change up" id="statBuyChange">۰%</div>
             </div>
+            
+            <!-- سیگنال فروش -->
             <div class="stat-card">
                 <div class="stat-icon">📉</div>
                 <div class="stat-label">سیگنال فروش</div>
                 <div class="stat-value" id="statSellSignals">۰</div>
                 <div class="stat-change down" id="statSellChange">۰%</div>
             </div>
+            
+            <!-- دقت مدل -->
             <div class="stat-card">
                 <div class="stat-icon">🎯</div>
                 <div class="stat-label">دقت مدل</div>
                 <div class="stat-value" id="statAccuracy">۰%</div>
                 <div class="stat-change up" id="statAccuracyChange">۰%</div>
             </div>
+            
+            <!-- اعتبار API -->
             <div class="stat-card">
                 <div class="stat-icon">⚡</div>
                 <div class="stat-label">اعتبار API</div>
@@ -771,17 +780,16 @@
 
     </div>
 
+    <!-- ============================================================
+    بارگذاری فایل‌های JS سیستم
+    ============================================================ -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
 
     <script>
         // ============================================================
-        // ۱. داده‌های لودینگ (واقعی)
-        // ============================================================
-
-        // ============================================================
-        // ۱. داده‌های لودینگ
+        // ۱. داده‌های لودینگ (با مقداردهی اولیه)
         // ============================================================
 
         const PHASES = [
@@ -794,13 +802,6 @@
         ];
 
         const TOTAL_ITEMS = PHASES.reduce((sum, p) => sum + p.total, 0);
-        let globalProgress = 0;
-        let currentPhaseIndex = 0;
-
-        const progressBar = document.getElementById('progressBar');
-        const currentCountEl = document.getElementById('currentCount');
-        const totalCountEl = document.getElementById('totalCount');
-        const currentPhaseText = document.getElementById('currentPhaseText');
 
         // ============================================================
         // ۲. توابع بروزرسانی لودینگ
@@ -831,9 +832,8 @@
 
         function updateGlobalProgress() {
             const totalDone = PHASES.reduce((sum, p) => sum + p.current, 0);
-            progressBar.style.width = Math.min((totalDone / Math.max(TOTAL_ITEMS, 1)) * 100, 100) + '%';
-            currentCountEl.textContent = totalDone;
-            totalCountEl.textContent = TOTAL_ITEMS || 0;
+            progressBar.style.width = Math.min((totalDone / TOTAL_ITEMS) * 100, 100) + '%';
+            document.getElementById('currentCount').textContent = totalDone;
             globalProgress = totalDone;
         }
 
@@ -842,8 +842,7 @@
         // ============================================================
 
         async function loadRealData() {
-            // مرحله ۱: اتصال به دیتابیس (شبیه‌سازی)
-            PHASES[0].total = 8;
+            // مرحله ۱: اتصال به دیتابیس
             PHASES[0].current = 0;
             updatePhaseUI(0);
             updateGlobalProgress();
@@ -856,6 +855,7 @@
                 performance,
                 predictions,
                 alerts,
+                prices,
                 user
             ] = await Promise.allSettled([
                 api.getHealth(),
@@ -865,16 +865,15 @@
                 api.getModelPerformance(),
                 api.getPredictionHistory(50),
                 api.getAlerts({ limit: 10, resolved: false }),
+                api.getPrices(),
                 api.getUserInfo()
             ]);
 
-            // مرحله ۱ کامل شد
             PHASES[0].current = PHASES[0].total;
             updatePhaseUI(0);
             updateGlobalProgress();
 
             // مرحله ۲: بارگذاری مدل
-            PHASES[1].total = 5;
             PHASES[1].current = 0;
             updatePhaseUI(1);
             updateGlobalProgress();
@@ -885,18 +884,15 @@
             updateGlobalProgress();
 
             // مرحله ۳: دریافت قیمت‌ها
-            PHASES[2].total = 10;
             PHASES[2].current = 0;
             updatePhaseUI(2);
             updateGlobalProgress();
 
-            const prices = await api.getPrices();
             PHASES[2].current = PHASES[2].total;
             updatePhaseUI(2);
             updateGlobalProgress();
 
             // مرحله ۴: پردازش داده
-            PHASES[3].total = 10;
             PHASES[3].current = 0;
             updatePhaseUI(3);
             updateGlobalProgress();
@@ -907,7 +903,6 @@
             updateGlobalProgress();
 
             // مرحله ۵: راه‌اندازی نظارت
-            PHASES[4].total = 7;
             PHASES[4].current = 0;
             updatePhaseUI(4);
             updateGlobalProgress();
@@ -917,7 +912,6 @@
             updateGlobalProgress();
 
             // مرحله ۶: آماده‌سازی UI
-            PHASES[5].total = 10;
             PHASES[5].current = 0;
             updatePhaseUI(5);
             updateGlobalProgress();
@@ -931,6 +925,7 @@
                 performance: performanceData,
                 predictions: predictions.value,
                 alerts: alerts.value,
+                prices: prices.value,
                 user: user.value
             });
 
@@ -938,7 +933,6 @@
             updatePhaseUI(5);
             updateGlobalProgress();
 
-            // لودینگ کامل شد
             currentPhaseText.textContent = 'تکمیل شد ✅';
 
             setTimeout(() => {
@@ -959,6 +953,7 @@
             const performance = data.performance?.data || {};
             const predictions = data.predictions?.data || [];
             const user = data.user?.data || {};
+            const prices = data.prices?.data || {};
 
             // اطلاعات کاربر
             if (user.username) {
@@ -1013,14 +1008,10 @@
             document.getElementById('statBuySignals').textContent = buySignals;
             document.getElementById('statSellSignals').textContent = sellSignals;
 
-            // کارت ارزش کل (از قیمت‌ها)
-            const prices = data.prices || {};
-            let totalValue = 0;
-            if (prices.data) {
-                Object.values(prices.data).forEach(item => {
-                    totalValue += item.price || 0;
-                });
-            }
+            // ارزش کل (BTC + ETH)
+            const btcPrice = prices?.BTC?.price || 0;
+            const ethPrice = prices?.ETH?.price || 0;
+            const totalValue = btcPrice + ethPrice;
             document.getElementById('statTotalValue').textContent = '$' + totalValue.toLocaleString();
 
             // فعالیت‌ها
@@ -1193,15 +1184,14 @@
             });
         }
 
-
         // ============================================================
         // ۷. مقداردهی اولیه
         // ============================================================
 
         document.addEventListener('DOMContentLoaded', function() {
-            // ✅ نمایش عدد کل از ابتدا
+            // نمایش عدد کل از ابتدا
             document.getElementById('totalCount').textContent = TOTAL_ITEMS;
-    
+            
             updatePhaseUI(0);
             updateGlobalProgress();
 
