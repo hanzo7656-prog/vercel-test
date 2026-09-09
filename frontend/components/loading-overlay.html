@@ -1,5 +1,6 @@
 <!-- ============================================================
-     کامپوننت لودینگ پیشرفته با سه نقطه متحرک
+     loading-overlay.html - لودینگ پیشرفته برای پروسه‌های داخلی
+     نسخه ۲.۰ - کاملاً مستقل و با نام‌های ثابت
      ============================================================ -->
 
 <style>
@@ -18,7 +19,8 @@
         justify-content: center;
         align-items: center;
         animation: overlayFadeIn 0.3s ease;
-        font-family: var(--font-family);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Vazir', system-ui, sans-serif;
+        direction: rtl;
     }
     
     .loading-overlay.active {
@@ -32,20 +34,25 @@
 
     /* ===== CARD ===== */
     .loading-card {
-        background: var(--bg-card);
+        background: rgba(17, 24, 39, 0.9);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
         padding: 40px 48px;
         min-width: 280px;
         max-width: 400px;
         width: 90%;
         text-align: center;
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
         animation: cardSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         position: relative;
         overflow: hidden;
+    }
+
+    [data-theme="light"] .loading-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(0, 0, 0, 0.06);
     }
 
     .loading-card::before {
@@ -73,7 +80,7 @@
 
     @keyframes cardGlow {
         0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.2) rotate(5deg); }
+        50% { transform: scale(1.1) rotate(3deg); }
     }
 
     /* ===== SPINNER ===== */
@@ -94,26 +101,20 @@
         to { transform: rotate(360deg); }
     }
 
-    .loading-spinner-wrapper .spinner-circle {
-        fill: none;
-        stroke-width: 3;
-        stroke-linecap: round;
-        stroke-dasharray: 180;
-        stroke-dashoffset: 0;
-        animation: spinnerDash 1.2s ease-in-out infinite;
-    }
-
     .loading-spinner-wrapper .spinner-circle-bg {
         fill: none;
         stroke-width: 3;
-        stroke: var(--border-color);
-        opacity: 0.3;
+        stroke: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="light"] .loading-spinner-wrapper .spinner-circle-bg {
+        stroke: rgba(0, 0, 0, 0.06);
     }
 
     .loading-spinner-wrapper .spinner-circle-fg {
         fill: none;
         stroke-width: 3;
-        stroke: var(--accent-cyan);
+        stroke: #00d4ff;
         stroke-linecap: round;
         stroke-dasharray: 180;
         stroke-dashoffset: 0;
@@ -138,14 +139,18 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        background: var(--text-muted);
-        opacity: 0.2;
+        background: rgba(255, 255, 255, 0.2);
+        opacity: 0.3;
         transition: all 0.3s ease;
+    }
+
+    [data-theme="light"] .loading-dots .dot {
+        background: rgba(0, 0, 0, 0.2);
     }
 
     .loading-dots .dot.active {
         opacity: 1;
-        background: var(--accent-cyan);
+        background: #00d4ff;
         transform: scale(1.2);
         box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
     }
@@ -162,7 +167,7 @@
 
     @keyframes dotPulse {
         0%, 100% {
-            opacity: 0.2;
+            opacity: 0.3;
             transform: scale(1);
         }
         50% {
@@ -176,35 +181,47 @@
     .loading-message {
         font-size: 0.95rem;
         font-weight: 500;
-        color: var(--text-primary);
+        color: #f1f5f9;
         margin-top: 4px;
         min-height: 28px;
         transition: all 0.3s ease;
     }
 
+    [data-theme="light"] .loading-message {
+        color: #0f172a;
+    }
+
     .loading-submessage {
         font-size: 0.75rem;
-        color: var(--text-muted);
+        color: #94a3b8;
         margin-top: 4px;
         min-height: 20px;
         transition: all 0.3s ease;
+    }
+
+    [data-theme="light"] .loading-submessage {
+        color: #475569;
     }
 
     /* ===== PROGRESS BAR ===== */
     .loading-progress {
         width: 100%;
         height: 3px;
-        background: var(--bg-input);
-        border-radius: var(--radius-full);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
         margin-top: 16px;
         overflow: hidden;
         position: relative;
     }
 
+    [data-theme="light"] .loading-progress {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
     .loading-progress .progress-fill {
         height: 100%;
-        border-radius: var(--radius-full);
-        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+        border-radius: 10px;
+        background: linear-gradient(90deg, #00d4ff, #8b5cf6);
         width: 0%;
         transition: width 0.5s ease;
     }
@@ -271,7 +288,9 @@
 
 <script>
 // ============================================================
-// LOADING SYSTEM - کلاس مدیریت لودینگ
+// LOADING SYSTEM - کلاس مدیریت لودینگ داخلی
+// نام کلاس: LoadingSystem (ثابت)
+// دسترسی: window.loadingSystem
 // ============================================================
 
 class LoadingSystem {
@@ -282,59 +301,45 @@ class LoadingSystem {
         this.dots = document.querySelectorAll('#loadingDots .dot');
         this.progress = document.getElementById('loadingProgress');
         this.isActive = false;
-        this.messageQueue = [];
-        this.currentMessageIndex = 0;
         this.dotsInterval = null;
-        this.startTime = 0;
-        this.messages = {
-            short: [
-                'در حال انجام...'
-            ],
-            medium: [
-                'در حال انجام...',
-                'لطفاً کمی صبر کنید'
-            ],
-            long: [
-                'در حال انجام...',
-                'لطفاً کمی صبر کنید',
-                'تقریباً تمام است',
-                'پایان'
-            ]
-        };
+        this.progressTimer = null;
+        this.onCompleteCallback = null;
+        this.isCompleting = false;
     }
 
     // ===== نمایش لودینگ =====
     show(options = {}) {
         const {
-            messages = 'long',      // 'short' | 'medium' | 'long' | array
-            duration = null,        // مدت زمان تخمینی (میلی‌ثانیه)
+            messages = ['در حال انجام...'],
+            subMessages = ['لطفاً صبر کنید'],
+            duration = null,
             onComplete = null,
-            progress = false        // true برای نمایش پیشرفت واقعی
+            showProgress = true
         } = options;
 
         if (this.isActive) return;
 
         this.isActive = true;
-        this.startTime = Date.now();
-        this.onComplete = onComplete;
-        this.progressMode = progress;
+        this.isCompleting = false;
+        this.onCompleteCallback = onComplete || null;
 
         // تنظیم پیام‌ها
-        let messageList;
-        if (Array.isArray(messages)) {
-            messageList = messages;
-        } else {
-            messageList = this.messages[messages] || this.messages.long;
-        }
+        const mainMsg = Array.isArray(messages) ? messages[0] : messages;
+        const subMsg = Array.isArray(subMessages) ? subMessages[0] : subMessages;
 
-        this.messageQueue = messageList;
-        this.currentMessageIndex = 0;
+        this.messageEl.textContent = mainMsg || 'در حال انجام...';
+        this.subMessageEl.textContent = subMsg || 'لطفاً صبر کنید';
 
-        // نمایش اولین پیام
-        this.updateMessage(0);
-
-        // نمایش دات‌ها
+        // مدیریت دات‌ها
         this.startDotsAnimation();
+
+        // مدیریت نوار پیشرفت
+        if (showProgress) {
+            this.progress.classList.remove('indeterminate');
+            this.progress.style.width = '0%';
+        } else {
+            this.progress.classList.add('indeterminate');
+        }
 
         // نمایش overlay
         this.overlay.classList.add('active');
@@ -342,39 +347,39 @@ class LoadingSystem {
 
         // اگر مدت زمان مشخص شده
         if (duration) {
-            this.totalDuration = duration;
             this.startProgressAnimation(duration);
         }
 
-        // لاگ
-        console.log('🔄 Loading started:', messageList[0]);
+        // ذخیره پیام‌ها برای استفاده بعدی
+        this._messages = Array.isArray(messages) ? messages : [messages];
+        this._subMessages = Array.isArray(subMessages) ? subMessages : [subMessages];
+        this._currentIndex = 0;
+        this._duration = duration;
+
+        console.log('🔄 Loading overlay shown:', mainMsg);
     }
 
     // ===== بروزرسانی پیام =====
     updateMessage(index) {
-        if (index >= this.messageQueue.length) {
-            // پایان کار
-            this.complete();
-            return;
+        if (!this._messages || index >= this._messages.length) return;
+
+        const mainMsg = this._messages[index] || this._messages[this._messages.length - 1];
+        const subMsg = this._subMessages[index] || this._subMessages[index] || '';
+
+        // اگر پیام شامل | باشد، جدا کن
+        const parts = mainMsg.split('|');
+        this.messageEl.textContent = parts[0] || mainMsg;
+        this.subMessageEl.textContent = parts[1] || subMsg || '';
+
+        this._currentIndex = index;
+    }
+
+    // ===== بروزرسانی پیشرفت =====
+    updateProgress(percent) {
+        if (this.progress) {
+            this.progress.classList.remove('indeterminate');
+            this.progress.style.width = Math.min(Math.max(percent, 0), 100) + '%';
         }
-
-        const message = this.messageQueue[index];
-        const isLast = index === this.messageQueue.length - 1;
-
-        // جدا کردن پیام اصلی و زیرنویس
-        const parts = message.split('|');
-        const mainMsg = parts[0] || message;
-        const subMsg = parts[1] || '';
-
-        this.messageEl.textContent = mainMsg;
-        this.subMessageEl.textContent = subMsg;
-
-        // اگر آخرین پیام است، دات‌ها رو متوقف کن
-        if (isLast) {
-            this.stopDotsAnimation();
-        }
-
-        this.currentMessageIndex = index;
     }
 
     // ===== شروع انیمیشن دات‌ها =====
@@ -386,8 +391,10 @@ class LoadingSystem {
 
         this.dotsInterval = setInterval(() => {
             this.dots.forEach(d => d.classList.remove('active'));
-            this.dots[activeIndex].classList.add('active');
-            activeIndex = (activeIndex + 1) % this.dots.length;
+            if (this.dots.length > 0) {
+                this.dots[activeIndex % this.dots.length].classList.add('active');
+                activeIndex = (activeIndex + 1) % this.dots.length;
+            }
         }, 400);
     }
 
@@ -402,30 +409,28 @@ class LoadingSystem {
 
     // ===== شروع انیمیشن پیشرفت =====
     startProgressAnimation(duration) {
+        if (this.progressTimer) {
+            clearTimeout(this.progressTimer);
+            this.progressTimer = null;
+        }
+
         this.progress.classList.remove('indeterminate');
         const startTime = Date.now();
 
         const updateProgress = () => {
-            if (!this.isActive) return;
+            if (!this.isActive || this.isCompleting) return;
+            
             const elapsed = Date.now() - startTime;
             const percent = Math.min((elapsed / duration) * 100, 100);
             this.progress.style.width = percent + '%';
 
-            // بروزرسانی پیام‌ها بر اساس زمان
-            const ratio = elapsed / duration;
-            const totalMessages = this.messageQueue.length;
-
-            if (ratio > 0.85 && totalMessages > 1) {
-                // نزدیک به پایان
-                const lastIndex = totalMessages - 1;
-                if (this.currentMessageIndex < lastIndex) {
-                    this.updateMessage(lastIndex);
-                }
-            } else if (ratio > 0.5 && totalMessages > 2) {
-                // نیمه راه
-                const midIndex = Math.min(Math.floor(totalMessages * 0.7), totalMessages - 2);
-                if (this.currentMessageIndex < midIndex) {
-                    this.updateMessage(midIndex);
+            // بروزرسانی پیام‌ها بر اساس پیشرفت
+            if (this._messages && this._messages.length > 1) {
+                const ratio = elapsed / duration;
+                const totalMessages = this._messages.length;
+                const newIndex = Math.min(Math.floor(ratio * totalMessages), totalMessages - 1);
+                if (newIndex !== this._currentIndex) {
+                    this.updateMessage(newIndex);
                 }
             }
 
@@ -441,19 +446,21 @@ class LoadingSystem {
 
     // ===== تکمیل لودینگ =====
     complete() {
-        if (!this.isActive) return;
+        if (!this.isActive || this.isCompleting) return;
+
+        this.isCompleting = true;
 
         // نمایش پیام پایان
-        this.messageEl.textContent = '✅ پایان';
-        this.subMessageEl.textContent = 'عملیات با موفقیت انجام شد';
+        this.messageEl.textContent = '✅ انجام شد';
+        this.subMessageEl.textContent = 'عملیات با موفقیت کامل شد';
         this.progress.style.width = '100%';
         this.stopDotsAnimation();
 
-        // مخفی کردن بعد از ۱ ثانیه
+        // مخفی کردن بعد از ۸۰۰ms
         setTimeout(() => {
             this.hide();
-            if (this.onComplete) {
-                this.onComplete();
+            if (this.onCompleteCallback) {
+                this.onCompleteCallback();
             }
         }, 800);
     }
@@ -463,10 +470,11 @@ class LoadingSystem {
         if (!this.isActive) return;
 
         this.isActive = false;
+        this.isCompleting = false;
         this.overlay.classList.remove('active');
         document.body.style.overflow = '';
         this.stopDotsAnimation();
-        
+
         if (this.progressTimer) {
             clearTimeout(this.progressTimer);
             this.progressTimer = null;
@@ -476,10 +484,10 @@ class LoadingSystem {
         this.progress.style.width = '0%';
         this.dots.forEach(d => d.classList.remove('active'));
 
-        console.log('✅ Loading hidden');
+        console.log('✅ Loading overlay hidden');
     }
 
-    // ===== بروزرسانی پیام دستی =====
+    // ===== متدهای کمکی =====
     setMessage(message) {
         this.messageEl.textContent = message;
     }
@@ -488,18 +496,27 @@ class LoadingSystem {
         this.subMessageEl.textContent = message;
     }
 
-    // ===== تنظیم پیشرفت دستی =====
     setProgress(percent) {
-        if (this.progressMode) {
-            this.progress.classList.remove('indeterminate');
-            this.progress.style.width = Math.min(percent, 100) + '%';
-        }
+        this.updateProgress(percent);
+    }
+
+    // ===== بررسی وضعیت =====
+    getStatus() {
+        return {
+            isActive: this.isActive,
+            isCompleting: this.isCompleting,
+            currentMessage: this.messageEl?.textContent || '',
+            currentSubMessage: this.subMessageEl?.textContent || '',
+            progress: this.progress?.style?.width || '0%'
+        };
     }
 }
 
-// ===== نمونه Singleton =====
-const loading = new LoadingSystem();
-window.loading = loading;
+// ===== نمونه Singleton با نام ثابت =====
+const loadingSystem = new LoadingSystem();
 
-console.log('✅ Loading System v1.0 loaded');
+// ===== ذخیره در window با نام ثابت =====
+window.loadingSystem = loadingSystem;
+
+console.log('✅ LoadingSystem v2.0 loaded (window.loadingSystem)');
 </script>
