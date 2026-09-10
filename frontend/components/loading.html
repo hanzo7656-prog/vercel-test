@@ -1,6 +1,6 @@
 <!-- ============================================================
-     loading.html - اسپلش لودینگ اولیه وب سرویس
-     نسخه ۲.۰ - با نام‌های ثابت و مستقل
+     loading.html - Splash Loader با چک واقعی APIها
+     نسخه ۳.۰ - با تشخیص خطا و Modal تصمیم‌گیری
      ============================================================ -->
 
 <div class="splash-loader" id="splashLoader">
@@ -36,32 +36,32 @@
             <div class="phase-item" id="splashPhase1">
                 <span class="phase-icon">🔗</span>
                 <span class="phase-name">اتصال به دیتابیس</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
             <div class="phase-item" id="splashPhase2">
                 <span class="phase-icon">🧠</span>
                 <span class="phase-name">بارگذاری مدل</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
             <div class="phase-item" id="splashPhase3">
                 <span class="phase-icon">🌐</span>
-                <span class="phase-name">دریافت قیمت‌ها</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-name">اتصال به API</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
             <div class="phase-item" id="splashPhase4">
                 <span class="phase-icon">📊</span>
-                <span class="phase-name">پردازش داده</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-name">دریافت ارزها</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
             <div class="phase-item" id="splashPhase5">
-                <span class="phase-icon">⚡</span>
-                <span class="phase-name">راه‌اندازی نظارت</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-icon">💰</span>
+                <span class="phase-name">دریافت قیمت‌ها</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
             <div class="phase-item" id="splashPhase6">
                 <span class="phase-icon">🚀</span>
                 <span class="phase-name">آماده‌سازی UI</span>
-                <span class="phase-count">۰ / ۰</span>
+                <span class="phase-count">⏳ در انتظار</span>
             </div>
         </div>
         
@@ -74,9 +74,30 @@
     </div>
 </div>
 
+<!-- ============================================================
+     MODAL خطا
+     ============================================================ -->
+<div class="splash-error-modal" id="splashErrorModal">
+    <div class="splash-error-card">
+        <div class="splash-error-icon">⚠️</div>
+        <div class="splash-error-title">خطا در بارگذاری</div>
+        <div class="splash-error-phase" id="splashErrorPhase">مرحله: اتصال به دیتابیس</div>
+        <div class="splash-error-message" id="splashErrorMessage">خطای نامشخص</div>
+        
+        <div class="splash-error-actions">
+            <button class="splash-btn splash-btn-primary" onclick="window.splashLoader.skipCurrent()">
+                ✅ بله، ادامه بده
+            </button>
+            <button class="splash-btn splash-btn-danger" onclick="window.splashLoader.abort()">
+                ❌ خیر، متوقف کن
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
     /* ============================================================
-       استایل‌های اسپلش لودینگ (بارگذاری اولیه)
+       SPLASH LOADER STYLES
        ============================================================ */
     
     .splash-loader {
@@ -149,6 +170,7 @@
         font-size: 1.4rem;
         font-weight: 700;
         margin-bottom: 4px;
+        color: #f1f5f9;
     }
     
     .splash-title .highlight {
@@ -248,26 +270,47 @@
     }
     
     .phase-item.active {
-        border-color: rgba(0, 212, 255, 0.2);
-        background: rgba(0, 212, 255, 0.04);
+        border-color: rgba(0, 212, 255, 0.3);
+        background: rgba(0, 212, 255, 0.06);
+        animation: phaseActivePulse 1.5s ease-in-out infinite;
     }
     
     .phase-item.active .phase-name {
         color: #00d4ff;
     }
     
+    .phase-item.active .phase-count {
+        color: #00d4ff;
+    }
+    
+    @keyframes phaseActivePulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.2); }
+        50% { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+    }
+    
     .phase-item.done {
-        border-color: rgba(34, 211, 238, 0.1);
-        background: rgba(34, 211, 238, 0.03);
+        border-color: rgba(34, 211, 238, 0.2);
+        background: rgba(34, 211, 238, 0.04);
     }
     
-    .phase-item.done .phase-name {
-        color: #22d3ee;
+    .phase-item.done .phase-name { color: #22d3ee; }
+    .phase-item.done .phase-count { color: #22d3ee; }
+    
+    .phase-item.error {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.06);
     }
     
-    .phase-item.done .phase-count {
-        color: #22d3ee;
+    .phase-item.error .phase-name { color: #ef4444; }
+    .phase-item.error .phase-count { color: #ef4444; }
+    
+    .phase-item.skipped {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.06);
     }
+    
+    .phase-item.skipped .phase-name { color: #f59e0b; }
+    .phase-item.skipped .phase-count { color: #f59e0b; }
     
     .splash-current {
         font-size: 0.75rem;
@@ -279,82 +322,269 @@
         border: 1px solid rgba(255, 255, 255, 0.03);
     }
     
-    .splash-current .current-text {
-        color: #f1f5f9;
-    }
-    
-    .splash-current .highlight-text {
-        color: #00d4ff;
-        font-weight: 500;
-    }
+    .splash-current .current-text { color: #f1f5f9; }
+    .splash-current .highlight-text { color: #00d4ff; font-weight: 500; }
     
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
     
+    /* ============================================================
+       ERROR MODAL STYLES
+       ============================================================ */
+    
+    .splash-error-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 100000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    .splash-error-modal.active {
+        display: flex;
+    }
+    
+    @keyframes modalFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .splash-error-card {
+        background: #1e293b;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 20px;
+        padding: 32px 28px;
+        max-width: 440px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .splash-error-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(239, 68, 68, 0.08), transparent 70%);
+        pointer-events: none;
+    }
+    
+    @keyframes modalSlideUp {
+        from { opacity: 0; transform: translateY(30px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    .splash-error-icon {
+        font-size: 3rem;
+        margin-bottom: 12px;
+        display: block;
+        animation: errorIconShake 0.5s ease;
+    }
+    
+    @keyframes errorIconShake {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-10deg); }
+        75% { transform: rotate(10deg); }
+    }
+    
+    .splash-error-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #ef4444;
+        margin-bottom: 8px;
+    }
+    
+    .splash-error-phase {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+    
+    .splash-error-message {
+        font-size: 0.85rem;
+        color: #f1f5f9;
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.15);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin: 16px 0 20px;
+        font-family: 'Courier New', monospace;
+        word-break: break-word;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+    
+    .splash-error-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .splash-btn {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+    
+    .splash-btn-primary {
+        background: linear-gradient(135deg, #00d4ff, #3b82f6);
+        color: white;
+    }
+    
+    .splash-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3);
+    }
+    
+    .splash-btn-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .splash-btn-danger:hover {
+        background: rgba(239, 68, 68, 0.25);
+        transform: translateY(-2px);
+    }
+    
     @media (max-width: 768px) {
-        .splash-phases {
-            grid-template-columns: 1fr 1fr;
-        }
+        .splash-phases { grid-template-columns: 1fr 1fr; }
     }
     
     @media (max-width: 480px) {
-        .splash-title {
-            font-size: 1.1rem;
-        }
-        .splash-counter {
-            font-size: 1rem;
-        }
-        .splash-phases {
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 4px;
-        }
-        .phase-item {
-            padding: 6px 4px;
-        }
-        .phase-item .phase-name {
-            font-size: 0.5rem;
-        }
+        .splash-title { font-size: 1.1rem; }
+        .splash-counter { font-size: 1rem; }
+        .splash-phases { grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+        .phase-item { padding: 6px 4px; }
+        .phase-item .phase-name { font-size: 0.5rem; }
+        .splash-error-card { padding: 24px 20px; }
+        .splash-error-actions { flex-direction: column; }
     }
 </style>
 
 <script>
 // ============================================================
-// SPLASH LOADER - بارگذاری اولیه وب سرویس
-// نام: window.loading (ثابت)
-// متدها: start(callback), hide(), show(), getStatus()
+// SPLASH LOADER v3.0 - با چک واقعی APIها
 // ============================================================
 
 (function() {
     'use strict';
     
-    // ===== داده‌های مراحل =====
+    // ===== تعریف مراحل با API واقعی =====
     const SPLASH_PHASES = [
-        { id: 'splashPhase1', name: 'اتصال به دیتابیس', icon: '🔗', total: 8, current: 0 },
-        { id: 'splashPhase2', name: 'بارگذاری مدل', icon: '🧠', total: 5, current: 0 },
-        { id: 'splashPhase3', name: 'دریافت قیمت‌ها', icon: '🌐', total: 10, current: 0 },
-        { id: 'splashPhase4', name: 'پردازش داده', icon: '📊', total: 10, current: 0 },
-        { id: 'splashPhase5', name: 'راه‌اندازی نظارت', icon: '⚡', total: 7, current: 0 },
-        { id: 'splashPhase6', name: 'آماده‌سازی UI', icon: '🚀', total: 10, current: 0 }
+        {
+            id: 'splashPhase1',
+            name: 'اتصال به دیتابیس',
+            icon: '🔗',
+            check: async () => {
+                const res = await fetch('/api/health/database', { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'دیتابیس پاسخ نداد');
+                return true;
+            }
+        },
+        {
+            id: 'splashPhase2',
+            name: 'بارگذاری مدل',
+            icon: '🧠',
+            check: async () => {
+                const res = await fetch('/api/model/status', { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'مدل بارگذاری نشد');
+                // مدل ممکنه loaded=false باشه (حالت DEMO) ولی این خطا نیست
+                return true;
+            }
+        },
+        {
+            id: 'splashPhase3',
+            name: 'اتصال به API',
+            icon: '🌐',
+            check: async () => {
+                const res = await fetch('/api/coinstats/all', { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'API خارجی پاسخ نداد');
+                return true;
+            }
+        },
+        {
+            id: 'splashPhase4',
+            name: 'دریافت ارزها',
+            icon: '📊',
+            check: async () => {
+                const res = await fetch('/api/coinstats/coins?limit=10', { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'لیست ارزها دریافت نشد');
+                return true;
+            }
+        },
+        {
+            id: 'splashPhase5',
+            name: 'دریافت قیمت‌ها',
+            icon: '💰',
+            check: async () => {
+                const res = await fetch('/api/coinstats/prices', { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'قیمت‌ها دریافت نشد');
+                return true;
+            }
+        },
+        {
+            id: 'splashPhase6',
+            name: 'آماده‌سازی UI',
+            icon: '🚀',
+            check: async () => {
+                // یه تأخیر کوتاه برای انیمیشن
+                await new Promise(r => setTimeout(r, 300));
+                return true;
+            }
+        }
     ];
     
-    const SPLASH_TOTAL_ITEMS = SPLASH_PHASES.reduce((sum, p) => sum + p.total, 0);
-    let splashCurrentPhaseIndex = 0;
-    let splashIsComplete = false;
-    let splashOnCompleteCallback = null;
-    let splashIsRunning = false;
+    const TOTAL_PHASES = SPLASH_PHASES.length;
+    let currentPhaseIndex = 0;
+    let isRunning = false;
+    let isPaused = false;
+    let onCompleteCallback = null;
+    let aborted = false;
     
     // ===== عناصر DOM =====
-    const splashElements = {
+    const elements = {
         loader: document.getElementById('splashLoader'),
         progressBar: document.getElementById('splashProgressBar'),
         currentCount: document.getElementById('splashCurrentCount'),
         totalCount: document.getElementById('splashTotalCount'),
-        currentPhaseText: document.getElementById('splashCurrentPhaseText')
+        currentPhaseText: document.getElementById('splashCurrentPhaseText'),
+        errorModal: document.getElementById('splashErrorModal'),
+        errorPhase: document.getElementById('splashErrorPhase'),
+        errorMessage: document.getElementById('splashErrorMessage')
     };
     
     // ===== بروزرسانی UI =====
-    function updateSplashPhaseUI(phaseIndex) {
+    function updatePhaseUI(phaseIndex, status = 'active') {
         SPLASH_PHASES.forEach((phase, idx) => {
             const el = document.getElementById(phase.id);
             if (!el) return;
@@ -362,142 +592,227 @@
             
             if (idx < phaseIndex) {
                 el.className = 'phase-item done';
-                if (countEl) countEl.textContent = `${phase.total} / ${phase.total}`;
+                if (countEl) countEl.textContent = '✅ انجام شد';
             } else if (idx === phaseIndex) {
-                el.className = 'phase-item active';
-                if (countEl) countEl.textContent = `${phase.current} / ${phase.total}`;
+                if (status === 'error') {
+                    el.className = 'phase-item error';
+                    if (countEl) countEl.textContent = '❌ خطا';
+                } else if (status === 'skipped') {
+                    el.className = 'phase-item skipped';
+                    if (countEl) countEl.textContent = '⏭️ رد شد';
+                } else {
+                    el.className = 'phase-item active';
+                    if (countEl) countEl.textContent = '⏳ در حال...';
+                }
             } else {
                 el.className = 'phase-item';
-                if (countEl) countEl.textContent = `۰ / ${phase.total}`;
+                if (countEl) countEl.textContent = '⏳ در انتظار';
             }
         });
         
-        if (splashElements.currentPhaseText) {
+        if (elements.currentPhaseText) {
             if (phaseIndex < SPLASH_PHASES.length) {
-                splashElements.currentPhaseText.textContent = SPLASH_PHASES[phaseIndex].name;
+                elements.currentPhaseText.textContent = SPLASH_PHASES[phaseIndex].name;
             } else {
-                splashElements.currentPhaseText.textContent = 'تکمیل شد ✅';
+                elements.currentPhaseText.textContent = 'تکمیل شد ✅';
             }
         }
     }
     
-    function updateSplashProgress() {
-        const totalDone = SPLASH_PHASES.reduce((sum, p) => sum + p.current, 0);
-        const percent = Math.min((totalDone / SPLASH_TOTAL_ITEMS) * 100, 100);
+    function updateProgress() {
+        const done = SPLASH_PHASES.filter((_, i) => i < currentPhaseIndex).length;
+        const percent = (done / TOTAL_PHASES) * 100;
         
-        if (splashElements.progressBar) {
-            splashElements.progressBar.style.width = percent + '%';
+        if (elements.progressBar) {
+            elements.progressBar.style.width = percent + '%';
         }
-        if (splashElements.currentCount) {
-            splashElements.currentCount.textContent = totalDone;
+        if (elements.currentCount) {
+            elements.currentCount.textContent = done;
         }
-        if (splashElements.totalCount) {
-            splashElements.totalCount.textContent = SPLASH_TOTAL_ITEMS;
+        if (elements.totalCount) {
+            elements.totalCount.textContent = TOTAL_PHASES;
         }
+    }
+    
+    // ===== نمایش خطا و انتظار برای تصمیم کاربر =====
+    function showErrorModal(phaseName, errorMsg) {
+        return new Promise((resolve) => {
+            elements.errorPhase.textContent = `مرحله: ${phaseName}`;
+            elements.errorMessage.textContent = errorMsg;
+            elements.errorModal.classList.add('active');
+            
+            // دخیره کردن callback برای استفاده در skipCurrent/abort
+            window._splashErrorResolve = resolve;
+        });
     }
     
     // ===== شروع لودینگ =====
-    function startSplashLoading(onComplete) {
-        if (splashIsRunning) return;
+    async function startLoading(onComplete) {
+        if (isRunning) return;
         
-        splashIsRunning = true;
-        splashOnCompleteCallback = onComplete || null;
-        
-        // تنظیم عدد کل از ابتدا
-        if (splashElements.totalCount) {
-            splashElements.totalCount.textContent = SPLASH_TOTAL_ITEMS;
-        }
-        
-        // ریست مراحل
-        SPLASH_PHASES.forEach(p => p.current = 0);
-        splashCurrentPhaseIndex = 0;
-        splashIsComplete = false;
+        isRunning = true;
+        aborted = false;
+        onCompleteCallback = onComplete || null;
+        currentPhaseIndex = 0;
         
         // نمایش لودینگ
-        if (splashElements.loader) {
-            splashElements.loader.classList.remove('hidden');
+        if (elements.loader) {
+            elements.loader.classList.remove('hidden');
         }
         
-        updateSplashPhaseUI(0);
-        updateSplashProgress();
+        // تنظیم عدد کل
+        if (elements.totalCount) {
+            elements.totalCount.textContent = TOTAL_PHASES;
+        }
         
-        // شروع بارگذاری
-        runSplashLoading();
+        updateProgress();
+        updatePhaseUI(0, 'active');
+        
+        // اجرای مراحل
+        await runPhases();
     }
     
     // ===== اجرای مراحل =====
-    async function runSplashLoading() {
-        for (let phaseIdx = 0; phaseIdx < SPLASH_PHASES.length; phaseIdx++) {
-            const phase = SPLASH_PHASES[phaseIdx];
-            splashCurrentPhaseIndex = phaseIdx;
+    async function runPhases() {
+        for (let i = 0; i < SPLASH_PHASES.length; i++) {
+            if (aborted) return;
             
-            // مرحله جاری
-            phase.current = 0;
-            updateSplashPhaseUI(phaseIdx);
-            updateSplashProgress();
+            currentPhaseIndex = i;
+            const phase = SPLASH_PHASES[i];
             
-            // شبیه‌سازی انجام آیتم‌های هر مرحله
-            const stepDelay = 60 + Math.random() * 80;
-            for (let i = 1; i <= phase.total; i++) {
-                phase.current = i;
-                updateSplashPhaseUI(phaseIdx);
-                updateSplashProgress();
-                await new Promise(resolve => setTimeout(resolve, stepDelay));
+            // نمایش وضعیت فعال
+            updatePhaseUI(i, 'active');
+            updateProgress();
+            
+            // اجرای چک
+            let success = false;
+            let errorMsg = '';
+            
+            try {
+                console.log(`🔍 [Splash] Checking: ${phase.name}`);
+                await phase.check();
+                success = true;
+                console.log(`✅ [Splash] ${phase.name} - OK`);
+            } catch (err) {
+                success = false;
+                errorMsg = err.message || 'خطای نامشخص';
+                console.error(`❌ [Splash] ${phase.name} - Error:`, err);
             }
             
-            // کامل شدن مرحله
-            phase.current = phase.total;
-            updateSplashPhaseUI(phaseIdx);
-            updateSplashProgress();
-            
-            // تاخیر بین مراحل
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (success) {
+                // موفق → برو مرحله بعد
+                updatePhaseUI(i + 1, 'active');
+                updateProgress();
+                await new Promise(r => setTimeout(r, 200));
+            } else {
+                // خطا → نمایش modal
+                console.warn(`⚠️ [Splash] Showing error modal for: ${phase.name}`);
+                
+                // بروزرسانی UI به حالت خطا
+                updatePhaseUI(i, 'error');
+                
+                // نمایش modal و انتظار برای تصمیم کاربر
+                const decision = await showErrorModal(phase.name, errorMsg);
+                
+                if (decision === 'skip') {
+                    // کاربر گفت بله → skip کن
+                    console.log(`⏭️ [Splash] Skipping: ${phase.name}`);
+                    updatePhaseUI(i, 'skipped');
+                    await new Promise(r => setTimeout(r, 300));
+                    continue;
+                } else {
+                    // کاربر گفت خیر → متوقف کن
+                    console.log(`🛑 [Splash] Aborted by user at: ${phase.name}`);
+                    aborted = true;
+                    abortAndRedirect();
+                    return;
+                }
+            }
         }
         
-        // لودینگ کامل شد
-        splashIsComplete = true;
-        splashIsRunning = false;
-        if (splashElements.currentPhaseText) {
-            splashElements.currentPhaseText.textContent = 'تکمیل شد ✅';
+        // همه مراحل موفق
+        console.log('✅ [Splash] All phases completed');
+        if (elements.currentPhaseText) {
+            elements.currentPhaseText.textContent = 'تکمیل شد ✅';
+        }
+        if (elements.progressBar) {
+            elements.progressBar.style.width = '100%';
         }
         
-        // مخفی کردن لودینگ بعد از ۵۰۰ms
+        // مخفی کردن لودینگ
         setTimeout(() => {
-            if (splashElements.loader) {
-                splashElements.loader.classList.add('hidden');
+            if (elements.loader) {
+                elements.loader.classList.add('hidden');
             }
-            if (splashOnCompleteCallback) {
-                splashOnCompleteCallback();
+            isRunning = false;
+            if (onCompleteCallback) {
+                onCompleteCallback();
             }
         }, 500);
     }
     
-    // ===== توابع عمومی با نام‌های ثابت =====
+    // ===== Skip مرحله فعلی =====
+    function skipCurrent() {
+        if (window._splashErrorResolve) {
+            elements.errorModal.classList.remove('active');
+            const resolve = window._splashErrorResolve;
+            window._splashErrorResolve = null;
+            resolve('skip');
+        }
+    }
+    
+    // ===== Abort کامل =====
+    function abort() {
+        if (window._splashErrorResolve) {
+            elements.errorModal.classList.remove('active');
+            const resolve = window._splashErrorResolve;
+            window._splashErrorResolve = null;
+            resolve('abort');
+        }
+    }
+    
+    // ===== توقف و ریدایرکت به صفحه خطا =====
+    function abortAndRedirect() {
+        // لاگ در کنسول
+        console.error('🛑 [Splash] Loading aborted by user. Redirecting to /500');
+        
+        // اگه error modal باز بود، ببند
+        elements.errorModal.classList.remove('active');
+        
+        // نمایش پیام در لودینگ
+        if (elements.currentPhaseText) {
+            elements.currentPhaseText.textContent = 'متوقف شد ❌';
+        }
+        
+        // ریدایرکت بعد از 1.5 ثانیه
+        setTimeout(() => {
+            window.location.href = '/500';
+        }, 1500);
+    }
+    
+    // ===== API عمومی =====
     window.loading = {
-        start: startSplashLoading,
+        start: startLoading,
         hide: function() {
-            if (splashElements.loader) {
-                splashElements.loader.classList.add('hidden');
-            }
-            splashIsRunning = false;
+            if (elements.loader) elements.loader.classList.add('hidden');
+            isRunning = false;
         },
         show: function() {
-            if (splashElements.loader) {
-                splashElements.loader.classList.remove('hidden');
-            }
+            if (elements.loader) elements.loader.classList.remove('hidden');
         },
+        skipCurrent: skipCurrent,
+        abort: abort,
         getStatus: function() {
             return {
-                isComplete: splashIsComplete,
-                isRunning: splashIsRunning,
-                currentPhase: splashCurrentPhaseIndex,
-                phases: SPLASH_PHASES.map(p => ({ ...p })),
-                totalItems: SPLASH_TOTAL_ITEMS
+                isRunning: isRunning,
+                currentPhase: currentPhaseIndex,
+                totalPhases: TOTAL_PHASES,
+                phases: SPLASH_PHASES.map(p => p.name)
             };
         }
     };
     
-    console.log('✅ SplashLoader v2.0 loaded (window.loading)');
+    console.log('✅ SplashLoader v3.0 loaded (with real API checks)');
     
 })();
 </script>
