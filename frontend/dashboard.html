@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>داشبورد | سیستم تحلیلگر</title>
     
-    <!-- استایل‌ها -->
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <style>
         /* ============================================================
-           DASHBOARD - LIQUID GLASS DESIGN
+           DASHBOARD - LIQUID GLASS + COUNT-UP + FLOATING PARTICLES
            ============================================================ */
         
         :root {
@@ -46,13 +45,72 @@
             color: #0f172a;
         }
 
+        /* ============================================================
+           FLOATING PARTICLES - ذرات شناور
+           ============================================================ */
+        #particlesBg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0));
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+            animation: floatParticle linear infinite;
+            opacity: 0.5;
+        }
+
+        .particle.purple {
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.6), rgba(139, 92, 246, 0));
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .particle.pink {
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.5), rgba(236, 72, 153, 0));
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+        }
+
+        .particle.green {
+            background: radial-gradient(circle, rgba(34, 211, 238, 0.5), rgba(34, 211, 238, 0));
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+        }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translate(0, 100vh) scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translate(var(--drift), -100px) scale(1);
+                opacity: 0;
+            }
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             animation: fadeIn 0.6s ease;
+            position: relative;
+            z-index: 1;
         }
 
-        /* ===== ANIMATIONS ===== */
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -78,9 +136,10 @@
             100% { transform: rotate(360deg); }
         }
 
-        @keyframes counterIn {
-            from { opacity: 0; transform: scale(0.5); }
-            to { opacity: 1; transform: scale(1); }
+        @keyframes counterPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
         }
 
         @keyframes skeletonPulse {
@@ -93,7 +152,9 @@
             50% { opacity: 0.4; transform: scale(0.8); }
         }
 
-        /* ===== HEADER ===== */
+        /* ============================================================
+           HEADER
+           ============================================================ */
         .dashboard-header {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
@@ -224,7 +285,9 @@
             box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
         }
 
-        /* ===== STATS GRID ===== */
+        /* ============================================================
+           STATS GRID
+           ============================================================ */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -303,7 +366,6 @@
             -webkit-text-fill-color: transparent;
             position: relative;
             z-index: 1;
-            animation: counterIn 0.4s ease;
         }
 
         [data-theme="light"] .stat-card .stat-value {
@@ -317,6 +379,10 @@
         .stat-card .stat-value.orange { background: linear-gradient(135deg, #f59e0b, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-card .stat-value.green { background: linear-gradient(135deg, #22d3ee, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-card .stat-value.pink { background: linear-gradient(135deg, #ec4899, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .stat-card .stat-value.counting {
+            animation: counterPop 0.3s ease;
+        }
 
         .stat-card .stat-change {
             font-size: 0.6rem;
@@ -339,7 +405,9 @@
             margin-top: 2px;
         }
 
-        /* ===== ACTIVITY ===== */
+        /* ============================================================
+           ACTIVITY
+           ============================================================ */
         .activity-section {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
@@ -504,7 +572,9 @@
             animation: skeletonPulse 1.5s ease-in-out infinite 0.4s;
         }
 
-        /* ===== QUICK ACTIONS ===== */
+        /* ============================================================
+           QUICK ACTIONS
+           ============================================================ */
         .quick-actions {
             display: flex;
             gap: 10px;
@@ -531,7 +601,9 @@
             font-weight: 600;
         }
 
-        /* ===== RESPONSIVE ===== */
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 1024px) {
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
         }
@@ -566,12 +638,17 @@
 <body>
 
     <!-- ============================================================
-    SPLASH LOADER (بارگذاری اولیه)
+    FLOATING PARTICLES BACKGROUND
+    ============================================================ -->
+    <div id="particlesBg"></div>
+
+    <!-- ============================================================
+    SPLASH LOADER
     ============================================================ -->
     <div id="splashLoaderContainer"></div>
 
     <!-- ============================================================
-    LOADING OVERLAY (لودینگ داخلی برای پروسه‌ها)
+    LOADING OVERLAY
     ============================================================ -->
     <div id="loadingOverlayContainer"></div>
 
@@ -611,51 +688,45 @@
         <!-- STATS GRID -->
         <div class="stats-grid" id="statsGrid">
 
-            <!-- BTC -->
             <div class="stat-card">
                 <span class="stat-icon">₿</span>
                 <span class="stat-label">بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcPrice">—</div>
+                <div class="stat-value cyan" id="btcPrice" data-count-to="0" data-prefix="$" data-decimals="2">—</div>
                 <div class="stat-change neutral" id="btcChange">—</div>
             </div>
 
-            <!-- ETH -->
             <div class="stat-card">
                 <span class="stat-icon">⟠</span>
                 <span class="stat-label">اتریوم</span>
-                <div class="stat-value purple" id="ethPrice">—</div>
+                <div class="stat-value purple" id="ethPrice" data-count-to="0" data-prefix="$" data-decimals="2">—</div>
                 <div class="stat-change neutral" id="ethChange">—</div>
             </div>
 
-            <!-- Fear & Greed -->
             <div class="stat-card">
                 <span class="stat-icon">😨</span>
                 <span class="stat-label">ترس و طمع</span>
-                <div class="stat-value orange" id="fearGreedValue">—</div>
+                <div class="stat-value orange" id="fearGreedValue" data-count-to="0" data-decimals="0">—</div>
                 <div class="stat-change neutral" id="fearGreedLabel">—</div>
             </div>
 
-            <!-- BTC Dominance -->
             <div class="stat-card">
                 <span class="stat-icon">📊</span>
                 <span class="stat-label">سلطه بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcDominance">—</div>
+                <div class="stat-value cyan" id="btcDominance" data-count-to="0" data-suffix="%" data-decimals="1">—</div>
                 <div class="stat-change neutral" id="btcDominanceChange">—</div>
             </div>
 
-            <!-- Buy Signals -->
             <div class="stat-card">
                 <span class="stat-icon">📈</span>
                 <span class="stat-label">سیگنال خرید</span>
-                <div class="stat-value green" id="buySignals">—</div>
+                <div class="stat-value green" id="buySignals" data-count-to="0" data-decimals="0">—</div>
                 <div class="stat-sub">پیش‌بینی‌های اخیر</div>
             </div>
 
-            <!-- Sell Signals -->
             <div class="stat-card">
                 <span class="stat-icon">📉</span>
                 <span class="stat-label">سیگنال فروش</span>
-                <div class="stat-value pink" id="sellSignals">—</div>
+                <div class="stat-value pink" id="sellSignals" data-count-to="0" data-decimals="0">—</div>
                 <div class="stat-sub">پیش‌بینی‌های اخیر</div>
             </div>
 
@@ -721,10 +792,95 @@
 
     <script>
         // ============================================================
-        // DASHBOARD SCRIPT v1.0
+        // 1. FLOATING PARTICLES
         // ============================================================
+        function initParticles() {
+            const container = document.getElementById('particlesBg');
+            if (!container) return;
+            
+            const colors = ['', 'purple', 'pink', 'green'];
+            const particleCount = 25;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle ' + colors[Math.floor(Math.random() * colors.length)];
+                
+                const size = Math.random() * 8 + 3; // 3-11px
+                const left = Math.random() * 100;
+                const duration = Math.random() * 20 + 15; // 15-35s
+                const delay = Math.random() * -30;
+                const drift = (Math.random() - 0.5) * 200; // -100 to +100
+                
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = left + '%';
+                particle.style.animationDuration = duration + 's';
+                particle.style.animationDelay = delay + 's';
+                particle.style.setProperty('--drift', drift + 'px');
+                
+                container.appendChild(particle);
+            }
+            
+            console.log(`✨ Created ${particleCount} floating particles`);
+        }
 
-        // ===== Toast Fallback =====
+        // ============================================================
+        // 2. COUNT-UP ANIMATION
+        // ============================================================
+        function animateCountUp(element, targetValue, options = {}) {
+            if (!element) return;
+            
+            const {
+                duration = 1500,
+                decimals = 0,
+                prefix = '',
+                suffix = '',
+                useComma = true
+            } = options;
+            
+            // اگه مقدار صفر یا نامعتبر بود، فقط نمایش بده
+            if (!targetValue || targetValue === 0 || isNaN(targetValue)) {
+                element.textContent = prefix + '0' + suffix;
+                return;
+            }
+            
+            const startValue = 0;
+            const startTime = performance.now();
+            
+            element.classList.add('counting');
+            
+            function updateCount(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // easeOutQuart
+                const eased = 1 - Math.pow(1 - progress, 4);
+                
+                const current = startValue + (targetValue - startValue) * eased;
+                
+                let display = current.toFixed(decimals);
+                if (useComma) {
+                    display = Number(display).toLocaleString('en-US', {
+                        minimumFractionDigits: decimals,
+                        maximumFractionDigits: decimals
+                    });
+                }
+                
+                element.textContent = prefix + display + suffix;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateCount);
+                } else {
+                    element.classList.remove('counting');
+                }
+            }
+            
+            requestAnimationFrame(updateCount);
+        }
+
+        // ============================================================
+        // 3. TOAST FALLBACK
+        // ============================================================
         if (typeof showToast !== 'function') {
             window.showToast = function(message, type = 'info', duration = 3000) {
                 console.log(`[${type}] ${message}`);
@@ -751,7 +907,7 @@
         }
 
         // ============================================================
-        // LOAD COMPONENTS
+        // 4. LOAD COMPONENTS
         // ============================================================
         async function loadComponent(id, url) {
             const container = document.getElementById(id);
@@ -762,7 +918,6 @@
                 const html = await res.text();
                 container.innerHTML = html;
 
-                // اجرای اسکریپت‌های داخل کامپوننت
                 const scripts = container.querySelectorAll('script');
                 scripts.forEach(old => {
                     const ns = document.createElement('script');
@@ -777,13 +932,16 @@
         }
 
         // ============================================================
-        // INITIALIZE
+        // 5. INITIALIZE
         // ============================================================
         let statsInterval = null;
         let isDashboardReady = false;
 
         async function initializeDashboard() {
             console.log('🚀 Initializing dashboard...');
+
+            // راه‌اندازی ذرات شناور
+            initParticles();
 
             // بارگذاری کامپوننت‌ها
             const [splashLoaded, overlayLoaded, navLoaded] = await Promise.all([
@@ -792,15 +950,9 @@
                 loadComponent('navContainer', '/nav.html')
             ]);
 
-            if (!splashLoaded) {
-                console.warn('⚠️ Splash loader not loaded');
-            }
-            if (!overlayLoaded) {
-                console.warn('⚠️ Loading overlay not loaded');
-            }
-            if (!navLoaded) {
-                console.warn('⚠️ Navigation not loaded');
-            }
+            if (!splashLoaded) console.warn('⚠️ Splash loader not loaded');
+            if (!overlayLoaded) console.warn('⚠️ Loading overlay not loaded');
+            if (!navLoaded) console.warn('⚠️ Navigation not loaded');
 
             // شروع لودینگ اولیه
             if (window.loading && typeof window.loading.start === 'function') {
@@ -822,7 +974,7 @@
         }
 
         // ============================================================
-        // DASHBOARD LOGIC
+        // 6. DASHBOARD LOGIC
         // ============================================================
         async function initDashboard() {
             if (isDashboardReady) return;
@@ -830,7 +982,6 @@
             try {
                 console.log('📊 Loading dashboard data...');
 
-                // نمایش لودینگ داخلی (اگه موجود باشه)
                 if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
                     window.loadingSystem.show({
                         messages: ['بارگذاری داده‌ها...', 'دریافت اطلاعات|لطفاً صبر کنید'],
@@ -838,17 +989,14 @@
                     });
                 }
 
-                // بارگذاری موازی
                 await Promise.allSettled([
                     loadUserInfo(),
                     loadMarketData(),
                     loadActivities()
                 ]);
 
-                // شروع آپدیت خودکار
                 startAutoUpdate();
 
-                // مخفی کردن لودینگ داخلی
                 if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
                     window.loadingSystem.hide();
                 }
@@ -866,9 +1014,8 @@
         }
 
         // ============================================================
-        // DATA LOADERS
+        // 7. DATA LOADERS
         // ============================================================
-
         async function loadUserInfo() {
             try {
                 const data = await api.getUserInfo();
@@ -891,7 +1038,16 @@
                     if (btc && btc.success && btc.data) {
                         const priceEl = document.getElementById('btcPrice');
                         const changeEl = document.getElementById('btcChange');
-                        if (priceEl) priceEl.textContent = formatCurrency(btc.data.price);
+                        
+                        if (priceEl && btc.data.price) {
+                            animateCountUp(priceEl, btc.data.price, {
+                                duration: 1800,
+                                decimals: 2,
+                                prefix: '$',
+                                useComma: true
+                            });
+                        }
+                        
                         if (changeEl && btc.data.change_24h !== undefined) {
                             changeEl.textContent = formatPercent(btc.data.change_24h);
                             changeEl.className = 'stat-change ' + (btc.data.change_24h >= 0 ? 'up' : 'down');
@@ -907,7 +1063,16 @@
                     if (eth && eth.success && eth.data) {
                         const priceEl = document.getElementById('ethPrice');
                         const changeEl = document.getElementById('ethChange');
-                        if (priceEl) priceEl.textContent = formatCurrency(eth.data.price);
+                        
+                        if (priceEl && eth.data.price) {
+                            animateCountUp(priceEl, eth.data.price, {
+                                duration: 1800,
+                                decimals: 2,
+                                prefix: '$',
+                                useComma: true
+                            });
+                        }
+                        
                         if (changeEl && eth.data.change_24h !== undefined) {
                             changeEl.textContent = formatPercent(eth.data.change_24h);
                             changeEl.className = 'stat-change ' + (eth.data.change_24h >= 0 ? 'up' : 'down');
@@ -923,7 +1088,15 @@
                     if (fg && fg.success && fg.data) {
                         const valEl = document.getElementById('fearGreedValue');
                         const labelEl = document.getElementById('fearGreedLabel');
-                        if (valEl) valEl.textContent = fg.data.value;
+                        
+                        if (valEl && fg.data.value) {
+                            animateCountUp(valEl, fg.data.value, {
+                                duration: 1500,
+                                decimals: 0,
+                                useComma: false
+                            });
+                        }
+                        
                         if (labelEl) {
                             labelEl.textContent = fg.data.classification || '—';
                             const cls = fg.data.value <= 45 ? 'down' : fg.data.value >= 55 ? 'up' : 'neutral';
@@ -939,23 +1112,44 @@
                     const dom = await api.getBTCDominance();
                     if (dom && dom.success && dom.data) {
                         const valEl = document.getElementById('btcDominance');
-                        if (valEl) valEl.textContent = dom.data.value + '%';
+                        if (valEl && dom.data.value) {
+                            animateCountUp(valEl, dom.data.value, {
+                                duration: 1500,
+                                decimals: 1,
+                                suffix: '%',
+                                useComma: false
+                            });
+                        }
                     }
                 } catch (e) {
                     console.warn('Dominance error:', e.message);
                 }
 
-                // ===== Predictions (Buy/Sell) =====
+                // ===== Predictions =====
                 try {
                     const pred = await api.getPredictionHistory(100);
                     if (pred && pred.success && pred.data) {
                         const predictions = pred.data;
                         const buyCount = predictions.filter(p => p.signal_type === 'BUY').length;
                         const sellCount = predictions.filter(p => p.signal_type === 'SELL').length;
+                        
                         const buyEl = document.getElementById('buySignals');
                         const sellEl = document.getElementById('sellSignals');
-                        if (buyEl) buyEl.textContent = buyCount || '۰';
-                        if (sellEl) sellEl.textContent = sellCount || '۰';
+                        
+                        if (buyEl) {
+                            animateCountUp(buyEl, buyCount, {
+                                duration: 1500,
+                                decimals: 0,
+                                useComma: false
+                            });
+                        }
+                        if (sellEl) {
+                            animateCountUp(sellEl, sellCount, {
+                                duration: 1500,
+                                decimals: 0,
+                                useComma: false
+                            });
+                        }
                     }
                 } catch (e) {
                     console.warn('Predictions error:', e.message);
@@ -1015,7 +1209,6 @@
 
                 const items = [];
 
-                // هشدارها
                 if (alertsRes.status === 'fulfilled' && alertsRes.value?.success && alertsRes.value.data) {
                     alertsRes.value.data.forEach(a => {
                         const levelMap = {
@@ -1033,7 +1226,6 @@
                     });
                 }
 
-                // تاریخچه مدل
                 if (historyRes.status === 'fulfilled' && historyRes.value?.success && historyRes.value.data) {
                     historyRes.value.data.slice(0, 3).forEach(h => {
                         const acc = ((h.accuracy || 0) * 100).toFixed(1);
@@ -1046,9 +1238,15 @@
                     });
                 }
 
-                // مرتب‌سازی بر اساس زمان
                 items.sort((a, b) => b.time - a.time);
                 const display = items.slice(0, 10);
+
+                const badge = document.getElementById('alertBadge');
+                if (badge && alertsRes.status === 'fulfilled' && alertsRes.value?.data) {
+                    const count = alertsRes.value.data.length;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
 
                 if (display.length === 0) {
                     container.innerHTML = `
@@ -1059,14 +1257,6 @@
                         </div>
                     `;
                     return;
-                }
-
-                // نمایش شماره هشدارها در badge
-                const badge = document.getElementById('alertBadge');
-                if (badge && alertsRes.status === 'fulfilled' && alertsRes.value?.data) {
-                    const count = alertsRes.value.data.length;
-                    badge.textContent = count;
-                    badge.style.display = count > 0 ? 'inline' : 'none';
                 }
 
                 container.innerHTML = display.map(item => `
@@ -1090,7 +1280,7 @@
         }
 
         // ============================================================
-        // AUTO UPDATE
+        // 8. AUTO UPDATE
         // ============================================================
         function startAutoUpdate() {
             if (statsInterval) {
@@ -1108,7 +1298,7 @@
         }
 
         // ============================================================
-        // REFRESH
+        // 9. REFRESH
         // ============================================================
         async function refreshDashboard() {
             console.log('🔄 Refreshing...');
@@ -1138,17 +1328,17 @@
         }
 
         // ============================================================
-        // START
+        // 10. START
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Dashboard starting...');
             initializeDashboard();
         });
 
-        // Global
         window.refreshDashboard = refreshDashboard;
         window.loadMarketData = loadMarketData;
         window.loadActivities = loadActivities;
+        window.animateCountUp = animateCountUp;
 
         console.log('✅ Dashboard script loaded');
     </script>
