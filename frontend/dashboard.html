@@ -2,1207 +2,548 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>داشبورد | سیستم تحلیلگر</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد - تست</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <style>
-        /* ============================================================
-           DASHBOARD STYLES - LIQUID GLASS DESIGN
-           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* ---- متغیرهای اختصاصی ---- */
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.06);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-            --glass-blur: blur(18px);
-            --primary-glow: rgba(0, 212, 255, 0.12);
-            --secondary-glow: rgba(139, 92, 246, 0.08);
-            --card-radius: 20px;
-            --transition-smooth: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-
-        [data-theme="light"] {
-            --glass-bg: rgba(255, 255, 255, 0.5);
-            --glass-border: rgba(0, 0, 0, 0.06);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            --primary-glow: rgba(0, 212, 255, 0.15);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            background: radial-gradient(ellipse at 20% 50%, #0f172a 0%, #020617 100%);
-            color: var(--text-primary);
+            background: #0f172a;
+            color: #f1f5f9;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Vazir', sans-serif;
-            min-height: 100vh;
             padding: 20px;
             direction: rtl;
-            overflow-x: hidden;
         }
-
-        [data-theme="light"] body {
-            background: radial-gradient(ellipse at 20% 50%, #f1f5f9 0%, #e2e8f0 100%);
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            animation: fadeIn 0.6s ease;
-        }
-
-        /* ============================================================
-           ANIMATIONS
-           ============================================================ */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
-        }
-
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.05); }
-            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.12); }
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
-        }
-
-        @keyframes rotateGlow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes counterIn {
-            from { opacity: 0; transform: scale(0.5); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* ============================================================
-           GLASS CARD
-           ============================================================ */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--card-radius);
-            padding: 20px 24px;
-            box-shadow: var(--glass-shadow);
-            transition: var(--transition-smooth);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, var(--primary-glow), transparent 70%);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-        }
-
-        .glass-card:hover::before {
-            opacity: 1;
-        }
-
-        .glass-card:hover {
-            border-color: rgba(0, 212, 255, 0.15);
-            transform: translateY(-3px);
-            box-shadow: var(--glass-shadow), var(--primary-glow);
-        }
-
-        .glass-card .card-glow {
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: conic-gradient(from 0deg, transparent, rgba(0, 212, 255, 0.04), transparent, rgba(139, 92, 246, 0.04), transparent);
-            animation: rotateGlow 25s linear infinite;
-            pointer-events: none;
-            opacity: 0.2;
-        }
-
-        /* ============================================================
-           HEADER
-           ============================================================ */
-        .dashboard-header {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--card-radius);
-            padding: 22px 28px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 14px;
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .dashboard-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 40%, rgba(0, 212, 255, 0.05), transparent 60%);
-            pointer-events: none;
-        }
-
-        .dashboard-header .greeting {
-            font-size: 1.3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        [data-theme="light"] .dashboard-header .greeting {
-            background: linear-gradient(135deg, #0f172a, #475569);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .dashboard-header .greeting .highlight {
-            background: linear-gradient(135deg, #00d4ff, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .dashboard-header .status-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            position: relative;
-            z-index: 1;
-            flex-wrap: wrap;
-        }
-
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-        }
-
-        .status-badge .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse-dot 2s infinite;
-        }
-
-        .status-badge .dot.online { background: #22d3ee; box-shadow: 0 0 12px rgba(34, 211, 238, 0.3); }
-        .status-badge .dot.warning { background: #f59e0b; box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-        .status-badge .dot.offline { background: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.3); }
-
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-
-        .status-badge .value {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-glass {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            font-family: inherit;
-            text-decoration: none;
-        }
-
-        .btn-glass:hover {
-            border-color: rgba(0, 212, 255, 0.2);
-            color: var(--text-primary);
-            transform: translateY(-2px);
-            box-shadow: var(--primary-glow);
-        }
-
-        .btn-glass-primary {
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
-            border-color: rgba(0, 212, 255, 0.12);
+        
+        h1 {
             color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
         }
-
-        .btn-glass-primary:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+        
+        h2 {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin: 20px 0 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 5px;
         }
-
-        /* ============================================================
-           STATS GRID
-           ============================================================ */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 14px;
-            margin-bottom: 24px;
+        
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
         }
-
-        .stat-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 16px 18px;
-            text-align: center;
-            transition: var(--transition-smooth);
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.5s ease;
-            position: relative;
-            overflow: hidden;
-            cursor: default;
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.05s; }
-        .stat-card:nth-child(2) { animation-delay: 0.10s; }
-        .stat-card:nth-child(3) { animation-delay: 0.15s; }
-        .stat-card:nth-child(4) { animation-delay: 0.20s; }
-        .stat-card:nth-child(5) { animation-delay: 0.25s; }
-        .stat-card:nth-child(6) { animation-delay: 0.30s; }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, var(--primary-glow), transparent 70%);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-        }
-
-        .stat-card:hover::before {
-            opacity: 1;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(0, 212, 255, 0.12);
-            box-shadow: var(--glass-shadow), var(--primary-glow);
-        }
-
-        .stat-card .stat-icon {
-            font-size: 1.6rem;
-            margin-bottom: 4px;
-            display: block;
-            animation: float 4s ease-in-out infinite;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-label {
-            font-size: 0.6rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            margin: 4px 0 2px;
-            background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
-            animation: counterIn 0.4s ease;
-        }
-
-        [data-theme="light"] .stat-card .stat-value {
-            background: linear-gradient(135deg, #0f172a, #475569);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .stat-card .stat-value.cyan { background: linear-gradient(135deg, #00d4ff, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.purple { background: linear-gradient(135deg, #8b5cf6, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.orange { background: linear-gradient(135deg, #f59e0b, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.green { background: linear-gradient(135deg, #22d3ee, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.pink { background: linear-gradient(135deg, #ec4899, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.teal { background: linear-gradient(135deg, #14b8a6, #2dd4bf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .stat-card .stat-change {
-            font-size: 0.6rem;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-change.up { color: #22d3ee; }
-        .stat-card .stat-change.up::before { content: '▲ '; }
-        .stat-card .stat-change.down { color: #ef4444; }
-        .stat-card .stat-change.down::before { content: '▼ '; }
-        .stat-card .stat-change.neutral { color: var(--text-muted); }
-
-        .stat-card .stat-sub {
-            font-size: 0.55rem;
-            color: var(--text-muted);
-            position: relative;
-            z-index: 1;
-            margin-top: 2px;
-        }
-
-        /* ============================================================
-           ACTIVITY SECTION
-           ============================================================ */
-        .activity-section {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--card-radius);
-            padding: 20px 24px;
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.8s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .activity-section .card-glow {
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: conic-gradient(from 0deg, transparent, rgba(245, 158, 11, 0.04), transparent, rgba(0, 212, 255, 0.04), transparent);
-            animation: rotateGlow 30s linear infinite;
-            pointer-events: none;
-            opacity: 0.15;
-        }
-
-        .activity-section .section-header {
+        
+        .row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            position: relative;
-            z-index: 1;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
         }
-
-        .activity-section .section-title {
+        
+        .row:last-child { border-bottom: none; }
+        
+        .label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        
+        .value {
+            color: #f1f5f9;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .value.green { color: #22d3ee; }
+        .value.red { color: #ef4444; }
+        .value.yellow { color: #f59e0b; }
+        .value.muted { color: #64748b; }
+        
+        .btn {
+            background: #00d4ff;
+            color: #0f172a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            margin-bottom: 20px;
+            font-family: inherit;
         }
-
-        .activity-section .section-title i {
-            color: #f59e0b;
-        }
-
-        .activity-section .section-badge {
-            font-size: 0.5rem;
-            padding: 3px 12px;
-            background: rgba(34, 211, 238, 0.08);
-            color: #22d3ee;
-            border-radius: 20px;
-            border: 1px solid rgba(34, 211, 238, 0.08);
-            animation: pulseGlow 2s infinite;
-        }
-
-        .activity-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.02);
-            margin-bottom: 4px;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        .activity-item:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(0, 212, 255, 0.05);
-            transform: translateX(-4px);
-        }
-
-        .activity-item .a-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        
+        .btn:hover { background: #22d3ee; }
+        
+        .status {
+            padding: 8px 12px;
+            border-radius: 6px;
             font-size: 0.8rem;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-        }
-
-        .activity-item:hover .a-icon { transform: scale(1.1); }
-        .activity-item .a-icon.buy { background: rgba(34, 211, 238, 0.12); color: #22d3ee; }
-        .activity-item .a-icon.sell { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-        .activity-item .a-icon.neutral { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-        .activity-item .a-icon.model { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
-        .activity-item .a-icon.system { background: rgba(0, 212, 255, 0.12); color: #00d4ff; }
-        .activity-item .a-icon.alert { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-
-        .activity-item .a-text {
-            flex: 1;
-            font-size: 0.8rem;
-            color: var(--text-primary);
-        }
-
-        .activity-item .a-text .highlight {
-            color: #00d4ff;
-            font-weight: 500;
-        }
-
-        .activity-item .a-time {
-            font-size: 0.6rem;
-            color: var(--text-muted);
-            font-family: 'Courier New', monospace;
-            padding: 2px 10px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.03);
-            white-space: nowrap;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
-            color: var(--text-muted);
-            position: relative;
-            z-index: 1;
-        }
-
-        .empty-state .icon {
-            font-size: 2.5rem;
-            display: block;
             margin-bottom: 8px;
-            opacity: 0.5;
+            font-family: 'Courier New', monospace;
         }
-
-        .empty-state .title {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-secondary);
+        
+        .status.loading { background: #1e3a5f; color: #60a5fa; }
+        .status.success { background: #064e3b; color: #34d399; }
+        .status.error { background: #7f1d1d; color: #f87171; }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
-
-        .empty-state .subtitle {
-            font-size: 0.7rem;
-            color: var(--text-muted);
+        
+        .debug-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
-
-        .activity-skeleton {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            margin-bottom: 4px;
-        }
-
-        .activity-skeleton .skeleton-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: var(--bg-input);
-            animation: skeletonPulse 1.5s ease-in-out infinite;
-        }
-
-        .activity-skeleton .skeleton-text {
-            flex: 1;
-            height: 14px;
-            border-radius: 6px;
-            background: var(--bg-input);
-            animation: skeletonPulse 1.5s ease-in-out infinite 0.2s;
-        }
-
-        .activity-skeleton .skeleton-time {
-            width: 60px;
-            height: 12px;
-            border-radius: 6px;
-            background: var(--bg-input);
-            animation: skeletonPulse 1.5s ease-in-out infinite 0.4s;
-        }
-
-        @keyframes skeletonPulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
-        }
-
-        /* ============================================================
-           QUICK ACTIONS
-           ============================================================ */
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .quick-actions .btn-glass {
-            flex: 1;
-            min-width: 100px;
-            justify-content: center;
-            padding: 10px 18px;
-        }
-
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 1024px) {
-            .stats-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-
-        @media (max-width: 768px) {
-            body { padding: 12px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .dashboard-header { flex-direction: column; align-items: stretch; padding: 16px 18px; }
-            .dashboard-header .status-group { flex-wrap: wrap; }
-            .header-actions { width: 100%; }
-            .header-actions .btn-glass { flex: 1; justify-content: center; }
-            .stat-card { padding: 12px 14px; }
-            .stat-card .stat-value { font-size: 1rem; }
-            .activity-item { flex-wrap: wrap; }
-            .activity-item .a-time { width: 100%; text-align: left; }
-            .quick-actions .btn-glass { flex: 1; min-width: 80px; font-size: 0.7rem; }
-        }
-
-        @media (max-width: 480px) {
-            body { padding: 8px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .stat-card .stat-value { font-size: 0.85rem; }
-            .stat-card .stat-icon { font-size: 1.2rem; }
-            .stat-card .stat-label { font-size: 0.5rem; }
-            .dashboard-header .greeting { font-size: 1rem; }
-            .status-badge { font-size: 0.65rem; padding: 4px 10px; }
-            .activity-item .a-text { font-size: 0.7rem; }
-            .quick-actions .btn-glass { padding: 6px 12px; font-size: 0.65rem; }
+        
+        @media (max-width: 600px) {
+            .grid-2 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ============================================================
-    SPLASH LOADER (بارگذاری اولیه وب سرویس)
-    ============================================================ -->
-    <div id="splashLoaderContainer"></div>
+    <h1>📊 داشبورد - تست اتصال</h1>
+    
+    <button class="btn" onclick="testAll()">
+        <i class="fas fa-sync-alt"></i> تست همه APIها
+    </button>
 
-    <!-- ============================================================
-    LOADING OVERLAY (لودینگ داخلی برای پروسه‌ها)
-    ============================================================ -->
-    <div id="loadingOverlayContainer"></div>
-
-    <!-- ============================================================
-    NAVIGATION
-    ============================================================ -->
-    <div id="navContainer"></div>
-
-    <!-- ============================================================
-    MAIN CONTENT
-    ============================================================ -->
-    <div class="container" id="dashboardContent" style="display:none;">
-
-        <!-- ===== HEADER ===== -->
-        <div class="dashboard-header">
-            <div>
-                <div class="greeting">👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span></div>
-            </div>
-            <div class="status-group">
-                <div class="status-badge">
-                    <span class="dot online" id="statusDot"></span>
-                    <span id="statusText">سیستم پایدار</span>
-                </div>
-                <div class="status-badge">
-                    <i class="fas fa-brain" style="color:#8b5cf6;"></i>
-                    <span>مدل:</span>
-                    <span class="value" id="modelStatus">—</span>
-                </div>
-                <div class="status-badge">
-                    <i class="fas fa-database" style="color:#00d4ff;"></i>
-                    <span>داده:</span>
-                    <span class="value" id="dataCount">—</span>
-                </div>
-                <div class="header-actions">
-                    <button class="btn-glass btn-glass-primary" onclick="refreshDashboard()">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی
-                    </button>
-                </div>
-            </div>
+    <!-- ===== ۱. قیمت بیت‌کوین ===== -->
+    <h2>۱. بیت‌کوین (BTC)</h2>
+    <div class="card">
+        <div id="btcStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">قیمت:</span>
+            <span class="value" id="btcPrice">—</span>
         </div>
-
-        <!-- ===== STATS GRID ===== -->
-        <div class="stats-grid" id="statsGrid">
-            <!-- بیت‌کوین -->
-            <div class="stat-card">
-                <span class="stat-icon">₿</span>
-                <span class="stat-label">بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcPrice">—</div>
-                <div class="stat-change up" id="btcChange">—</div>
-            </div>
-
-            <!-- اتریوم -->
-            <div class="stat-card">
-                <span class="stat-icon">⟠</span>
-                <span class="stat-label">اتریوم</span>
-                <div class="stat-value purple" id="ethPrice">—</div>
-                <div class="stat-change up" id="ethChange">—</div>
-            </div>
-
-            <!-- ترس و طمع -->
-            <div class="stat-card">
-                <span class="stat-icon">😨</span>
-                <span class="stat-label">شاخص ترس و طمع</span>
-                <div class="stat-value orange" id="fearGreedValue">—</div>
-                <div class="stat-change neutral" id="fearGreedLabel">—</div>
-            </div>
-
-            <!-- سلطه بیت‌کوین -->
-            <div class="stat-card">
-                <span class="stat-icon">📊</span>
-                <span class="stat-label">سلطه بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcDominance">—</div>
-                <div class="stat-change neutral" id="btcDominanceChange">—</div>
-            </div>
-
-            <!-- سیگنال خرید -->
-            <div class="stat-card">
-                <span class="stat-icon">📈</span>
-                <span class="stat-label">سیگنال خرید</span>
-                <div class="stat-value green" id="buySignals">—</div>
-                <div class="stat-sub" id="buySub">پیش‌بینی‌های اخیر</div>
-            </div>
-
-            <!-- سیگنال فروش -->
-            <div class="stat-card">
-                <span class="stat-icon">📉</span>
-                <span class="stat-label">سیگنال فروش</span>
-                <div class="stat-value pink" id="sellSignals">—</div>
-                <div class="stat-sub" id="sellSub">پیش‌بینی‌های اخیر</div>
-            </div>
+        <div class="row">
+            <span class="label">تغییر ۲۴ ساعته:</span>
+            <span class="value" id="btcChange">—</span>
         </div>
-
-        <!-- ===== ACTIVITIES ===== -->
-        <div class="activity-section">
-            <div class="card-glow"></div>
-            <div class="section-header">
-                <div class="section-title">
-                    <i class="fas fa-bolt"></i>
-                    فعالیت‌های اخیر
-                </div>
-                <span class="section-badge">● لحظه‌ای</span>
-            </div>
-            <div id="activityList">
-                <!-- Skeleton Loading -->
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== QUICK ACTIONS ===== -->
-        <div class="quick-actions">
-            <a href="/analyzer" class="btn-glass btn-glass-primary">
-                <i class="fas fa-robot"></i> تحلیلگر
-            </a>
-            <a href="/model" class="btn-glass">
-                <i class="fas fa-brain"></i> مدل
-            </a>
-            <a href="/database" class="btn-glass">
-                <i class="fas fa-database"></i> دیتابیس
-            </a>
-            <a href="/chart" class="btn-glass">
-                <i class="fas fa-chart-line"></i> نمودار
-            </a>
-            <a href="/alerts" class="btn-glass">
-                <i class="fas fa-bell"></i> هشدارها
-                <span class="nav-badge" id="alertBadge" style="display:none;">0</span>
-            </a>
-        </div>
-
     </div>
 
-    <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
-    <script src="/js/utils.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/app.js"></script>
+    <!-- ===== ۲. قیمت اتریوم ===== -->
+    <h2>۲. اتریوم (ETH)</h2>
+    <div class="card">
+        <div id="ethStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">قیمت:</span>
+            <span class="value" id="ethPrice">—</span>
+        </div>
+        <div class="row">
+            <span class="label">تغییر ۲۴ ساعته:</span>
+            <span class="value" id="ethChange">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۳. ترس و طمع ===== -->
+    <h2>۳. شاخص ترس و طمع</h2>
+    <div class="card">
+        <div id="fgStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">مقدار:</span>
+            <span class="value" id="fgValue">—</span>
+        </div>
+        <div class="row">
+            <span class="label">وضعیت:</span>
+            <span class="value" id="fgLabel">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۴. سلطه بیت‌کوین ===== -->
+    <h2>۴. سلطه بیت‌کوین</h2>
+    <div class="card">
+        <div id="domStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">درصد:</span>
+            <span class="value" id="domValue">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۵. اطلاعات کاربر ===== -->
+    <h2>۵. اطلاعات کاربر</h2>
+    <div class="card">
+        <div id="userStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">نام کاربری:</span>
+            <span class="value" id="userName">—</span>
+        </div>
+        <div class="row">
+            <span class="label">نقش:</span>
+            <span class="value" id="userRole">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۶. هشدارها ===== -->
+    <h2>۶. هشدارها</h2>
+    <div class="card">
+        <div id="alertsStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">تعداد هشدارهای فعال:</span>
+            <span class="value" id="alertsCount">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۷. تاریخچه پیش‌بینی ===== -->
+    <h2>۷. تاریخچه پیش‌بینی</h2>
+    <div class="card">
+        <div id="predStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">تعداد پیش‌بینی:</span>
+            <span class="value" id="predCount">—</span>
+        </div>
+        <div class="row">
+            <span class="label">سیگنال خرید:</span>
+            <span class="value green" id="predBuy">—</span>
+        </div>
+        <div class="row">
+            <span class="label">سیگنال فروش:</span>
+            <span class="value red" id="predSell">—</span>
+        </div>
+    </div>
+
+    <!-- ===== ۸. آمار اپلیکیشن ===== -->
+    <h2>۸. آمار اپلیکیشن</h2>
+    <div class="card">
+        <div id="statsStatus" class="status loading">در انتظار تست...</div>
+        <div class="row">
+            <span class="label">RAM مصرفی:</span>
+            <span class="value" id="ramValue">—</span>
+        </div>
+        <div class="row">
+            <span class="label">CPU:</span>
+            <span class="value" id="cpuValue">—</span>
+        </div>
+        <div class="row">
+            <span class="label">Uptime:</span>
+            <span class="value" id="uptimeValue">—</span>
+        </div>
+    </div>
+
+    <!-- ===== Debug Box ===== -->
+    <h2>🐛 لاگ‌ها</h2>
+    <div class="debug-box" id="debugBox">در انتظار شروع...</div>
+
+    <!-- ===== Scripts ===== -->
+    <script src="/frontend/js/utils.js"></script>
+    <script src="/frontend/js/api.js"></script>
+    <script src="/frontend/js/app.js"></script>
 
     <script>
         // ============================================================
-        // 1. LOAD COMPONENTS
+        // لاگر ساده
         // ============================================================
+        function log(msg, type = 'info') {
+            const box = document.getElementById('debugBox');
+            const time = new Date().toLocaleTimeString('fa-IR');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            box.textContent += `\n[${time}] ${icon} ${msg}`;
+            box.scrollTop = box.scrollHeight;
+            console.log(`[${type}] ${msg}`);
+        }
 
-        async function loadComponent(id, url) {
-            const container = document.getElementById(id);
-            if (!container) return;
+        function setStatus(id, type, text) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = 'status ' + type;
+            el.textContent = text;
+        }
+
+        function setValue(id, value, cls = '') {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = value ?? '—';
+            el.className = 'value ' + cls;
+        }
+
+        // ============================================================
+        // تست بیت‌کوین و اتریوم
+        // ============================================================
+        async function testBTC() {
+            setStatus('btcStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست بیت‌کوین...');
+            
             try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const html = await res.text();
-                container.innerHTML = html;
-
-                // اجرای اسکریپت‌های داخل کامپوننت
-                const scripts = container.querySelectorAll('script');
-                scripts.forEach(old => {
-                    const ns = document.createElement('script');
-                    ns.textContent = old.textContent;
-                    old.parentNode.replaceChild(ns, old);
-                });
-                return true;
+                const res = await api.getCoinPrice('bitcoin');
+                log('پاسخ BTC: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    setValue('btcPrice', formatCurrency(res.data.price), 'green');
+                    setValue('btcChange', formatPercent(res.data.change_24h), 
+                              res.data.change_24h >= 0 ? 'green' : 'red');
+                    setStatus('btcStatus', 'success', '✅ متصل');
+                    log('BTC با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
+                }
             } catch (err) {
-                console.error(`❌ Failed to load ${url}:`, err);
+                setStatus('btcStatus', 'error', '❌ ' + err.message);
+                log('خطا BTC: ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        async function testETH() {
+            setStatus('ethStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست اتریوم...');
+            
+            try {
+                const res = await api.getCoinPrice('ethereum');
+                log('پاسخ ETH: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    setValue('ethPrice', formatCurrency(res.data.price), 'green');
+                    setValue('ethChange', formatPercent(res.data.change_24h),
+                              res.data.change_24h >= 0 ? 'green' : 'red');
+                    setStatus('ethStatus', 'success', '✅ متصل');
+                    log('ETH با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
+                }
+            } catch (err) {
+                setStatus('ethStatus', 'error', '❌ ' + err.message);
+                log('خطا ETH: ' + err.message, 'error');
                 return false;
             }
         }
 
         // ============================================================
-        // 2. INITIALIZE
+        // تست ترس و طمع
         // ============================================================
-
-        let statsInterval = null;
-        let isDashboardReady = false;
-
-        async function initializeDashboard() {
-            console.log('🚀 Initializing dashboard...');
-
-            // بارگذاری کامپوننت‌ها
-            await Promise.all([
-                loadComponent('splashLoaderContainer', '/components/loading.html'),
-                loadComponent('loadingOverlayContainer', '/components/loading-overlay.html'),
-                loadComponent('navContainer', '/components/nav.html')
-            ]);
-
-            // شروع لودینگ اولیه (splash loader)
-            if (window.loading && typeof window.loading.start === 'function') {
-                window.loading.start(() => {
-                    // بعد از کامل شدن لودینگ اولیه
-                    showDashboard();
-                });
-            } else {
-                // Fallback اگر کامپوننت لود نشد
-                console.warn('⚠️ Loading component not loaded, using fallback');
-                setTimeout(showDashboard, 1500);
-            }
-        }
-
-        function showDashboard() {
-            document.getElementById('dashboardContent').style.display = 'block';
-            initDashboard();
-        }
-
-        // ============================================================
-        // 3. DASHBOARD LOGIC
-        // ============================================================
-
-        async function initDashboard() {
-            if (isDashboardReady) return;
-            isDashboardReady = true;
-
-            console.log('📊 Loading dashboard data...');
-
-            // نمایش لودینگ داخلی
-            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-                window.loadingSystem.show({
-                    messages: ['بارگذاری داده‌ها...', 'دریافت قیمت‌ها|لطفاً صبر کنید', 'بروزرسانی فعالیت‌ها|تقریباً تمام است'],
-                    duration: 2000                });
-            }
-
-            try {
-                await Promise.all([
-                    loadUserInfo(),
-                    loadMarketData(),
-                    loadActivities()
-                ]);
-
-                // شروع آپدیت خودکار
-                startAutoUpdate();
-
-                // مخفی کردن لودینگ داخلی
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
-                }
-
-                console.log('✅ Dashboard ready');
-            } catch (err) {
-                console.error('❌ Dashboard init error:', err);
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
-                }
-                showToast('⚠️ خطا در بارگذاری داده‌ها', 'warning');
-            }
-        }
-
-        // ============================================================
-        // 4. DATA LOADERS
-        // ============================================================
-
-        async function loadUserInfo() {
-            try {
-                const data = await api.getUserInfo();
-                if (data.success) {
-                    document.getElementById('userName').textContent = data.data.username || 'کاربر';
-                }
-            } catch (err) {
-                console.error('User info error:', err);
-            }
-        }
-
-        async function loadMarketData() {
-            try {
-                // دریافت متریک‌ها از API
-                const metricsData = await api.getMetrics();
-                if (!metricsData.success) {
-                    console.warn('Metrics API failed, using fallback');
-                    return;
-                }
-
-                const metrics = metricsData.data?.metrics || {};
-                
-                // ===== بیت‌کوین =====
-                const btc = metrics.btc_price || {};
-                const btcEl = document.getElementById('btcPrice');
-                const btcChangeEl = document.getElementById('btcChange');
-                if (btc.value) {
-                    btcEl.textContent = formatCurrency(btc.value);
-                    if (btc.change_24h !== undefined) {
-                        btcChangeEl.textContent = formatPercent(btc.change_24h);
-                        btcChangeEl.className = 'stat-change ' + (btc.change_24h >= 0 ? 'up' : 'down');
-                    }
-                }
-
-                // ===== اتریوم =====
-                const eth = metrics.eth_price || {};
-                const ethEl = document.getElementById('ethPrice');
-                const ethChangeEl = document.getElementById('ethChange');
-                if (eth.value) {
-                    ethEl.textContent = formatCurrency(eth.value);
-                    if (eth.change_24h !== undefined) {
-                        ethChangeEl.textContent = formatPercent(eth.change_24h);
-                        ethChangeEl.className = 'stat-change ' + (eth.change_24h >= 0 ? 'up' : 'down');
-                    }
-                }
-
-                // ===== ترس و طمع =====
-                const fg = metrics.fear_greed || {};
-                const fgEl = document.getElementById('fearGreedValue');
-                const fgLabelEl = document.getElementById('fearGreedLabel');
-                if (fg.value) {
-                    fgEl.textContent = fg.value;
-                    fgLabelEl.textContent = fg.classification || '—';
-                    fgLabelEl.className = 'stat-change neutral';
-                }
-
-                // ===== سلطه بیت‌کوین =====
-                const dom = metrics.btc_dominance || {};
-                const domEl = document.getElementById('btcDominance');
-                const domChangeEl = document.getElementById('btcDominanceChange');
-                if (dom.value) {
-                    domEl.textContent = dom.value + '%';
-                    if (dom.change_24h !== undefined) {
-                        domChangeEl.textContent = formatPercent(dom.change_24h);
-                        domChangeEl.className = 'stat-change ' + (dom.change_24h >= 0 ? 'up' : 'down');
-                    }
-                }
-
-                // ===== وضعیت مدل =====
-                const model = metrics.model_status?.value || {};
-                const modelEl = document.getElementById('modelStatus');
-                modelEl.textContent = model.loaded ? '✅ فعال' : '📦 دمو';
-
-                // ===== تعداد داده‌ها =====
-                const stats = metricsData.data?.stats || {};
-                document.getElementById('dataCount').textContent = stats.collections || '—';
-
-                // ===== وضعیت سیستم =====
-                const apiStatus = metrics.api_status?.value || 'unknown';
-                const dot = document.getElementById('statusDot');
-                const text = document.getElementById('statusText');
-                dot.className = 'dot';
-                if (apiStatus === 'ok') {
-                    dot.classList.add('online');
-                    text.textContent = 'سیستم پایدار';
-                } else if (apiStatus === 'degraded') {
-                    dot.classList.add('warning');
-                    text.textContent = 'عملکرد کاهش یافته';
-                } else {
-                    dot.classList.add('offline');
-                    text.textContent = 'مشکل در سیستم';
-                }
-
-                // ===== سیگنال‌ها (از تاریخچه پیش‌بینی) =====
-                try {
-                    const predData = await api.getPredictionHistory(100);
-                    if (predData.success && predData.data) {
-                        const predictions = predData.data;
-                        const buyCount = predictions.filter(p => p.signal_type === 'BUY').length;
-                        const sellCount = predictions.filter(p => p.signal_type === 'SELL').length;
-                        document.getElementById('buySignals').textContent = buyCount || '—';
-                        document.getElementById('sellSignals').textContent = sellCount || '—';
-                    }
-                } catch (predErr) {
-                    console.warn('Prediction history error:', predErr);
-                }
-
-                // ===== شماره هشدارها =====
-                try {
-                    const alertData = await api.getAlerts({ limit: 1, resolved: false });
-                    const badge = document.getElementById('alertBadge');
-                    if (alertData.success && alertData.data) {
-                        const count = alertData.data.length || 0;
-                        badge.textContent = count;
-                        badge.style.display = count > 0 ? 'inline' : 'none';
-                    }
-                } catch (alertErr) {
-                    console.warn('Alert error:', alertErr);
-                }
-
-            } catch (err) {
-                console.error('Market data error:', err);
-                throw err;
-            }
-        }
-
-        async function loadActivities() {
-            const container = document.getElementById('activityList');
+        async function testFearGreed() {
+            setStatus('fgStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست ترس و طمع...');
             
             try {
-                // دریافت از چند منبع
-                const [alertsData, historyData] = await Promise.all([
-                    api.getAlerts({ limit: 5, resolved: false }).catch(() => ({ success: false, data: [] })),
-                    api.getModelHistory(3).catch(() => ({ success: false, data: [] }))
-                ]);
-
-                const items = [];
-
-                // هشدارها
-                if (alertsData.success && alertsData.data) {
-                    alertsData.data.forEach(a => {
-                        const levelMap = {
-                            'CRITICAL': { icon: '🚨', cls: 'alert', label: 'بحرانی' },
-                            'WARNING': { icon: '⚠️', cls: 'neutral', label: 'هشدار' },
-                            'INFO': { icon: 'ℹ️', cls: 'system', label: 'اطلاعیه' }
-                        };
-                        const info = levelMap[a.level] || levelMap.INFO;
-                        items.push({
-                            icon: info.icon,
-                            cls: info.cls,
-                            text: `${info.label}: ${a.message || 'رویداد جدید'}`,
-                            time: new Date(a.timestamp)
-                        });
-                    });
+                const res = await api.getFearGreed();
+                log('پاسخ FG: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    setValue('fgValue', res.data.value, 'yellow');
+                    setValue('fgLabel', res.data.classification || '—');
+                    setStatus('fgStatus', 'success', '✅ متصل');
+                    log('FG با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
                 }
-
-                // تاریخچه مدل
-                if (historyData.success && historyData.data) {
-                    historyData.data.slice(0, 3).forEach(h => {
-                        const acc = ((h.accuracy || 0) * 100).toFixed(1);
-                        items.push({
-                            icon: '🧠',
-                            cls: 'model',
-                            text: `مدل جدید <span class="highlight">${h.version || 'v1'}</span> با دقت ${acc}%`,
-                            time: new Date(h.training_date)
-                        });
-                    });
-                }
-
-                // مرتب‌سازی بر اساس زمان
-                items.sort((a, b) => b.time - a.time);
-                const displayItems = items.slice(0, 10);
-
-                if (displayItems.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <span class="icon">📭</span>
-                            <div class="title">هیچ فعالیتی ثبت نشده</div>
-                            <div class="subtitle">با تحلیل و آموزش مدل، فعالیت‌ها در اینجا نمایش داده می‌شوند</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = displayItems.map(item => `
-                    <div class="activity-item">
-                        <div class="a-icon ${item.cls}">${item.icon}</div>
-                        <div class="a-text">${item.text}</div>
-                        <div class="a-time">${formatTimeAgo(item.time)}</div>
-                    </div>
-                `).join('');
-
             } catch (err) {
-                console.error('Activities error:', err);
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <span class="icon">⚠️</span>
-                        <div class="title">خطا در بارگذاری</div>
-                        <div class="subtitle">لطفاً صفحه را بروزرسانی کنید</div>
-                    </div>
-                `;
+                setStatus('fgStatus', 'error', '❌ ' + err.message);
+                log('خطا FG: ' + err.message, 'error');
+                return false;
             }
         }
 
         // ============================================================
-        // 5. AUTO UPDATE
+        // تست سلطه بیت‌کوین
         // ============================================================
-
-        function startAutoUpdate() {
-            if (statsInterval) {
-                clearInterval(statsInterval);
-                statsInterval = null;
-            }
-
-            statsInterval = setInterval(async () => {
-                try {
-                    await loadMarketData();
-                    await loadActivities();
-                } catch (err) {
-                    console.warn('Auto update error:', err);
-                }
-            }, 30000); // هر ۳۰ ثانیه
-        }
-
-        function stopAutoUpdate() {
-            if (statsInterval) {
-                clearInterval(statsInterval);
-                statsInterval = null;
-            }
-        }
-
-        // ============================================================
-        // 6. REFRESH
-        // ============================================================
-
-        async function refreshDashboard() {
-            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-                window.loadingSystem.show({
-                    messages: ['بروزرسانی داده‌ها...', 'دریافت جدیدترین اطلاعات|لطفاً صبر کنید'],
-                    duration: 1500
-                });
-            }
-
+        async function testDominance() {
+            setStatus('domStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست سلطه...');
+            
             try {
-                await Promise.all([
-                    loadUserInfo(),
-                    loadMarketData(),
-                    loadActivities()
-                ]);
-                showToast('✅ بروزرسانی کامل شد', 'success');
-            } catch (err) {
-                showToast('❌ خطا در بروزرسانی', 'error');
-            } finally {
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
+                const res = await api.getBTCDominance();
+                log('پاسخ Dominance: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    setValue('domValue', res.data.value + '%', 'green');
+                    setStatus('domStatus', 'success', '✅ متصل');
+                    log('Dominance با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
                 }
+            } catch (err) {
+                setStatus('domStatus', 'error', '❌ ' + err.message);
+                log('خطا Dominance: ' + err.message, 'error');
+                return false;
             }
         }
 
         // ============================================================
-        // 7. START
+        // تست اطلاعات کاربر
         // ============================================================
+        async function testUser() {
+            setStatus('userStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست کاربر...');
+            
+            try {
+                const res = await api.getUserInfo();
+                log('پاسخ User: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    setValue('userName', res.data.username, 'green');
+                    setValue('userRole', res.data.role);
+                    setStatus('userStatus', 'success', '✅ متصل');
+                    log('User با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر - احتمالاً لاگین نیستی');
+                }
+            } catch (err) {
+                setStatus('userStatus', 'error', '❌ ' + err.message);
+                log('خطا User: ' + err.message, 'error');
+                return false;
+            }
+        }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Dashboard starting...');
-            initializeDashboard();
+        // ============================================================
+        // تست هشدارها
+        // ============================================================
+        async function testAlerts() {
+            setStatus('alertsStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست هشدارها...');
+            
+            try {
+                const res = await api.getAlerts({ limit: 10, resolved: false });
+                log('پاسخ Alerts: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success) {
+                    const count = (res.data || []).length;
+                    setValue('alertsCount', count, count > 0 ? 'yellow' : 'green');
+                    setStatus('alertsStatus', 'success', '✅ متصل');
+                    log(`Alerts با موفقیت دریافت شد (${count} مورد)`, 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
+                }
+            } catch (err) {
+                setStatus('alertsStatus', 'error', '❌ ' + err.message);
+                log('خطا Alerts: ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        // ============================================================
+        // تست تاریخچه پیش‌بینی
+        // ============================================================
+        async function testPredictions() {
+            setStatus('predStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست پیش‌بینی‌ها...');
+            
+            try {
+                const res = await api.getPredictionHistory(50);
+                log('پاسخ Predictions: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success) {
+                    const list = res.data || [];
+                    const buy = list.filter(p => p.signal_type === 'BUY').length;
+                    const sell = list.filter(p => p.signal_type === 'SELL').length;
+                    
+                    setValue('predCount', list.length);
+                    setValue('predBuy', buy, 'green');
+                    setValue('predSell', sell, 'red');
+                    setStatus('predStatus', 'success', '✅ متصل');
+                    log(`Predictions دریافت شد (${list.length} مورد)`, 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
+                }
+            } catch (err) {
+                setStatus('predStatus', 'error', '❌ ' + err.message);
+                log('خطا Predictions: ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        // ============================================================
+        // تست آمار اپلیکیشن
+        // ============================================================
+        async function testAppStats() {
+            setStatus('statsStatus', 'loading', '⏳ در حال دریافت...');
+            log('شروع تست آمار اپ...');
+            
+            try {
+                const res = await api.getAppStats();
+                log('پاسخ AppStats: ' + JSON.stringify(res).substring(0, 200));
+                
+                if (res && res.success && res.data) {
+                    const ram = res.data.ram || {};
+                    const cpu = res.data.cpu || {};
+                    const uptime = res.data.uptime || {};
+                    
+                    setValue('ramValue', ram.used_mb ? ram.used_mb + ' MB' : '—', 'yellow');
+                    setValue('cpuValue', cpu.percent ? cpu.percent + '%' : '—', 'yellow');
+                    setValue('uptimeValue', uptime.app_formatted || '—');
+                    setStatus('statsStatus', 'success', '✅ متصل');
+                    log('AppStats با موفقیت دریافت شد', 'success');
+                    return true;
+                } else {
+                    throw new Error('پاسخ نامعتبر');
+                }
+            } catch (err) {
+                setStatus('statsStatus', 'error', '❌ ' + err.message);
+                log('خطا AppStats: ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        // ============================================================
+        // تست همه با هم
+        // ============================================================
+        async function testAll() {
+            const box = document.getElementById('debugBox');
+            box.textContent = '🚀 شروع تست...\n';
+            
+            log('=== شروع تست کامل ===');
+            
+            // اول BTC و ETH
+            await testBTC();
+            await testETH();
+            
+            // بعد ترس و طمع
+            await testFearGreed();
+            
+            // بعد سلطه
+            await testDominance();
+            
+            // بعد کاربر
+            await testUser();
+            
+            // بعد هشدارها
+            await testAlerts();
+            
+            // بعد پیش‌بینی
+            await testPredictions();
+            
+            // آخر آمار اپ
+            await testAppStats();
+            
+            log('=== پایان تست ===', 'success');
+        }
+
+        // ============================================================
+        // اجرای خودکار در ابتدا
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            log('صفحه آماده شد');
+            log('آماده تست - دکمه را بزن');
         });
 
-        // توابع سراسری
-        window.refreshDashboard = refreshDashboard;
-        window.loadMarketData = loadMarketData;
-        window.loadActivities = loadActivities;
-
-        // ===== اضافه کردن toast اگر وجود نداشت =====
-        if (typeof showToast !== 'function') {
-            window.showToast = function(message, type = 'info', duration = 3000) {
-                console.log(`[${type}] ${message}`);
-                alert(message);
-            };
-        }
-
-        console.log('✅ Dashboard script loaded');
+        // در دسترس قرار دادن برای کنسول
+        window.testAll = testAll;
+        window.testBTC = testBTC;
+        window.testETH = testETH;
     </script>
 
 </body>
