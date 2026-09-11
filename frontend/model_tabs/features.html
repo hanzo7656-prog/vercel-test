@@ -1,389 +1,632 @@
 <!-- ============================================================
-     FEATURES TAB - اهمیت ویژگی‌ها با نام‌های خوانا
+     features.html - تب اهمیت ویژگی‌ها
+     نسخه ۲.۰ - با CSS مشترک model-animations.css
      ============================================================ -->
 
 <div class="card">
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
     <div class="card-title">
-        <i class="fas fa-chart-bar"></i> اهمیت ویژگی‌ها
-        <span class="badge-count" id="featuresCount" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">۰</span>
-        <button class="btn btn-xs btn-outline" onclick="refreshFeatures()" style="padding:2px 10px;font-size:0.6rem;">
+        <i class="fas fa-chart-bar"></i>
+        <span>اهمیت ویژگی‌ها</span>
+        <span class="model-status-badge demo" id="featuresCountBadge" style="margin-right:auto;">
+            <span class="status-dot"></span>
+            <span class="status-text" id="featuresCountText">۰ ویژگی</span>
+        </span>
+        <button class="btn btn-xs btn-outline" onclick="refreshFeatures()" 
+                style="padding:3px 10px;font-size:0.65rem;margin-right:6px;">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
 
-    <!-- ===== TOOLBAR ===== -->
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+    <!-- ============================================================
+         TOOLBAR
+         ============================================================ -->
+    <div class="analyzer-toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
-            <input type="text" id="featuresSearch" placeholder="🔍 جستجو در ویژگی‌ها..." onkeyup="filterFeatures()"
-                style="padding:4px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;min-width:150px;flex:1;">
-            <select id="featuresSort" onchange="filterFeatures()"
-                style="padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
+            <!-- Search -->
+            <div style="position:relative;flex:1;min-width:150px;">
+                <input type="text" id="featuresSearch" 
+                       placeholder="جستجو در ویژگی‌ها..." 
+                       oninput="debouncedFilterFeatures()"
+                       style="width:100%;padding:7px 12px;padding-right:32px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;transition:all 0.3s ease;">
+                <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.7rem;pointer-events:none;">🔍</span>
+            </div>
+            
+            <!-- Sort -->
+            <select id="featuresSort" class="analyzer-filter" onchange="filterFeatures()" 
+                    style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;cursor:pointer;">
                 <option value="importance_desc">بیشترین اهمیت</option>
                 <option value="importance_asc">کمترین اهمیت</option>
                 <option value="name_asc">الفبایی (صعودی)</option>
                 <option value="name_desc">الفبایی (نزولی)</option>
             </select>
         </div>
-        <div style="display:flex;gap:6px;">
-            <button class="btn btn-xs btn-outline" onclick="exportFeaturesCSV()" style="padding:2px 10px;font-size:0.6rem;">
-                <i class="fas fa-file-csv"></i> CSV
-            </button>
-        </div>
+        
+        <!-- Export -->
+        <button class="btn btn-xs btn-outline" onclick="exportFeaturesCSV()" 
+                style="padding:3px 12px;font-size:0.65rem;">
+            <i class="fas fa-file-csv"></i>
+            <span style="margin-right:4px;">CSV</span>
+        </button>
     </div>
 
-    <!-- ===== CHART + LIST ===== -->
-    <div class="chart-grid">
+    <!-- ============================================================
+         CHART + LIST (دو ستون)
+         ============================================================ -->
+    <div class="model-chart-grid">
+        
         <!-- ===== CHART ===== -->
-        <div class="chart-box">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">
-                    <i class="fas fa-chart-bar" style="color:var(--accent-purple);"></i> نمودار اهمیت ویژگی‌ها
+        <div class="model-chart-box">
+            <div class="chart-header">
+                <span class="chart-title">
+                    <i class="fas fa-chart-bar" style="color:var(--accent-purple);"></i>
+                    نمودار اهمیت ویژگی‌ها
                 </span>
-                <span class="badge" id="topFeaturesBadge"
-                    style="font-size:0.5rem;padding:2px 8px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">۵
-                    ویژگی برتر</span>
+                <span class="model-status-badge demo" style="font-size:0.5rem;padding:2px 8px;">
+                    <span class="status-dot"></span>
+                    <span class="status-text">۵ برتر</span>
+                </span>
             </div>
-            <div style="height:350px;position:relative;">
+            <div class="chart-wrapper" style="height:350px;">
                 <canvas id="featuresChart"></canvas>
             </div>
         </div>
 
         <!-- ===== LIST ===== -->
-        <div class="chart-box">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);">
-                    <i class="fas fa-list"></i> لیست ویژگی‌ها
+        <div class="model-chart-box">
+            <div class="chart-header">
+                <span class="chart-title">
+                    <i class="fas fa-list"></i>
+                    لیست ویژگی‌ها
                 </span>
-                <span class="badge" id="filteredCount"
-                    style="font-size:0.5rem;padding:2px 8px;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-color);">۰</span>
+                <span class="model-status-badge demo" style="font-size:0.5rem;padding:2px 8px;">
+                    <span class="status-dot"></span>
+                    <span class="status-text" id="filteredCount">۰</span>
+                </span>
             </div>
-            <div id="featuresList"
-                style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:4px;">
-                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
-                    <div class="loading-spinner"
-                        style="width:24px;height:24px;border:2px solid var(--border-color);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-bottom:8px;">
-                    </div>
-                    <br>در حال بارگذاری...
+            <div id="featuresList" 
+                 style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:4px;">
+                <!-- Skeleton -->
+                <div class="model-skeleton-card">
+                    <div class="model-skeleton-line long"></div>
+                    <div class="model-skeleton-line short"></div>
+                </div>
+                <div class="model-skeleton-card">
+                    <div class="model-skeleton-line long"></div>
+                    <div class="model-skeleton-line short"></div>
+                </div>
+                <div class="model-skeleton-card">
+                    <div class="model-skeleton-line long"></div>
+                    <div class="model-skeleton-line short"></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    /* ===== استایل اختصاصی لیست ویژگی‌ها ===== */
+    .feature-list-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: transparent;
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+        transition: all 0.3s ease;
+        animation: modelStaggerIn 0.3s ease backwards;
+    }
+    
+    .feature-list-item:hover {
+        background: rgba(139, 92, 246, 0.04);
+        border-color: rgba(139, 92, 246, 0.1);
+        transform: translateX(-2px);
+    }
+    
+    .feature-list-item.top-5 {
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.03));
+        border-color: rgba(0, 212, 255, 0.1);
+    }
+    
+    .feature-list-item .feature-rank {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        min-width: 24px;
+        font-family: 'Courier New', monospace;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    
+    .feature-list-item .feature-name {
+        flex: 1;
+        font-size: 0.75rem;
+        color: var(--text-primary);
+        font-weight: 500;
+        word-break: break-word;
+    }
+    
+    .feature-list-item.top-5 .feature-name {
+        font-weight: 600;
+    }
+    
+    .feature-list-item .feature-bar {
+        width: 100px;
+        height: 6px;
+        background: var(--bg-input);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    
+    .feature-list-item .feature-bar-fill {
+        height: 100%;
+        border-radius: var(--radius-full);
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    
+    .feature-list-item .feature-percent {
+        font-size: 0.7rem;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+        min-width: 48px;
+        text-align: right;
+        flex-shrink: 0;
+    }
+    
+    .top-badge {
+        font-size: 0.45rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+        background: rgba(0, 212, 255, 0.12);
+        color: var(--accent-cyan);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+</style>
+
 <script>
-    // ============================================================
-    // نقشه نام ویژگی‌ها (برای تبدیل f0, f1 به نام خوانا)
-    // ============================================================
+// ============================================================
+// FEATURES TAB v2.0
+// ============================================================
 
-    const featureNames = {
-        'f0': 'بازده ۱ روزه',
-        'f1': 'بازده ۳ روزه',
-        'f2': 'بازده ۵ روزه',
-        'f3': 'بازده ۱۰ روزه',
-        'f4': 'SMA ۵',
-        'f5': 'SMA ۱۰',
-        'f6': 'SMA ۲۰',
-        'f7': 'نوسان',
-        'f8': 'ترس و طمع',
-        'f9': 'روند ۵ روزه',
-        'f10': 'روند ۱۰ روزه',
-        'f11': 'روند ۲۰ روزه',
-        'f12': 'قدرت روند (R²)',
-        'f13': 'سلطه بیت‌کوین',
-        'f14': 'حجم بازار',
-        'f15': 'حجم کل'
-    };
+// ===== Feature Names Map =====
+const FEATURE_NAMES = {
+    'f0': 'بازده ۱ روزه',
+    'f1': 'بازده ۳ روزه',
+    'f2': 'بازده ۵ روزه',
+    'f3': 'بازده ۱۰ روزه',
+    'f4': 'SMA ۵',
+    'f5': 'SMA ۱۰',
+    'f6': 'SMA ۲۰',
+    'f7': 'نوسان',
+    'f8': 'ترس و طمع',
+    'f9': 'روند ۵ روزه',
+    'f10': 'روند ۱۰ روزه',
+    'f11': 'روند ۲۰ روزه',
+    'f12': 'قدرت روند (R²)',
+    'f13': 'سلطه بیت‌کوین',
+    'f14': 'حجم بازار',
+    'f15': 'حجم کل'
+};
 
-    function getFeatureDisplayName(feature) {
-        return featureNames[feature] || feature;
+function getFeatureDisplayName(feature) {
+    return FEATURE_NAMES[feature] || feature;
+}
+
+// ===== State =====
+let featuresData = [];
+let filteredFeatures = [];
+let featuresChart = null;
+let featuresInterval = null;
+let isFeaturesLoaded = false;
+let debounceTimer = null;
+
+// ============================================================
+// ۱. INITIALIZE / CLEANUP
+// ============================================================
+
+window.init_features = function() {
+    console.log('📊 Features tab initializing...');
+    if (isFeaturesLoaded) {
+        console.log('⚠️ Already loaded, skipping');
+        return;
     }
+    isFeaturesLoaded = true;
+    loadFeatures();
+    
+    // auto-refresh هر ۶۰ ثانیه
+    if (featuresInterval) clearInterval(featuresInterval);
+    featuresInterval = setInterval(loadFeatures, 60000);
+};
 
-    // ============================================================
-    // FEATURES TAB
-    // ============================================================
+window.cleanup_features = function() {
+    console.log('🧹 Features tab cleaning up...');
+    isFeaturesLoaded = false;
+    
+    if (featuresInterval) {
+        clearInterval(featuresInterval);
+        featuresInterval = null;
+    }
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    if (featuresChart) {
+        featuresChart.destroy();
+        featuresChart = null;
+    }
+};
 
-    let featuresData = [];
-    let filteredFeatures = [];
-    let featuresChart = null;
-    let featuresInterval = null;
-    let isFeaturesLoaded = false;
+// ============================================================
+// ۲. LOAD FEATURES
+// ============================================================
 
-    async function loadFeatures() {
-        const listEl = document.getElementById('featuresList');
+async function loadFeatures() {
+    const listEl = document.getElementById('featuresList');
+    showSkeletonLoading(listEl);
+    
+    try {
+        const data = await api.getModelImportance();
+        
+        if (data && data.success && data.data && data.data.length > 0) {
+            // تبدیل نام‌ها
+            featuresData = data.data.map(f => ({
+                ...f,
+                displayName: getFeatureDisplayName(f.feature)
+            }));
+            
+            // مرتب‌سازی پیش‌فرض
+            featuresData.sort((a, b) => b.importance - a.importance);
+            
+            filteredFeatures = [...featuresData];
+            
+            // بروزرسانی شمارنده
+            const countText = document.getElementById('featuresCountText');
+            if (countText) countText.textContent = `${featuresData.length} ویژگی`;
+            
+            renderFeatures();
+            renderChart();
+            
+        } else {
+            showEmptyState(listEl);
+            const countText = document.getElementById('featuresCountText');
+            if (countText) countText.textContent = '۰ ویژگی';
+        }
+        
+    } catch (error) {
+        console.error('❌ Features error:', error);
+        showErrorState(listEl, error.message);
+    }
+}
+
+// ============================================================
+// ۳. SKELETON / EMPTY / ERROR
+// ============================================================
+
+function showSkeletonLoading(container) {
+    if (!container) return;
+    container.innerHTML = Array(5).fill('').map((_, i) => `
+        <div class="model-skeleton-card" style="animation-delay:${i * 0.05}s;">
+            <div class="model-skeleton-line long"></div>
+            <div class="model-skeleton-line short"></div>
+        </div>
+    `).join('');
+}
+
+function showEmptyState(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="model-empty" style="padding:30px 20px;">
+            <span class="empty-icon">📭</span>
+            <div class="empty-title">هیچ ویژگی‌ای یافت نشد</div>
+            <div class="empty-message">لطفاً ابتدا مدل را آموزش دهید</div>
+        </div>
+    `;
+}
+
+function showErrorState(container, message) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="model-empty error" style="padding:30px 20px;">
+            <span class="empty-icon">⚠️</span>
+            <div class="empty-title">خطا در دریافت ویژگی‌ها</div>
+            <div class="empty-message">${escapeHtml(message || 'خطای نامشخص')}</div>
+            <button class="empty-action" onclick="refreshFeatures()">
+                <i class="fas fa-sync-alt"></i>
+                تلاش مجدد
+            </button>
+        </div>
+    `;
+}
+
+// ============================================================
+// ۴. RENDER FEATURES LIST
+// ============================================================
+
+function renderFeatures() {
+    const listEl = document.getElementById('featuresList');
+    if (!listEl) return;
+    
+    const search = (document.getElementById('featuresSearch')?.value || '').toLowerCase().trim();
+    const sort = document.getElementById('featuresSort')?.value || 'importance_desc';
+    
+    // فیلتر
+    filteredFeatures = featuresData.filter(f =>
+        f.displayName.toLowerCase().includes(search) ||
+        f.feature.toLowerCase().includes(search)
+    );
+    
+    // مرتب‌سازی
+    switch (sort) {
+        case 'importance_desc':
+            filteredFeatures.sort((a, b) => b.importance - a.importance);
+            break;
+        case 'importance_asc':
+            filteredFeatures.sort((a, b) => a.importance - b.importance);
+            break;
+        case 'name_asc':
+            filteredFeatures.sort((a, b) => a.displayName.localeCompare(b.displayName));
+            break;
+        case 'name_desc':
+            filteredFeatures.sort((a, b) => b.displayName.localeCompare(a.displayName));
+            break;
+    }
+    
+    // بروزرسانی شمارنده
+    const filteredCountEl = document.getElementById('filteredCount');
+    if (filteredCountEl) filteredCountEl.textContent = filteredFeatures.length;
+    
+    if (filteredFeatures.length === 0) {
         listEl.innerHTML = `
-                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
-                    <div class="loading-spinner" style="width:24px;height:24px;border:2px solid var(--border-color);border-top-color:var(--accent-cyan);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-bottom:8px;"></div>
-                    <br>در حال بارگذاری...
-                </div>
-            `;
-
-        try {
-            const data = await api.getModelImportance();
-
-            if (data.success && data.data && data.data.length > 0) {
-                // ✅ تبدیل نام ویژگی‌ها
-                featuresData = data.data.map(f => ({
-                    ...f,
-                    displayName: getFeatureDisplayName(f.feature)
-                }));
-                filteredFeatures = [...featuresData];
-                document.getElementById('featuresCount').textContent = featuresData.length;
-                document.getElementById('filteredCount').textContent = featuresData.length;
-                renderFeatures();
-                renderChart();
-            } else {
-                listEl.innerHTML = `
-                        <div style="text-align:center;padding:30px;color:var(--text-muted);">
-                            <span style="font-size:2rem;display:block;margin-bottom:8px;">📭</span>
-                            هیچ ویژگی‌ای یافت نشد
-                            <br><span style="font-size:0.65rem;">لطفاً ابتدا مدل را آموزش دهید</span>
-                        </div>
-                    `;
-                document.getElementById('featuresCount').textContent = '۰';
-            }
-        } catch (error) {
-            console.error('Features error:', error);
-            listEl.innerHTML = `
-                    <div style="text-align:center;padding:20px;color:var(--accent-red);font-size:0.75rem;">
-                        ❌ خطا در دریافت ویژگی‌ها
-                        <br><span style="font-size:0.65rem;color:var(--text-muted);">${error.message}</span>
-                    </div>
-                `;
-        }
+            <div class="model-empty" style="padding:30px 20px;">
+                <span class="empty-icon">🔍</span>
+                <div class="empty-title">نتیجه‌ای یافت نشد</div>
+                <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
+            </div>
+        `;
+        return;
     }
+    
+    const maxImportance = Math.max(...filteredFeatures.map(f => f.importance), 0.001);
+    
+    listEl.innerHTML = filteredFeatures.map((f, index) => {
+        const percent = (f.importance / maxImportance) * 100;
+        const isTop5 = index < 5;
+        
+        // رنگ بر اساس درصد
+        let color;
+        if (percent > 80) color = 'var(--accent-cyan)';
+        else if (percent > 60) color = 'var(--accent-green)';
+        else if (percent > 40) color = 'var(--accent-orange)';
+        else color = 'var(--accent-red)';
+        
+        const percentText = f.percentage 
+            ? f.percentage.toFixed(1) + '%' 
+            : (f.importance * 100).toFixed(1) + '%';
+        
+        return `
+            <div class="feature-list-item ${isTop5 ? 'top-5' : ''}" 
+                 style="animation-delay:${Math.min(index * 0.03, 0.5)}s;">
+                <span class="feature-rank">${index + 1}</span>
+                <span class="feature-name">
+                    ${escapeHtml(f.displayName)}
+                    ${isTop5 ? `<span class="top-badge">TOP ${index + 1}</span>` : ''}
+                </span>
+                <span class="feature-bar">
+                    <span class="feature-bar-fill" 
+                          style="width:${percent}%; background:${color};"></span>
+                </span>
+                <span class="feature-percent" style="color:${color};">${percentText}</span>
+            </div>
+        `;
+    }).join('');
+}
 
-    function renderFeatures() {
-        const listEl = document.getElementById('featuresList');
-        const search = document.getElementById('featuresSearch').value.toLowerCase();
-        const sort = document.getElementById('featuresSort').value;
+// ============================================================
+// ۵. RENDER CHART
+// ============================================================
 
-        filteredFeatures = featuresData.filter(f =>
-            f.displayName.toLowerCase().includes(search) ||
-            f.feature.toLowerCase().includes(search)
-        );
-
-        switch (sort) {
-            case 'importance_desc':
-                filteredFeatures.sort((a, b) => b.importance - a.importance);
-                break;
-            case 'importance_asc':
-                filteredFeatures.sort((a, b) => a.importance - b.importance);
-                break;
-            case 'name_asc':
-                filteredFeatures.sort((a, b) => a.displayName.localeCompare(b.displayName));
-                break;
-            case 'name_desc':
-                filteredFeatures.sort((a, b) => b.displayName.localeCompare(a.displayName));
-                break;
-        }
-
-        document.getElementById('filteredCount').textContent = filteredFeatures.length;
-
-        if (filteredFeatures.length === 0) {
-            listEl.innerHTML = `
-                    <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.75rem;">
-                        🔍 هیچ ویژگی‌ای با این جستجو یافت نشد
-                    </div>
-                `;
-            return;
-        }
-
-        const maxImportance = Math.max(...filteredFeatures.map(f => f.importance));
-
-        listEl.innerHTML = filteredFeatures.map((f, index) => {
-            const percent = (f.importance / maxImportance) * 100;
-            const color = percent > 80 ? 'var(--accent-cyan)' :
-                percent > 60 ? 'var(--accent-green)' :
-                percent > 40 ? 'var(--accent-orange)' :
-                'var(--accent-red)';
-            const isTop5 = index < 5;
-
-            return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:${isTop5 ? 'rgba(0,212,255,0.05)' : 'transparent'};border-radius:var(--radius-sm);border:${isTop5 ? '1px solid rgba(0,212,255,0.08)' : '1px solid transparent'};transition:var(--transition);">
-                        <span style="font-size:0.6rem;color:var(--text-muted);min-width:24px;font-family:var(--font-mono);">${index + 1}</span>
-                        <span style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:${isTop5 ? '600' : '400'};">
-                            ${f.displayName}
-                            ${isTop5 ? ' <span class="badge badge-cyan" style="font-size:0.45rem;padding:1px 6px;">TOP ${index + 1}</span>' : ''}
-                        </span>
-                        <div style="width:100px;height:6px;background:var(--bg-input);border-radius:var(--radius-full);overflow:hidden;">
-                            <div style="height:100%;width:${percent}%;background:${color};border-radius:var(--radius-full);transition:width 0.5s ease;"></div>
-                        </div>
-                        <span style="font-size:0.7rem;font-weight:600;color:${color};font-family:var(--font-mono);min-width:45px;text-align:right;">
-                            ${f.percentage ? f.percentage.toFixed(1) + '%' : (f.importance * 100).toFixed(1) + '%'}
-                        </span>
-                    </div>
-                `;
-        }).join('');
+function renderChart() {
+    const ctx = document.getElementById('featuresChart');
+    if (!ctx) return;
+    
+    if (featuresChart) {
+        featuresChart.destroy();
+        featuresChart = null;
     }
-
-    function renderChart() {
-        const ctx = document.getElementById('featuresChart');
-        if (!ctx) return;
-
-        if (featuresChart) {
-            featuresChart.destroy();
-            featuresChart = null;
-        }
-
-        const top20 = featuresData.slice(0, 20);
-        const colors = [
-            '#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee',
-            '#3b82f6', '#84cc16', '#f43f5e', '#14b8a6', '#a855f7',
-            '#06b6d4', '#eab308', '#10b981', '#6366f1', '#f472b6',
-            '#0ea5e9', '#8b5cf6', '#f59e0b', '#22d3ee', '#ec4899'
-        ];
-
-        // ✅ استفاده از نام نمایشی
-        const labels = top20.map(f => f.displayName);
-        const percentages = top20.map(f => f.percentage || (f.importance * 100));
-
-        if (top20.length === 0) {
-            featuresChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['بدون داده'],
-                    datasets: [{
-                        data: [0],
-                        backgroundColor: ['rgba(255,255,255,0.1)'],
-                        borderColor: ['rgba(255,255,255,0.05)'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { display: false } },
-                        y: { grid: { display: false }, ticks: { display: false } }
-                    }
-                }
-            });
-            return;
-        }
-
+    
+    // ۲۰ ویژگی برتر
+    const top20 = featuresData.slice(0, 20);
+    
+    if (top20.length === 0) {
         featuresChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: ['بدون داده'],
                 datasets: [{
-                    label: 'اهمیت (%)',
-                    data: percentages,
-                    backgroundColor: colors.slice(0, top20.length).map(c => c + '80'),
-                    borderColor: colors.slice(0, top20.length),
-                    borderWidth: 1.5,
-                    borderRadius: 4,
-                    barPercentage: 0.7
+                    data: [0],
+                    backgroundColor: ['rgba(255,255,255,0.1)'],
+                    borderColor: ['rgba(255,255,255,0.05)'],
+                    borderWidth: 1
                 }]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return 'اهمیت: ' + context.parsed.x.toFixed(2) + '%';
-                            }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: {
-                            color: 'rgba(255,255,255,0.04)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: 'var(--text-muted)',
-                            font: { size: 8, family: 'inherit' },
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        },
-                        max: Math.max(...percentages) * 1.15 || 100
-                    },
-                    y: {
-                        grid: {
-                            display: false,
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: 'var(--text-secondary)',
-                            font: { size: 8, family: 'inherit' }
-                        }
-                    }
-                },
-                interaction: {
-                    intersect: true,
-                    mode: 'index'
+                    x: { grid: { display: false }, ticks: { display: false } },
+                    y: { grid: { display: false }, ticks: { display: false } }
                 }
             }
         });
+        return;
     }
-
-    function filterFeatures() {
-        renderFeatures();
-    }
-
-    function exportFeaturesCSV() {
-        if (featuresData.length === 0) {
-            showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
-            return;
+    
+    const colors = [
+        '#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee',
+        '#3b82f6', '#84cc16', '#f43f5e', '#14b8a6', '#a855f7',
+        '#06b6d4', '#eab308', '#10b981', '#6366f1', '#f472b6',
+        '#0ea5e9', '#8b5cf6', '#f59e0b', '#22d3ee', '#ec4899'
+    ];
+    
+    const labels = top20.map(f => f.displayName);
+    const percentages = top20.map(f => f.percentage || (f.importance * 100));
+    const maxPercent = Math.max(...percentages, 1);
+    
+    featuresChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'اهمیت (%)',
+                data: percentages,
+                backgroundColor: colors.slice(0, top20.length).map(c => c + '80'),
+                borderColor: colors.slice(0, top20.length),
+                borderWidth: 1.5,
+                borderRadius: 4,
+                barPercentage: 0.7
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'اهمیت: ' + context.parsed.x.toFixed(2) + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: {
+                        color: 'var(--text-muted)',
+                        font: { size: 8, family: 'inherit' },
+                        callback: function(value) { return value + '%'; }
+                    },
+                    max: maxPercent * 1.15
+                },
+                y: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: 'var(--text-secondary)',
+                        font: { size: 8, family: 'inherit' }
+                    }
+                }
+            },
+            interaction: { intersect: true, mode: 'index' }
         }
+    });
+}
 
+// ============================================================
+// ۶. FILTER (با debounce)
+// ============================================================
+
+function filterFeatures() {
+    renderFeatures();
+}
+
+function debouncedFilterFeatures() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(filterFeatures, 250);
+}
+
+// ============================================================
+// ۷. EXPORT CSV
+// ============================================================
+
+function exportFeaturesCSV() {
+    if (featuresData.length === 0) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
+        }
+        return;
+    }
+    
+    try {
         const headers = ['ویژگی', 'اهمیت', 'درصد'];
         const rows = featuresData.map(f => [
             f.displayName,
             f.importance,
             f.percentage ? f.percentage.toFixed(2) + '%' : (f.importance * 100).toFixed(2) + '%'
         ]);
-
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        
+        const csvContent = [
+            headers.map(escapeCsv).join(','),
+            ...rows.map(row => row.map(escapeCsv).join(','))
+        ].join('\n');
+        
+        // BOM برای پشتیبانی فارسی در Excel
+        const blob = new Blob(['\ufeff' + csvContent], { 
+            type: 'text/csv;charset=utf-8;' 
+        });
+        
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `feature_importance_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
-        showToast('📥 دانلود CSV شروع شد', 'success');
+        
+        if (typeof showToast === 'function') {
+            showToast('📥 دانلود CSV شروع شد', 'success');
+        }
+    } catch (err) {
+        console.error('CSV export error:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در خروجی CSV', 'error');
+        }
     }
+}
 
-    function refreshFeatures() {
+function escapeCsv(value) {
+    const str = String(value ?? '');
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+// ============================================================
+// ۸. REFRESH
+// ============================================================
+
+function refreshFeatures() {
+    if (typeof showToast === 'function') {
         showToast('🔄 بروزرسانی...', 'info');
-        loadFeatures();
     }
-
-    window.init_features = function() {
-        console.log('📊 Features tab initializing...');
-        if (isFeaturesLoaded) return;
-        isFeaturesLoaded = true;
-        loadFeatures();
-
-        if (featuresInterval) {
-            clearInterval(featuresInterval);
+    loadFeatures().then(() => {
+        if (typeof showToast === 'function') {
+            showToast('✅ بروزرسانی شد', 'success');
         }
-        featuresInterval = setInterval(loadFeatures, 60000);
-    };
+    });
+}
 
-    window.cleanup_features = function() {
-        if (featuresInterval) {
-            clearInterval(featuresInterval);
-            featuresInterval = null;
-        }
-        if (featuresChart) {
-            featuresChart.destroy();
-            featuresChart = null;
-        }
-        isFeaturesLoaded = false;
-        console.log('🧹 Features tab cleaned up');
-    };
+// ============================================================
+// ۹. UTILS
+// ============================================================
 
-    console.log('✅ Features tab loaded');
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+console.log('✅ Features tab v2.0 loaded');
 </script>
