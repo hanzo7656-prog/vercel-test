@@ -1,45 +1,62 @@
 <!-- ============================================================
-     SCHEDULE TAB - زمان‌بندی آموزش خودکار (ریسپانسیو)
+     schedule.html - تب زمان‌بندی آموزش خودکار
+     نسخه ۲.۰ - با CSS مشترک model-animations.css
      ============================================================ -->
 
 <div class="card">
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
     <div class="card-title">
-        <i class="fas fa-clock"></i> زمان‌بندی آموزش خودکار
-        <span class="badge-count" id="scheduleStatusBadge" style="margin-right:auto;font-size:0.6rem;color:var(--text-muted);">⏹️ غیرفعال</span>
-        <button class="btn btn-xs btn-outline" onclick="refreshSchedule()" style="padding:2px 10px;font-size:0.6rem;">
+        <i class="fas fa-clock"></i>
+        <span>زمان‌بندی آموزش خودکار</span>
+        <span class="model-status-badge demo" id="scheduleStatusBadge" style="margin-right:auto;">
+            <span class="status-dot"></span>
+            <span class="status-text">غیرفعال</span>
+        </span>
+        <button class="btn btn-xs btn-outline" onclick="refreshSchedule()" 
+                style="padding:3px 10px;font-size:0.65rem;margin-right:6px;">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
 
-    <!-- ===== STATUS CARDS ===== -->
-    <div class="dashboard-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;width:100%;overflow:hidden;">
-        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px 14px;text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">وضعیت</div>
-            <div style="font-size:1rem;font-weight:700;font-family:var(--font-mono);" id="schedStatus">⏹️ غیرفعال</div>
+    <!-- ============================================================
+         STATUS CARDS
+         ============================================================ -->
+    <div class="model-dashboard-grid" style="margin-bottom:16px;">
+        <div class="model-stat-card">
+            <span class="stat-icon">⚙️</span>
+            <div class="stat-label">وضعیت</div>
+            <div class="stat-value" id="schedStatus">غیرفعال</div>
         </div>
-        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px 14px;text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">فاصله زمانی</div>
-            <div style="font-size:1rem;font-weight:700;color:var(--accent-cyan);font-family:var(--font-mono);" id="schedInterval">—</div>
+        <div class="model-stat-card">
+            <span class="stat-icon">⏱️</span>
+            <div class="stat-label">فاصله زمانی</div>
+            <div class="stat-value cyan" id="schedInterval">—</div>
         </div>
-        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px 14px;text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">آخرین اجرا</div>
-            <div style="font-size:0.85rem;font-weight:600;font-family:var(--font-mono);" id="schedLast">—</div>
+        <div class="model-stat-card">
+            <span class="stat-icon">✅</span>
+            <div class="stat-label">آخرین اجرا</div>
+            <div class="stat-value" id="schedLast" style="font-size:0.85rem;">—</div>
         </div>
-        <div style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px 14px;text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">اجرای بعدی</div>
-            <div style="font-size:0.85rem;font-weight:600;font-family:var(--font-mono);" id="schedNext">—</div>
+        <div class="model-stat-card">
+            <span class="stat-icon">⏭️</span>
+            <div class="stat-label">اجرای بعدی</div>
+            <div class="stat-value" id="schedNext" style="font-size:0.85rem;">—</div>
         </div>
     </div>
 
-    <!-- ===== CONTROLS ===== -->
+    <!-- ============================================================
+         CONTROLS
+         ============================================================ -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-bottom:16px;align-items:end;">
-
+        
         <!-- فاصله زمانی -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
                 <i class="fas fa-hourglass-half"></i> فاصله زمانی
             </label>
-            <select id="scheduleInterval" style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.8rem;font-family:inherit;transition:var(--transition);width:100%;">
+            <select id="scheduleInterval" class="analyzer-filter" style="width:100%;">
                 <option value="1">۱ ساعت</option>
                 <option value="3">۳ ساعت</option>
                 <option value="6" selected>۶ ساعت</option>
@@ -48,12 +65,12 @@
             </select>
         </div>
 
-        <!-- بازه زمانی داده‌ها -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
+        <!-- بازه داده‌ها -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
                 <i class="fas fa-clock"></i> بازه داده‌ها
             </label>
-            <select id="schedulePeriod" style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.8rem;font-family:inherit;transition:var(--transition);width:100%;">
+            <select id="schedulePeriod" class="analyzer-filter" style="width:100%;">
                 <option value="24h">۲۴ ساعت</option>
                 <option value="1w">۱ هفته</option>
                 <option value="1m" selected>۱ ماه</option>
@@ -62,13 +79,13 @@
         </div>
 
         <!-- آموزش افزایشی -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                <i class="fas fa-sync-alt"></i> حالت آموزش
+                <i class="fas fa-sync-alt"></i> حالت
             </label>
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
                 <label style="font-size:0.7rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <input type="checkbox" id="scheduleIncremental" checked> 
+                    <input type="checkbox" id="scheduleIncremental" checked style="accent-color:var(--accent-cyan);">
                     <span>آموزش افزایشی</span>
                 </label>
             </div>
@@ -76,58 +93,113 @@
 
         <!-- دکمه‌ها -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-success btn-uniform" id="startScheduleBtn" onclick="toggleSchedule(true)" style="padding:8px 20px;font-size:0.8rem;min-width:100px;">
-                <i class="fas fa-play"></i> فعال‌سازی
+            <button class="btn btn-success" id="startScheduleBtn" onclick="toggleSchedule(true)" 
+                    style="padding:10px 20px;font-size:0.8rem;min-width:120px;">
+                <i class="fas fa-play"></i>
+                فعال‌سازی
             </button>
-            <button class="btn btn-danger btn-uniform" id="stopScheduleBtn" onclick="toggleSchedule(false)" style="padding:8px 20px;font-size:0.8rem;display:none;min-width:100px;">
-                <i class="fas fa-stop"></i> غیرفعال‌سازی
+            <button class="btn btn-danger" id="stopScheduleBtn" onclick="toggleSchedule(false)" 
+                    style="padding:10px 20px;font-size:0.8rem;display:none;min-width:120px;">
+                <i class="fas fa-stop"></i>
+                غیرفعال‌سازی
             </button>
-            <button class="btn btn-outline btn-uniform" onclick="runNow()" style="padding:8px 16px;font-size:0.8rem;min-width:100px;">
-                <i class="fas fa-bolt"></i> اجرا الان
+            <button class="btn btn-outline" onclick="runNow()" 
+                    style="padding:10px 16px;font-size:0.8rem;min-width:100px;">
+                <i class="fas fa-bolt"></i>
+                اجرا الان
             </button>
         </div>
     </div>
 
-    <!-- ===== STATS ===== -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;width:100%;overflow:hidden;">
-        <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px 14px;border:1px solid var(--border-color);text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">✅ اجراهای موفق</div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--accent-green);font-family:var(--font-mono);" id="schedSuccess">۰</div>
+    <!-- ============================================================
+         STATS
+         ============================================================ -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;">
+        <div class="model-info-card" style="text-align:center;">
+            <div class="info-title" style="justify-content:center;">✅ اجراهای موفق</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-green);font-family:'Courier New',monospace;" id="schedSuccess">۰</div>
         </div>
-        <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px 14px;border:1px solid var(--border-color);text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">❌ خطاها</div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--accent-orange);font-family:var(--font-mono);" id="schedErrors">۰</div>
+        <div class="model-info-card" style="text-align:center;">
+            <div class="info-title" style="justify-content:center;">❌ خطاها</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-orange);font-family:'Courier New',monospace;" id="schedErrors">۰</div>
         </div>
-        <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:10px 14px;border:1px solid var(--border-color);text-align:center;overflow:hidden;">
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📊 مجموع اجراها</div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--accent-cyan);font-family:var(--font-mono);" id="schedTotal">۰</div>
+        <div class="model-info-card" style="text-align:center;">
+            <div class="info-title" style="justify-content:center;">📊 مجموع اجراها</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-cyan);font-family:'Courier New',monospace;" id="schedTotal">۰</div>
         </div>
     </div>
 
-    <!-- ===== HISTORY ===== -->
-    <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border-color);overflow:hidden;">
-        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">
-            <i class="fas fa-history"></i> تاریخچه اجراها (۱۰ مورد آخر)
+    <!-- ============================================================
+         HISTORY
+         ============================================================ -->
+    <div class="model-info-card">
+        <div class="info-title">
+            <i class="fas fa-history"></i>
+            تاریخچه اجراها (۱۰ مورد آخر)
         </div>
-        <div id="scheduleHistory" style="max-height:150px;overflow-y:auto;width:100%;">
-            <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.75rem;">📭 هیچ اجرایی ثبت نشده است</div>
+        <div id="scheduleHistory" style="max-height:200px;overflow-y:auto;">
+            <div class="model-skeleton-card">
+                <div class="model-skeleton-line long"></div>
+                <div class="model-skeleton-line short"></div>
+            </div>
+            <div class="model-skeleton-card">
+                <div class="model-skeleton-line long"></div>
+                <div class="model-skeleton-line short"></div>
+            </div>
+            <div class="model-skeleton-card">
+                <div class="model-skeleton-line long"></div>
+                <div class="model-skeleton-line short"></div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// SCHEDULE TAB - زمان‌بندی آموزش خودکار
+// SCHEDULE TAB v2.0
 // ============================================================
 
 let scheduleInterval = null;
 let isScheduleLoaded = false;
 
+// ============================================================
+// ۱. INITIALIZE / CLEANUP
+// ============================================================
+
+window.init_schedule = function() {
+    console.log('⏰ Schedule tab initializing...');
+    if (isScheduleLoaded) {
+        console.log('⚠️ Already loaded, skipping');
+        return;
+    }
+    isScheduleLoaded = true;
+    
+    loadScheduleStatus();
+    
+    // auto-refresh هر ۳۰ ثانیه
+    if (scheduleInterval) clearInterval(scheduleInterval);
+    scheduleInterval = setInterval(loadScheduleStatus, 30000);
+};
+
+window.cleanup_schedule = function() {
+    console.log('🧹 Schedule tab cleaning up...');
+    isScheduleLoaded = false;
+    
+    if (scheduleInterval) {
+        clearInterval(scheduleInterval);
+        scheduleInterval = null;
+    }
+};
+
+// ============================================================
+// ۲. LOAD STATUS
+// ============================================================
+
 async function loadScheduleStatus() {
     try {
         const data = await api.getScheduleStatus();
-
-        if (data.success && data.data) {
+        
+        if (data && data.success && data.data) {
             const s = data.data;
             const isRunning = s.is_running || false;
             const interval = s.interval_hours || 6;
@@ -136,39 +208,71 @@ async function loadScheduleStatus() {
             const successCount = s.success_count || 0;
             const errorCount = s.error_count || 0;
             const totalCount = s.total_executions || 0;
-
+            
+            // وضعیت
             const statusEl = document.getElementById('schedStatus');
             const badgeEl = document.getElementById('scheduleStatusBadge');
+            
             if (isRunning) {
-                statusEl.textContent = '✅ فعال';
-                statusEl.style.color = 'var(--accent-green)';
-                badgeEl.textContent = '✅ فعال';
-                badgeEl.style.color = 'var(--accent-green)';
-                document.getElementById('startScheduleBtn').style.display = 'none';
-                document.getElementById('stopScheduleBtn').style.display = 'inline-flex';
+                if (statusEl) {
+                    statusEl.textContent = '✅ فعال';
+                    statusEl.className = 'stat-value green';
+                }
+                if (badgeEl) {
+                    badgeEl.className = 'model-status-badge active';
+                    const textEl = badgeEl.querySelector('.status-text');
+                    if (textEl) textEl.textContent = 'فعال';
+                }
+                const startBtn = document.getElementById('startScheduleBtn');
+                const stopBtn = document.getElementById('stopScheduleBtn');
+                if (startBtn) startBtn.style.display = 'none';
+                if (stopBtn) stopBtn.style.display = 'inline-flex';
             } else {
-                statusEl.textContent = '⏹️ غیرفعال';
-                statusEl.style.color = 'var(--text-muted)';
-                badgeEl.textContent = '⏹️ غیرفعال';
-                badgeEl.style.color = 'var(--text-muted)';
-                document.getElementById('startScheduleBtn').style.display = 'inline-flex';
-                document.getElementById('stopScheduleBtn').style.display = 'none';
+                if (statusEl) {
+                    statusEl.textContent = '⏹️ غیرفعال';
+                    statusEl.className = 'stat-value';
+                }
+                if (badgeEl) {
+                    badgeEl.className = 'model-status-badge demo';
+                    const textEl = badgeEl.querySelector('.status-text');
+                    if (textEl) textEl.textContent = 'غیرفعال';
+                }
+                const startBtn = document.getElementById('startScheduleBtn');
+                const stopBtn = document.getElementById('stopScheduleBtn');
+                if (startBtn) startBtn.style.display = 'inline-flex';
+                if (stopBtn) stopBtn.style.display = 'none';
             }
-
-            document.getElementById('schedInterval').textContent = interval + ' ساعت';
-            document.getElementById('scheduleInterval').value = interval;
-
-            document.getElementById('schedLast').textContent = lastTraining ? formatDate(lastTraining) : '—';
-            document.getElementById('schedNext').textContent = nextTraining ? formatDate(nextTraining) : '—';
-
-            document.getElementById('schedSuccess').textContent = successCount;
-            document.getElementById('schedErrors').textContent = errorCount;
-            document.getElementById('schedTotal').textContent = totalCount;
-
-            loadScheduleHistory();
+            
+            // فاصله
+            const intervalEl = document.getElementById('schedInterval');
+            if (intervalEl) intervalEl.textContent = interval + ' ساعت';
+            
+            const scheduleIntervalSelect = document.getElementById('scheduleInterval');
+            if (scheduleIntervalSelect) scheduleIntervalSelect.value = interval;
+            
+            // زمان‌ها
+            const lastEl = document.getElementById('schedLast');
+            if (lastEl) lastEl.textContent = lastTraining ? formatDate(lastTraining) : '—';
+            
+            const nextEl = document.getElementById('schedNext');
+            if (nextEl) nextEl.textContent = nextTraining ? formatDate(nextTraining) : '—';
+            
+            // آمار
+            const successEl = document.getElementById('schedSuccess');
+            if (successEl) successEl.textContent = successCount;
+            
+            const errorsEl = document.getElementById('schedErrors');
+            if (errorsEl) errorsEl.textContent = errorCount;
+            
+            const totalEl = document.getElementById('schedTotal');
+            if (totalEl) totalEl.textContent = totalCount;
         }
+        
+        // تاریخچه
+        loadScheduleHistory();
+        
     } catch (error) {
-        console.error('Schedule status error:', error);
+        console.warn('⚠️ Schedule status error:', error.message);
     }
 }
 
@@ -176,158 +280,199 @@ async function loadScheduleHistory() {
     try {
         const data = await api.getModelHistory(10);
         const container = document.getElementById('scheduleHistory');
-
-        if (data.success && data.data && data.data.length > 0) {
-            container.innerHTML = data.data.map(item => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);font-size:0.7rem;flex-wrap:wrap;gap:4px;">
-                    <span style="color:var(--text-primary);">
-                        ${item.is_active ? '✅' : '📦'} نسخه ${item.version || 'N/A'}
-                    </span>
-                    <span style="color:var(--text-muted);">
-                        دقت: ${((item.accuracy || 0) * 100).toFixed(1)}%
-                    </span>
-                    <span style="color:var(--text-muted);font-size:0.6rem;">
-                        ${formatDate(item.training_date)}
-                    </span>
-                </div>
-            `).join('');
+        if (!container) return;
+        
+        if (data && data.success && data.data && data.data.length > 0) {
+            container.innerHTML = data.data.map((item, i) => {
+                const isActive = item.is_active || false;
+                return `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:0.75rem;flex-wrap:wrap;gap:6px;animation: modelStaggerIn 0.3s ease backwards; animation-delay: ${i * 0.03}s;">
+                        <span style="color:var(--text-primary);">
+                            ${isActive ? '✅' : '📦'} نسخه ${escapeHtml(item.version || 'N/A')}
+                        </span>
+                        <span style="color:var(--accent-cyan);font-family:'Courier New',monospace;">
+                            ${((item.accuracy || 0) * 100).toFixed(1)}%
+                        </span>
+                        <span style="color:var(--text-muted);font-size:0.65rem;">
+                            ${formatDate(item.training_date) || '—'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
         } else {
-            container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.75rem;">📭 هیچ اجرایی ثبت نشده است</div>`;
+            container.innerHTML = `
+                <div class="model-empty" style="padding:20px;">
+                    <span class="empty-icon">📭</span>
+                    <div class="empty-title">هیچ اجرایی ثبت نشده</div>
+                </div>
+            `;
         }
     } catch (error) {
-        console.error('Schedule history error:', error);
+        console.warn('⚠️ Schedule history error:', error.message);
     }
 }
 
-async function toggleSchedule(enabled) {
-    const interval = parseInt(document.getElementById('scheduleInterval').value);
-    const period = document.getElementById('schedulePeriod').value;
-    const incremental = document.getElementById('scheduleIncremental').checked;
+// ============================================================
+// ۳. TOGGLE SCHEDULE
+// ============================================================
 
+async function toggleSchedule(enabled) {
+    const interval = parseInt(document.getElementById('scheduleInterval')?.value || 6);
+    const period = document.getElementById('schedulePeriod')?.value || '1m';
+    const incremental = document.getElementById('incrementalToggle')?.checked ?? true;
+    
     try {
         if (enabled) {
-            loading.show({
-                messages: [
-                    'در حال فعال‌سازی زمان‌بندی...',
-                    'تنظیمات در حال اعمال...',
-                    'پایان|زمان‌بندی فعال شد ✅'
-                ],
-                duration: 4000,
-                onComplete: function() {
-                    loadScheduleStatus();
-                }
-            });
-
+            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+                window.loadingSystem.show({
+                    messages: [
+                        'در حال فعال‌سازی زمان‌بندی...',
+                        'تنظیمات در حال اعمال...'
+                    ],
+                    duration: 3000,
+                    onComplete: function() {
+                        loadScheduleStatus();
+                    }
+                });
+            }
+            
             const result = await api.startSchedule({
                 interval: interval,
                 period: period,
                 incremental: incremental
             });
-
-            if (!result.success) {
-                loading.hide();
-                showToast('❌ ' + (result.message || 'خطا در فعال‌سازی'), 'error');
-                return;
-            }
-
-            showToast('✅ زمان‌بندی فعال شد (هر ' + interval + ' ساعت)', 'success');
-
-        } else {
-            loading.show({
-                messages: [
-                    'در حال غیرفعال‌سازی زمان‌بندی...',
-                    'پایان|زمان‌بندی غیرفعال شد ⏹️'
-                ],
-                duration: 3000,
-                onComplete: function() {
-                    loadScheduleStatus();
+            
+            if (!result || !result.success) {
+                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                    window.loadingSystem.hide();
                 }
-            });
-
-            const result = await api.stopSchedule();
-
-            if (!result.success) {
-                loading.hide();
-                showToast('❌ ' + (result.message || 'خطا در غیرفعال‌سازی'), 'error');
+                if (typeof showToast === 'function') {
+                    showToast('❌ ' + (result?.message || 'خطا در فعال‌سازی'), 'error');
+                }
                 return;
             }
-
-            showToast('⏹️ زمان‌بندی غیرفعال شد', 'warning');
+            
+            if (typeof showToast === 'function') {
+                showToast(`✅ زمان‌بندی فعال شد (هر ${interval} ساعت)`, 'success');
+            }
+            
+        } else {
+            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+                window.loadingSystem.show({
+                    messages: ['در حال غیرفعال‌سازی زمان‌بندی...'],
+                    duration: 2000,
+                    onComplete: function() {
+                        loadScheduleStatus();
+                    }
+                });
+            }
+            
+            const result = await api.stopSchedule();
+            
+            if (!result || !result.success) {
+                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                    window.loadingSystem.hide();
+                }
+                if (typeof showToast === 'function') {
+                    showToast('❌ ' + (result?.message || 'خطا در غیرفعال‌سازی'), 'error');
+                }
+                return;
+            }
+            
+            if (typeof showToast === 'function') {
+                showToast('⏹️ زمان‌بندی غیرفعال شد', 'warning');
+            }
         }
-
     } catch (error) {
-        loading.hide();
-        showToast('❌ خطا: ' + error.message, 'error');
+        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+            window.loadingSystem.hide();
+        }
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا: ' + error.message, 'error');
+        }
     }
 }
 
+// ============================================================
+// ۴. RUN NOW
+// ============================================================
+
 async function runNow() {
     if (!confirm('⚠️ آیا از اجرای فوری آموزش اطمینان دارید؟')) return;
-
-    const period = document.getElementById('schedulePeriod').value;
-    const incremental = document.getElementById('scheduleIncremental').checked;
-
-    loading.show({
-        messages: [
-            'در حال اجرای فوری آموزش...|لطفاً صبر کنید',
-            'در حال پردازش داده‌ها...',
-            'تقریباً تمام است...',
-            'پایان|آموزش با موفقیت انجام شد ✅'
-        ],
-        duration: 30000,
-        onComplete: function() {
-            loadScheduleStatus();
-            showToast('✅ آموزش فوری تکمیل شد', 'success');
-        }
-    });
-
+    
+    const period = document.getElementById('schedulePeriod')?.value || '1m';
+    const incremental = document.getElementById('scheduleIncremental')?.checked ?? true;
+    
+    if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+        window.loadingSystem.show({
+            messages: [
+                'در حال اجرای فوری آموزش...|لطفاً صبر کنید',
+                'در حال پردازش داده‌ها...',
+                'تقریباً تمام است...'
+            ],
+            duration: 30000,
+            onComplete: function() {
+                loadScheduleStatus();
+                if (typeof showToast === 'function') {
+                    showToast('✅ آموزش فوری تکمیل شد', 'success');
+                }
+            }
+        });
+    }
+    
     try {
         const result = await api.trainModel({
             period: period,
             coins: ['bitcoin', 'ethereum'],
             incremental: incremental
         });
-
-        if (!result.success) {
-            loading.hide();
-            showToast('❌ ' + (result.message || 'خطا در آموزش'), 'error');
-            return;
+        
+        if (!result || !result.success) {
+            if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+                window.loadingSystem.hide();
+            }
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (result?.message || 'خطا در آموزش'), 'error');
+            }
         }
-
     } catch (error) {
-        loading.hide();
-        showToast('❌ خطا: ' + error.message, 'error');
+        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
+            window.loadingSystem.hide();
+        }
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا: ' + error.message, 'error');
+        }
     }
 }
 
-async function refreshSchedule() {
-    showToast('🔄 بروزرسانی...', 'info');
-    await loadScheduleStatus();
-    showToast('✅ بروزرسانی شد', 'success');
+// ============================================================
+// ۵. REFRESH
+// ============================================================
+
+function refreshSchedule() {
+    if (typeof showToast === 'function') {
+        showToast('🔄 بروزرسانی...', 'info');
+    }
+    loadScheduleStatus().then(() => {
+        if (typeof showToast === 'function') {
+            showToast('✅ بروزرسانی شد', 'success');
+        }
+    });
 }
 
-window.init_schedule = function() {
-    console.log('⏰ Schedule tab initializing...');
+// ============================================================
+// ۶. UTILS
+// ============================================================
 
-    if (isScheduleLoaded) return;
-    isScheduleLoaded = true;
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
-    loadScheduleStatus();
-
-    if (scheduleInterval) {
-        clearInterval(scheduleInterval);
-    }
-    scheduleInterval = setInterval(loadScheduleStatus, 30000);
-};
-
-window.cleanup_schedule = function() {
-    if (scheduleInterval) {
-        clearInterval(scheduleInterval);
-        scheduleInterval = null;
-    }
-    isScheduleLoaded = false;
-    console.log('🧹 Schedule tab cleaned up');
-};
-
-console.log('✅ Schedule tab loaded');
+console.log('✅ Schedule tab v2.0 loaded');
 </script>
