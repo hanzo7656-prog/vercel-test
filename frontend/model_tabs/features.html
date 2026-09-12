@@ -1,221 +1,464 @@
 <!-- ============================================================
      features.html - تب اهمیت ویژگی‌ها
-     نسخه ۲.۰ - با CSS مشترک model-animations.css
+     نسخه ۳.۰ - طراحی جدید + Detail on Click + Compare
      ============================================================ -->
 
-<div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-chart-bar"></i>
-        <span>اهمیت ویژگی‌ها</span>
-        <span class="model-status-badge demo" id="featuresCountBadge" style="margin-right:auto;">
-            <span class="status-dot"></span>
-            <span class="status-text" id="featuresCountText">۰ ویژگی</span>
-        </span>
-        <button class="btn btn-xs btn-outline" onclick="refreshFeatures()" 
-                style="padding:3px 10px;font-size:0.65rem;margin-right:6px;">
-            <i class="fas fa-sync-alt"></i>
-        </button>
+<!-- ============================================================
+     HERO SECTION
+     ============================================================ -->
+<div class="hero-card" id="featuresHero">
+    
+    <div class="health-circle-wrapper">
+        <svg class="health-circle" viewBox="0 0 140 140">
+            <circle class="circle-bg" cx="70" cy="70" r="65"/>
+            <circle class="circle-fill" cx="70" cy="70" r="65" id="featuresCircle"/>
+        </svg>
+        <div class="health-score-value">
+            <span class="health-score-number" id="featuresCountHero">۰</span>
+            <span class="health-score-label">ویژگی</span>
+        </div>
     </div>
 
-    <!-- ============================================================
-         TOOLBAR
-         ============================================================ -->
-    <div class="analyzer-toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
-            <!-- Search -->
-            <div style="position:relative;flex:1;min-width:150px;">
-                <input type="text" id="featuresSearch" 
-                       placeholder="جستجو در ویژگی‌ها..." 
-                       oninput="debouncedFilterFeatures()"
-                       style="width:100%;padding:7px 12px;padding-right:32px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;transition:all 0.3s ease;">
-                <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.7rem;pointer-events:none;">🔍</span>
+    <div class="hero-info">
+        <h2 class="hero-title">
+            <i class="fas fa-chart-bar" style="color:var(--green-primary);"></i>
+            <span>اهمیت ویژگی‌ها</span>
+            <span class="badge-version" id="topFeatureBadge">—</span>
+        </h2>
+        <p class="hero-subtitle" id="featuresSubtitle">
+            تحلیل اهمیت ویژگی‌ها در مدل XGBoost
+        </p>
+        <div class="hero-metrics">
+            <div class="hero-metric">
+                <span class="hero-metric-label">تعداد ویژگی‌ها</span>
+                <span class="hero-metric-value cyan" id="heroTotalFeatures">۰</span>
             </div>
-            
-            <!-- Sort -->
-            <select id="featuresSort" class="analyzer-filter" onchange="filterFeatures()" 
-                    style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;cursor:pointer;">
-                <option value="importance_desc">بیشترین اهمیت</option>
-                <option value="importance_asc">کمترین اهمیت</option>
-                <option value="name_asc">الفبایی (صعودی)</option>
-                <option value="name_desc">الفبایی (نزولی)</option>
-            </select>
-        </div>
-        
-        <!-- Export -->
-        <button class="btn btn-xs btn-outline" onclick="exportFeaturesCSV()" 
-                style="padding:3px 12px;font-size:0.65rem;">
-            <i class="fas fa-file-csv"></i>
-            <span style="margin-right:4px;">CSV</span>
-        </button>
-    </div>
-
-    <!-- ============================================================
-         CHART + LIST (دو ستون)
-         ============================================================ -->
-    <div class="model-chart-grid">
-        
-        <!-- ===== CHART ===== -->
-        <div class="model-chart-box">
-            <div class="chart-header">
-                <span class="chart-title">
-                    <i class="fas fa-chart-bar" style="color:var(--accent-purple);"></i>
-                    نمودار اهمیت ویژگی‌ها
-                </span>
-                <span class="model-status-badge demo" style="font-size:0.5rem;padding:2px 8px;">
-                    <span class="status-dot"></span>
-                    <span class="status-text">۵ برتر</span>
-                </span>
+            <div class="hero-metric">
+                <span class="hero-metric-label">ویژگی برتر</span>
+                <span class="hero-metric-value green" id="heroTopFeature">—</span>
             </div>
-            <div class="chart-wrapper" style="height:350px;">
-                <canvas id="featuresChart"></canvas>
-            </div>
-        </div>
-
-        <!-- ===== LIST ===== -->
-        <div class="model-chart-box">
-            <div class="chart-header">
-                <span class="chart-title">
-                    <i class="fas fa-list"></i>
-                    لیست ویژگی‌ها
-                </span>
-                <span class="model-status-badge demo" style="font-size:0.5rem;padding:2px 8px;">
-                    <span class="status-dot"></span>
-                    <span class="status-text" id="filteredCount">۰</span>
-                </span>
-            </div>
-            <div id="featuresList" 
-                 style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:4px;">
-                <!-- Skeleton -->
-                <div class="model-skeleton-card">
-                    <div class="model-skeleton-line long"></div>
-                    <div class="model-skeleton-line short"></div>
-                </div>
-                <div class="model-skeleton-card">
-                    <div class="model-skeleton-line long"></div>
-                    <div class="model-skeleton-line short"></div>
-                </div>
-                <div class="model-skeleton-card">
-                    <div class="model-skeleton-line long"></div>
-                    <div class="model-skeleton-line short"></div>
-                </div>
+            <div class="hero-metric">
+                <span class="hero-metric-label">سهم برتر</span>
+                <span class="hero-metric-value purple" id="heroTopPercent">—</span>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================================
+     TOOLBAR
+     ============================================================ -->
+<div class="card-section" style="margin-bottom:20px;">
+    <div class="section-header-model">
+        <div class="section-title-model">
+            <i class="fas fa-filter"></i>
+            <span>فیلتر و مرتب‌سازی</span>
+        </div>
+        <span class="section-badge-model" id="filteredCount">
+            <i class="fas fa-list"></i>
+            <span>۰</span>
+        </span>
+    </div>
+    
+    <div class="training-toolbar">
+        <div class="training-search">
+            <input type="text" id="featuresSearch" 
+                   placeholder="جستجو در ویژگی‌ها..." 
+                   oninput="debouncedFilterFeatures()">
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <select id="featuresSort" class="control-select" onchange="filterFeatures()">
+            <option value="importance_desc">⬇️ بیشترین اهمیت</option>
+            <option value="importance_asc">⬆️ کمترین اهمیت</option>
+            <option value="name_asc">🔤 نام (الفبا)</option>
+            <option value="name_desc">🔤 نام (معکوس)</option>
+        </select>
+        
+        <select id="featuresTypeFilter" class="control-select" onchange="filterFeatures()">
+            <option value="all">🔄 همه</option>
+            <option value="top5">⭐ ۵ برتر</option>
+            <option value="top10">⭐ ۱۰ برتر</option>
+            <option value="positive">📈 تأثیر مثبت</option>
+        </select>
+        
+        <div class="toolbar-actions">
+            <button class="btn-model btn-ghost btn-xs" onclick="exportFeaturesCSV()" title="CSV">
+                <i class="fas fa-file-csv"></i>
+                CSV
+            </button>
+            <button class="btn-model btn-ghost btn-xs" onclick="toggleChartType()" id="chartToggleBtn" title="تغییر نمودار">
+                <i class="fas fa-exchange-alt"></i>
+                تغییر
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     CHART + LIST (دو ستونه)
+     ============================================================ -->
+<div class="live-row">
+    
+    <!-- ===== CHART ===== -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-chart-bar"></i>
+                <span id="chartTitle">نمودار اهمیت</span>
+            </div>
+            <span class="section-badge-model" id="chartTypeBadge">
+                <i class="fas fa-chart-bar"></i>
+                <span>Bar</span>
+            </span>
+        </div>
+        
+        <div class="chart-features-wrapper">
+            <canvas id="featuresChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ===== LIST ===== -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-list"></i>
+                <span>لیست ویژگی‌ها</span>
+            </div>
+            <span class="section-badge-model">
+                <i class="fas fa-mouse-pointer"></i>
+                کلیک کنید
+            </span>
+        </div>
+        
+        <div id="featuresList" class="features-list">
+            <!-- Skeleton -->
+            <div class="feature-item-skeleton">
+                <div class="skeleton-model skeleton-sm" style="width:24px;height:24px;border-radius:50%;"></div>
+                <div style="flex:1;">
+                    <div class="skeleton-model skeleton-sm" style="width:70%;margin-bottom:6px;"></div>
+                    <div class="skeleton-model skeleton-sm" style="width:40%;"></div>
+                </div>
+                <div class="skeleton-model skeleton-sm" style="width:50px;"></div>
+            </div>
+            <div class="feature-item-skeleton">
+                <div class="skeleton-model skeleton-sm" style="width:24px;height:24px;border-radius:50%;"></div>
+                <div style="flex:1;">
+                    <div class="skeleton-model skeleton-sm" style="width:70%;margin-bottom:6px;"></div>
+                    <div class="skeleton-model skeleton-sm" style="width:40%;"></div>
+                </div>
+                <div class="skeleton-model skeleton-sm" style="width:50px;"></div>
+            </div>
+            <div class="feature-item-skeleton">
+                <div class="skeleton-model skeleton-sm" style="width:24px;height:24px;border-radius:50%;"></div>
+                <div style="flex:1;">
+                    <div class="skeleton-model skeleton-sm" style="width:70%;margin-bottom:6px;"></div>
+                    <div class="skeleton-model skeleton-sm" style="width:40%;"></div>
+                </div>
+                <div class="skeleton-model skeleton-sm" style="width:50px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     DETAIL MODAL
+     ============================================================ -->
+<div id="featureDetailModal" class="model-modal-overlay" onclick="if(event.target===this) closeFeatureDetail()">
+    <div class="model-modal" style="max-width:480px;">
+        
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fas fa-info-circle"></i>
+                <span>جزئیات ویژگی</span>
+            </div>
+            <button class="modal-close" onclick="closeFeatureDetail()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Hero -->
+            <div class="modal-hero">
+                <div class="modal-hero-icon" id="featureDetailIcon">📊</div>
+                <div class="modal-hero-info">
+                    <div class="modal-hero-version" id="featureDetailName">—</div>
+                    <div class="modal-hero-accuracy" id="featureDetailCode">—</div>
+                </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="modal-stats-grid">
+                <div class="modal-stat">
+                    <span class="modal-stat-label">اهمیت</span>
+                    <span class="modal-stat-value green" id="featureDetailImportance">—</span>
+                </div>
+                <div class="modal-stat">
+                    <span class="modal-stat-label">درصد</span>
+                    <span class="modal-stat-value cyan" id="featureDetailPercent">—</span>
+                </div>
+            </div>
+            
+            <!-- Description -->
+            <div class="modal-info-list">
+                <div class="modal-info-row">
+                    <span class="modal-info-label">
+                        <i class="fas fa-tag"></i>
+                        نام کد
+                    </span>
+                    <span class="modal-info-value" id="featureDetailCodeValue">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">
+                        <i class="fas fa-sort-numeric-up"></i>
+                        رتبه
+                    </span>
+                    <span class="modal-info-value" id="featureDetailRank">—</span>
+                </div>
+            </div>
+            
+            <!-- Description Box -->
+            <div class="feature-description-box">
+                <div class="feature-description-title">
+                    <i class="fas fa-info-circle"></i>
+                    توضیحات
+                </div>
+                <div class="feature-description-text" id="featureDetailDescription">
+                    —
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-model btn-primary btn-sm" onclick="closeFeatureDetail()" style="flex:1;">
+                <i class="fas fa-check"></i>
+                متوجه شدم
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
-    /* ===== استایل اختصاصی لیست ویژگی‌ها ===== */
-    .feature-list-item {
+    /* ============================================================
+       استایل اختصاصی features
+       ============================================================ */
+    
+    /* ===== Chart Wrapper ===== */
+    .chart-features-wrapper {
+        height: 420px;
+        position: relative;
+    }
+    
+    /* ===== Features List ===== */
+    .features-list {
         display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        background: transparent;
-        border-radius: var(--radius-sm);
-        border: 1px solid transparent;
-        transition: all 0.3s ease;
-        animation: modelStaggerIn 0.3s ease backwards;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 420px;
+        overflow-y: auto;
+        padding-right: 4px;
     }
     
-    .feature-list-item:hover {
-        background: rgba(139, 92, 246, 0.04);
-        border-color: rgba(139, 92, 246, 0.1);
-        transform: translateX(-2px);
+    .features-list::-webkit-scrollbar {
+        width: 6px;
     }
     
-    .feature-list-item.top-5 {
-        background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.03));
-        border-color: rgba(0, 212, 255, 0.1);
-    }
-    
-    .feature-list-item .feature-rank {
-        font-size: 0.6rem;
-        color: var(--text-muted);
-        min-width: 24px;
-        font-family: 'Courier New', monospace;
-        text-align: center;
-        flex-shrink: 0;
-    }
-    
-    .feature-list-item .feature-name {
-        flex: 1;
-        font-size: 0.75rem;
-        color: var(--text-primary);
-        font-weight: 500;
-        word-break: break-word;
-    }
-    
-    .feature-list-item.top-5 .feature-name {
-        font-weight: 600;
-    }
-    
-    .feature-list-item .feature-bar {
-        width: 100px;
-        height: 6px;
+    .features-list::-webkit-scrollbar-track {
         background: var(--bg-input);
         border-radius: var(--radius-full);
+    }
+    
+    .features-list::-webkit-scrollbar-thumb {
+        background: var(--green-primary);
+        border-radius: var(--radius-full);
+    }
+    
+    /* ===== Feature Item ===== */
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--bg-input);
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: var(--transition);
+        animation: slideUp 0.4s ease backwards;
+        position: relative;
         overflow: hidden;
+    }
+    
+    .feature-item:hover {
+        background: rgba(16, 185, 129, 0.06);
+        border-color: rgba(16, 185, 129, 0.2);
+        transform: translateX(-4px);
+    }
+    
+    .feature-item.top-5 {
+        background: linear-gradient(135deg,
+            rgba(16, 185, 129, 0.08),
+            rgba(34, 211, 238, 0.04)
+        );
+        border-color: rgba(16, 185, 129, 0.15);
+    }
+    
+    .feature-item .feature-rank {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        background: var(--bg-input);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
         flex-shrink: 0;
     }
     
-    .feature-list-item .feature-bar-fill {
-        height: 100%;
-        border-radius: var(--radius-full);
-        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    .feature-item.top-5 .feature-rank {
+        background: linear-gradient(135deg, var(--green-primary), var(--cyan-primary));
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
     }
     
-    .feature-list-item .feature-percent {
-        font-size: 0.7rem;
+    .feature-item .feature-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .feature-item .feature-name {
+        font-size: 0.75rem;
         font-weight: 600;
-        font-family: 'Courier New', monospace;
-        min-width: 48px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .feature-item .feature-name .top-badge {
+        font-size: 0.5rem;
+        padding: 1px 6px;
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green-primary);
+        border-radius: var(--radius-full);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        font-weight: 700;
+    }
+    
+    .feature-item .feature-bar-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .feature-item .feature-bar {
+        flex: 1;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .feature-item .feature-bar-fill {
+        height: 100%;
+        border-radius: var(--radius-full);
+        transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .feature-item .feature-bar-fill::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+    }
+    
+    .feature-item .feature-percent {
+        font-size: 0.7rem;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        min-width: 45px;
         text-align: right;
         flex-shrink: 0;
     }
     
-    .top-badge {
-        font-size: 0.45rem;
-        padding: 1px 6px;
-        border-radius: 10px;
-        background: rgba(0, 212, 255, 0.12);
-        color: var(--accent-cyan);
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        font-weight: 600;
-        flex-shrink: 0;
+    /* ===== Skeleton ===== */
+    .feature-item-skeleton {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--bg-input);
+        border-radius: var(--radius-sm);
+        animation: shimmer 1.5s linear infinite;
+    }
+    
+    /* ===== Feature Description Box ===== */
+    .feature-description-box {
+        margin-top: 16px;
+        padding: 14px 16px;
+        background: linear-gradient(135deg,
+            rgba(16, 185, 129, 0.06),
+            rgba(34, 211, 238, 0.04)
+        );
+        border: 1px solid rgba(16, 185, 129, 0.15);
+        border-radius: var(--radius-sm);
+    }
+    
+    .feature-description-title {
+        font-size: 0.7rem;
+        color: var(--green-primary);
+        font-weight: 700;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .feature-description-text {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+        .live-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .chart-features-wrapper {
+            height: 320px;
+        }
+        
+        .features-list {
+            max-height: 400px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .chart-features-wrapper {
+            height: 280px;
+        }
     }
 </style>
 
 <script>
 // ============================================================
-// FEATURES TAB v2.0
+// FEATURES TAB v3.0
 // ============================================================
-
-// ===== Feature Names Map =====
-const FEATURE_NAMES = {
-    'f0': 'بازده ۱ روزه',
-    'f1': 'بازده ۳ روزه',
-    'f2': 'بازده ۵ روزه',
-    'f3': 'بازده ۱۰ روزه',
-    'f4': 'SMA ۵',
-    'f5': 'SMA ۱۰',
-    'f6': 'SMA ۲۰',
-    'f7': 'نوسان',
-    'f8': 'ترس و طمع',
-    'f9': 'روند ۵ روزه',
-    'f10': 'روند ۱۰ روزه',
-    'f11': 'روند ۲۰ روزه',
-    'f12': 'قدرت روند (R²)',
-    'f13': 'سلطه بیت‌کوین',
-    'f14': 'حجم بازار',
-    'f15': 'حجم کل'
-};
-
-function getFeatureDisplayName(feature) {
-    return FEATURE_NAMES[feature] || feature;
-}
 
 // ===== State =====
 let featuresData = [];
@@ -224,21 +467,47 @@ let featuresChart = null;
 let featuresInterval = null;
 let isFeaturesLoaded = false;
 let debounceTimer = null;
+let currentChartType = 'bar';
+let selectedFeature = null;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// ۱. FEATURE NAMES + DESCRIPTIONS
+// ============================================================
+
+const FEATURE_NAMES = {
+    'f0': { name: 'بازده ۱ روزه', desc: 'درصد تغییر قیمت در ۲۴ ساعت گذشته. نشان‌دهنده روند کوتاه‌مدت.' },
+    'f1': { name: 'بازده ۳ روزه', desc: 'درصد تغییر قیمت در ۳ روز گذشته. نشان‌دهنده روند میان‌مدت.' },
+    'f2': { name: 'بازده ۵ روزه', desc: 'درصد تغییر قیمت در ۵ روز گذشته.' },
+    'f3': { name: 'بازده ۱۰ روزه', desc: 'درصد تغییر قیمت در ۱۰ روز گذشته.' },
+    'f4': { name: 'SMA ۵', desc: 'میانگین متحرک ساده ۵ روزه. نشان‌دهنده روند کوتاه‌مدت.' },
+    'f5': { name: 'SMA ۱۰', desc: 'میانگین متحرک ساده ۱۰ روزه.' },
+    'f6': { name: 'SMA ۲۰', desc: 'میانگین متحرک ساده ۲۰ روزه. نشان‌دهنده روند میان‌مدت.' },
+    'f7': { name: 'نوسان', desc: 'میزان نوسان قیمت در بازه مشخص. معیار ریسک.' },
+    'f8': { name: 'ترس و طمع', desc: 'شاخص احساسات بازار (Fear & Greed Index).' },
+    'f9': { name: 'روند ۵ روزه', desc: 'قدرت روند صعودی/نزولی در ۵ روز گذشته.' },
+    'f10': { name: 'روند ۱۰ روزه', desc: 'قدرت روند در ۱۰ روز گذشته.' },
+    'f11': { name: 'روند ۲۰ روزه', desc: 'قدرت روند در ۲۰ روز گذشته.' },
+    'f12': { name: 'قدرت روند (R²)', desc: 'ضریب تعیین. نشان‌دهنده کیفیت روند.' },
+    'f13': { name: 'سلطه بیت‌کوین', desc: 'درصد سلطه بیت‌کوین بر کل بازار کریپتو.' },
+    'f14': { name: 'حجم بازار', desc: 'حجم کل معاملات بازار.' },
+    'f15': { name: 'حجم کل', desc: 'حجم کل معاملات ارز مورد نظر.' }
+};
+
+function getFeatureInfo(feature) {
+    return FEATURE_NAMES[feature] || { name: feature, desc: 'ویژگی سفارشی' };
+}
+
+// ============================================================
+// ۲. INITIALIZE / CLEANUP
 // ============================================================
 
 window.init_features = function() {
     console.log('📊 Features tab initializing...');
-    if (isFeaturesLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
+    if (isFeaturesLoaded) return;
     isFeaturesLoaded = true;
+    
     loadFeatures();
     
-    // auto-refresh هر ۶۰ ثانیه
     if (featuresInterval) clearInterval(featuresInterval);
     featuresInterval = setInterval(loadFeatures, 60000);
 };
@@ -262,103 +531,109 @@ window.cleanup_features = function() {
 };
 
 // ============================================================
-// ۲. LOAD FEATURES
+// ۳. LOAD FEATURES
 // ============================================================
 
 async function loadFeatures() {
     const listEl = document.getElementById('featuresList');
-    showSkeletonLoading(listEl);
+    if (!listEl) return;
     
     try {
         const data = await api.getModelImportance();
         
         if (data && data.success && data.data && data.data.length > 0) {
-            // تبدیل نام‌ها
-            featuresData = data.data.map(f => ({
-                ...f,
-                displayName: getFeatureDisplayName(f.feature)
-            }));
+            featuresData = data.data.map(f => {
+                const info = getFeatureInfo(f.feature);
+                return {
+                    ...f,
+                    displayName: info.name,
+                    description: info.desc
+                };
+            });
             
             // مرتب‌سازی پیش‌فرض
             featuresData.sort((a, b) => b.importance - a.importance);
             
             filteredFeatures = [...featuresData];
             
-            // بروزرسانی شمارنده
-            const countText = document.getElementById('featuresCountText');
-            if (countText) countText.textContent = `${featuresData.length} ویژگی`;
-            
+            updateHeroStats();
             renderFeatures();
             renderChart();
-            
         } else {
-            showEmptyState(listEl);
-            const countText = document.getElementById('featuresCountText');
-            if (countText) countText.textContent = '۰ ویژگی';
+            showEmptyState();
         }
-        
     } catch (error) {
         console.error('❌ Features error:', error);
-        showErrorState(listEl, error.message);
+        showErrorState(error.message);
     }
 }
 
 // ============================================================
-// ۳. SKELETON / EMPTY / ERROR
+// ۴. HERO STATS
 // ============================================================
 
-function showSkeletonLoading(container) {
-    if (!container) return;
-    container.innerHTML = Array(5).fill('').map((_, i) => `
-        <div class="model-skeleton-card" style="animation-delay:${i * 0.05}s;">
-            <div class="model-skeleton-line long"></div>
-            <div class="model-skeleton-line short"></div>
-        </div>
-    `).join('');
+function updateHeroStats() {
+    const totalEl = document.getElementById('heroTotalFeatures');
+    if (totalEl) totalEl.textContent = featuresData.length;
+    
+    const heroCount = document.getElementById('featuresCountHero');
+    if (heroCount) heroCount.textContent = featuresData.length;
+    
+    if (featuresData.length > 0) {
+        const top = featuresData[0];
+        const topPercent = top.percentage || (top.importance * 100);
+        
+        setText('heroTopFeature', top.displayName);
+        setText('heroTopPercent', topPercent.toFixed(1) + '%');
+        setText('topFeatureBadge', top.displayName);
+        
+        // دایره - بر اساس سهم برتر
+        updateCircle(Math.min(topPercent * 3, 100));
+    }
 }
 
-function showEmptyState(container) {
-    if (!container) return;
-    container.innerHTML = `
-        <div class="model-empty" style="padding:30px 20px;">
-            <span class="empty-icon">📭</span>
-            <div class="empty-title">هیچ ویژگی‌ای یافت نشد</div>
-            <div class="empty-message">لطفاً ابتدا مدل را آموزش دهید</div>
-        </div>
-    `;
-}
-
-function showErrorState(container, message) {
-    if (!container) return;
-    container.innerHTML = `
-        <div class="model-empty error" style="padding:30px 20px;">
-            <span class="empty-icon">⚠️</span>
-            <div class="empty-title">خطا در دریافت ویژگی‌ها</div>
-            <div class="empty-message">${escapeHtml(message || 'خطای نامشخص')}</div>
-            <button class="empty-action" onclick="refreshFeatures()">
-                <i class="fas fa-sync-alt"></i>
-                تلاش مجدد
-            </button>
-        </div>
-    `;
+function updateCircle(percent) {
+    const circle = document.getElementById('featuresCircle');
+    if (!circle) return;
+    
+    const circumference = 2 * Math.PI * 65;
+    const offset = circumference - (percent / 100) * circumference;
+    
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference;
+    circle.style.transition = 'none';
+    
+    void circle.offsetWidth;
+    
+    circle.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.22, 1, 0.36, 1)';
+    circle.style.strokeDashoffset = offset;
 }
 
 // ============================================================
-// ۴. RENDER FEATURES LIST
+// ۵. RENDER FEATURES LIST
 // ============================================================
 
 function renderFeatures() {
-    const listEl = document.getElementById('featuresList');
-    if (!listEl) return;
+    const container = document.getElementById('featuresList');
+    if (!container) return;
     
     const search = (document.getElementById('featuresSearch')?.value || '').toLowerCase().trim();
     const sort = document.getElementById('featuresSort')?.value || 'importance_desc';
+    const typeFilter = document.getElementById('featuresTypeFilter')?.value || 'all';
     
     // فیلتر
-    filteredFeatures = featuresData.filter(f =>
-        f.displayName.toLowerCase().includes(search) ||
-        f.feature.toLowerCase().includes(search)
-    );
+    filteredFeatures = featuresData.filter(f => {
+        const matchSearch = !search || 
+            f.displayName.toLowerCase().includes(search) ||
+            f.feature.toLowerCase().includes(search);
+        return matchSearch;
+    });
+    
+    if (typeFilter === 'top5') {
+        filteredFeatures = filteredFeatures.slice(0, 5);
+    } else if (typeFilter === 'top10') {
+        filteredFeatures = filteredFeatures.slice(0, 10);
+    }
     
     // مرتب‌سازی
     switch (sort) {
@@ -377,13 +652,16 @@ function renderFeatures() {
     }
     
     // بروزرسانی شمارنده
-    const filteredCountEl = document.getElementById('filteredCount');
-    if (filteredCountEl) filteredCountEl.textContent = filteredFeatures.length;
+    const fc = document.getElementById('filteredCount');
+    if (fc) {
+        const span = fc.querySelector('span');
+        if (span) span.textContent = filteredFeatures.length;
+    }
     
     if (filteredFeatures.length === 0) {
-        listEl.innerHTML = `
-            <div class="model-empty" style="padding:30px 20px;">
-                <span class="empty-icon">🔍</span>
+        container.innerHTML = `
+            <div class="empty-state-model" style="padding:40px 20px;">
+                <span class="empty-icon" style="font-size:2.5rem;">🔍</span>
                 <div class="empty-title">نتیجه‌ای یافت نشد</div>
                 <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
             </div>
@@ -393,41 +671,42 @@ function renderFeatures() {
     
     const maxImportance = Math.max(...filteredFeatures.map(f => f.importance), 0.001);
     
-    listEl.innerHTML = filteredFeatures.map((f, index) => {
+    container.innerHTML = filteredFeatures.map((f, index) => {
         const percent = (f.importance / maxImportance) * 100;
+        const percentDisplay = f.percentage || (f.importance * 100);
         const isTop5 = index < 5;
         
-        // رنگ بر اساس درصد
         let color;
-        if (percent > 80) color = 'var(--accent-cyan)';
-        else if (percent > 60) color = 'var(--accent-green)';
+        if (percent > 80) color = 'var(--green-primary)';
+        else if (percent > 60) color = 'var(--cyan-primary)';
         else if (percent > 40) color = 'var(--accent-orange)';
         else color = 'var(--accent-red)';
         
-        const percentText = f.percentage 
-            ? f.percentage.toFixed(1) + '%' 
-            : (f.importance * 100).toFixed(1) + '%';
-        
         return `
-            <div class="feature-list-item ${isTop5 ? 'top-5' : ''}" 
-                 style="animation-delay:${Math.min(index * 0.03, 0.5)}s;">
-                <span class="feature-rank">${index + 1}</span>
-                <span class="feature-name">
-                    ${escapeHtml(f.displayName)}
-                    ${isTop5 ? `<span class="top-badge">TOP ${index + 1}</span>` : ''}
-                </span>
-                <span class="feature-bar">
-                    <span class="feature-bar-fill" 
-                          style="width:${percent}%; background:${color};"></span>
-                </span>
-                <span class="feature-percent" style="color:${color};">${percentText}</span>
+            <div class="feature-item ${isTop5 ? 'top-5' : ''}" 
+                 style="animation-delay:${Math.min(index * 0.03, 0.4)}s;"
+                 onclick="showFeatureDetail('${escapeAttr(f.feature)}')">
+                <div class="feature-rank">${index + 1}</div>
+                <div class="feature-info">
+                    <div class="feature-name">
+                        ${escapeHtml(f.displayName)}
+                        ${isTop5 ? `<span class="top-badge">TOP ${index + 1}</span>` : ''}
+                    </div>
+                    <div class="feature-bar-wrapper">
+                        <div class="feature-bar">
+                            <div class="feature-bar-fill" 
+                                 style="width:${percent}%; background:linear-gradient(90deg, ${color}, ${color}dd);"></div>
+                        </div>
+                        <span class="feature-percent" style="color:${color};">${percentDisplay.toFixed(1)}%</span>
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
 }
 
 // ============================================================
-// ۵. RENDER CHART
+// ۶. RENDER CHART
 // ============================================================
 
 function renderChart() {
@@ -439,7 +718,6 @@ function renderChart() {
         featuresChart = null;
     }
     
-    // ۲۰ ویژگی برتر
     const top20 = featuresData.slice(0, 20);
     
     if (top20.length === 0) {
@@ -450,7 +728,6 @@ function renderChart() {
                 datasets: [{
                     data: [0],
                     backgroundColor: ['rgba(255,255,255,0.1)'],
-                    borderColor: ['rgba(255,255,255,0.05)'],
                     borderWidth: 1
                 }]
             },
@@ -468,51 +745,77 @@ function renderChart() {
     }
     
     const colors = [
-        '#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#22d3ee',
-        '#3b82f6', '#84cc16', '#f43f5e', '#14b8a6', '#a855f7',
-        '#06b6d4', '#eab308', '#10b981', '#6366f1', '#f472b6',
-        '#0ea5e9', '#8b5cf6', '#f59e0b', '#22d3ee', '#ec4899'
+        '#10b981', '#22d3ee', '#8b5cf6', '#ec4899', '#f59e0b',
+        '#34d399', '#67e8f9', '#a855f7', '#f472b6', '#fb923c',
+        '#6ee7b7', '#a5f3fc', '#c4b5fd', '#f9a8d4', '#fcd34d',
+        '#059669', '#0891b2', '#7c3aed', '#db2777', '#d97706'
     ];
     
     const labels = top20.map(f => f.displayName);
     const percentages = top20.map(f => f.percentage || (f.importance * 100));
     const maxPercent = Math.max(...percentages, 1);
     
+    // Chart Type
+    const isBar = currentChartType === 'bar';
+    
     featuresChart = new Chart(ctx, {
-        type: 'bar',
+        type: isBar ? 'bar' : 'doughnut',
         data: {
             labels: labels,
             datasets: [{
                 label: 'اهمیت (%)',
                 data: percentages,
-                backgroundColor: colors.slice(0, top20.length).map(c => c + '80'),
-                borderColor: colors.slice(0, top20.length),
-                borderWidth: 1.5,
-                borderRadius: 4,
-                barPercentage: 0.7
+                backgroundColor: isBar 
+                    ? colors.slice(0, top20.length).map(c => c + 'cc')
+                    : colors.slice(0, top20.length),
+                borderColor: isBar 
+                    ? colors.slice(0, top20.length)
+                    : 'var(--bg-card)',
+                borderWidth: isBar ? 1.5 : 2,
+                borderRadius: isBar ? 6 : 0,
+                barPercentage: 0.75,
+                hoverOffset: isBar ? 0 : 12
             }]
         },
         options: {
-            indexAxis: 'y',
+            indexAxis: isBar ? 'y' : 'x',
             responsive: true,
             maintainAspectRatio: false,
+            cutout: isBar ? undefined : '55%',
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: !isBar,
+                    position: 'bottom',
+                    labels: {
+                        color: 'var(--text-secondary)',
+                        font: { size: 10, family: 'inherit' },
+                        boxWidth: 10,
+                        padding: 8,
+                        usePointStyle: true
+                    }
+                },
                 tooltip: {
+                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                    titleColor: '#10b981',
+                    bodyColor: '#f1f5f9',
+                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                    borderWidth: 1,
+                    padding: 10,
                     callbacks: {
-                        label: function(context) {
-                            return 'اهمیت: ' + context.parsed.x.toFixed(2) + '%';
+                        label: (context) => {
+                            const val = context.parsed[isBar ? 'x' : 'y'] || context.parsed;
+                            return 'اهمیت: ' + Number(val).toFixed(2) + '%';
                         }
                     }
                 }
             },
-            scales: {
+            scales: isBar ? {
                 x: {
                     grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
                     ticks: {
                         color: 'var(--text-muted)',
-                        font: { size: 8, family: 'inherit' },
-                        callback: function(value) { return value + '%'; }
+                        font: { size: 9, family: 'inherit' },
+                        callback: (v) => v + '%'
                     },
                     max: maxPercent * 1.15
                 },
@@ -520,17 +823,38 @@ function renderChart() {
                     grid: { display: false, drawBorder: false },
                     ticks: {
                         color: 'var(--text-secondary)',
-                        font: { size: 8, family: 'inherit' }
+                        font: { size: 10, family: 'inherit' }
                     }
                 }
-            },
-            interaction: { intersect: true, mode: 'index' }
+            } : {}
         }
     });
+    
+    // بروزرسانی badge
+    const badge = document.getElementById('chartTypeBadge');
+    if (badge) {
+        badge.innerHTML = isBar 
+            ? '<i class="fas fa-chart-bar"></i><span>Bar</span>'
+            : '<i class="fas fa-chart-pie"></i><span>Pie</span>';
+    }
 }
 
 // ============================================================
-// ۶. FILTER (با debounce)
+// ۷. TOGGLE CHART TYPE
+// ============================================================
+
+function toggleChartType() {
+    currentChartType = currentChartType === 'bar' ? 'doughnut' : 'bar';
+    renderChart();
+    
+    const title = document.getElementById('chartTitle');
+    if (title) {
+        title.textContent = currentChartType === 'bar' ? 'نمودار Bar' : 'نمودار دایره‌ای';
+    }
+}
+
+// ============================================================
+// ۸. FILTER
 // ============================================================
 
 function filterFeatures() {
@@ -543,80 +867,104 @@ function debouncedFilterFeatures() {
 }
 
 // ============================================================
-// ۷. EXPORT CSV
+// ۹. FEATURE DETAIL MODAL
+// ============================================================
+
+function showFeatureDetail(featureCode) {
+    const feature = featuresData.find(f => f.feature === featureCode);
+    if (!feature) return;
+    
+    selectedFeature = featureCode;
+    
+    const index = featuresData.findIndex(f => f.feature === featureCode);
+    const percent = feature.percentage || (feature.importance * 100);
+    
+    setText('featureDetailIcon', index < 3 ? '🏆' : index < 5 ? '⭐' : '📊');
+    setText('featureDetailName', feature.displayName);
+    setText('featureDetailCode', feature.feature);
+    setText('featureDetailImportance', feature.importance.toFixed(4));
+    setText('featureDetailPercent', percent.toFixed(2) + '%');
+    setText('featureDetailCodeValue', feature.feature);
+    setText('featureDetailRank', `#${index + 1} از ${featuresData.length}`);
+    setText('featureDetailDescription', feature.description || '—');
+    
+    const modal = document.getElementById('featureDetailModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeFeatureDetail() {
+    const modal = document.getElementById('featureDetailModal');
+    if (modal) modal.classList.remove('active');
+    selectedFeature = null;
+}
+
+// ============================================================
+// ۱۰. EMPTY / ERROR
+// ============================================================
+
+function showEmptyState() {
+    const container = document.getElementById('featuresList');
+    if (container) {
+        container.innerHTML = `
+            <div class="empty-state-model" style="padding:40px 20px;">
+                <span class="empty-icon" style="font-size:2.5rem;">📭</span>
+                <div class="empty-title">هیچ ویژگی‌ای یافت نشد</div>
+                <div class="empty-message">لطفاً ابتدا مدل را آموزش دهید</div>
+            </div>
+        `;
+    }
+}
+
+function showErrorState(message) {
+    const container = document.getElementById('featuresList');
+    if (container) {
+        container.innerHTML = `
+            <div class="empty-state-model" style="padding:40px 20px;">
+                <span class="empty-icon" style="font-size:2.5rem;color:var(--accent-red);">⚠️</span>
+                <div class="empty-title" style="color:var(--accent-red);">خطا در بارگذاری</div>
+                <div class="empty-message">${escapeHtml(message || '')}</div>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// ۱۱. EXPORT CSV
 // ============================================================
 
 function exportFeaturesCSV() {
     if (featuresData.length === 0) {
-        if (typeof showToast === 'function') {
-            showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
-        }
+        if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
         return;
     }
     
-    try {
-        const headers = ['ویژگی', 'اهمیت', 'درصد'];
-        const rows = featuresData.map(f => [
-            f.displayName,
-            f.importance,
-            f.percentage ? f.percentage.toFixed(2) + '%' : (f.importance * 100).toFixed(2) + '%'
-        ]);
-        
-        const csvContent = [
-            headers.map(escapeCsv).join(','),
-            ...rows.map(row => row.map(escapeCsv).join(','))
-        ].join('\n');
-        
-        // BOM برای پشتیبانی فارسی در Excel
-        const blob = new Blob(['\ufeff' + csvContent], { 
-            type: 'text/csv;charset=utf-8;' 
-        });
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `feature_importance_${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        
-        if (typeof showToast === 'function') {
-            showToast('📥 دانلود CSV شروع شد', 'success');
-        }
-    } catch (err) {
-        console.error('CSV export error:', err);
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا در خروجی CSV', 'error');
-        }
-    }
-}
-
-function escapeCsv(value) {
-    const str = String(value ?? '');
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return '"' + str.replace(/"/g, '""') + '"';
-    }
-    return str;
+    const headers = ['ویژگی', 'کد', 'اهمیت', 'درصد'];
+    const rows = featuresData.map(f => [
+        f.displayName,
+        f.feature,
+        f.importance,
+        (f.percentage || (f.importance * 100)).toFixed(2) + '%'
+    ]);
+    
+    const csv = [headers, ...rows].map(r => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `feature_importance_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    if (typeof showToast === 'function') showToast('📥 CSV دانلود شد', 'success');
 }
 
 // ============================================================
-// ۸. REFRESH
+// ۱۲. UTILS
 // ============================================================
 
-function refreshFeatures() {
-    if (typeof showToast === 'function') {
-        showToast('🔄 بروزرسانی...', 'info');
-    }
-    loadFeatures().then(() => {
-        if (typeof showToast === 'function') {
-            showToast('✅ بروزرسانی شد', 'success');
-        }
-    });
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
 }
-
-// ============================================================
-// ۹. UTILS
-// ============================================================
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -628,5 +976,18 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-console.log('✅ Features tab v2.0 loaded');
+function escapeAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function escapeCsv(value) {
+    const str = String(value ?? '');
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+console.log('✅ Features tab v3.0 loaded');
 </script>
