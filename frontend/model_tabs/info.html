@@ -1,149 +1,301 @@
 <!-- ============================================================
-     info.html - تب اطلاعات کامل مدل
-     نسخه ۲.۰ - با CSS مشترک model-animations.css
+     info.html - تب اطلاعات مدل
+     نسخه ۳.۰ - طراحی جدید با Glass + Stagger
      ============================================================ -->
 
-<div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-microchip"></i>
-        <span>اطلاعات مدل</span>
-        <span class="model-status-badge demo" id="infoUpdateTime" style="margin-right:auto;">
-            <span class="status-dot"></span>
-            <span class="status-text">—</span>
-        </span>
-        <button class="btn btn-xs btn-outline" onclick="refreshInfo()" 
-                style="padding:3px 10px;font-size:0.65rem;margin-right:6px;">
-            <i class="fas fa-sync-alt"></i>
-        </button>
-    </div>
-
-    <!-- ============================================================
-         INFO GRID (۲ ستون)
-         ============================================================ -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        
-        <!-- ===== ستون راست ===== -->
-        <div style="display:flex;flex-direction:column;gap:12px;">
-            
-            <!-- اطلاعات پایه -->
-            <div class="model-info-card">
-                <div class="info-title">
-                    <i class="fas fa-info-circle" style="color:var(--accent-cyan);"></i>
-                    اطلاعات پایه
-                </div>
-                <div class="info-row">
-                    <span class="info-label">نام مدل</span>
-                    <span class="info-value" id="infoName">XGBoost Classifier</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">نسخه</span>
-                    <span class="info-value cyan" id="infoVersion">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">تاریخ ایجاد</span>
-                    <span class="info-value" id="infoDate">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">حالت مدل</span>
-                    <span class="info-value" id="infoMode">—</span>
-                </div>
-            </div>
-
-            <!-- آمار عملکرد -->
-            <div class="model-info-card">
-                <div class="info-title">
-                    <i class="fas fa-chart-bar" style="color:var(--accent-green);"></i>
-                    آمار عملکرد
-                </div>
-                <div class="info-row">
-                    <span class="info-label">دقت (Accuracy)</span>
-                    <span class="info-value cyan" id="infoAccuracy">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">F1-Score</span>
-                    <span class="info-value" id="infoF1">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">تعداد نمونه‌های آموزش</span>
-                    <span class="info-value" id="infoSamples">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">بازه زمانی داده‌ها</span>
-                    <span class="info-value" id="infoPeriod">—</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== ستون چپ ===== -->
-        <div style="display:flex;flex-direction:column;gap:12px;">
-            
-            <!-- ارزها و ویژگی‌ها -->
-            <div class="model-info-card">
-                <div class="info-title">
-                    <i class="fas fa-coins" style="color:var(--accent-orange);"></i>
-                    ارزها و ویژگی‌ها
-                </div>
-                <div class="info-row">
-                    <span class="info-label">ارزهای استفاده شده</span>
-                    <span class="info-value" id="infoCoins">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">تعداد ویژگی‌ها</span>
-                    <span class="info-value" id="infoFeatures">—</span>
-                </div>
-            </div>
-
-            <!-- Hyperparameters -->
-            <div class="model-info-card">
-                <div class="info-title">
-                    <i class="fas fa-sliders-h" style="color:var(--accent-purple);"></i>
-                    Hyperparameters
-                </div>
-                <div class="info-row">
-                    <span class="info-label">max_depth</span>
-                    <span class="info-value" id="infoMaxDepth">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">learning_rate</span>
-                    <span class="info-value" id="infoLearningRate">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">n_estimators</span>
-                    <span class="info-value" id="infoEstimators">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">subsample</span>
-                    <span class="info-value" id="infoSubsample">—</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">colsample_bytree</span>
-                    <span class="info-value" id="infoColsample">—</span>
-                </div>
-            </div>
+<!-- ============================================================
+     HERO SECTION - Header
+     ============================================================ -->
+<div class="hero-card" id="infoHero">
+    
+    <div class="health-circle-wrapper">
+        <svg class="health-circle" viewBox="0 0 140 140">
+            <circle class="circle-bg" cx="70" cy="70" r="65"/>
+            <circle class="circle-fill" cx="70" cy="70" r="65" id="infoCircle"/>
+        </svg>
+        <div class="health-score-value">
+            <span class="health-score-number" id="infoStatusIcon">📦</span>
+            <span class="health-score-label" id="infoStatusLabel">دمو</span>
         </div>
     </div>
 
-    <!-- ============================================================
-         FOOTER
-         ============================================================ -->
-    <div style="margin-top:16px;padding:10px 14px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-        <span style="font-size:0.65rem;color:var(--text-muted);">
-            <i class="fas fa-clock"></i>
-            آخرین به‌روزرسانی: <span id="infoLastUpdate">—</span>
-        </span>
-        <span style="font-size:0.65rem;color:var(--text-muted);">
-            <i class="fas fa-database"></i>
-            ذخیره شده در: <span>دیتابیس PostgreSQL</span>
-        </span>
+    <div class="hero-info">
+        <h2 class="hero-title">
+            <i class="fas fa-microchip" style="color:var(--green-primary);"></i>
+            <span>اطلاعات مدل</span>
+            <span class="badge-version" id="infoVersion">—</span>
+        </h2>
+        <p class="hero-subtitle" id="infoSubtitle">
+            جزئیات کامل مدل XGBoost فعال
+        </p>
+        <div class="hero-metrics">
+            <div class="hero-metric">
+                <span class="hero-metric-label">نام مدل</span>
+                <span class="hero-metric-value" id="infoName">XGBoost</span>
+            </div>
+            <div class="hero-metric">
+                <span class="hero-metric-label">وضعیت</span>
+                <span class="hero-metric-value green" id="infoMode">—</span>
+            </div>
+            <div class="hero-metric">
+                <span class="hero-metric-label">تاریخ ایجاد</span>
+                <span class="hero-metric-value cyan" id="infoDate">—</span>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- ============================================================
+     GRID ۱: اطلاعات پایه + آمار عملکرد
+     ============================================================ -->
+<div class="live-row">
+    
+    <!-- اطلاعات پایه -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-info-circle"></i>
+                <span>اطلاعات پایه</span>
+            </div>
+            <span class="section-badge-model">
+                <i class="fas fa-cube"></i>
+                نسخه
+            </span>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">نام مدل</span>
+                <span class="info-value" id="detailName">XGBoost Classifier</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">نسخه</span>
+                <span class="info-value cyan" id="detailVersion">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">تاریخ ایجاد</span>
+                <span class="info-value" id="detailDate">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">حالت مدل</span>
+                <span class="info-value" id="detailMode">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- آمار عملکرد -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-chart-line"></i>
+                <span>آمار عملکرد</span>
+            </div>
+            <span class="section-badge-model">
+                <span class="live-dot"></span>
+                LIVE
+            </span>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">دقت (Accuracy)</span>
+                <span class="info-value green" id="detailAccuracy">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">F1-Score</span>
+                <span class="info-value" id="detailF1">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">تعداد نمونه‌ها</span>
+                <span class="info-value purple" id="detailSamples">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">بازه داده‌ها</span>
+                <span class="info-value" id="detailPeriod">—</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     GRID ۲: ارزها + Hyperparameters
+     ============================================================ -->
+<div class="live-row">
+    
+    <!-- ارزها و ویژگی‌ها -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-coins"></i>
+                <span>ارزها و ویژگی‌ها</span>
+            </div>
+            <span class="section-badge-model" id="featuresCountBadge">
+                <i class="fas fa-list"></i>
+                <span id="featuresCount">۰</span>
+            </span>
+        </div>
+        
+        <div class="info-item" style="margin-bottom:12px;">
+            <span class="info-label">ارزهای استفاده شده</span>
+            <div style="margin-top:6px;">
+                <div id="coinsList" style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <span class="skeleton-model skeleton-sm" style="width:80px;height:24px;border-radius:var(--radius-full);"></span>
+                    <span class="skeleton-model skeleton-sm" style="width:70px;height:24px;border-radius:var(--radius-full);"></span>
+                    <span class="skeleton-model skeleton-sm" style="width:90px;height:24px;border-radius:var(--radius-full);"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-item">
+            <span class="info-label">تعداد کل ویژگی‌ها</span>
+            <span class="info-value cyan" id="detailFeaturesCount">—</span>
+        </div>
+    </div>
+
+    <!-- Hyperparameters -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-sliders-h"></i>
+                <span>Hyperparameters</span>
+            </div>
+            <span class="section-badge-model">
+                <i class="fas fa-cog"></i>
+                تنظیمات
+            </span>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">max_depth</span>
+                <span class="info-value" id="hpMaxDepth">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">learning_rate</span>
+                <span class="info-value" id="hpLearningRate">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">n_estimators</span>
+                <span class="info-value" id="hpEstimators">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">subsample</span>
+                <span class="info-value" id="hpSubsample">—</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">colsample_bytree</span>
+                <span class="info-value" id="hpColsample">—</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<div class="next-training-card" style="margin-top:0;">
+    <div class="next-icon" style="background:rgba(16,185,129,0.12);">💾</div>
+    <div class="next-info">
+        <div class="next-label">محل ذخیره‌سازی</div>
+        <div class="next-value cyan">PostgreSQL Database</div>
+    </div>
+    <div class="next-action" style="text-align:left;">
+        <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">آخرین به‌روزرسانی</div>
+        <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);" id="infoLastUpdate">—</div>
+    </div>
+</div>
+
+<style>
+    /* ===== استایل اختصاصی info.html ===== */
+    .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        background: var(--bg-input);
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+        transition: var(--transition);
+        animation: slideUp 0.4s ease backwards;
+    }
+    
+    .info-item:hover {
+        background: rgba(16, 185, 129, 0.06);
+        border-color: rgba(16, 185, 129, 0.15);
+        transform: translateX(-4px);
+    }
+    
+    .info-item .info-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    
+    .info-item .info-value {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        transition: var(--transition);
+    }
+    
+    .info-item .info-value.green { color: var(--green-primary); }
+    .info-item .info-value.cyan { color: var(--cyan-primary); }
+    .info-item .info-value.purple { color: var(--accent-purple); }
+    .info-item .info-value.orange { color: var(--accent-orange); }
+    
+    /* ===== Coin Chips ===== */
+    .coin-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        border-radius: var(--radius-full);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--green-primary);
+        font-family: var(--font-mono);
+        transition: var(--transition);
+        animation: dramaticIn 0.4s ease backwards;
+    }
+    
+    .coin-chip:hover {
+        background: rgba(16, 185, 129, 0.18);
+        border-color: var(--green-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    
+    .coin-chip .coin-symbol {
+        font-weight: 800;
+    }
+    
+    .coin-chip .coin-name {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        font-family: var(--font-main);
+        font-weight: 500;
+    }
+    
+    /* Stagger برای info-items */
+    .info-item:nth-child(1) { animation-delay: 0.05s; }
+    .info-item:nth-child(2) { animation-delay: 0.10s; }
+    .info-item:nth-child(3) { animation-delay: 0.15s; }
+    .info-item:nth-child(4) { animation-delay: 0.20s; }
+    .info-item:nth-child(5) { animation-delay: 0.25s; }
+</style>
+
 <script>
 // ============================================================
-// INFO TAB v2.0
+// INFO TAB v3.0
 // ============================================================
 
 let infoInterval = null;
@@ -188,200 +340,274 @@ async function loadModelInfo() {
             api.getModelHistory(1)
         ]);
         
+        let accuracy = null;
+        let version = 'N/A';
+        let isLoaded = false;
+        let isTraining = false;
+        let totalTrainings = 0;
+        
         // ===== پردازش status =====
         if (statusRes.status === 'fulfilled' && statusRes.value?.success) {
-            const data = statusRes.value.data;
-            const loaded = data.loaded || false;
-            const version = data.version || 'N/A';
-            const isTraining = data.is_training || false;
-            const accuracy = data.last_score || null;
-            const totalTrainings = data.total_trainings || 0;
+            const data = statusRes.value.data || {};
+            accuracy = data.last_score;
+            version = data.version || 'N/A';
+            isLoaded = data.loaded || false;
+            isTraining = data.is_training || false;
+            totalTrainings = data.total_trainings || 0;
             
-            // نسخه
-            const versionEl = document.getElementById('infoVersion');
-            if (versionEl) {
-                versionEl.textContent = version;
-                versionEl.className = 'info-value ' + (loaded ? 'cyan' : '');
-            }
-            
-            // حالت مدل
-            const modeEl = document.getElementById('infoMode');
-            if (modeEl) {
-                if (isTraining) {
-                    modeEl.textContent = '⏳ در حال آموزش';
-                    modeEl.className = 'info-value orange';
-                } else if (loaded) {
-                    modeEl.textContent = '🚀 PRODUCTION';
-                    modeEl.className = 'info-value green';
-                } else {
-                    modeEl.textContent = '📦 DEMO';
-                    modeEl.className = 'info-value orange';
-                }
-            }
-            
-            // دقت
-            const accEl = document.getElementById('infoAccuracy');
-            if (accEl) {
-                if (accuracy !== null && accuracy !== undefined) {
-                    animateCountUp(accEl, accuracy * 100, {
-                        duration: 1200,
-                        decimals: 2,
-                        suffix: '%'
-                    });
-                    accEl.className = 'info-value ' + (accuracy > 0.6 ? 'green' : 'orange');
-                } else {
-                    accEl.textContent = '—';
-                    accEl.className = 'info-value';
-                }
-            }
-            
-            // تعداد نمونه‌ها
-            const samplesEl = document.getElementById('infoSamples');
-            if (samplesEl) {
-                animateCountUp(samplesEl, totalTrainings, {
-                    duration: 1000,
-                    decimals: 0
-                });
-            }
+            updateHeroCard({ version, isLoaded, isTraining, accuracy });
+            updateDetailItems({ version, isLoaded, isTraining, accuracy, totalTrainings });
         }
         
         // ===== پردازش history =====
         if (historyRes.status === 'fulfilled' && historyRes.value?.success) {
-            const historyData = historyRes.value.data;
-            if (historyData && historyData.length > 0) {
-                const latest = historyData[0];
-                
-                // تاریخ ایجاد
-                const dateEl = document.getElementById('infoDate');
-                if (dateEl && latest.training_date) {
-                    dateEl.textContent = formatDate(latest.training_date) || '—';
-                }
-                
-                // بازه
-                const periodEl = document.getElementById('infoPeriod');
-                if (periodEl) periodEl.textContent = latest.period || '—';
-                
-                // ارزها
-                const coinsEl = document.getElementById('infoCoins');
-                if (coinsEl) {
-                    if (latest.coins && latest.coins.length > 0) {
-                        coinsEl.textContent = latest.coins.join(', ');
-                    } else {
-                        coinsEl.textContent = 'bitcoin, ethereum';
-                    }
-                }
-                
-                // تعداد ویژگی‌ها
-                const featuresEl = document.getElementById('infoFeatures');
-                if (featuresEl) {
-                    if (latest.features && latest.features.length > 0) {
-                        featuresEl.textContent = latest.features.length;
-                    } else {
-                        featuresEl.textContent = '۱۳';
-                    }
-                }
-                
-                // F1 Score
-                const f1El = document.getElementById('infoF1');
-                if (f1El) {
-                    if (latest.f1_score !== undefined && latest.f1_score !== null) {
-                        f1El.textContent = (latest.f1_score * 100).toFixed(2) + '%';
-                    } else {
-                        f1El.textContent = '—';
-                    }
-                }
-                
-                // Hyperparameters
-                const hp = latest.hyperparameters || {
-                    max_depth: 4,
-                    learning_rate: 0.1,
-                    n_estimators: 50,
-                    subsample: 0.8,
-                    colsample_bytree: 0.8
-                };
-                
-                const setVal = (id, val) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = val ?? '—';
-                };
-                
-                setVal('infoMaxDepth', hp.max_depth);
-                setVal('infoLearningRate', hp.learning_rate);
-                setVal('infoEstimators', hp.n_estimators);
-                setVal('infoSubsample', hp.subsample);
-                setVal('infoColsample', hp.colsample_bytree);
+            const history = historyRes.value.data;
+            if (history && history.length > 0) {
+                updateFromHistory(history[0]);
             }
         }
         
         // ===== Timestamp =====
-        const lastUpdateEl = document.getElementById('infoLastUpdate');
-        if (lastUpdateEl) {
-            lastUpdateEl.textContent = new Date().toLocaleString('fa-IR');
-        }
-        
-        const updateTimeEl = document.getElementById('infoUpdateTime');
-        if (updateTimeEl) {
-            const textEl = updateTimeEl.querySelector('.status-text');
-            if (textEl) textEl.textContent = '🕐 ' + new Date().toLocaleTimeString('fa-IR');
+        const updateEl = document.getElementById('infoLastUpdate');
+        if (updateEl) {
+            updateEl.textContent = new Date().toLocaleString('fa-IR');
         }
         
     } catch (error) {
         console.error('❌ Info load error:', error);
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا در دریافت اطلاعات مدل', 'error');
+    }
+}
+
+// ============================================================
+// ۳. UPDATE HERO CARD
+// ============================================================
+
+function updateHeroCard({ version, isLoaded, isTraining, accuracy }) {
+    // نسخه
+    const versionEl = document.getElementById('infoVersion');
+    if (versionEl) versionEl.textContent = version;
+    
+    // وضعیت icon
+    const iconEl = document.getElementById('infoStatusIcon');
+    const labelEl = document.getElementById('infoStatusLabel');
+    
+    if (iconEl && labelEl) {
+        if (isTraining) {
+            iconEl.textContent = '⏳';
+            labelEl.textContent = 'در حال آموزش';
+        } else if (isLoaded) {
+            iconEl.textContent = '✅';
+            labelEl.textContent = 'فعال';
+        } else {
+            iconEl.textContent = '📦';
+            labelEl.textContent = 'دمو';
+        }
+    }
+    
+    // دایره - پر شدن بر اساس دقت
+    updateInfoCircle(accuracy || 0);
+    
+    // دقت
+    const accuracyEl = document.getElementById('detailAccuracy');
+    if (accuracyEl) {
+        if (accuracy !== null && accuracy !== undefined) {
+            animateNumber(accuracyEl, accuracy * 100, 1200, 1, '%');
+        } else {
+            accuracyEl.textContent = '—';
+        }
+    }
+    
+    // حالت
+    const modeEl = document.getElementById('detailMode');
+    if (modeEl) {
+        if (isTraining) {
+            modeEl.textContent = '⏳ آموزش';
+            modeEl.className = 'info-value orange';
+        } else if (isLoaded) {
+            modeEl.textContent = '🚀 PRODUCTION';
+            modeEl.className = 'info-value green';
+        } else {
+            modeEl.textContent = '📦 DEMO';
+            modeEl.className = 'info-value purple';
         }
     }
 }
 
 // ============================================================
-// ۳. COUNT-UP
+// ۴. UPDATE INFO CIRCLE (بر اساس دقت)
 // ============================================================
 
-function animateCountUp(element, targetValue, options = {}) {
+function updateInfoCircle(accuracy) {
+    const circle = document.getElementById('infoCircle');
+    if (!circle) return;
+    
+    const circumference = 2 * Math.PI * 65;
+    const percent = Math.min(accuracy * 100, 100);
+    const offset = circumference - (percent / 100) * circumference;
+    
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference;
+    circle.style.transition = 'none';
+    
+    void circle.offsetWidth;
+    
+    circle.style.transition = 'stroke-dashoffset 2s cubic-bezier(0.22, 1, 0.36, 1)';
+    circle.style.strokeDashoffset = offset;
+}
+
+// ============================================================
+// ۵. UPDATE DETAIL ITEMS
+// ============================================================
+
+function updateDetailItems({ version, isLoaded, isTraining, accuracy, totalTrainings }) {
+    // نسخه
+    setText('detailVersion', version);
+    
+    // تعداد آموزش
+    const samplesEl = document.getElementById('detailSamples');
+    if (samplesEl) {
+        animateNumber(samplesEl, totalTrainings, 1000, 0);
+    }
+}
+
+// ============================================================
+// ۶. UPDATE FROM HISTORY
+// ============================================================
+
+function updateFromHistory(latest) {
+    // تاریخ
+    setText('detailDate', formatDate(latest.training_date) || '—');
+    setText('infoDate', formatDate(latest.training_date) || '—');
+    
+    // بازه
+    setText('detailPeriod', latest.period || '—');
+    
+    // F1
+    if (latest.f1_score !== undefined && latest.f1_score !== null) {
+        setText('detailF1', (latest.f1_score * 100).toFixed(2) + '%');
+    }
+    
+    // ارزها
+    renderCoins(latest.coins || ['bitcoin', 'ethereum']);
+    
+    // تعداد ویژگی‌ها
+    const featuresCount = latest.features?.length || 13;
+    setText('detailFeaturesCount', featuresCount);
+    
+    const badge = document.getElementById('featuresCount');
+    if (badge) badge.textContent = featuresCount;
+    
+    // Hyperparameters
+    const hp = latest.hyperparameters || {
+        max_depth: 4,
+        learning_rate: 0.1,
+        n_estimators: 50,
+        subsample: 0.8,
+        colsample_bytree: 0.8
+    };
+    
+    setText('hpMaxDepth', hp.max_depth ?? '—');
+    setText('hpLearningRate', hp.learning_rate ?? '—');
+    setText('hpEstimators', hp.n_estimators ?? '—');
+    setText('hpSubsample', hp.subsample ?? '—');
+    setText('hpColsample', hp.colsample_bytree ?? '—');
+}
+
+// ============================================================
+// ۷. RENDER COINS
+// ============================================================
+
+function renderCoins(coins) {
+    const container = document.getElementById('coinsList');
+    if (!container) return;
+    
+    if (!coins || coins.length === 0) {
+        container.innerHTML = '<span style="font-size:0.7rem;color:var(--text-muted);">هیچ ارزی ثبت نشده</span>';
+        return;
+    }
+    
+    // Name mapping
+    const nameMap = {
+        'bitcoin': 'بیت‌کوین',
+        'ethereum': 'اتریوم',
+        'solana': 'سولانا',
+        'cardano': 'کاردانو',
+        'ripple': 'ریپل',
+        'xrp': 'XRP',
+        'dogecoin': 'دوج‌کوین',
+        'polkadot': 'پولکادات',
+        'litecoin': 'لایت‌کوین',
+        'chainlink': 'چین‌لینک',
+        'binancecoin': 'BNB',
+        'matic-network': 'پالیگان',
+        'polygon': 'پالیگان'
+    };
+    
+    container.innerHTML = coins.map((coin, i) => {
+        const symbol = coin.toUpperCase().slice(0, 6);
+        const name = nameMap[coin.toLowerCase()] || coin;
+        
+        return `
+            <span class="coin-chip" style="animation-delay:${i * 0.05}s;">
+                <span class="coin-symbol">${escapeHtml(symbol)}</span>
+                <span class="coin-name">${escapeHtml(name)}</span>
+            </span>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// ۸. ANIMATE NUMBER (Count-Up)
+// ============================================================
+
+function animateNumber(element, target, duration = 1200, decimals = 0, suffix = '') {
     if (!element) return;
-    
-    const { duration = 1200, decimals = 0, suffix = '' } = options;
-    
-    if (!targetValue || targetValue === 0 || isNaN(targetValue)) {
+    if (!target && target !== 0) {
         element.textContent = '0' + suffix;
         return;
     }
     
     const startTime = performance.now();
-    element.classList.add('counting');
+    const startValue = 0;
     
-    function updateCount(currentTime) {
+    function update(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 4);
-        const current = targetValue * eased;
+        const current = startValue + (target - startValue) * eased;
         
         element.textContent = current.toFixed(decimals) + suffix;
         
         if (progress < 1) {
-            requestAnimationFrame(updateCount);
-        } else {
-            element.classList.remove('counting');
+            requestAnimationFrame(update);
         }
     }
     
-    requestAnimationFrame(updateCount);
+    requestAnimationFrame(update);
 }
 
 // ============================================================
-// ۴. REFRESH
+// ۹. SET TEXT HELPER
 // ============================================================
 
-function refreshInfo() {
-    if (typeof showToast === 'function') {
-        showToast('🔄 بروزرسانی اطلاعات...', 'info');
-    }
-    loadModelInfo().then(() => {
-        if (typeof showToast === 'function') {
-            showToast('✅ بروزرسانی شد', 'success');
-        }
-    });
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
 }
 
-console.log('✅ Info tab v2.0 loaded');
+// ============================================================
+// ۱۰. UTILS
+// ============================================================
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+console.log('✅ Info tab v3.0 loaded');
 </script>
