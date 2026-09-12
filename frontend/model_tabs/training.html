@@ -1,244 +1,915 @@
 <!-- ============================================================
      training.html - تب آموزش مدل
-     نسخه ۲.۰ - با CSS مشترک model-animations.css
+     نسخه ۳.۰ - طراحی جدید + Presets + Progress بهتر
      ============================================================ -->
 
-<div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-graduation-cap"></i>
-        <span>آموزش مدل</span>
-        <span class="model-status-badge demo" id="trainingStatusBadge" style="margin-right:auto;">
-            <span class="status-dot"></span>
-            <span class="status-text">آماده</span>
-        </span>
-    </div>
-
-    <!-- ============================================================
-         CONTROLS
-         ============================================================ -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-bottom:16px;align-items:end;">
-        
-        <!-- بازه زمانی -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
-            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                <i class="fas fa-clock"></i> بازه زمانی
-            </label>
-            <select id="trainPeriod" class="analyzer-filter" style="width:100%;">
-                <option value="24h">۲۴ ساعت</option>
-                <option value="1w">۱ هفته</option>
-                <option value="1m" selected>۱ ماه</option>
-                <option value="3m">۳ ماه</option>
-                <option value="6m">۶ ماه</option>
-            </select>
-        </div>
-
-        <!-- حالت آموزش -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
-            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                <i class="fas fa-sync-alt"></i> حالت آموزش
-            </label>
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);flex-wrap:wrap;">
-                <label style="font-size:0.7rem;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <input type="checkbox" id="incrementalToggle" style="accent-color:var(--accent-cyan);">
-                    <span>آموزش افزایشی</span>
-                </label>
-                <span style="font-size:0.55rem;color:var(--text-muted);">(با داده‌های جدید)</span>
-            </div>
-        </div>
-
-        <!-- تعداد پیشنهاد -->
-        <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
-            <label style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                <i class="fas fa-list"></i> تعداد پیشنهاد
-            </label>
-            <select id="defaultCount" class="analyzer-filter" onchange="updateDefaultCount()" style="width:100%;">
-                <option value="3">۳ ارز</option>
-                <option value="5" selected>۵ ارز</option>
-                <option value="10">۱۰ ارز</option>
-            </select>
-        </div>
-
-        <!-- دکمه‌ها -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()" 
-                    style="padding:10px 24px;font-size:0.8rem;min-width:120px;">
-                <i class="fas fa-play"></i>
-                شروع آموزش
-            </button>
-            <button class="btn btn-danger" id="stopTrainBtn" onclick="stopTraining()" 
-                    style="padding:10px 20px;font-size:0.8rem;display:none;min-width:120px;">
-                <i class="fas fa-stop"></i>
-                توقف
-            </button>
+<!-- ============================================================
+     HERO SECTION
+     ============================================================ -->
+<div class="hero-card" id="trainingHero">
+    
+    <div class="health-circle-wrapper">
+        <svg class="health-circle" viewBox="0 0 140 140">
+            <circle class="circle-bg" cx="70" cy="70" r="65"/>
+            <circle class="circle-fill" cx="70" cy="70" r="65" id="trainingCircle"/>
+        </svg>
+        <div class="health-score-value">
+            <span class="health-score-number" id="trainingStatusIcon">🎓</span>
+            <span class="health-score-label" id="trainingStatusLabel">آماده</span>
         </div>
     </div>
 
-    <!-- ============================================================
-         COIN SELECTOR
-         ============================================================ -->
-    <div style="margin-bottom:16px;padding:14px 16px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-        
-        <!-- Header -->
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">
-                    <i class="fas fa-coins"></i>
-                    انتخاب ارزها برای آموزش
-                </span>
-                <span class="model-status-badge demo" id="selectedCount" style="font-size:0.55rem;padding:2px 8px;">
-                    <span class="status-dot"></span>
-                    <span class="status-text">۰ انتخاب</span>
-                </span>
-                <span class="model-status-badge active" id="trainedCount" style="font-size:0.55rem;padding:2px 8px;display:none;">
-                    <span class="status-dot"></span>
-                    <span class="status-text">🧠 آموزش دیده: ۰</span>
-                </span>
+    <div class="hero-info">
+        <h2 class="hero-title">
+            <i class="fas fa-graduation-cap" style="color:var(--green-primary);"></i>
+            <span>آموزش مدل</span>
+            <span class="badge-version" id="trainingStatusBadge">آماده</span>
+        </h2>
+        <p class="hero-subtitle" id="trainingSubtitle">
+            مدل XGBoost را با داده‌های جدید آموزش دهید
+        </p>
+        <div class="hero-metrics">
+            <div class="hero-metric">
+                <span class="hero-metric-label">ارزهای انتخاب شده</span>
+                <span class="hero-metric-value green" id="selectedCountHero">۰</span>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="btn btn-xs btn-outline" onclick="selectAllCoins()" 
-                        style="padding:3px 10px;font-size:0.6rem;">
-                    <i class="fas fa-check-double"></i>
-                    همه
-                </button>
-                <button class="btn btn-xs btn-outline" onclick="deselectAllCoins()" 
-                        style="padding:3px 10px;font-size:0.6rem;">
-                    <i class="fas fa-times"></i>
-                    هیچ‌کدام
-                </button>
-                <button class="btn btn-xs btn-outline" onclick="selectTrainedCoins()" 
-                        style="padding:3px 10px;font-size:0.6rem;display:none;" id="selectTrainedBtn">
-                    <i class="fas fa-brain"></i>
-                    آموزش‌دیده
-                </button>
+            <div class="hero-metric">
+                <span class="hero-metric-label">بازه زمانی</span>
+                <span class="hero-metric-value cyan" id="periodHero">۱ ماه</span>
             </div>
-        </div>
-
-        <!-- Search & Filter -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-            <div style="position:relative;flex:1;min-width:150px;">
-                <input type="text" id="trainCoinSearch" 
-                       placeholder="جستجو در ارزها..." 
-                       oninput="debouncedFilterTrainCoins()"
-                       style="width:100%;padding:7px 12px;padding-right:32px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;">
-                <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.7rem;pointer-events:none;">🔍</span>
-            </div>
-            <select id="trainCoinSort" class="analyzer-filter" onchange="filterTrainCoins()">
-                <option value="rank_asc">📊 رتبه (صعودی)</option>
-                <option value="name_asc">🔤 نام (الفبا)</option>
-                <option value="change_desc">📈 بیشترین تغییر</option>
-            </select>
-            <select id="trainChangeFilter" class="analyzer-filter" onchange="filterTrainCoins()">
-                <option value="all">🔄 همه</option>
-                <option value="positive">📈 مثبت</option>
-                <option value="negative">📉 منفی</option>
-                <option value="high">🔥 بیش از ۵٪</option>
-            </select>
-        </div>
-
-        <!-- Coins List -->
-        <div id="trainCoinsGrid" 
-             style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;padding:4px 2px;width:100%;">
-            <!-- Skeleton -->
-            <div class="model-skeleton-card" style="width:120px;">
-                <div class="model-skeleton-line short"></div>
-            </div>
-            <div class="model-skeleton-card" style="width:120px;">
-                <div class="model-skeleton-line short"></div>
-            </div>
-        </div>
-
-        <!-- Info -->
-        <div id="trainInfo" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);font-size:0.6rem;color:var(--text-muted);">
-            <span id="trainInfoText"></span>
-        </div>
-    </div>
-
-    <!-- ============================================================
-         PROGRESS
-         ============================================================ -->
-    <div id="trainingProgress" style="display:none;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:0.75rem;color:var(--text-secondary);" id="progressLabel">در حال آماده‌سازی...</span>
-            <span style="font-size:0.75rem;font-weight:600;color:var(--accent-cyan);font-family:'Courier New',monospace;" id="progressPercent">۰%</span>
-        </div>
-        <div class="model-progress-wrapper">
-            <div class="model-progress-fill" id="progressBar" style="width:0%;"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.6rem;color:var(--text-muted);">
-            <span id="progressEta">زمان تخمینی: —</span>
-            <span id="progressStatus">⏳ در حال اجرا...</span>
-        </div>
-    </div>
-
-    <!-- ============================================================
-         LOG CONSOLE
-         ============================================================ -->
-    <div class="model-log-container">
-        <div class="model-log-toolbar">
-            <button class="btn btn-xs btn-outline" onclick="copyAllLogs()" 
-                    style="padding:3px 12px;font-size:0.65rem;">
-                <i class="fas fa-copy"></i>
-                کپی همه
-            </button>
-            <button class="btn btn-xs btn-danger" onclick="clearAllLogs()" 
-                    style="padding:3px 12px;font-size:0.65rem;">
-                <i class="fas fa-trash"></i>
-                پاک کردن
-            </button>
-        </div>
-        <div id="trainingLogContainer">
-            <div class="model-log-entry">
-                <span class="log-time">📋</span>
-                <span class="log-message" style="color:var(--text-muted);">منتظر شروع آموزش...</span>
-            </div>
-            <div class="model-log-entry">
-                <span class="log-time">💡</span>
-                <span class="log-message" style="color:var(--text-muted);">بازه پیش‌فرض: ۱ ماه</span>
-            </div>
-            <div class="model-log-entry">
-                <span class="log-time">🪙</span>
-                <span class="log-message" style="color:var(--text-muted);" id="defaultCoinsLog">۰ ارز انتخاب شده</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================================
-         RESULT
-         ============================================================ -->
-    <div id="trainingResult" style="display:none;margin-top:16px;padding:16px 20px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-input);animation: modelSlideUp 0.4s ease;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-            <div>
-                <div style="font-size:0.7rem;color:var(--text-secondary);">نتیجه آموزش</div>
-                <div style="font-size:1rem;font-weight:600;color:var(--text-primary);" id="resultMessage">—</div>
-            </div>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                <div style="text-align:center;">
-                    <div style="font-size:0.55rem;color:var(--text-muted);">دقت جدید</div>
-                    <div style="font-size:1rem;font-weight:700;color:var(--accent-cyan);font-family:'Courier New',monospace;" id="resultAccuracy">—</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.55rem;color:var(--text-muted);">بهبود</div>
-                    <div style="font-size:1rem;font-weight:700;font-family:'Courier New',monospace;" id="resultImprovement">—</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.55rem;color:var(--text-muted);">نسخه</div>
-                    <div style="font-size:1rem;font-weight:700;color:var(--accent-purple);font-family:'Courier New',monospace;" id="resultVersion">—</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.55rem;color:var(--text-muted);">ارزها</div>
-                    <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);font-family:'Courier New',monospace;" id="resultCoins">—</div>
-                </div>
+            <div class="hero-metric">
+                <span class="hero-metric-label">تخمین زمان</span>
+                <span class="hero-metric-value purple" id="estimatedTimeHero">—</span>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================================
+     CONTROLS
+     ============================================================ -->
+<div class="live-row">
+    
+    <!-- تنظیمات -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-cog"></i>
+                <span>تنظیمات آموزش</span>
+            </div>
+            <span class="section-badge-model">
+                <i class="fas fa-sliders-h"></i>
+                پیکربندی
+            </span>
+        </div>
+        
+        <div class="training-controls">
+            <!-- بازه زمانی -->
+            <div class="control-item">
+                <label class="control-label">
+                    <i class="fas fa-clock"></i>
+                    بازه زمانی
+                </label>
+                <select id="trainPeriod" class="control-select" onchange="updateEstimate()">
+                    <option value="24h">۲۴ ساعت</option>
+                    <option value="1w">۱ هفته</option>
+                    <option value="1m" selected>۱ ماه</option>
+                    <option value="3m">۳ ماه</option>
+                    <option value="6m">۶ ماه</option>
+                </select>
+            </div>
+            
+            <!-- حالت آموزش -->
+            <div class="control-item">
+                <label class="control-label">
+                    <i class="fas fa-sync-alt"></i>
+                    حالت آموزش
+                </label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="incrementalToggle">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">آموزش افزایشی</span>
+                </label>
+            </div>
+            
+            <!-- تعداد پیشنهاد -->
+            <div class="control-item">
+                <label class="control-label">
+                    <i class="fas fa-list"></i>
+                    تعداد پیشنهاد
+                </label>
+                <select id="defaultCount" class="control-select" onchange="updateDefaultCount()">
+                    <option value="3">۳ ارز</option>
+                    <option value="5" selected>۵ ارز</option>
+                    <option value="10">۱۰ ارز</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Presets -->
+        <div class="presets-section">
+            <div class="presets-header">
+                <span class="presets-label">
+                    <i class="fas fa-bookmark"></i>
+                    ترکیب‌های ذخیره شده
+                </span>
+                <button class="btn-model btn-ghost btn-xs" onclick="saveCurrentPreset()">
+                    <i class="fas fa-plus"></i>
+                    ذخیره فعلی
+                </button>
+            </div>
+            <div id="presetsList" class="presets-list">
+                <!-- Presets اینجا میان -->
+            </div>
+        </div>
+    </div>
+
+    <!-- دکمه‌های اقدام -->
+    <div class="card-section">
+        <div class="section-header-model">
+            <div class="section-title-model">
+                <i class="fas fa-play"></i>
+                <span>شروع آموزش</span>
+            </div>
+            <span class="section-badge-model" id="actionBadge">
+                <i class="fas fa-hourglass"></i>
+                <span>آماده</span>
+            </span>
+        </div>
+        
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <button class="btn-model btn-primary btn-lg" id="startTrainBtn" onclick="startTraining()">
+                <i class="fas fa-rocket"></i>
+                شروع آموزش
+            </button>
+            <button class="btn-model btn-danger btn-lg" id="stopTrainBtn" onclick="stopTraining()" style="display:none;">
+                <i class="fas fa-stop-circle"></i>
+                توقف آموزش
+            </button>
+            <button class="btn-model btn-ghost btn-sm" onclick="resetTrainingForm()">
+                <i class="fas fa-redo"></i>
+                بازنشانی فرم
+            </button>
+        </div>
+        
+        <!-- تخمین -->
+        <div class="estimate-box">
+            <div class="estimate-label">تخمین زمان آموزش</div>
+            <div class="estimate-value" id="estimateValue">—</div>
+            <div class="estimate-hint">بر اساس تعداد ارزها و بازه</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     COIN SELECTOR
+     ============================================================ -->
+<div class="card-section" style="margin-bottom:20px;">
+    <div class="section-header-model">
+        <div class="section-title-model">
+            <i class="fas fa-coins"></i>
+            <span>انتخاب ارزها</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="section-badge-model" id="selectedCount">
+                <i class="fas fa-check"></i>
+                <span>۰ انتخاب</span>
+            </span>
+            <span class="section-badge-model" id="trainedCount" style="display:none;">
+                <i class="fas fa-brain"></i>
+                <span>۰ آموزش‌دیده</span>
+            </span>
+        </div>
+    </div>
+    
+    <!-- Toolbar -->
+    <div class="training-toolbar">
+        <div class="training-search">
+            <input type="text" id="trainCoinSearch" 
+                   placeholder="جستجو در ارزها..." 
+                   oninput="debouncedFilterTrainCoins()">
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <select id="trainCoinSort" class="control-select" onchange="filterTrainCoins()">
+            <option value="rank_asc">📊 رتبه</option>
+            <option value="name_asc">🔤 نام</option>
+            <option value="change_desc">📈 بیشترین تغییر</option>
+        </select>
+        
+        <select id="trainChangeFilter" class="control-select" onchange="filterTrainCoins()">
+            <option value="all">🔄 همه</option>
+            <option value="positive">📈 مثبت</option>
+            <option value="negative">📉 منفی</option>
+            <option value="high">🔥 بیش از ۵٪</option>
+        </select>
+        
+        <div class="toolbar-actions">
+            <button class="btn-model btn-ghost btn-xs" onclick="selectAllCoins()">
+                <i class="fas fa-check-double"></i>
+                همه
+            </button>
+            <button class="btn-model btn-ghost btn-xs" onclick="deselectAllCoins()">
+                <i class="fas fa-times"></i>
+                هیچ‌کدام
+            </button>
+            <button class="btn-model btn-ghost btn-xs" onclick="selectTrainedCoins()" id="selectTrainedBtn" style="display:none;">
+                <i class="fas fa-brain"></i>
+                آموزش‌دیده
+            </button>
+        </div>
+    </div>
+    
+    <!-- Coins Grid -->
+    <div id="trainCoinsGrid" class="coins-grid-training">
+        <div class="skeleton-model skeleton-round" style="width:120px;height:32px;border-radius:var(--radius-full);"></div>
+        <div class="skeleton-model skeleton-round" style="width:100px;height:32px;border-radius:var(--radius-full);"></div>
+        <div class="skeleton-model skeleton-round" style="width:140px;height:32px;border-radius:var(--radius-full);"></div>
+        <div class="skeleton-model skeleton-round" style="width:110px;height:32px;border-radius:var(--radius-full);"></div>
+        <div class="skeleton-model skeleton-round" style="width:130px;height:32px;border-radius:var(--radius-full);"></div>
+    </div>
+</div>
+
+<!-- ============================================================
+     PROGRESS
+     ============================================================ -->
+<div id="trainingProgress" class="card-section" style="display:none;margin-bottom:20px;">
+    <div class="section-header-model">
+        <div class="section-title-model">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>در حال آموزش</span>
+        </div>
+        <span class="section-badge-model">
+            <span class="live-dot"></span>
+            LIVE
+        </span>
+    </div>
+    
+    <div class="progress-info">
+        <div class="progress-label" id="progressLabel">در حال آماده‌سازی...</div>
+        <div class="progress-percent" id="progressPercent">۰%</div>
+    </div>
+    <div class="progress-model">
+        <div class="progress-fill" id="progressBar" style="width:0%;"></div>
+    </div>
+    <div class="progress-meta">
+        <span id="progressEta">زمان تخمینی: —</span>
+        <span id="progressStatus">⏳ در حال اجرا...</span>
+    </div>
+</div>
+
+<!-- ============================================================
+     LOG CONSOLE
+     ============================================================ -->
+<div class="card-section" style="margin-bottom:20px;">
+    <div class="section-header-model">
+        <div class="section-title-model">
+            <i class="fas fa-terminal"></i>
+            <span>کنسول لاگ</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+            <button class="btn-model btn-ghost btn-xs" onclick="copyAllLogs()">
+                <i class="fas fa-copy"></i>
+                کپی
+            </button>
+            <button class="btn-model btn-danger btn-xs" onclick="clearAllLogs()">
+                <i class="fas fa-trash"></i>
+                پاک
+            </button>
+        </div>
+    </div>
+    
+    <div class="log-container-model" id="trainingLogContainer">
+        <div class="log-entry-model">
+            <span class="log-time-model">📋</span>
+            <span class="log-message-model">منتظر شروع آموزش...</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     RESULT
+     ============================================================ -->
+<div id="trainingResult" class="card-section" style="display:none;">
+    <div class="section-header-model">
+        <div class="section-title-model">
+            <i class="fas fa-check-circle" style="color:var(--green-primary);"></i>
+            <span>نتیجه آموزش</span>
+        </div>
+        <span class="section-badge-model active">
+            <i class="fas fa-trophy"></i>
+            موفق
+        </span>
+    </div>
+    
+    <div class="result-grid">
+        <div class="result-item">
+            <div class="result-label">دقت جدید</div>
+            <div class="result-value green" id="resultAccuracy">—</div>
+        </div>
+        <div class="result-item">
+            <div class="result-label">بهبود</div>
+            <div class="result-value" id="resultImprovement">—</div>
+        </div>
+        <div class="result-item">
+            <div class="result-label">نسخه</div>
+            <div class="result-value cyan" id="resultVersion">—</div>
+        </div>
+        <div class="result-item">
+            <div class="result-label">ارزها</div>
+            <div class="result-value purple" id="resultCoins">—</div>
+        </div>
+    </div>
+    
+    <div class="result-message" id="resultMessage">—</div>
+</div>
+
+<style>
+    /* ============================================================
+       استایل اختصاصی training
+       ============================================================ */
+    
+    /* ===== Training Controls ===== */
+    .training-controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+    
+    .control-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .control-label {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .control-label i {
+        color: var(--green-primary);
+        font-size: 0.7rem;
+    }
+    
+    .control-select {
+        padding: 10px 14px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--transition);
+        width: 100%;
+    }
+    
+    .control-select:hover {
+        border-color: rgba(16, 185, 129, 0.3);
+        background: var(--bg-input-hover);
+    }
+    
+    .control-select:focus {
+        outline: none;
+        border-color: var(--green-primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    /* ===== Toggle Switch ===== */
+    .toggle-switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        padding: 8px 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+    }
+    
+    .toggle-switch:hover {
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .toggle-switch input {
+        display: none;
+    }
+    
+    .toggle-slider {
+        position: relative;
+        width: 38px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-full);
+        transition: var(--transition);
+        flex-shrink: 0;
+    }
+    
+    .toggle-slider::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: var(--text-secondary);
+        border-radius: 50%;
+        transition: var(--transition);
+    }
+    
+    .toggle-switch input:checked + .toggle-slider {
+        background: rgba(16, 185, 129, 0.3);
+    }
+    
+    .toggle-switch input:checked + .toggle-slider::after {
+        left: 20px;
+        background: var(--green-primary);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+    
+    .toggle-label {
+        font-size: 0.75rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    /* ===== Presets ===== */
+    .presets-section {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .presets-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .presets-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .presets-label i {
+        color: var(--accent-orange);
+    }
+    
+    .presets-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 32px;
+    }
+    
+    .preset-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: var(--radius-full);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--green-primary);
+        cursor: pointer;
+        transition: var(--transition);
+        animation: dramaticIn 0.4s ease backwards;
+    }
+    
+    .preset-chip:hover {
+        background: rgba(16, 185, 129, 0.18);
+        border-color: var(--green-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    
+    .preset-chip .preset-delete {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.75rem;
+        padding: 0;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: var(--transition);
+    }
+    
+    .preset-chip .preset-delete:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--accent-red);
+    }
+    
+    /* ===== Estimate Box ===== */
+    .estimate-box {
+        margin-top: 16px;
+        padding: 14px;
+        background: linear-gradient(135deg,
+            rgba(34, 211, 238, 0.08),
+            rgba(16, 185, 129, 0.05)
+        );
+        border: 1px solid rgba(34, 211, 238, 0.2);
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+    
+    .estimate-label {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .estimate-value {
+        font-size: 1.3rem;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        background: linear-gradient(135deg, var(--green-primary), var(--cyan-primary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .estimate-hint {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+    
+    /* ===== Training Toolbar ===== */
+    .training-toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        background: var(--bg-input);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        align-items: center;
+    }
+    
+    .training-search {
+        position: relative;
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .training-search input {
+        width: 100%;
+        padding: 8px 12px;
+        padding-right: 32px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        font-family: inherit;
+        transition: var(--transition);
+    }
+    
+    .training-search input:focus {
+        outline: none;
+        border-color: var(--green-primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .training-search .search-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        pointer-events: none;
+    }
+    
+    .toolbar-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    
+    /* ===== Coins Grid ===== */
+    .coins-grid-training {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-height: 240px;
+        overflow-y: auto;
+        padding: 6px 4px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--green-primary) var(--bg-input);
+    }
+    
+    .coins-grid-training::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .coins-grid-training::-webkit-scrollbar-track {
+        background: var(--bg-input);
+        border-radius: var(--radius-full);
+    }
+    
+    .coins-grid-training::-webkit-scrollbar-thumb {
+        background: var(--green-primary);
+        border-radius: var(--radius-full);
+    }
+    
+    /* ===== Coin Card ===== */
+    .coin-select-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: var(--bg-input);
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 0.75rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        animation: dramaticIn 0.4s ease backwards;
+        position: relative;
+    }
+    
+    .coin-select-card:hover {
+        border-color: rgba(16, 185, 129, 0.3);
+        transform: translateY(-2px);
+        background: var(--bg-input-hover);
+    }
+    
+    .coin-select-card.selected {
+        background: linear-gradient(135deg,
+            rgba(16, 185, 129, 0.15),
+            rgba(34, 211, 238, 0.1)
+        );
+        border-color: var(--green-primary);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+    
+    .coin-select-card.selected::after {
+        content: '✓';
+        color: var(--green-primary);
+        font-weight: 700;
+        margin-right: 4px;
+    }
+    
+    .coin-select-card .coin-sym {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+    }
+    
+    .coin-select-card .coin-nm {
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .coin-select-card .coin-chg {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: var(--radius-full);
+    }
+    
+    .coin-select-card .coin-chg.up {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green-primary);
+    }
+    
+    .coin-select-card .coin-chg.down {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--accent-red);
+    }
+    
+    .coin-select-card .coin-chg.neutral {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--accent-orange);
+    }
+    
+    .coin-select-card .coin-trained {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: var(--green-primary);
+        color: white;
+        font-size: 0.5rem;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* ===== Progress Info ===== */
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .progress-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    
+    .progress-percent {
+        font-size: 1rem;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        background: linear-gradient(135deg, var(--green-primary), var(--cyan-primary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+    }
+    
+    /* ===== Log Console ===== */
+    .log-container-model {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: var(--radius-sm);
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        max-height: 280px;
+        overflow-y: auto;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--green-primary) transparent;
+    }
+    
+    .log-container-model::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .log-container-model::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .log-container-model::-webkit-scrollbar-thumb {
+        background: var(--green-primary);
+        border-radius: var(--radius-full);
+    }
+    
+    .log-entry-model {
+        display: flex;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        animation: slideUp 0.3s ease backwards;
+        align-items: flex-start;
+    }
+    
+    .log-entry-model:last-child {
+        border-bottom: none;
+    }
+    
+    .log-time-model {
+        color: var(--text-muted);
+        min-width: 70px;
+        font-size: 0.65rem;
+        flex-shrink: 0;
+    }
+    
+    .log-message-model {
+        color: var(--text-secondary);
+        flex: 1;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+    
+    .log-entry-model.success .log-message-model {
+        color: var(--green-primary);
+    }
+    
+    .log-entry-model.error .log-message-model {
+        color: var(--accent-red);
+    }
+    
+    .log-entry-model.info .log-message-model {
+        color: var(--cyan-primary);
+    }
+    
+    /* ===== Result Grid ===== */
+    .result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+    
+    .result-item {
+        text-align: center;
+        padding: 14px 12px;
+        background: var(--bg-input);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+        animation: dramaticIn 0.5s ease backwards;
+    }
+    
+    .result-item:hover {
+        border-color: rgba(16, 185, 129, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    .result-label {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    
+    .result-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        color: var(--text-primary);
+    }
+    
+    .result-value.green { color: var(--green-primary); }
+    .result-value.cyan { color: var(--cyan-primary); }
+    .result-value.purple { color: var(--accent-purple); }
+    
+    .result-message {
+        padding: 12px 16px;
+        background: rgba(16, 185, 129, 0.06);
+        border: 1px solid rgba(16, 185, 129, 0.15);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        text-align: center;
+        line-height: 1.6;
+    }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .training-controls {
+            grid-template-columns: 1fr;
+        }
+        
+        .training-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .training-search {
+            width: 100%;
+        }
+        
+        .toolbar-actions {
+            justify-content: center;
+        }
+        
+        .result-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
 <script>
 // ============================================================
-// TRAINING TAB v2.0
+// TRAINING TAB v3.0
 // ============================================================
 
 // ===== State =====
@@ -253,6 +924,7 @@ let isTrainingLoaded = false;
 let defaultCount = 5;
 let debounceTimer = null;
 let trainingStartTime = 0;
+let userPresets = [];
 
 // ============================================================
 // ۱. INITIALIZE / CLEANUP
@@ -260,15 +932,12 @@ let trainingStartTime = 0;
 
 window.init_training = function() {
     console.log('🎓 Training tab initializing...');
-    if (isTrainingLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
+    if (isTrainingLoaded) return;
     isTrainingLoaded = true;
     
+    loadPresets();
     loadTrainCoins();
     
-    // auto-refresh هر ۵ دقیقه
     if (trainingInterval) clearInterval(trainingInterval);
     trainingInterval = setInterval(() => {
         const activeTab = document.querySelector('#modelTabs .model-tab-btn.active');
@@ -297,70 +966,121 @@ window.cleanup_training = function() {
 };
 
 // ============================================================
-// ۲. LOG MANAGEMENT
+// ۲. PRESETS (localStorage)
 // ============================================================
 
-function addTrainLog(message) {
-    const container = document.getElementById('trainingLogContainer');
-    if (!container) return;
-    
-    const time = new Date().toLocaleTimeString('fa-IR');
-    const entry = document.createElement('div');
-    entry.className = 'model-log-entry';
-    entry.innerHTML = `
-        <span class="log-time">${time}</span>
-        <span class="log-message">${escapeHtml(message)}</span>
-    `;
-    container.appendChild(entry);
-    container.scrollTop = container.scrollHeight;
+function loadPresets() {
+    try {
+        const saved = localStorage.getItem('training_presets');
+        userPresets = saved ? JSON.parse(saved) : [];
+        renderPresets();
+    } catch (e) {
+        userPresets = [];
+    }
 }
 
-function copyAllLogs() {
-    const container = document.getElementById('trainingLogContainer');
-    if (!container) return;
-    
-    const logs = container.textContent.trim();
-    if (!logs) {
-        if (typeof showToast === 'function') showToast('⚠️ هیچ لاگی برای کپی وجود ندارد', 'warning');
+function savePresets() {
+    try {
+        localStorage.setItem('training_presets', JSON.stringify(userPresets));
+    } catch (e) {
+        console.warn('Save presets error:', e);
+    }
+}
+
+function saveCurrentPreset() {
+    if (selectedTrainCoins.length === 0) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ حداقل یک ارز انتخاب کنید', 'warning');
+        }
         return;
     }
     
-    copyTextToClipboard(logs, '📋 همه لاگ‌ها کپی شدند');
-}
-
-function clearAllLogs() {
-    if (!confirm('⚠️ آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+    const period = document.getElementById('trainPeriod')?.value || '1m';
+    const incremental = document.getElementById('incrementalToggle')?.checked || false;
     
-    const container = document.getElementById('trainingLogContainer');
-    if (container) container.innerHTML = '';
-    if (typeof showToast === 'function') showToast('🗑️ همه لاگ‌ها پاک شدند', 'success');
-}
-
-function copyTextToClipboard(text, successMsg) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                if (typeof showToast === 'function') showToast(successMsg, 'success');
-            })
-            .catch(() => fallbackCopy(text, successMsg));
-    } else {
-        fallbackCopy(text, successMsg);
+    const preset = {
+        id: Date.now(),
+        name: `${selectedTrainCoins.length} ارز - ${getPeriodLabel(period)}`,
+        coins: [...selectedTrainCoins],
+        period,
+        incremental
+    };
+    
+    userPresets.push(preset);
+    savePresets();
+    renderPresets();
+    
+    if (typeof showToast === 'function') {
+        showToast('✅ ترکیب ذخیره شد', 'success');
     }
 }
 
-function fallbackCopy(text, successMsg) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.cssText = 'position:fixed;opacity:0;';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-        document.execCommand('copy');
-        if (typeof showToast === 'function') showToast(successMsg, 'success');
-    } catch (e) {
-        if (typeof showToast === 'function') showToast('❌ خطا در کپی', 'error');
+function getPeriodLabel(period) {
+    const labels = {
+        '24h': '۲۴ ساعت',
+        '1w': '۱ هفته',
+        '1m': '۱ ماه',
+        '3m': '۳ ماه',
+        '6m': '۶ ماه'
+    };
+    return labels[period] || period;
+}
+
+function renderPresets() {
+    const container = document.getElementById('presetsList');
+    if (!container) return;
+    
+    if (userPresets.length === 0) {
+        container.innerHTML = `
+            <span style="font-size:0.65rem;color:var(--text-muted);padding:6px;">
+                هنوز ترکیبی ذخیره نکرده‌اید
+            </span>
+        `;
+        return;
     }
-    document.body.removeChild(textarea);
+    
+    container.innerHTML = userPresets.map((preset, i) => `
+        <span class="preset-chip" 
+              style="animation-delay:${i * 0.05}s;"
+              onclick="applyPreset(${preset.id})"
+              title="${preset.coins.join(', ')}">
+            <i class="fas fa-bookmark" style="font-size:0.6rem;"></i>
+            ${escapeHtml(preset.name)}
+            <button class="preset-delete" onclick="event.stopPropagation();deletePreset(${preset.id})" title="حذف">
+                ×
+            </button>
+        </span>
+    `).join('');
+}
+
+function applyPreset(presetId) {
+    const preset = userPresets.find(p => p.id === presetId);
+    if (!preset) return;
+    
+    selectedTrainCoins = preset.coins.filter(id => 
+        trainAllCoins.some(c => c.id === id)
+    );
+    
+    const periodEl = document.getElementById('trainPeriod');
+    if (periodEl && preset.period) periodEl.value = preset.period;
+    
+    const incEl = document.getElementById('incrementalToggle');
+    if (incEl) incEl.checked = preset.incremental || false;
+    
+    updateSelectedCount();
+    updateEstimate();
+    renderTrainCoins();
+    
+    if (typeof showToast === 'function') {
+        showToast('✅ ترکیب اعمال شد', 'success');
+    }
+}
+
+function deletePreset(presetId) {
+    if (!confirm('حذف این ترکیب؟')) return;
+    userPresets = userPresets.filter(p => p.id !== presetId);
+    savePresets();
+    renderPresets();
 }
 
 // ============================================================
@@ -370,8 +1090,6 @@ function fallbackCopy(text, successMsg) {
 async function loadTrainCoins() {
     const grid = document.getElementById('trainCoinsGrid');
     if (!grid) return;
-    
-    showSkeletonLoading(grid);
     
     try {
         const data = await api.getCoinsList({ limit: 200 });
@@ -391,20 +1109,7 @@ async function loadTrainCoins() {
             trainFilteredCoins = [...trainAllCoins];
             renderTrainCoins();
             updateSelectedCount();
-            updateTrainInfo();
-            
-            const defaultCoinsLog = document.getElementById('defaultCoinsLog');
-            if (defaultCoinsLog) {
-                defaultCoinsLog.textContent = `${selectedTrainCoins.length} ارز انتخاب شده (${selectedTrainCoins.join(', ')})`;
-            }
-            
-            // ذخیره
-            if (typeof saveUserCoinSelection === 'function') {
-                saveUserCoinSelection(selectedTrainCoins);
-            }
-            
-            addTrainLog(`🪙 ${selectedTrainCoins.length} ارز به‌صورت پیش‌فرض انتخاب شد`);
-            addTrainLog(`📊 بر اساس ترکیبی از رتبه، تغییرات و حجم معاملات`);
+            updateEstimate();
             
         } else {
             showEmptyState(grid);
@@ -433,13 +1138,10 @@ async function loadTrainedCoins() {
             if (trainedCoins.length > 0) {
                 if (trainedCount) {
                     trainedCount.style.display = 'inline-flex';
-                    const textEl = trainedCount.querySelector('.status-text');
-                    if (textEl) textEl.textContent = `🧠 آموزش دیده: ${trainedCoins.length}`;
+                    const span = trainedCount.querySelector('span');
+                    if (span) span.textContent = `${trainedCoins.length} آموزش‌دیده`;
                 }
                 if (selectTrainedBtn) selectTrainedBtn.style.display = 'inline-flex';
-            } else {
-                if (trainedCount) trainedCount.style.display = 'none';
-                if (selectTrainedBtn) selectTrainedBtn.style.display = 'none';
             }
         }
     } catch (error) {
@@ -457,67 +1159,54 @@ function renderTrainCoins() {
     
     if (trainFilteredCoins.length === 0) {
         grid.innerHTML = `
-            <div class="model-empty" style="width:100%;padding:20px;">
-                <span class="empty-icon">🔍</span>
-                <div class="empty-title">نتیجه‌ای یافت نشد</div>
-                <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
+            <div class="empty-state-model" style="width:100%;padding:20px;">
+                <span class="empty-icon" style="font-size:2rem;">🔍</span>
+                <div class="empty-title" style="font-size:0.85rem;">نتیجه‌ای یافت نشد</div>
             </div>
         `;
         return;
     }
     
-    grid.innerHTML = trainFilteredCoins.map(coin => {
+    grid.innerHTML = trainFilteredCoins.map((coin, i) => {
         const isSelected = selectedTrainCoins.includes(coin.id);
         const isTrained = trainedCoins.includes(coin.id);
         const change = coin.priceChange1d || 0;
-        const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : '';
-        const changeColor = change > 0 ? 'var(--accent-green)' : change < 0 ? 'var(--accent-red)' : 'var(--text-muted)';
+        const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+        const changeSign = change > 0 ? '+' : '';
+        const symbol = (coin.symbol || coin.id.toUpperCase().slice(0, 6)).toUpperCase();
         
         return `
-            <label style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:${isSelected ? 'rgba(0,212,255,0.1)' : 'var(--bg-input)'};border:1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'};border-radius:var(--radius-sm);cursor:pointer;transition:all 0.25s ease;font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;"
-                   onmouseover="this.style.borderColor='var(--border-hover)';"
-                   onmouseout="this.style.borderColor='${isSelected ? 'var(--accent-cyan)' : 'var(--border-color)'}';">
-                <input type="checkbox"
-                       value="${coin.id}"
-                       ${isSelected ? 'checked' : ''}
-                       onchange="toggleTrainCoin('${coin.id}')"
-                       style="accent-color:var(--accent-cyan);width:14px;height:14px;cursor:pointer;">
-                <span style="font-weight:600;color:var(--text-primary);">${escapeHtml(coin.symbol || coin.id.toUpperCase().slice(0,4))}</span>
-                <span style="color:var(--text-muted);font-size:0.55rem;max-width:80px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(coin.name || '')}</span>
-                <span style="color:${changeColor};font-size:0.55rem;font-weight:500;">${(change > 0 ? '+' : '') + change.toFixed(2)}%</span>
-                ${isTrained ? '<span style="font-size:0.5rem;color:var(--accent-green);">✅</span>' : ''}
-            </label>
+            <div class="coin-select-card ${isSelected ? 'selected' : ''}"
+                 style="animation-delay:${Math.min(i * 0.02, 0.4)}s;"
+                 onclick="toggleTrainCoin('${escapeAttr(coin.id)}')">
+                ${isTrained ? '<span class="coin-trained">✓</span>' : ''}
+                <span class="coin-sym">${escapeHtml(symbol)}</span>
+                <span class="coin-nm">${escapeHtml(coin.name || '')}</span>
+                <span class="coin-chg ${changeCls}">${changeSign}${change.toFixed(1)}%</span>
+            </div>
         `;
     }).join('');
 }
 
 // ============================================================
-// ۵. SKELETON / EMPTY / ERROR
+// ۵. SKELETON / EMPTY
 // ============================================================
-
-function showSkeletonLoading(container) {
-    container.innerHTML = Array(6).fill('').map((_, i) => `
-        <div class="model-skeleton-card" style="width:120px;animation-delay:${i * 0.05}s;">
-            <div class="model-skeleton-line short"></div>
-        </div>
-    `).join('');
-}
 
 function showEmptyState(container) {
     container.innerHTML = `
-        <div class="model-empty" style="width:100%;padding:20px;">
-            <span class="empty-icon">📭</span>
-            <div class="empty-title">هیچ ارزی یافت نشد</div>
+        <div class="empty-state-model" style="width:100%;padding:20px;">
+            <span class="empty-icon" style="font-size:2rem;">📭</span>
+            <div class="empty-title" style="font-size:0.85rem;">هیچ ارزی یافت نشد</div>
         </div>
     `;
 }
 
 function showErrorState(container, message) {
     container.innerHTML = `
-        <div class="model-empty error" style="width:100%;padding:20px;">
-            <span class="empty-icon">❌</span>
-            <div class="empty-title">خطا در دریافت ارزها</div>
-            <div class="empty-message">${escapeHtml(message || 'خطای نامشخص')}</div>
+        <div class="empty-state-model" style="width:100%;padding:20px;">
+            <span class="empty-icon" style="font-size:2rem;color:var(--accent-red);">⚠️</span>
+            <div class="empty-title" style="font-size:0.85rem;color:var(--accent-red);">خطا</div>
+            <div class="empty-message" style="font-size:0.7rem;">${escapeHtml(message || '')}</div>
         </div>
     `;
 }
@@ -578,75 +1267,47 @@ function toggleTrainCoin(coinId) {
         saveUserCoinSelection(selectedTrainCoins);
     }
     updateSelectedCount();
-    updateTrainInfo();
+    updateEstimate();
     renderTrainCoins();
 }
 
 function selectAllCoins() {
     selectedTrainCoins = trainAllCoins.map(c => c.id);
-    if (typeof saveUserCoinSelection === 'function') {
-        saveUserCoinSelection(selectedTrainCoins);
-    }
     updateSelectedCount();
-    updateTrainInfo();
+    updateEstimate();
     renderTrainCoins();
 }
 
 function deselectAllCoins() {
     selectedTrainCoins = [];
-    if (typeof saveUserCoinSelection === 'function') {
-        saveUserCoinSelection(selectedTrainCoins);
-    }
     updateSelectedCount();
-    updateTrainInfo();
+    updateEstimate();
     renderTrainCoins();
 }
 
 function selectTrainedCoins() {
     if (trainedCoins.length === 0) {
-        if (typeof showToast === 'function') showToast('⚠️ هیچ ارزی قبلاً آموزش دیده نیست', 'warning');
+        if (typeof showToast === 'function') showToast('⚠️ هیچ ارزی آموزش ندیده', 'warning');
         return;
     }
     
     selectedTrainCoins = trainedCoins.filter(id =>
         trainAllCoins.some(c => c.id === id)
     );
-    if (typeof saveUserCoinSelection === 'function') {
-        saveUserCoinSelection(selectedTrainCoins);
-    }
     updateSelectedCount();
-    updateTrainInfo();
+    updateEstimate();
     renderTrainCoins();
-    
-    if (typeof showToast === 'function') {
-        showToast(`✅ ${selectedTrainCoins.length} ارز آموزش‌دیده انتخاب شد`, 'success');
-    }
 }
 
 function updateSelectedCount() {
     const el = document.getElementById('selectedCount');
     if (el) {
-        const textEl = el.querySelector('.status-text');
-        if (textEl) textEl.textContent = `${selectedTrainCoins.length} انتخاب`;
+        const span = el.querySelector('span');
+        if (span) span.textContent = `${selectedTrainCoins.length} انتخاب`;
     }
-}
-
-function updateTrainInfo() {
-    const info = document.getElementById('trainInfo');
-    const text = document.getElementById('trainInfoText');
     
-    if (!info || !text) return;
-    
-    if (selectedTrainCoins.length > 0) {
-        info.style.display = 'block';
-        const selectedNames = selectedTrainCoins.slice(0, 5).map(id => {
-            const coin = trainAllCoins.find(c => c.id === id);
-            return coin ? coin.symbol : id;
-        }).join(', ');
-        text.textContent = `📌 ${selectedTrainCoins.length} ارز انتخاب شده: ${selectedNames}${selectedTrainCoins.length > 5 ? ' ...' : ''}`;
-    } else {
-        info.style.display = 'none';
-    }
+    const heroCount = document.getElementById('selectedCountHero');
+    if (heroCount) heroCount.textContent = selectedTrainCoins.length;
 }
 
 function updateDefaultCount() {
@@ -656,29 +1317,109 @@ function updateDefaultCount() {
         const defaultCoins = getTripleScoreCoins(trainAllCoins, defaultCount);
         if (defaultCoins.length > 0) {
             selectedTrainCoins = defaultCoins;
-            if (typeof saveUserCoinSelection === 'function') {
-                saveUserCoinSelection(selectedTrainCoins);
-            }
             updateSelectedCount();
-            updateTrainInfo();
+            updateEstimate();
             renderTrainCoins();
-            addTrainLog(`🔄 تعداد پیشنهاد به ${defaultCount} ارز تغییر کرد`);
         }
     }
 }
 
 // ============================================================
-// ۸. START TRAINING
+// ۸. ESTIMATE TIME (frontend-only)
+// ============================================================
+
+function updateEstimate() {
+    const period = document.getElementById('trainPeriod')?.value || '1m';
+    
+    // نمایش بازه در hero
+    const periodHero = document.getElementById('periodHero');
+    if (periodHero) periodHero.textContent = getPeriodLabel(period);
+    
+    // تخمین زمان
+    const coinCount = selectedTrainCoins.length;
+    const periodMultiplier = { '24h': 0.5, '1w': 1, '1m': 2, '3m': 4, '6m': 6 };
+    const baseTime = 3; // ثانیه پایه
+    const estimated = Math.max(2, Math.round(coinCount * (periodMultiplier[period] || 2) * baseTime / 3));
+    
+    const estimateValue = document.getElementById('estimateValue');
+    if (estimateValue) {
+        estimateValue.textContent = `~${estimated} ثانیه`;
+    }
+    
+    const heroEst = document.getElementById('estimatedTimeHero');
+    if (heroEst) heroEst.textContent = `~${estimated}s`;
+}
+
+// ============================================================
+// ۹. LOG
+// ============================================================
+
+function addTrainLog(message, type = 'info') {
+    const container = document.getElementById('trainingLogContainer');
+    if (!container) return;
+    
+    const time = new Date().toLocaleTimeString('fa-IR');
+    const entry = document.createElement('div');
+    entry.className = `log-entry-model ${type}`;
+    entry.innerHTML = `
+        <span class="log-time-model">${time}</span>
+        <span class="log-message-model">${escapeHtml(message)}</span>
+    `;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+}
+
+function copyAllLogs() {
+    const container = document.getElementById('trainingLogContainer');
+    if (!container) return;
+    
+    const logs = container.textContent.trim();
+    if (!logs) {
+        if (typeof showToast === 'function') showToast('⚠️ لاگی وجود ندارد', 'warning');
+        return;
+    }
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(logs).then(() => {
+            if (typeof showToast === 'function') showToast('📋 لاگ‌ها کپی شدند', 'success');
+        }).catch(() => fallbackCopy(logs));
+    } else {
+        fallbackCopy(logs);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        if (typeof showToast === 'function') showToast('📋 لاگ‌ها کپی شدند', 'success');
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('❌ خطا در کپی', 'error');
+    }
+    document.body.removeChild(ta);
+}
+
+function clearAllLogs() {
+    if (!confirm('پاک کردن همه لاگ‌ها؟')) return;
+    const container = document.getElementById('trainingLogContainer');
+    if (container) container.innerHTML = '';
+}
+
+// ============================================================
+// ۱۰. START TRAINING
 // ============================================================
 
 async function startTraining() {
     if (isTraining) {
-        if (typeof showToast === 'function') showToast('⏳ آموزش در حال انجام است...', 'warning');
+        if (typeof showToast === 'function') showToast('⏳ در حال آموزش...', 'warning');
         return;
     }
     
-    if (!selectedTrainCoins || selectedTrainCoins.length === 0) {
-        if (typeof showToast === 'function') showToast('⚠️ حداقل یک ارز را انتخاب کنید', 'warning');
+    if (selectedTrainCoins.length === 0) {
+        if (typeof showToast === 'function') showToast('⚠️ حداقل یک ارز انتخاب کنید', 'warning');
         return;
     }
     
@@ -687,58 +1428,43 @@ async function startTraining() {
     
     console.log('📤 Starting training:', { period, coins: selectedTrainCoins, incremental });
     
-    // نمایش لودینگ
-    if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-        window.loadingSystem.show({
-            messages: [
-                'در حال آماده‌سازی داده‌ها...|دریافت اطلاعات از API',
-                'در حال آموزش مدل XGBoost...|این کار چند دقیقه طول می‌کشد',
-                'تقریباً تمام است...|ذخیره‌سازی مدل در دیتابیس'
-            ],
-            duration: 30000,
-            onComplete: function() {
-                checkTrainingResult();
-            }
-        });
-    }
-    
+    // UI Updates
     isTraining = true;
     trainingStartTime = Date.now();
     
-    // UI updates
     const startBtn = document.getElementById('startTrainBtn');
     const stopBtn = document.getElementById('stopTrainBtn');
     const progressEl = document.getElementById('trainingProgress');
     const resultEl = document.getElementById('trainingResult');
-    const statusEl = document.getElementById('trainingStatusBadge');
+    const badge = document.getElementById('trainingStatusBadge');
+    const icon = document.getElementById('trainingStatusIcon');
+    const label = document.getElementById('trainingStatusLabel');
     
     if (startBtn) startBtn.style.display = 'none';
-    if (stopBtn) stopBtn.style.display = 'inline-flex';
+    if (stopBtn) stopBtn.style.display = 'flex';
     if (progressEl) progressEl.style.display = 'block';
     if (resultEl) resultEl.style.display = 'none';
-    if (statusEl) {
-        statusEl.className = 'model-status-badge training';
-        const textEl = statusEl.querySelector('.status-text');
-        if (textEl) textEl.textContent = 'در حال آموزش';
-    }
+    if (badge) badge.textContent = 'در حال اجرا';
+    if (icon) icon.textContent = '⏳';
+    if (label) label.textContent = 'در حال آموزش';
     
-    // پاک کردن لاگ
-    const logEl = document.getElementById('trainingLogContainer');
-    if (logEl) logEl.innerHTML = '';
+    // پاک لاگ
+    const logContainer = document.getElementById('trainingLogContainer');
+    if (logContainer) logContainer.innerHTML = '';
     
-    addTrainLog('🚀 شروع آموزش مدل XGBoost');
-    addTrainLog(`📊 بازه زمانی: ${period}`);
-    addTrainLog(`🪙 ارزها: ${selectedTrainCoins.length} ارز`);
-    addTrainLog(`🔄 آموزش افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
-    addTrainLog('⏳ در حال ارسال درخواست به سرور...');
+    addTrainLog('🚀 شروع آموزش', 'info');
+    addTrainLog(`📊 بازه: ${getPeriodLabel(period)}`);
+    addTrainLog(`🪙 ${selectedTrainCoins.length} ارز: ${selectedTrainCoins.slice(0, 5).join(', ')}${selectedTrainCoins.length > 5 ? '...' : ''}`);
+    addTrainLog(`🔄 افزایشی: ${incremental ? 'فعال' : 'غیرفعال'}`);
+    addTrainLog('⏳ ارسال به سرور...');
     
     startFakeProgress();
     
     try {
         const result = await api.trainModel({
-            period: period,
+            period,
             coins: selectedTrainCoins,
-            incremental: incremental
+            incremental
         });
         
         console.log('📥 Response:', result);
@@ -751,63 +1477,63 @@ async function startTraining() {
             
             const errorMsg = result?.message || result?.error || 'خطا در آموزش';
             if (typeof showToast === 'function') showToast('❌ ' + errorMsg, 'error');
-            addTrainLog('❌ ' + errorMsg);
+            addTrainLog('❌ ' + errorMsg, 'error');
             return;
         }
         
-        addTrainLog('✅ درخواست آموزش با موفقیت ارسال شد');
-        addTrainLog('⏳ منتظر تکمیل آموزش...');
+        addTrainLog('✅ درخواست ارسال شد', 'success');
+        addTrainLog('⏳ منتظر تکمیل...');
         
     } catch (error) {
         console.error('❌ Training error:', error);
-        
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
-        
         stopFakeProgress();
         isTraining = false;
         resetTrainingUI();
         
-        const errorMsg = error.message || 'خطا در ارتباط با سرور';
-        if (typeof showToast === 'function') showToast('❌ خطا: ' + errorMsg, 'error');
-        addTrainLog('❌ خطا: ' + errorMsg);
+        const msg = error.message || 'خطا در ارتباط';
+        if (typeof showToast === 'function') showToast('❌ ' + msg, 'error');
+        addTrainLog('❌ ' + msg, 'error');
     }
 }
 
 // ============================================================
-// ۹. FAKE PROGRESS (برای UX بهتر)
+// ۱۱. FAKE PROGRESS (برای UX)
 // ============================================================
 
 function startFakeProgress() {
     let percent = 0;
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    const progressStatus = document.getElementById('progressStatus');
+    const bar = document.getElementById('progressBar');
+    const percentEl = document.getElementById('progressPercent');
+    const labelEl = document.getElementById('progressLabel');
+    const statusEl = document.getElementById('progressStatus');
+    const etaEl = document.getElementById('progressEta');
     
     if (trainingProgressInterval) clearInterval(trainingProgressInterval);
     
     trainingProgressInterval = setInterval(() => {
-        // رشد آرام
-        percent += Math.random() * 3 + 0.5;
+        percent += Math.random() * 2 + 0.5;
         if (percent > 95) percent = 95;
         
-        if (progressBar) progressBar.style.width = percent + '%';
-        if (progressPercent) progressPercent.textContent = Math.round(percent) + '%';
+        if (bar) bar.style.width = percent + '%';
+        if (percentEl) percentEl.textContent = Math.round(percent) + '%';
         
-        // زمان تخمینی
         const elapsed = (Date.now() - trainingStartTime) / 1000;
-        const eta = Math.max(0, 30 - elapsed);
-        const etaEl = document.getElementById('progressEta');
+        const eta = Math.max(0, 20 - elapsed);
         if (etaEl) etaEl.textContent = `زمان تخمینی: ${Math.round(eta)} ثانیه`;
         
-        // پیام‌ها
-        if (progressStatus) {
-            if (percent < 30) progressStatus.textContent = '⏳ در حال آماده‌سازی داده‌ها...';
-            else if (percent < 70) progressStatus.textContent = '🧠 در حال آموزش مدل...';
-            else progressStatus.textContent = '💾 ذخیره‌سازی...';
+        if (labelEl && statusEl) {
+            if (percent < 30) {
+                labelEl.textContent = 'در حال آماده‌سازی داده‌ها...';
+                statusEl.textContent = '⏳ دریافت';
+            } else if (percent < 70) {
+                labelEl.textContent = 'در حال آموزش مدل...';
+                statusEl.textContent = '🧠 آموزش';
+            } else {
+                labelEl.textContent = 'ذخیره‌سازی...';
+                statusEl.textContent = '💾 ذخیره';
+            }
         }
-    }, 500);
+    }, 400);
 }
 
 function stopFakeProgress() {
@@ -816,151 +1542,161 @@ function stopFakeProgress() {
         trainingProgressInterval = null;
     }
     
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    if (progressBar) progressBar.style.width = '100%';
-    if (progressPercent) progressPercent.textContent = '100%';
+    const bar = document.getElementById('progressBar');
+    const percentEl = document.getElementById('progressPercent');
+    if (bar) bar.style.width = '100%';
+    if (percentEl) percentEl.textContent = '100%';
 }
 
 // ============================================================
-// ۱۰. CHECK RESULT
+// ۱۲. RESET UI
 // ============================================================
-
-function checkTrainingResult() {
-    const result = window._trainResult;
-    console.log('📊 Training result:', result);
-    
-    stopFakeProgress();
-    isTraining = false;
-    resetTrainingUI();
-    
-    if (!result) {
-        if (typeof showToast === 'function') showToast('❌ نتیجه‌ای دریافت نشد', 'error');
-        addTrainLog('❌ نتیجه‌ای دریافت نشد');
-        return;
-    }
-    
-    if (!result.success) {
-        if (typeof showToast === 'function') showToast('❌ ' + (result.message || 'خطا'), 'error');
-        addTrainLog('❌ ' + (result.message || 'خطا'));
-        return;
-    }
-    
-    // نمایش نتیجه
-    const resultEl = document.getElementById('trainingResult');
-    if (resultEl) resultEl.style.display = 'block';
-    
-    const messageEl = document.getElementById('resultMessage');
-    if (messageEl) messageEl.textContent = result.message || 'آموزش با موفقیت انجام شد';
-    
-    // دقت
-    const accEl = document.getElementById('resultAccuracy');
-    if (accEl) {
-        if (result.accuracy !== undefined && result.accuracy !== null) {
-            accEl.textContent = (result.accuracy * 100).toFixed(2) + '%';
-        } else {
-            accEl.textContent = '—';
-        }
-    }
-    
-    // بهبود
-    const impEl = document.getElementById('resultImprovement');
-    if (impEl) {
-        if (result.improvement !== undefined && result.improvement !== null) {
-            const imp = result.improvement * 100;
-            impEl.textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
-            impEl.style.color = imp > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-        } else {
-            impEl.textContent = '—';
-            impEl.style.color = 'var(--text-muted)';
-        }
-    }
-    
-    // نسخه
-    const verEl = document.getElementById('resultVersion');
-    if (verEl) verEl.textContent = result.version || 'N/A';
-    
-    // ارزها
-    const coinsEl = document.getElementById('resultCoins');
-    if (coinsEl) coinsEl.textContent = selectedTrainCoins.length + ' ارز';
-    
-    // لاگ نهایی
-    addTrainLog('✅ آموزش با موفقیت تکمیل شد');
-    if (result.accuracy) addTrainLog(`📊 دقت نهایی: ${(result.accuracy * 100).toFixed(2)}%`);
-    addTrainLog(`📌 نسخه: ${result.version || 'N/A'}`);
-    
-    if (typeof showToast === 'function') showToast('✅ آموزش با موفقیت انجام شد', 'success');
-    
-    // بروزرسانی
-    loadTrainedCoins();
-    
-    // پاک کردن
-    window._trainResult = null;
-}
 
 function resetTrainingUI() {
     const startBtn = document.getElementById('startTrainBtn');
     const stopBtn = document.getElementById('stopTrainBtn');
-    const statusEl = document.getElementById('trainingStatusBadge');
+    const badge = document.getElementById('trainingStatusBadge');
+    const icon = document.getElementById('trainingStatusIcon');
+    const label = document.getElementById('trainingStatusLabel');
     
-    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (startBtn) startBtn.style.display = 'flex';
     if (stopBtn) stopBtn.style.display = 'none';
-    if (statusEl) {
-        statusEl.className = 'model-status-badge active';
-        const textEl = statusEl.querySelector('.status-text');
-        if (textEl) textEl.textContent = 'تکمیل شد';
+    if (badge) badge.textContent = 'تکمیل';
+    if (icon) icon.textContent = '✅';
+    if (label) label.textContent = 'آماده';
+}
+
+function resetTrainingForm() {
+    if (isTraining) {
+        if (typeof showToast === 'function') showToast('⚠️ ابتدا آموزش را متوقف کنید', 'warning');
+        return;
     }
+    
+    document.getElementById('trainPeriod').value = '1m';
+    document.getElementById('incrementalToggle').checked = false;
+    document.getElementById('defaultCount').value = '5';
+    document.getElementById('trainCoinSearch').value = '';
+    document.getElementById('trainCoinSort').value = 'rank_asc';
+    document.getElementById('trainChangeFilter').value = 'all';
+    
+    updateDefaultCount();
+    filterTrainCoins();
+    
+    if (typeof showToast === 'function') showToast('🔄 فرم بازنشانی شد', 'info');
 }
 
 // ============================================================
-// ۱۱. STOP TRAINING
+// ۱۳. CHECK RESULT
+// ============================================================
+
+// (با تأخیر بعد از fake progress چک میشه)
+setTimeout(() => {
+    window.checkTrainingResult = function() {
+        const result = window._trainResult;
+        if (!result) return;
+        
+        stopFakeProgress();
+        isTraining = false;
+        resetTrainingUI();
+        
+        if (!result.success) {
+            addTrainLog('❌ ' + (result.message || 'خطا'), 'error');
+            if (typeof showToast === 'function') showToast('❌ خطا', 'error');
+            return;
+        }
+        
+        // نمایش نتیجه
+        const resultEl = document.getElementById('trainingResult');
+        if (resultEl) resultEl.style.display = 'block';
+        
+        setText('resultMessage', result.message || 'آموزش با موفقیت انجام شد');
+        
+        const accEl = document.getElementById('resultAccuracy');
+        if (accEl && result.accuracy !== undefined) {
+            animateNumber(accEl, result.accuracy * 100, 1200, 2, '%');
+        }
+        
+        const impEl = document.getElementById('resultImprovement');
+        if (impEl) {
+            if (result.improvement !== undefined && result.improvement !== null) {
+                const imp = result.improvement * 100;
+                impEl.textContent = (imp > 0 ? '+' : '') + imp.toFixed(2) + '%';
+                impEl.className = 'result-value ' + (imp > 0 ? 'green' : '');
+                impEl.style.color = imp > 0 ? 'var(--green-primary)' : 'var(--accent-red)';
+            } else {
+                impEl.textContent = '—';
+            }
+        }
+        
+        setText('resultVersion', result.version || 'N/A');
+        setText('resultCoins', selectedTrainCoins.length + ' ارز');
+        
+        addTrainLog('✅ آموزش تکمیل شد', 'success');
+        if (result.accuracy) addTrainLog(`📊 دقت: ${(result.accuracy * 100).toFixed(2)}%`, 'success');
+        addTrainLog(`📌 نسخه: ${result.version || 'N/A'}`, 'info');
+        
+        if (typeof showToast === 'function') showToast('✅ آموزش تکمیل شد', 'success');
+        
+        loadTrainedCoins();
+        window._trainResult = null;
+    };
+}, 100);
+
+// ============================================================
+// ۱۴. STOP TRAINING
 // ============================================================
 
 async function stopTraining() {
     if (!isTraining) return;
-    if (!confirm('⚠️ آیا از توقف آموزش اطمینان دارید؟')) return;
+    if (!confirm('آموزش متوقف شود؟')) return;
     
     try {
-        if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-            window.loadingSystem.show({
-                messages: ['در حال توقف آموزش...'],
-                duration: 2000
-            });
-        }
-        
         const result = await api.stopSchedule();
-        
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
         
         stopFakeProgress();
         isTraining = false;
+        resetTrainingUI();
         
         if (result && result.success) {
-            resetTrainingUI();
-            
-            const statusEl = document.getElementById('trainingStatusBadge');
-            if (statusEl) {
-                statusEl.className = 'model-status-badge demo';
-                const textEl = statusEl.querySelector('.status-text');
-                if (textEl) textEl.textContent = 'متوقف شد';
-            }
-            
-            addTrainLog('⏹️ آموزش توسط کاربر متوقف شد');
-            if (typeof showToast === 'function') showToast('⏹️ آموزش متوقف شد', 'warning');
+            addTrainLog('⏹️ آموزش متوقف شد', 'error');
+            if (typeof showToast === 'function') showToast('⏹️ متوقف شد', 'warning');
         }
     } catch (error) {
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
         if (typeof showToast === 'function') showToast('❌ خطا: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۱۲. UTILS
+// ۱۵. UTILS
 // ============================================================
+
+function animateNumber(element, target, duration = 1200, decimals = 0, suffix = '') {
+    if (!element) return;
+    if (!target && target !== 0) {
+        element.textContent = '0' + suffix;
+        return;
+    }
+    
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        const current = target * eased;
+        
+        element.textContent = current.toFixed(decimals) + suffix;
+        
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    
+    requestAnimationFrame(update);
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -972,5 +1708,10 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-console.log('✅ Training tab v2.0 loaded');
+function escapeAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+console.log('✅ Training tab v3.0 loaded');
 </script>
