@@ -1,206 +1,732 @@
 <!-- ============================================================
      tools.html - تب ابزارهای مدیریت مدل
-     نسخه ۲.۰ - با CSS مشترک model-animations.css
+     نسخه ۳.۰ - طراحی جدید + Cards بهتر + Confirmation
      ============================================================ -->
 
-<div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-tools"></i>
-        <span>ابزارهای مدل</span>
-        <span class="model-status-badge demo" style="margin-right:auto;">
-            <span class="status-dot"></span>
-            <span class="status-text">مدیریت کامل</span>
-        </span>
+<!-- ============================================================
+     HERO SECTION
+     ============================================================ -->
+<div class="hero-card" id="toolsHero">
+    
+    <div class="health-circle-wrapper">
+        <svg class="health-circle" viewBox="0 0 140 140">
+            <circle class="circle-bg" cx="70" cy="70" r="65"/>
+            <circle class="circle-fill" cx="70" cy="70" r="65" id="toolsCircle"/>
+        </svg>
+        <div class="health-score-value">
+            <span class="health-score-number" id="toolsIcon">🔧</span>
+            <span class="health-score-label" id="toolsLabel">ابزارها</span>
+        </div>
     </div>
 
-    <!-- ============================================================
-         TOOLS GRID
-         ============================================================ -->
-    <div class="model-tools-grid">
-
-        <!-- ===== ۱. خروجی مدل ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">📥</span>
-            <div class="tool-title">خروجی مدل</div>
-            <div class="tool-desc">
-                دانلود فایل مدل به صورت .xgb برای استفاده در سایر سیستم‌ها
+    <div class="hero-info">
+        <h2 class="hero-title">
+            <i class="fas fa-tools" style="color:var(--green-primary);"></i>
+            <span>ابزارهای مدیریت مدل</span>
+            <span class="badge-version" id="activeVersionBadge">—</span>
+        </h2>
+        <p class="hero-subtitle" id="toolsSubtitle">
+            دانلود، آپلود، فعال‌سازی و مدیریت نسخه‌های مدل
+        </p>
+        <div class="hero-metrics">
+            <div class="hero-metric">
+                <span class="hero-metric-label">نسخه فعال</span>
+                <span class="hero-metric-value green" id="toolsActiveVersion">—</span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-neon btn-shine" onclick="exportCurrentModel()" 
-                        style="padding:8px 16px;font-size:0.75rem;flex:1;min-width:100px;">
-                    <i class="fas fa-download"></i>
-                    دانلود فعلی
-                </button>
+            <div class="hero-metric">
+                <span class="hero-metric-label">کل نسخه‌ها</span>
+                <span class="hero-metric-value cyan" id="toolsTotalVersions">۰</span>
             </div>
-            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-                <input type="text" id="exportVersionInput" placeholder="نسخه (مثلاً v1.0)" 
-                       style="flex:1;min-width:100px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
-                <button class="btn btn-outline btn-arrow" onclick="exportSpecificModel()" 
-                        style="padding:6px 12px;font-size:0.7rem;min-width:80px;">
-                    دانلود
-                    <i class="fas fa-download"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- ===== ۲. واردات مدل ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">📤</span>
-            <div class="tool-title">واردات مدل</div>
-            <div class="tool-desc">
-                آپلود فایل .xgb و ذخیره در دیتابیس با نسخه‌سازی خودکار
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <input type="file" id="importFileInput" accept=".xgb" style="display:none;" onchange="handleImport()">
-                <button class="btn btn-success btn-liquid" onclick="document.getElementById('importFileInput').click()" 
-                        style="padding:8px 16px;font-size:0.75rem;flex:1;min-width:100px;">
-                    <i class="fas fa-upload"></i>
-                    انتخاب فایل
-                </button>
-            </div>
-            <div id="importFileName" style="font-size:0.6rem;color:var(--text-muted);margin-top:8px;word-break:break-word;">
-                هیچ فایلی انتخاب نشده
-            </div>
-            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
-                <label style="font-size:0.65rem;color:var(--text-secondary);flex-shrink:0;">دقت:</label>
-                <input type="number" id="importAccuracy" value="0.5" step="0.01" min="0" max="1" 
-                       style="width:60px;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;">
-                <label style="font-size:0.65rem;color:var(--text-secondary);flex-shrink:0;">بازه:</label>
-                <select id="importPeriod" style="flex:1;min-width:80px;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.65rem;font-family:inherit;">
-                    <option value="24h">۲۴h</option>
-                    <option value="1w">۱w</option>
-                    <option value="1m" selected>۱m</option>
-                    <option value="3m">۳m</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- ===== ۳. فعال‌سازی نسخه ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">✅</span>
-            <div class="tool-title">فعال‌سازی نسخه</div>
-            <div class="tool-desc">
-                انتخاب و فعال‌سازی یک نسخه از لیست مدل‌های موجود
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <select id="activateVersionSelect" 
-                        style="flex:1;min-width:120px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
-                    <option value="">— انتخاب نسخه —</option>
-                </select>
-            </div>
-            <button class="btn btn-success btn-border-fill" onclick="activateSelectedVersion()" 
-                    style="padding:8px 16px;font-size:0.75rem;width:100%;margin-top:8px;">
-                <i class="fas fa-check"></i>
-                فعال‌سازی
-            </button>
-        </div>
-
-        <!-- ===== ۴. تست مدل ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">🧪</span>
-            <div class="tool-title">تست مدل</div>
-            <div class="tool-desc">
-                اجرای تست سریع روی یک ارز برای بررسی عملکرد مدل
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
-                <select id="testCoin" 
-                        style="flex:1;min-width:80px;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
-                    <option value="bitcoin">₿ BTC</option>
-                    <option value="ethereum">⟠ ETH</option>
-                    <option value="solana">◎ SOL</option>
-                    <option value="cardano">₳ ADA</option>
-                </select>
-                <select id="testPeriod" 
-                        style="flex:1;min-width:70px;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
-                    <option value="24h">۲۴h</option>
-                    <option value="1w">۱w</option>
-                    <option value="1m" selected>۱m</option>
-                </select>
-            </div>
-            <button class="btn btn-primary btn-neon neon-purple" onclick="testModel()" 
-                    style="padding:8px 16px;font-size:0.75rem;width:100%;">
-                <i class="fas fa-flask"></i>
-                اجرای تست
-            </button>
-            <div id="testResult" 
-                 style="display:none;margin-top:10px;padding:10px 12px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);font-size:0.7rem;border:1px solid var(--border-color);word-break:break-word;">
-                <div id="testResultContent"></div>
-            </div>
-        </div>
-
-        <!-- ===== ۵. پاکسازی کش ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">🧹</span>
-            <div class="tool-title">پاکسازی کش</div>
-            <div class="tool-desc">
-                پاکسازی کش Redis مرتبط با مدل برای آزادسازی حافظه
-            </div>
-            <button class="btn btn-warning btn-3d" onclick="clearModelCache()" 
-                    style="padding:8px 16px;font-size:0.75rem;width:100%;">
-                <i class="fas fa-broom"></i>
-                پاکسازی
-            </button>
-            <div id="cacheClearStatus" 
-                 style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:center;">
-                آماده
-            </div>
-        </div>
-
-        <!-- ===== ۶. گزارش HTML ===== -->
-        <div class="model-tool-card">
-            <span class="tool-icon">📊</span>
-            <div class="tool-title">گزارش HTML</div>
-            <div class="tool-desc">
-                تولید گزارش کامل از مدل به صورت HTML با نمودارها و پیشنهادات
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-                <select id="reportVersionSelect" 
-                        style="flex:1;min-width:120px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.7rem;font-family:inherit;">
-                    <option value="latest">— آخرین نسخه —</option>
-                </select>
-            </div>
-            <button class="btn btn-primary btn-neon" onclick="generateReport()" 
-                    style="padding:8px 16px;font-size:0.75rem;width:100%;">
-                <i class="fas fa-file-alt"></i>
-                مشاهده گزارش
-            </button>
-            <div id="reportStatus" 
-                 style="font-size:0.6rem;color:var(--text-muted);margin-top:8px;text-align:center;">
-                ✅ آماده
-            </div>
-        </div>
-
-        <!-- ===== ۷. بازنشانی مدل (خطرناک) ===== -->
-        <div class="model-tool-card danger" style="grid-column:1/-1;">
-            <span class="tool-icon">⚠️</span>
-            <div class="tool-title" style="color:var(--accent-red);">بازنشانی مدل (خطرناک)</div>
-            <div class="tool-desc">
-                بازگشت به حالت DEMO و حذف مدل فعال. این عملیات غیرقابل بازگشت است!
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <input type="text" id="resetConfirmInput" 
-                       placeholder='برای تأیید "RESET" را وارد کنید' 
-                       style="flex:1;min-width:200px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;">
-                <button class="btn btn-danger btn-neon neon-red btn-glow-pulse" onclick="resetModel()" 
-                        id="resetModelBtn" disabled 
-                        style="padding:8px 20px;font-size:0.75rem;min-width:140px;">
-                    <i class="fas fa-undo"></i>
-                    بازنشانی کامل
-                </button>
-            </div>
-            <div style="margin-top:8px;font-size:0.6rem;color:var(--accent-red);">
-                ⚠️ این عمل مدل فعال را حذف کرده و سیستم به حالت DEMO برمی‌گردد
+            <div class="hero-metric">
+                <span class="hero-metric-label">وضعیت</span>
+                <span class="hero-metric-value purple" id="toolsStatus">—</span>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================================
+     TOOLS GRID
+     ============================================================ -->
+<div class="tools-grid-model">
+    
+    <!-- ===== ۱. خروجی مدل ===== -->
+    <div class="tool-card-model" style="animation-delay:0.05s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(16,185,129,0.12);">📥</div>
+            <div class="tool-card-badge">
+                <i class="fas fa-download"></i>
+                Export
+            </div>
+        </div>
+        <div class="tool-card-title">خروجی مدل</div>
+        <div class="tool-card-desc">
+            دانلود فایل مدل به صورت .xgb برای استفاده در سایر سیستم‌ها
+        </div>
+        
+        <div class="tool-card-body">
+            <button class="btn-model btn-primary btn-shine" onclick="exportCurrentModel()" style="width:100%;margin-bottom:8px;">
+                <i class="fas fa-download"></i>
+                دانلود نسخه فعال
+            </button>
+            
+            <div class="tool-input-group">
+                <input type="text" id="exportVersionInput" placeholder="نسخه (مثلاً v1.0)" 
+                       class="tool-input">
+                <button class="btn-model btn-outline btn-sm" onclick="exportSpecificModel()">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ۲. واردات مدل ===== -->
+    <div class="tool-card-model" style="animation-delay:0.10s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(34,211,238,0.12);">📤</div>
+            <div class="tool-card-badge cyan">
+                <i class="fas fa-upload"></i>
+                Import
+            </div>
+        </div>
+        <div class="tool-card-title">واردات مدل</div>
+        <div class="tool-card-desc">
+            آپلود فایل .xgb و ذخیره در دیتابیس با نسخه‌سازی خودکار
+        </div>
+        
+        <div class="tool-card-body">
+            <input type="file" id="importFileInput" accept=".xgb" style="display:none;" onchange="handleImport()">
+            <button class="btn-model btn-cyan btn-shine" onclick="document.getElementById('importFileInput').click()" style="width:100%;margin-bottom:8px;">
+                <i class="fas fa-upload"></i>
+                انتخاب فایل
+            </button>
+            
+            <div class="tool-file-info" id="importFileName">
+                <i class="fas fa-file"></i>
+                <span>هیچ فایلی انتخاب نشده</span>
+            </div>
+            
+            <div class="tool-input-row">
+                <div class="tool-input-item">
+                    <label>دقت</label>
+                    <input type="number" id="importAccuracy" value="0.5" step="0.01" min="0" max="1" class="tool-input">
+                </div>
+                <div class="tool-input-item">
+                    <label>بازه</label>
+                    <select id="importPeriod" class="tool-input">
+                        <option value="24h">۲۴h</option>
+                        <option value="1w">۱w</option>
+                        <option value="1m" selected>۱m</option>
+                        <option value="3m">۳m</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ۳. فعال‌سازی نسخه ===== -->
+    <div class="tool-card-model" style="animation-delay:0.15s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(139,92,246,0.12);">✅</div>
+            <div class="tool-card-badge purple">
+                <i class="fas fa-check"></i>
+                Activate
+            </div>
+        </div>
+        <div class="tool-card-title">فعال‌سازی نسخه</div>
+        <div class="tool-card-desc">
+            انتخاب و فعال‌سازی یک نسخه از لیست مدل‌های موجود
+        </div>
+        
+        <div class="tool-card-body">
+            <select id="activateVersionSelect" class="tool-input" style="margin-bottom:8px;">
+                <option value="">— انتخاب نسخه —</option>
+            </select>
+            
+            <button class="btn-model btn-purple btn-shine" onclick="activateSelectedVersion()" style="width:100%;">
+                <i class="fas fa-check-circle"></i>
+                فعال‌سازی نسخه
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== ۴. تست مدل ===== -->
+    <div class="tool-card-model" style="animation-delay:0.20s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(245,158,11,0.12);">🧪</div>
+            <div class="tool-card-badge orange">
+                <i class="fas fa-flask"></i>
+                Test
+            </div>
+        </div>
+        <div class="tool-card-title">تست مدل</div>
+        <div class="tool-card-desc">
+            اجرای تست سریع روی یک ارز برای بررسی عملکرد مدل
+        </div>
+        
+        <div class="tool-card-body">
+            <div class="tool-input-row" style="margin-bottom:8px;">
+                <div class="tool-input-item">
+                    <label>ارز</label>
+                    <select id="testCoin" class="tool-input">
+                        <option value="bitcoin">₿ BTC</option>
+                        <option value="ethereum">⟠ ETH</option>
+                        <option value="solana">◎ SOL</option>
+                        <option value="cardano">₳ ADA</option>
+                    </select>
+                </div>
+                <div class="tool-input-item">
+                    <label>بازه</label>
+                    <select id="testPeriod" class="tool-input">
+                        <option value="24h">۲۴h</option>
+                        <option value="1w">۱w</option>
+                        <option value="1m" selected>۱m</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn-model btn-warning btn-shine" onclick="testModel()" style="width:100%;margin-bottom:8px;">
+                <i class="fas fa-flask"></i>
+                اجرای تست
+            </button>
+            
+            <div id="testResult" class="tool-test-result" style="display:none;">
+                <div id="testResultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ۵. پاکسازی کش ===== -->
+    <div class="tool-card-model" style="animation-delay:0.25s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(239,68,68,0.12);">🧹</div>
+            <div class="tool-card-badge red">
+                <i class="fas fa-broom"></i>
+                Cache
+            </div>
+        </div>
+        <div class="tool-card-title">پاکسازی کش</div>
+        <div class="tool-card-desc">
+            پاکسازی کش Redis برای آزادسازی حافظه و بروزرسانی
+        </div>
+        
+        <div class="tool-card-body">
+            <button class="btn-model btn-danger btn-shine" onclick="clearModelCache()" style="width:100%;margin-bottom:8px;">
+                <i class="fas fa-broom"></i>
+                پاکسازی کش
+            </button>
+            
+            <div id="cacheClearStatus" class="tool-status-text">
+                <i class="fas fa-circle" style="color:var(--text-muted);font-size:0.5rem;"></i>
+                آماده
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ۶. گزارش HTML ===== -->
+    <div class="tool-card-model" style="animation-delay:0.30s;">
+        <div class="tool-card-header">
+            <div class="tool-card-icon" style="background:rgba(236,72,153,0.12);">📊</div>
+            <div class="tool-card-badge pink">
+                <i class="fas fa-file-alt"></i>
+                Report
+            </div>
+        </div>
+        <div class="tool-card-title">گزارش HTML</div>
+        <div class="tool-card-desc">
+            تولید گزارش کامل از مدل با نمودارها و آمار دقیق
+        </div>
+        
+        <div class="tool-card-body">
+            <select id="reportVersionSelect" class="tool-input" style="margin-bottom:8px;">
+                <option value="latest">— آخرین نسخه —</option>
+            </select>
+            
+            <button class="btn-model btn-primary btn-shine" onclick="generateReport()" style="width:100%;margin-bottom:8px;">
+                <i class="fas fa-file-alt"></i>
+                مشاهده گزارش
+            </button>
+            
+            <div id="reportStatus" class="tool-status-text">
+                <i class="fas fa-circle" style="color:var(--green-primary);font-size:0.5rem;"></i>
+                آماده
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     DANGER ZONE
+     ============================================================ -->
+<div class="danger-zone">
+    <div class="danger-zone-header">
+        <div class="danger-zone-icon">⚠️</div>
+        <div>
+            <div class="danger-zone-title">منطقه خطر</div>
+            <div class="danger-zone-subtitle">
+                این عملیات غیرقابل بازگشت است
+            </div>
+        </div>
+    </div>
+    
+    <div class="danger-zone-body">
+        <div class="danger-zone-item">
+            <div class="danger-zone-item-info">
+                <div class="danger-zone-item-title">بازنشانی مدل</div>
+                <div class="danger-zone-item-desc">
+                    بازگشت به حالت DEMO و حذف مدل فعال. تمام نسخه‌ها حفظ می‌شوند.
+                </div>
+            </div>
+            <button class="btn-model btn-danger btn-neon neon-red" onclick="openResetModal()">
+                <i class="fas fa-undo"></i>
+                بازنشانی
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     RESET CONFIRMATION MODAL
+     ============================================================ -->
+<div id="resetModal" class="model-modal-overlay" onclick="if(event.target===this) closeResetModal()">
+    <div class="model-modal" style="max-width:480px;">
+        
+        <div class="modal-header" style="border-color:rgba(239,68,68,0.3);">
+            <div class="modal-title" style="color:var(--accent-red);">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>تأیید بازنشانی</span>
+            </div>
+            <button class="modal-close" onclick="closeResetModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="reset-warning">
+                <div class="reset-warning-icon">⚠️</div>
+                <div class="reset-warning-title">هشدار!</div>
+                <div class="reset-warning-text">
+                    بازنشانی مدل، سیستم را به حالت <strong>DEMO</strong> برمی‌گرداند.
+                    مدل فعال حذف می‌شود و تا آموزش جدید، پیش‌بینی‌ها با دقت پایین انجام می‌شوند.
+                </div>
+            </div>
+            
+            <div class="reset-confirm-input">
+                <label>
+                    برای تأیید، عبارت <strong style="color:var(--accent-red);">RESET</strong> را وارد کنید:
+                </label>
+                <input type="text" id="resetConfirmInput" 
+                       placeholder="RESET" 
+                       class="tool-input" 
+                       style="text-align:center;font-family:var(--font-mono);letter-spacing:2px;"
+                       oninput="checkResetInput()">
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-model btn-ghost btn-sm" onclick="closeResetModal()" style="flex:1;">
+                انصراف
+            </button>
+            <button class="btn-model btn-danger btn-sm" onclick="resetModel()" 
+                    id="resetConfirmBtn" disabled style="flex:1;">
+                <i class="fas fa-undo"></i>
+                بازنشانی کن
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ============================================================
+       استایل اختصاصی tools
+       ============================================================ */
+    
+    /* ===== Tools Grid ===== */
+    .tools-grid-model {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    /* ===== Tool Card ===== */
+    .tool-card-model {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        animation: dramaticIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .tool-card-model::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(16, 185, 129, 0.06), transparent 70%);
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+    }
+    
+    .tool-card-model:hover::before {
+        opacity: 1;
+    }
+    
+    .tool-card-model:hover {
+        border-color: rgba(16, 185, 129, 0.25);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow), var(--glow-green);
+    }
+    
+    .tool-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tool-card-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        animation: floating 4s ease-in-out infinite;
+        flex-shrink: 0;
+    }
+    
+    .tool-card-badge {
+        font-size: 0.55rem;
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--green-primary);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .tool-card-badge.cyan {
+        background: rgba(34, 211, 238, 0.12);
+        color: var(--cyan-primary);
+        border-color: rgba(34, 211, 238, 0.25);
+    }
+    
+    .tool-card-badge.purple {
+        background: rgba(139, 92, 246, 0.12);
+        color: var(--accent-purple);
+        border-color: rgba(139, 92, 246, 0.25);
+    }
+    
+    .tool-card-badge.orange {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--accent-orange);
+        border-color: rgba(245, 158, 11, 0.25);
+    }
+    
+    .tool-card-badge.red {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--accent-red);
+        border-color: rgba(239, 68, 68, 0.25);
+    }
+    
+    .tool-card-badge.pink {
+        background: rgba(236, 72, 153, 0.12);
+        color: var(--accent-pink);
+        border-color: rgba(236, 72, 153, 0.25);
+    }
+    
+    .tool-card-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tool-card-desc {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 14px;
+        position: relative;
+        z-index: 1;
+        flex: 1;
+    }
+    
+    .tool-card-body {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* ===== Tool Inputs ===== */
+    .tool-input {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        font-family: inherit;
+        transition: var(--transition);
+    }
+    
+    .tool-input:focus {
+        outline: none;
+        border-color: var(--green-primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .tool-input-group {
+        display: flex;
+        gap: 6px;
+    }
+    
+    .tool-input-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
+    .tool-input-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .tool-input-item label {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    /* ===== File Info ===== */
+    .tool-file-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        transition: var(--transition);
+    }
+    
+    .tool-file-info.active {
+        color: var(--green-primary);
+        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.06);
+    }
+    
+    .tool-file-info i {
+        font-size: 0.75rem;
+    }
+    
+    /* ===== Test Result ===== */
+    .tool-test-result {
+        margin-top: 10px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.7rem;
+        animation: dramaticIn 0.4s ease;
+    }
+    
+    /* ===== Status Text ===== */
+    .tool-status-text {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        padding: 6px 0;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    /* ===== Danger Zone ===== */
+    .danger-zone {
+        background: linear-gradient(135deg,
+            rgba(239, 68, 68, 0.06),
+            rgba(220, 38, 38, 0.03)
+        );
+        border: 1.5px solid rgba(239, 68, 68, 0.25);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        animation: dramaticIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        animation-delay: 0.35s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .danger-zone::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at 70% 30%, rgba(239, 68, 68, 0.06), transparent 60%);
+        pointer-events: none;
+        animation: breathe 5s ease-in-out infinite;
+    }
+    
+    .danger-zone-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 16px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .danger-zone-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: rgba(239, 68, 68, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+        animation: floating 3s ease-in-out infinite;
+    }
+    
+    .danger-zone-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--accent-red);
+        letter-spacing: 0.5px;
+    }
+    
+    .danger-zone-subtitle {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+    
+    .danger-zone-body {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .danger-zone-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(239, 68, 68, 0.15);
+        flex-wrap: wrap;
+    }
+    
+    .danger-zone-item-info {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .danger-zone-item-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    
+    .danger-zone-item-desc {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+    
+    /* ===== Reset Modal ===== */
+    .reset-warning {
+        text-align: center;
+        padding: 20px;
+        background: rgba(239, 68, 68, 0.06);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+    }
+    
+    .reset-warning-icon {
+        font-size: 3rem;
+        margin-bottom: 8px;
+        animation: floating 2s ease-in-out infinite;
+    }
+    
+    .reset-warning-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--accent-red);
+        margin-bottom: 8px;
+    }
+    
+    .reset-warning-text {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+    
+    .reset-confirm-input {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .reset-confirm-input label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .tools-grid-model {
+            grid-template-columns: 1fr;
+        }
+        
+        .danger-zone-item {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .danger-zone-item .btn-model {
+            width: 100%;
+        }
+    }
+</style>
+
 <script>
 // ============================================================
-// TOOLS TAB v2.0
+// TOOLS TAB v3.0
 // ============================================================
 
 let isToolsLoaded = false;
@@ -211,14 +737,11 @@ let isToolsLoaded = false;
 
 window.init_tools = function() {
     console.log('🔧 Tools tab initializing...');
-    if (isToolsLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
+    if (isToolsLoaded) return;
     isToolsLoaded = true;
     
+    loadActiveVersion();
     loadVersionSelect();
-    setupResetInput();
 };
 
 window.cleanup_tools = function() {
@@ -227,111 +750,64 @@ window.cleanup_tools = function() {
 };
 
 // ============================================================
-// ۲. SETUP RESET INPUT
+// ۲. LOAD ACTIVE VERSION
 // ============================================================
 
-function setupResetInput() {
-    const input = document.getElementById('resetConfirmInput');
-    const btn = document.getElementById('resetModelBtn');
-    
-    if (!input || !btn) return;
-    
-    input.addEventListener('input', function() {
-        btn.disabled = this.value.trim().toUpperCase() !== 'RESET';
-    });
-}
-
-// ============================================================
-// ۳. EXPORT MODEL
-// ============================================================
-
-function exportCurrentModel() {
-    api.exportModel();
-    if (typeof showToast === 'function') {
-        showToast('📥 دانلود مدل فعلی شروع شد', 'success');
-    }
-}
-
-function exportSpecificModel() {
-    const version = document.getElementById('exportVersionInput')?.value.trim();
-    
-    if (!version) {
-        if (typeof showToast === 'function') showToast('⚠️ لطفاً نسخه را وارد کنید', 'warning');
-        return;
-    }
-    
-    api.exportModel(version);
-    if (typeof showToast === 'function') {
-        showToast(`📥 دانلود نسخه ${version} شروع شد`, 'success');
-    }
-}
-
-// ============================================================
-// ۴. IMPORT MODEL
-// ============================================================
-
-async function handleImport() {
-    const input = document.getElementById('importFileInput');
-    const file = input.files[0];
-    if (!file) return;
-    
-    const fileNameEl = document.getElementById('importFileName');
-    if (fileNameEl) fileNameEl.textContent = file.name;
-    
-    const accuracy = parseFloat(document.getElementById('importAccuracy')?.value || 0.5);
-    const period = document.getElementById('importPeriod')?.value || '1m';
-    
-    if (!confirm(`⚠️ آیا از واردات مدل "${file.name}" اطمینان دارید؟`)) {
-        input.value = '';
-        if (fileNameEl) fileNameEl.textContent = 'هیچ فایلی انتخاب نشده';
-        return;
-    }
-    
-    if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-        window.loadingSystem.show({
-            messages: [
-                'در حال آپلود و پردازش مدل...',
-                'ذخیره‌سازی در دیتابیس...'
-            ],
-            duration: 5000,
-            onComplete: function() {
-                loadVersionSelect();
-                if (typeof showToast === 'function') {
-                    showToast('✅ مدل با موفقیت وارد شد', 'success');
-                }
-            }
-        });
-    }
-    
+async function loadActiveVersion() {
     try {
-        const result = await api.importModel(file, accuracy, period);
+        const [statusRes, historyRes] = await Promise.allSettled([
+            api.getModelStatus(),
+            api.getModelHistory(50)
+        ]);
         
-        if (!result || !result.success) {
-            if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                window.loadingSystem.hide();
-            }
-            if (typeof showToast === 'function') {
-                showToast('❌ ' + (result?.message || 'خطا در واردات'), 'error');
-            }
-            return;
+        if (statusRes.status === 'fulfilled' && statusRes.value?.success) {
+            const data = statusRes.value.data;
+            const version = data.version || '—';
+            const loaded = data.loaded || false;
+            
+            setText('toolsActiveVersion', version);
+            setText('activeVersionBadge', version);
+            setText('toolsStatus', loaded ? 'فعال' : 'دمو');
+            
+            // دایره - بر اساس وضعیت
+            updateCircle(loaded ? 100 : 30);
+            
+            // Icon
+            const icon = document.getElementById('toolsIcon');
+            if (icon) icon.textContent = loaded ? '🚀' : '📦';
+            
+            const label = document.getElementById('toolsLabel');
+            if (label) label.textContent = loaded ? 'فعال' : 'دمو';
         }
         
-        // ریست input
-        input.value = '';
-        if (fileNameEl) fileNameEl.textContent = 'هیچ فایلی انتخاب نشده';
-        
+        if (historyRes.status === 'fulfilled' && historyRes.value?.success) {
+            const total = historyRes.value.data?.length || 0;
+            setText('toolsTotalVersions', total);
+        }
     } catch (error) {
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا: ' + error.message, 'error');
-        }
+        console.warn('⚠️ Load active version error:', error.message);
     }
 }
 
+function updateCircle(percent) {
+    const circle = document.getElementById('toolsCircle');
+    if (!circle) return;
+    
+    const circumference = 2 * Math.PI * 65;
+    const offset = circumference - (percent / 100) * circumference;
+    
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference;
+    circle.style.transition = 'none';
+    
+    void circle.offsetWidth;
+    
+    circle.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.22, 1, 0.36, 1)';
+    circle.style.strokeDashoffset = offset;
+}
+
 // ============================================================
-// ۵. VERSION SELECT
+// ۳. LOAD VERSION SELECT
 // ============================================================
 
 async function loadVersionSelect() {
@@ -360,31 +836,77 @@ async function loadVersionSelect() {
     }
 }
 
-async function activateSelectedVersion() {
-    const version = document.getElementById('activateVersionSelect')?.value;
+// ============================================================
+// ۴. EXPORT MODEL
+// ============================================================
+
+function exportCurrentModel() {
+    api.exportModel();
+    if (typeof showToast === 'function') {
+        showToast('📥 دانلود مدل فعلی شروع شد', 'success');
+    }
+}
+
+function exportSpecificModel() {
+    const version = document.getElementById('exportVersionInput')?.value.trim();
     
     if (!version) {
-        if (typeof showToast === 'function') showToast('⚠️ لطفاً یک نسخه انتخاب کنید', 'warning');
+        if (typeof showToast === 'function') showToast('⚠️ نسخه را وارد کنید', 'warning');
         return;
     }
     
-    if (!confirm(`⚠️ آیا از فعال‌سازی نسخه "${version}" اطمینان دارید؟`)) return;
+    api.exportModel(version);
+    if (typeof showToast === 'function') {
+        showToast(`📥 دانلود نسخه ${version} شروع شد`, 'success');
+    }
+}
+
+// ============================================================
+// ۵. IMPORT MODEL
+// ============================================================
+
+async function handleImport() {
+    const input = document.getElementById('importFileInput');
+    const file = input.files[0];
+    if (!file) return;
+    
+    const fileInfo = document.getElementById('importFileName');
+    if (fileInfo) {
+        fileInfo.classList.add('active');
+        fileInfo.innerHTML = `<i class="fas fa-file-check"></i><span>${escapeHtml(file.name)}</span>`;
+    }
+    
+    const accuracy = parseFloat(document.getElementById('importAccuracy')?.value || 0.5);
+    const period = document.getElementById('importPeriod')?.value || '1m';
+    
+    if (!confirm(`واردات مدل "${file.name}"؟`)) {
+        input.value = '';
+        if (fileInfo) {
+            fileInfo.classList.remove('active');
+            fileInfo.innerHTML = '<i class="fas fa-file"></i><span>هیچ فایلی انتخاب نشده</span>';
+        }
+        return;
+    }
     
     if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
         window.loadingSystem.show({
-            messages: ['در حال فعال‌سازی نسخه...'],
-            duration: 2000,
+            messages: [
+                'در حال آپلود مدل...',
+                'ذخیره‌سازی در دیتابیس...'
+            ],
+            duration: 5000,
             onComplete: function() {
                 loadVersionSelect();
+                loadActiveVersion();
                 if (typeof showToast === 'function') {
-                    showToast('✅ نسخه ' + version + ' فعال شد', 'success');
+                    showToast('✅ مدل وارد شد', 'success');
                 }
             }
         });
     }
     
     try {
-        const result = await api.activateModel(version);
+        const result = await api.importModel(file, accuracy, period);
         
         if (!result || !result.success) {
             if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
@@ -393,19 +915,56 @@ async function activateSelectedVersion() {
             if (typeof showToast === 'function') {
                 showToast('❌ ' + (result?.message || 'خطا'), 'error');
             }
+            return;
+        }
+        
+        input.value = '';
+        if (fileInfo) {
+            fileInfo.classList.remove('active');
+            fileInfo.innerHTML = '<i class="fas fa-file"></i><span>هیچ فایلی انتخاب نشده</span>';
         }
     } catch (error) {
         if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
             window.loadingSystem.hide();
         }
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا: ' + error.message, 'error');
-        }
+        if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۶. TEST MODEL
+// ۶. ACTIVATE VERSION
+// ============================================================
+
+async function activateSelectedVersion() {
+    const version = document.getElementById('activateVersionSelect')?.value;
+    
+    if (!version) {
+        if (typeof showToast === 'function') showToast('⚠️ نسخه انتخاب کنید', 'warning');
+        return;
+    }
+    
+    if (!confirm(`فعال‌سازی نسخه "${version}"؟`)) return;
+    
+    try {
+        const result = await api.activateModel(version);
+        
+        if (!result || !result.success) {
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (result?.message || 'خطا'), 'error');
+            }
+            return;
+        }
+        
+        if (typeof showToast === 'function') showToast('✅ نسخه فعال شد', 'success');
+        loadActiveVersion();
+        loadVersionSelect();
+    } catch (error) {
+        if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// ۷. TEST MODEL
 // ============================================================
 
 async function testModel() {
@@ -428,10 +987,10 @@ async function testModel() {
             const signal = d.signal_type || 'NEUTRAL';
             const emojis = { BUY: '🟢', SELL: '🔴', NEUTRAL: '🟡' };
             const labels = { BUY: 'خرید', SELL: 'فروش', NEUTRAL: 'خنثی' };
-            const colors = { 
-                BUY: 'var(--accent-green)', 
-                SELL: 'var(--accent-red)', 
-                NEUTRAL: 'var(--accent-orange)' 
+            const colors = {
+                BUY: 'var(--green-primary)',
+                SELL: 'var(--accent-red)',
+                NEUTRAL: 'var(--accent-orange)'
             };
             
             if (contentEl) {
@@ -441,34 +1000,31 @@ async function testModel() {
                         <div><span style="color:var(--text-muted);">سیگنال:</span> <strong style="color:${colors[signal]};">${emojis[signal]} ${labels[signal]}</strong></div>
                         <div><span style="color:var(--text-muted);">اطمینان:</span> <strong>${d.confidence || '—'}</strong></div>
                         <div><span style="color:var(--text-muted);">قیمت:</span> <strong>${formatCurrency(d.current_price)}</strong></div>
-                        <div><span style="color:var(--text-muted);">امتیاز:</span> <strong>${((d.prediction_score || 0) * 100).toFixed(1)}%</strong></div>
-                        <div><span style="color:var(--text-muted);">مدل:</span> <strong>${escapeHtml(d.model_mode || 'DEMO')}</strong></div>
                     </div>
                 `;
             }
         } else {
             if (contentEl) {
-                contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${escapeHtml(data?.error || 'خطا در پیش‌بینی')}</span>`;
+                contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${escapeHtml(data?.error || 'خطا')}</span>`;
             }
         }
     } catch (error) {
         if (contentEl) {
-            contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ خطا: ${escapeHtml(error.message)}</span>`;
+            contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${escapeHtml(error.message)}</span>`;
         }
     }
 }
 
 // ============================================================
-// ۷. CLEAR CACHE
+// ۸. CLEAR CACHE
 // ============================================================
 
 async function clearModelCache() {
-    if (!confirm('⚠️ آیا از پاکسازی کش مدل اطمینان دارید؟\nتوجه: کل کش Redis پاک می‌شود!')) return;
+    if (!confirm('پاکسازی کل کش Redis؟\nاین عمل ممکن است موقتاً سیستم را کند کند.')) return;
     
     const statusEl = document.getElementById('cacheClearStatus');
     if (statusEl) {
-        statusEl.textContent = '⏳ در حال پاکسازی...';
-        statusEl.style.color = 'var(--accent-orange)';
+        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent-orange);font-size:0.6rem;"></i> در حال پاکسازی...';
     }
     
     try {
@@ -476,34 +1032,25 @@ async function clearModelCache() {
         
         if (result && result.success) {
             if (statusEl) {
-                statusEl.textContent = '✅ کش پاک شد';
-                statusEl.style.color = 'var(--accent-green)';
+                statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green-primary);font-size:0.6rem;"></i> کش پاک شد';
             }
-            if (typeof showToast === 'function') {
-                showToast('🧹 کش مدل پاکسازی شد', 'success');
-            }
+            if (typeof showToast === 'function') showToast('🧹 کش پاکسازی شد', 'success');
         } else {
             if (statusEl) {
-                statusEl.textContent = '❌ خطا';
-                statusEl.style.color = 'var(--accent-red)';
+                statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--accent-red);font-size:0.6rem;"></i> خطا';
             }
-            if (typeof showToast === 'function') {
-                showToast('❌ ' + (result?.error || 'خطا'), 'error');
-            }
+            if (typeof showToast === 'function') showToast('❌ ' + (result?.error || 'خطا'), 'error');
         }
     } catch (error) {
         if (statusEl) {
-            statusEl.textContent = '❌ خطا';
-            statusEl.style.color = 'var(--accent-red)';
+            statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--accent-red);font-size:0.6rem;"></i> خطا';
         }
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا: ' + error.message, 'error');
-        }
+        if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۸. GENERATE REPORT
+// ۹. GENERATE REPORT
 // ============================================================
 
 function generateReport() {
@@ -511,8 +1058,7 @@ function generateReport() {
     const statusEl = document.getElementById('reportStatus');
     
     if (statusEl) {
-        statusEl.textContent = '⏳ در حال تولید...';
-        statusEl.style.color = 'var(--accent-orange)';
+        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent-orange);font-size:0.6rem;"></i> در حال تولید...';
     }
     
     let url = '/report_template.html';
@@ -520,60 +1066,65 @@ function generateReport() {
         url += `?version=${encodeURIComponent(version)}`;
     }
     
-    const newWindow = window.open(url, '_blank');
+    const w = window.open(url, '_blank');
     
-    if (!newWindow) {
-        if (typeof showToast === 'function') {
-            showToast('⚠️ لطفاً باز شدن پنجره جدید را مجاز کنید', 'warning');
-        }
+    if (!w) {
+        if (typeof showToast === 'function') showToast('⚠️ پنجره جدید را مجاز کنید', 'warning');
         if (statusEl) {
-            statusEl.textContent = '⚠️ نیاز به تأیید';
-            statusEl.style.color = 'var(--accent-orange)';
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--accent-orange);font-size:0.6rem;"></i> نیاز به تأیید';
         }
         return;
     }
     
     if (statusEl) {
-        statusEl.textContent = '✅ گزارش باز شد';
-        statusEl.style.color = 'var(--accent-green)';
+        statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green-primary);font-size:0.6rem;"></i> گزارش باز شد';
     }
-    if (typeof showToast === 'function') {
-        showToast('📊 گزارش در تب جدید باز شد', 'success');
-    }
+    if (typeof showToast === 'function') showToast('📊 گزارش باز شد', 'success');
 }
 
 // ============================================================
-// ۹. RESET MODEL
+// ۱۰. RESET MODEL
 // ============================================================
 
-async function resetModel() {
-    const confirmInput = document.getElementById('resetConfirmInput')?.value.trim();
+function openResetModal() {
+    const modal = document.getElementById('resetModal');
+    const input = document.getElementById('resetConfirmInput');
+    const btn = document.getElementById('resetConfirmBtn');
     
-    if (confirmInput?.toUpperCase() !== 'RESET') {
-        if (typeof showToast === 'function') {
-            showToast('⚠️ لطفاً "RESET" را برای تأیید وارد کنید', 'warning');
-        }
-        return;
+    if (modal) modal.classList.add('active');
+    if (input) input.value = '';
+    if (btn) btn.disabled = true;
+}
+
+function closeResetModal() {
+    const modal = document.getElementById('resetModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function checkResetInput() {
+    const input = document.getElementById('resetConfirmInput');
+    const btn = document.getElementById('resetConfirmBtn');
+    if (btn && input) {
+        btn.disabled = input.value.trim().toUpperCase() !== 'RESET';
     }
+}
+
+async function resetModel() {
+    const input = document.getElementById('resetConfirmInput');
+    if (input?.value.trim().toUpperCase() !== 'RESET') return;
     
-    if (!confirm('⚠️⚠️⚠️ آیا از بازنشانی کامل مدل اطمینان دارید؟\nاین عمل غیرقابل بازگشت است!')) return;
+    closeResetModal();
     
     if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
         window.loadingSystem.show({
-            messages: [
-                'در حال بازنشانی مدل...',
-                'حذف مدل فعال...'
-            ],
+            messages: ['در حال بازنشانی مدل...'],
             duration: 3000,
             onComplete: function() {
-                const input = document.getElementById('resetConfirmInput');
-                const btn = document.getElementById('resetModelBtn');
-                if (input) input.value = '';
-                if (btn) btn.disabled = true;
-                if (typeof showToast === 'function') {
-                    showToast('🔄 مدل به حالت DEMO بازگشت', 'warning');
-                }
+                loadActiveVersion();
                 loadVersionSelect();
+                if (typeof showToast === 'function') {
+                    showToast('🔄 مدل بازنشانی شد', 'warning');
+                }
             }
         });
     }
@@ -584,20 +1135,22 @@ async function resetModel() {
         if (status && status.success && status.data?.version) {
             await api.deleteModel(status.data.version);
         }
-        
     } catch (error) {
         if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
             window.loadingSystem.hide();
         }
-        if (typeof showToast === 'function') {
-            showToast('❌ خطا: ' + error.message, 'error');
-        }
+        if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۱۰. UTILS
+// ۱۱. UTILS
 // ============================================================
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -614,5 +1167,5 @@ function escapeAttr(str) {
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-console.log('✅ Tools tab v2.0 loaded');
+console.log('✅ Tools tab v3.0 loaded');
 </script>
