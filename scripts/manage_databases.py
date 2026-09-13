@@ -204,6 +204,23 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
         CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
     """,
+
+    "training_profiles": """
+        CREATE TABLE IF NOT EXISTS training_profiles (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) UNIQUE NOT NULL,
+            description TEXT,
+            icon VARCHAR(10) DEFAULT '⚙️',
+            color VARCHAR(20) DEFAULT '#94a3b8',
+            learning_strategy VARCHAR(50) DEFAULT 'full',
+            hyperparameters JSONB NOT NULL,
+            data_config JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_tp_name ON training_profiles(name);
+        CREATE INDEX IF NOT EXISTS idx_tp_strategy ON training_profiles(learning_strategy);
+    """,
     
     # --------- لاگ دستورات ---------
     "commands_log": """
