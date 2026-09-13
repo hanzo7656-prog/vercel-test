@@ -2303,26 +2303,6 @@ def model_data():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/model/train', methods=['POST'])
-@require_auth('admin')
-def model_train():
-    """آموزش مدل جدید"""
-    try:
-        container = current_app.container
-        trainer = container.get('trainer')
-        
-        data = request.json or {}
-        period = data.get('period', '1m')
-        coins = data.get('coins', ['bitcoin', 'ethereum'])
-        incremental = data.get('incremental', False)
-        
-        result = trainer.train_model(period=period) if not incremental else trainer.incremental_train(period=period)
-        return jsonify(result), 200 if result.get('success') else 400
-    except Exception as e:
-        logger.error(f"Model train error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @api_bp.route('/model/export', methods=['GET'])
 @require_auth()
 def model_export():
@@ -2563,7 +2543,292 @@ def model_feature_importance():
         })
     except Exception as e:
         logger.error(f"Feature importance error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500        
+        return jsonify({'success': False, 'error': str(e)}), 500   
+
+# ============================================================
+# TRAINING PROFILES
+# ============================================================
+
+@api_bp.route('/model/profiles/presets', methods=['GET'])
+@require_auth()
+def get_training_presets():
+    """دریافت لیست presets آماده"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        presets = mm.get_presets()
+        return jsonify({
+            'success': True,
+            'data': presets,
+            'count': len(presets),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/presets/<preset_id>', methods=['GET'])
+@require_auth()
+def get_training_preset(preset_id):
+    """دریافت یک preset خاص"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        preset = mm.get_preset(preset_id)
+        if not preset:
+            return jsonify({'success': False, 'error': 'Preset not found'}), 404
+        return jsonify({'success': True, 'data': preset})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/strategies', methods=['GET'])
+@require_auth()
+def get_learning_strategies():
+    """دریافت لیست استراتژی‌های یادگیری"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        strategies = mm.get_strategies()
+        return jsonify({
+            'success': True,
+            'data': strategies,
+            'count': len(strategies),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/hyperparameter-limits', methods=['GET'])
+@require_auth()
+def get_hyperparameter_limits():
+    """دریافت محدودیت‌های پارامترها (برای UI)"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        limits = mm.get_hyperparameter_limits()
+        return jsonify({'success': True, 'data': limits})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/current', methods=['GET'])
+@require_auth()
+def get_current_profile():
+    """دریافت پروفایل فعلی"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        profile = mm.get_current_profile()
+        return jsonify({'success': True, 'data': profile})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/current', methods=['POST'])
+@require_auth('admin')
+def set_current_profile():
+    """تنظیم پروفایل فعلی"""
+    try:
+        data = request.json or {}
+        container = current_app.container
+        mm = container.get('model_manager')
+        result = mm.set_current_profile(data)
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/validate', methods=['POST'])
+@require_auth()
+def validate_profile():
+    """اعتبارسنجی پروفایل"""
+    try:
+        data = request.json or {}
+        container = current_app.container
+        mm = container.get('model_manager')
+        result = mm.validate_profile(data)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/saved', methods=['GET'])
+@require_auth()
+def list_saved_profiles():
+    """لیست پروفایل‌های ذخیره‌شده"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        profiles = mm.list_profiles()
+        return jsonify({
+            'success': True,
+            'data': profiles,
+            'count': len(profiles),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/saved', methods=['POST'])
+@require_auth('admin')
+def save_profile():
+    """ذخیره پروفایل جدید"""
+    try:
+        data = request.json or {}
+        container = current_app.container
+        mm = container.get('model_manager')
+        result = mm.save_profile(data)
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/saved/<name>', methods=['GET'])
+@require_auth()
+def load_saved_profile(name):
+    """بارگذاری پروفایل با نام"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        result = mm.load_profile(name)
+        return jsonify(result), 200 if result.get('success') else 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/profiles/saved/<name>', methods=['DELETE'])
+@require_auth('admin')
+def delete_saved_profile(name):
+    """حذف پروفایل"""
+    try:
+        container = current_app.container
+        mm = container.get('model_manager')
+        success = mm.delete_profile(name)
+        return jsonify({
+            'success': success,
+            'message': f'Profile "{name}" deleted' if success else 'Failed to delete',
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# TRAINING با Profile
+# ============================================================
+
+@api_bp.route('/model/train-with-profile', methods=['POST'])
+@require_auth('admin')
+def train_with_profile():
+    """
+    آموزش با پروفایل
+    
+    Body:
+        {
+            "period": "1m",
+            "coins": ["bitcoin", "ethereum"],
+            "profile": { ... }        // اگه نباشه، از پروفایل فعال استفاده می‌شه
+            OR
+            "profile_name": "fast"    // نام پروفایل ذخیره‌شده یا preset
+        }
+    """
+    try:
+        data = request.json or {}
+        period = data.get('period', '1m')
+        coins = data.get('coins')
+        profile = data.get('profile')
+        profile_name = data.get('profile_name')
+        
+        container = current_app.container
+        mm = container.get('model_manager')
+        
+        # اگه نام پروفایل داده شده
+        if profile_name and not profile:
+            load_result = mm.load_profile(profile_name)
+            if not load_result.get('success'):
+                return jsonify({
+                    'success': False,
+                    'error': f'Profile "{profile_name}" not found',
+                }), 404
+            profile = load_result['profile']
+        
+        # آموزش
+        result = mm.train(
+            period=period,
+            coins=coins,
+            profile=profile,
+            save=True,
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Train with profile error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/predict-profile', methods=['POST'])
+@require_auth()
+def predict_training_profile():
+    """
+    تخمین زمان و نتیجه آموزش بدون اجرا
+    
+    Body:
+        {
+            "profile": { ... },
+            "coins_count": 5,
+            "period": "1m"
+        }
+    """
+    try:
+        data = request.json or {}
+        profile = data.get('profile', {})
+        coins_count = data.get('coins_count', 2)
+        period = data.get('period', '1m')
+        
+        container = current_app.container
+        mm = container.get('model_manager')
+        
+        # اعتبارسنجی
+        validation = mm.validate_profile(profile)
+        if not validation['valid']:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid profile',
+                'details': validation['errors'],
+            }), 400
+        
+        # تخمین
+        hp = validation['profile']['hyperparameters']
+        n_est = hp.get('n_estimators', 100)
+        depth = hp.get('max_depth', 5)
+        
+        period_mult = {'24h': 0.5, '1w': 1, '1m': 2, '3m': 4, '6m': 6}
+        base_time = n_est * depth * 0.02  # ثانیه
+        estimated_time = base_time * period_mult.get(period, 2) * (coins_count / 2)
+        
+        # تخمین سایز
+        estimated_size_mb = (n_est * 50 * depth) / (1024 * 1024) * 10
+        
+        # Quota
+        quota = mm.get_quota_status()
+        available_mb = (
+            quota.get('usable_mb', 0) - quota.get('used_mb', 0)
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'estimated_time_seconds': round(estimated_time, 1),
+                'estimated_model_size_mb': round(estimated_size_mb, 2),
+                'available_mb': round(available_mb, 2),
+                'can_proceed': available_mb > estimated_size_mb * 1.5,
+                'validation': validation,
+            },
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # ۱۰. زمان‌بندی (SCHEDULE)
 # ============================================================
