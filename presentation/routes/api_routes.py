@@ -175,27 +175,6 @@ def health_simple():
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
-
-@api_bp.route('/health/database', methods=['GET'])
-@require_auth()
-def health_database():
-    """وضعیت سلامت دیتابیس‌ها"""
-    try:
-        health = health_check()
-        return jsonify({
-            'success': True,
-            'data': health,
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Database health error: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
-
-
 # ============================================================
 # ۳. متریک‌ها و آمار (METRICS & STATS)
 # ============================================================
@@ -1595,6 +1574,158 @@ def get_quota_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================
+# DATABASE HEALTH & STATUS
+# ============================================================
+
+@api_bp.route('/db/health/summary', methods=['GET'])
+@require_auth()
+def db_health_summary():
+    """
+    خلاصه سلامت همه دیتابیس‌ها
+    [جایگزین] /api/db/health قدیمی
+    """
+    try:
+        summary = health_summary()
+        return jsonify({
+            'success': True,
+            'data': summary,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/health/full', methods=['GET'])
+@require_auth()
+def db_health_full():
+    """
+    سلامت کامل با جزئیات + Quota
+    [جایگزین] /api/db/monitor قدیمی
+    """
+    try:
+        health = health_check()
+        status = get_database_status()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'summary': status,
+                'details': health,
+            },
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/list', methods=['GET'])
+@require_auth()
+def db_list():
+    """لیست همه دیتابیس‌های ثبت شده با اطلاعات کامل"""
+    try:
+        databases = get_databases_info()
+        return jsonify({
+            'success': True,
+            'data': databases,
+            'count': len(databases),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/ping', methods=['GET'])
+@require_auth()
+def db_ping(db_name):
+    """تست اتصال یک دیتابیس"""
+    try:
+        db = get_db(db_name)
+        if not db:
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not found',
+            }), 404
+        
+        is_ok = db.ping()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'ping': is_ok,
+                'connected': db.is_connected(),
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/reconnect', methods=['POST'])
+@require_auth('admin')
+def db_reconnect_all():
+    """Reconnect همه دیتابیس‌ها"""
+    try:
+        results = force_reconnect()
+        return jsonify({
+            'success': True,
+            'data': results,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/reconnect', methods=['POST'])
+@require_auth('admin')
+def db_reconnect_one(db_name):
+    """Reconnect یک دیتابیس"""
+    try:
+        results = force_reconnect(db_name)
+        return jsonify({
+            'success': True,
+            'data': results,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/factory/status', methods=['GET'])
+@require_auth()
+def db_factory_status():
+    """وضعیت کامل DatabaseFactory"""
+    try:
+        status = get_factory_status()
+        return jsonify({
+            'success': True,
+            'data': status,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/ready', methods=['GET'])
+def db_ready():
+    """آیا سیستم آماده است؟"""
+    try:
+        ready = is_ready()
+        return jsonify({
+            'success': True,
+            'ready': ready,
+            'timestamp': datetime.now().isoformat(),
+        }), 200 if ready else 503
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/reload-config', methods=['POST'])
+@require_auth('admin')
+def db_reload_config():
+    """بارگذاری مجدد تنظیمات دیتابیس"""
+    try:
+        result = reload_config()
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
 # ۹. مدل (MODEL)
 # ============================================================
