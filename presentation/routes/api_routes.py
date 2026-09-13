@@ -1726,6 +1726,489 @@ def db_reload_config():
         return jsonify(result), 200 if result.get('success') else 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# MAINTENANCE (بدون نیاز به بک‌اند)
+# ============================================================
+
+@api_bp.route('/db/<db_name>/vacuum', methods=['POST'])
+@require_auth('admin')
+def db_vacuum(db_name):
+    """
+    اجرای VACUUM در PostgreSQL
+    
+    Query params:
+        full (bool): VACUUM FULL (کندتر ولی فضای بیشتر آزاد می‌کنه)
+        analyze (bool): همراه با ANALYZE
+    
+    مثال:
+        POST /api/db/primary/vacuum?full=false&analyze=true
+    """
+    try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        # پارامترها
+        is_full = request.args.get('full', 'false').lower() == 'true'
+        with_analyze = request.args.get('analyze', 'true').lower() == 'true'
+        
+        # ساخت کوئری
+        vacuum_type = "VACUUM FULL" if is_full else "VACUUM"
+        analyze_clause = "ANALYZE" if with_analyze else ""
+        query = f"{vacuum_type} {analyze_clause}".strip()
+        
+        start_time = time.time()
+        
+        # اجرا
+        db.execute(query)
+        
+        duration = round(time.time() - start_time, 2)
+        
+        logger.info(
+            f"✅ {query} on {db_name} completed in {duration}s"
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'operation': query,
+                'duration_seconds': duration,
+                'full': is_full,
+                'analyze': with_analyze,
+            },
+            'message': f'VACUUM completed in {duration}s',
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"VACUUM error on {db_name}: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'db_name': db_name,
+        }), 500
+
+
+@api_bp.route('/db/vacuum-all', methods=['POST'])
+@require_auth('admin')
+def db_vacuum_all():
+    """
+    اجرای VACUUM روی همه دیتابیس‌های PostgreSQL
+    
+    Query params:
+        full (bool): VACUUM FULL
+        analyze (bool): همراه با ANALYZE
+    """
+    try:
+        is_full = request.args.get('full', 'false').lower() == 'true'
+        with_analyze = request.args.get('analyze', 'true').lower() == 'true'
+        
+        vacuum_type = "VACUUM FULL" if is_full else "VACUUM"
+        analyze_clause = "ANALYZE" if with_analyze else ""
+        query = f"{vacuum_type} {analyze_clause}".strip()
+        
+        # دیتابیس‌های PostgreSQL
+        db_names = ['primary', 'backup', 'analytics', 'logs']
+        results = {}
+        
+        start_time = time.time()
+        
+        for db_name in db_names:
+            try:
+                db = get_db(db_name)
+                if not db or not db.is_connected():
+                    results[db_name] = {
+                        'success': False,
+                        'error': 'not connected',
+                    }
+                    continue
+                
+                db_start = time.time()
+                db.execute(query)
+                duration = round(time.time() - db_start, 2)
+                
+                results[db_name] = {
+                    'success': True,
+                    'duration_seconds': duration,
+                }
+                
+                logger.info(f"✅ {query} on {db_name} ({duration}s)")
+                
+            except Exception as e:
+                results[db_name] = {
+                    'success': False,
+                    'error': str(e),
+                }
+                logger.error(f"VACUUM error on {db_name}: {e}")
+        
+        total_duration = round(time.time() - start_time, 2)
+        success_count = sum(1 for r in results.values() if r.get('success'))
+        
+        return jsonify({
+            'success': success_count > 0,
+            'data': {
+                'operation': query,
+                'total_duration_seconds': total_duration,
+                'databases': results,
+                'success_count': success_count,
+                'total_count': len(db_names),
+            },
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"VACUUM ALL error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/analyze', methods=['POST'])
+@require_auth('admin')
+def db_analyze(db_name):
+    """
+    اجرای ANALYZE در PostgreSQL (بهبود query plan)
+    
+    Query params:
+        table (str): اختیاری — فقط یک جدول
+    """
+    try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        # اگه جدول مشخص شده
+        table_name = request.args.get('table', '').strip()
+        
+        if table_name:
+            query = f'ANALYZE "{table_name}"'
+        else:
+            query = "ANALYZE"
+        
+        start_time = time.time()
+        db.execute(query)
+        duration = round(time.time() - start_time, 2)
+        
+        logger.info(f"✅ {query} on {db_name} completed in {duration}s")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'operation': query,
+                'table': table_name or 'all',
+                'duration_seconds': duration,
+            },
+            'message': f'ANALYZE completed in {duration}s',
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"ANALYZE error on {db_name}: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# TABLE OPERATIONS (بدون نیاز به بک‌اند)
+# ============================================================
+
+@api_bp.route('/db/<db_name>/tables/<table_name>/delete-old', methods=['POST'])
+@require_auth('admin')
+def db_delete_old_records(db_name, table_name):
+    """
+    حذف رکوردهای قدیمی از یک جدول
+    
+    Body:
+        {
+            "date_column": "created_at",     // نام ستون تاریخ
+            "retention_days": 30,            // مدت نگهداری
+            "dry_run": false                 // اگه true باشه فقط شمارش می‌کنه
+        }
+    
+    مثال:
+        POST /api/db/primary/tables/predictions/delete-old
+        Body: {"date_column": "timestamp", "retention_days": 30}
+    """
+    try:
+        data = request.json or {}
+        date_column = data.get('date_column', 'created_at')
+        retention_days = data.get('retention_days', 30)
+        dry_run = data.get('dry_run', False)
+        
+        if retention_days < 1:
+            return jsonify({
+                'success': False,
+                'error': 'retention_days must be >= 1',
+            }), 400
+        
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        # محاسبه تاریخ cutoff
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(days=retention_days)
+        
+        # ۱. شمارش اول
+        count_result = db.execute(
+            f'SELECT COUNT(*) as count FROM "{table_name}" '
+            f'WHERE "{date_column}" < %s',
+            (cutoff,),
+        )
+        count = count_result[0]['count'] if count_result else 0
+        
+        if count == 0:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'db_name': db_name,
+                    'table': table_name,
+                    'deleted': 0,
+                    'cutoff_date': cutoff.isoformat(),
+                    'retention_days': retention_days,
+                    'dry_run': dry_run,
+                },
+                'message': 'No old records to delete',
+            })
+        
+        # ۲. اگه dry_run بود، فقط برگردون
+        if dry_run:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'db_name': db_name,
+                    'table': table_name,
+                    'would_delete': count,
+                    'cutoff_date': cutoff.isoformat(),
+                    'retention_days': retention_days,
+                    'dry_run': True,
+                },
+                'message': f'Dry run: {count} records would be deleted',
+            })
+        
+        # ۳. حذف واقعی
+        start_time = time.time()
+        db.execute(
+            f'DELETE FROM "{table_name}" WHERE "{date_column}" < %s',
+            (cutoff,),
+        )
+        duration = round(time.time() - start_time, 2)
+        
+        logger.info(
+            f"✅ Deleted {count} old records from {db_name}.{table_name} "
+            f"(older than {retention_days} days, {duration}s)"
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'table': table_name,
+                'deleted': count,
+                'cutoff_date': cutoff.isoformat(),
+                'retention_days': retention_days,
+                'duration_seconds': duration,
+                'dry_run': False,
+            },
+            'message': f'Deleted {count} old records in {duration}s',
+        })
+        
+    except Exception as e:
+        logger.error(f"Delete old records error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/tables/<table_name>/count', methods=['GET'])
+@require_auth()
+def db_table_count(db_name, table_name):
+    """
+    تعداد سریع رکوردهای یک جدول
+    
+    Query params:
+        where (str): شرط WHERE اختیاری
+    
+    مثال:
+        GET /api/db/primary/tables/predictions/count
+        GET /api/db/primary/tables/predictions/count?where=signal_type='BUY'
+    """
+    try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        where_clause = request.args.get('where', '').strip()
+        
+        # ساخت کوئری
+        query = f'SELECT COUNT(*) as count FROM "{table_name}"'
+        if where_clause:
+            # امنیت: فقط کاراکترهای مجاز
+            query += f' WHERE {where_clause}'
+        
+        result = db.execute(query)
+        count = result[0]['count'] if result else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'table': table_name,
+                'count': count,
+                'where': where_clause or None,
+            },
+        })
+        
+    except Exception as e:
+        logger.error(f"Table count error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/tables/<table_name>/size', methods=['GET'])
+@require_auth()
+def db_table_size(db_name, table_name):
+    """
+    حجم یک جدول در PostgreSQL
+    
+    مثال:
+        GET /api/db/primary/tables/predictions/size
+    """
+    try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        # حجم‌های مختلف
+        result = db.execute(f"""
+            SELECT
+                pg_total_relation_size('{table_name}') AS total_bytes,
+                pg_relation_size('{table_name}') AS data_bytes,
+                pg_indexes_size('{table_name}') AS indexes_bytes,
+                pg_total_relation_size('{table_name}') / 1024.0 / 1024.0 AS total_mb,
+                pg_relation_size('{table_name}') / 1024.0 / 1024.0 AS data_mb,
+                pg_indexes_size('{table_name}') / 1024.0 / 1024.0 AS indexes_mb
+        """)
+        
+        if not result:
+            return jsonify({
+                'success': False,
+                'error': f'Table {table_name} not found',
+            }), 404
+        
+        row = result[0]
+        
+        # تعداد رکوردها
+        count_result = db.execute(f'SELECT COUNT(*) as count FROM "{table_name}"')
+        count = count_result[0]['count'] if count_result else 0
+        
+        # حجم متوسط هر رکورد
+        avg_row_bytes = (
+            row['data_bytes'] / count if count > 0 else 0
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'table': table_name,
+                'row_count': count,
+                'sizes': {
+                    'total_mb': round(row['total_mb'], 2),
+                    'data_mb': round(row['data_mb'], 2),
+                    'indexes_mb': round(row['indexes_mb'], 2),
+                    'total_bytes': row['total_bytes'],
+                    'data_bytes': row['data_bytes'],
+                    'indexes_bytes': row['indexes_bytes'],
+                },
+                'avg_row_bytes': round(avg_row_bytes, 2),
+            },
+        })
+        
+    except Exception as e:
+        logger.error(f"Table size error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/<db_name>/tables/<table_name>/truncate', methods=['POST'])
+@require_auth('admin')
+def db_table_truncate(db_name, table_name):
+    """
+    خالی کردن یک جدول (TRUNCATE)
+    
+    Query params:
+        confirm (bool): تأیید صریح
+        cascade (bool): حذف وابستگی‌ها (پیش‌فرض false)
+    
+    ⚠️ احتیاط: عملیات غیرقابل بازگشت
+    """
+    try:
+        confirm = request.args.get('confirm', 'false').lower() == 'true'
+        if not confirm:
+            return jsonify({
+                'success': False,
+                'error': 'Confirmation required. Use ?confirm=true',
+                'warning': 'This operation cannot be undone!',
+            }), 400
+        
+        cascade = request.args.get('cascade', 'false').lower() == 'true'
+        
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
+        
+        # شمارش قبل
+        count_result = db.execute(f'SELECT COUNT(*) as count FROM "{table_name}"')
+        count_before = count_result[0]['count'] if count_result else 0
+        
+        # TRUNCATE
+        cascade_clause = " CASCADE" if cascade else ""
+        query = f'TRUNCATE TABLE "{table_name}"{cascade_clause}'
+        
+        start_time = time.time()
+        db.execute(query)
+        duration = round(time.time() - start_time, 2)
+        
+        logger.warning(
+            f"⚠️ TRUNCATED {db_name}.{table_name} "
+            f"({count_before} rows deleted, {duration}s)"
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'table': table_name,
+                'rows_deleted': count_before,
+                'cascade': cascade,
+                'duration_seconds': duration,
+            },
+            'message': f'Table truncated ({count_before} rows deleted)',
+            'warning': 'Operation completed',
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Truncate error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ۹. مدل (MODEL)
 # ============================================================
