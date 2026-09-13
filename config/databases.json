@@ -1,59 +1,532 @@
 {
-    "databases": {
-        "postgresql": {
-            "type": "postgresql",
-            "host": "postgresql-001-bow-dwarf-pooler.cloud.layerbase.dev",
-            "port": 5432,
-            "user": "postgres",
-            "password": "YNd0ebQlinmPKXizjE6yfdaV",
-            "database": "postgresql_001",
-            "ssl": true,
-            "enabled": true,
-            "description": "داده‌های اصلی و ماندگار",
-            "roles": ["primary", "users", "history", "logs"]
-        },
-        "sqlite": {
-            "type": "postgresql",
-            "host": "sqlite-001-dry-fable-pooler.cloud.layerbase.dev",
-            "port": 5432,
-            "user": "layerbase",
-            "password": "kJVd0k4EeOheyX10i98HUDOp",
-            "database": "sqlite_001",
-            "ssl": true,
-            "enabled": true,
-            "description": "بک‌آپ و گزارش‌ها (SQLite از طریق PostgreSQL)",
-            "roles": ["backup", "reports", "archive"]
-        },
-        "redis": {
-            "type": "redis",
-            "protocol": "tcp",
-            "host": "redis-001-ripe-port.cloud.layerbase.dev",
-            "port": 6379,
-            "password": "8ernhlYazyo6HRmX7gIsZt1w",
-            "ssl": true,
-            "database": 0,
-            "description": "کش و داده‌های سریع",
-            "enabled": true,
-            "roles": ["cache", "session", "temp"]
+  "version": "3.0",
+  "generated_at": "2026-09-13",
+  "description": "تنظیمات کامل دیتابیس‌ها با Quota Management",
+  
+  "databases": {
+    "primary": {
+      "type": "postgresql",
+      "enabled": true,
+      "description": "دیتابیس اصلی - مدل‌ها، پیش‌بینی‌ها، کاربران",
+      
+      "connection": {
+        "host": "ep-aged-lab-b197lsf8-pooler.c-5.eu-central-1.aws.neon.tech",
+        "port": 5432,
+        "user": "Neon001_owner",
+        "password": "npg_7RjDE5YxHlyI",
+        "database": "Neon001",
+        "sslmode": "require",
+        "channel_binding": "require",
+        "application_name": "trading-system-primary"
+      },
+      
+      "pool": {
+        "min_connections": 2,
+        "max_connections": 10,
+        "connect_timeout": 10,
+        "idle_timeout": 300,
+        "max_lifetime": 1800
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 1,
+        "max_delay": 10,
+        "backoff_factor": 2
+      },
+      
+      "health_check": {
+        "interval": 30,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 500,
+        "reserved_mb": 100,
+        "usable_mb": 400,
+        "warn_threshold_percent": 75,
+        "critical_threshold_percent": 90,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95,
+        "per_table": {
+          "models": {
+            "max_mb": 50,
+            "description": "فایل‌های binary مدل XGBoost"
+          },
+          "predictions": {
+            "max_mb": 200,
+            "retention_days": 30,
+            "description": "پیش‌بینی‌ها با retention"
+          },
+          "model_training_history": {
+            "max_mb": 20,
+            "description": "تاریخچه آموزش"
+          },
+          "fear_greed_history": {
+            "max_mb": 20,
+            "description": "شاخص ترس و طمع"
+          },
+          "btc_dominance_history": {
+            "max_mb": 20,
+            "description": "سلطه بیت‌کوین"
+          },
+          "global_market_history": {
+            "max_mb": 20,
+            "description": "وضعیت بازار"
+          },
+          "users": {
+            "max_mb": 5,
+            "description": "کاربران"
+          },
+          "commands_log": {
+            "max_mb": 30,
+            "description": "لاگ دستورات"
+          },
+          "cache": {
+            "max_mb": 35,
+            "description": "جدول کش (fallback)"
+          }
         }
+      },
+      
+      "roles": ["primary", "models", "predictions", "users"]
     },
-    "default_db": "postgresql",
-    "routing": {
-        "users": "postgresql",
-        "predictions": "postgresql",
-        "training_history": "postgresql",
-        "system_logs": "postgresql",
-        "cache": "redis",
-        "session": "redis",
-        "temp_data": "redis",
-        "backup": "sqlite",
-        "reports": "sqlite",
-        "archive": "sqlite"
+    
+    "backup": {
+      "type": "postgresql",
+      "enabled": true,
+      "description": "نسخه پشتیبان - بک‌آپ دوره‌ای",
+      
+      "connection": {
+        "host": "ep-proud-truth-b2aqefmt-pooler.c-6.eu-central-1.aws.neon.tech",
+        "port": 5432,
+        "user": "neondb_owner",
+        "password": "npg_FRKIoBND6VL5",
+        "database": "neondb",
+        "sslmode": "require",
+        "channel_binding": "require",
+        "application_name": "trading-system-backup"
+      },
+      
+      "pool": {
+        "min_connections": 1,
+        "max_connections": 5,
+        "connect_timeout": 10
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 1,
+        "max_delay": 10
+      },
+      
+      "health_check": {
+        "interval": 60,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 500,
+        "reserved_mb": 100,
+        "usable_mb": 400,
+        "warn_threshold_percent": 80,
+        "critical_threshold_percent": 95,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95,
+        "per_table": {
+          "models_backup": {
+            "max_mb": 100,
+            "keep_last_n": 10,
+            "description": "بک‌آپ مدل‌ها"
+          },
+          "predictions_backup": {
+            "max_mb": 200,
+            "retention_days": 90,
+            "description": "بک‌آپ پیش‌بینی‌ها"
+          },
+          "system_state": {
+            "max_mb": 5,
+            "description": "وضعیت سیستم"
+          },
+          "backup_metadata": {
+            "max_mb": 5,
+            "description": "metadata بک‌آپ"
+          }
+        }
+      },
+      
+      "roles": ["backup"]
     },
-    "settings": {
-        "cache_ttl": 3600,
-        "retry_attempts": 3,
-        "retry_delay": 1,
-        "backup_interval": 86400
+    
+    "analytics": {
+      "type": "postgresql",
+      "enabled": true,
+      "description": "تحلیل و آمار - عملکرد مدل، آمار بازار",
+      
+      "connection": {
+        "host": "ep-wispy-rain-b2o8szzk-pooler.c-6.eu-central-1.aws.neon.tech",
+        "port": 5432,
+        "user": "neondb_owner",
+        "password": "npg_aQculZy5Gr9V",
+        "database": "neondb",
+        "sslmode": "require",
+        "channel_binding": "require",
+        "application_name": "trading-system-analytics"
+      },
+      
+      "pool": {
+        "min_connections": 1,
+        "max_connections": 5,
+        "connect_timeout": 10
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 1,
+        "max_delay": 10
+      },
+      
+      "health_check": {
+        "interval": 60,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 500,
+        "reserved_mb": 100,
+        "usable_mb": 400,
+        "warn_threshold_percent": 75,
+        "critical_threshold_percent": 90,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95,
+        "per_table": {
+          "predictions_analytics": {
+            "max_mb": 150,
+            "retention_days": 180,
+            "description": "آمار پیش‌بینی‌ها"
+          },
+          "model_performance": {
+            "max_mb": 50,
+            "retention_days": 365,
+            "description": "عملکرد مدل در زمان"
+          },
+          "market_analytics": {
+            "max_mb": 80,
+            "retention_days": 365,
+            "description": "آمار بازار"
+          },
+          "signal_statistics": {
+            "max_mb": 60,
+            "retention_days": 365,
+            "description": "آمار سیگنال‌ها"
+          },
+          "daily_summary": {
+            "max_mb": 30,
+            "retention_days": 730,
+            "description": "خلاصه روزانه"
+          },
+          "cache": {
+            "max_mb": 30,
+            "description": "جدول کش (fallback)"
+          }
+        }
+      },
+      
+      "roles": ["analytics", "reports"]
+    },
+    
+    "logs": {
+      "type": "postgresql",
+      "enabled": true,
+      "description": "لاگ‌ها - system، errors، API calls",
+      
+      "connection": {
+        "host": "ep-fragrant-silence-aeyqn7gm-pooler.c-2.us-east-2.aws.neon.tech",
+        "port": 5432,
+        "user": "neondb_owner",
+        "password": "npg_GlNTiMxm7U0I",
+        "database": "neondb",
+        "sslmode": "require",
+        "channel_binding": "require",
+        "application_name": "trading-system-logs"
+      },
+      
+      "pool": {
+        "min_connections": 1,
+        "max_connections": 5,
+        "connect_timeout": 10
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 1,
+        "max_delay": 10
+      },
+      
+      "health_check": {
+        "interval": 60,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 500,
+        "reserved_mb": 50,
+        "usable_mb": 450,
+        "warn_threshold_percent": 80,
+        "critical_threshold_percent": 95,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95,
+        "per_table": {
+          "system_logs": {
+            "max_mb": 200,
+            "retention_days": 30,
+            "description": "لاگ‌های سیستم"
+          },
+          "error_logs": {
+            "max_mb": 80,
+            "retention_days": 90,
+            "description": "لاگ خطاها"
+          },
+          "api_logs": {
+            "max_mb": 120,
+            "retention_days": 14,
+            "description": "لاگ API calls"
+          },
+          "audit_logs": {
+            "max_mb": 50,
+            "retention_days": 365,
+            "description": "لاگ امنیتی"
+          }
+        }
+      },
+      
+      "roles": ["logs", "audit"]
+    },
+    
+    "archive": {
+      "type": "sqlite_via_postgresql",
+      "enabled": true,
+      "description": "آرشیو بلندمدت - SQLite 3 via Layerbase",
+      
+      "connection": {
+        "host": "sqlite-001-dry-fable-pooler.cloud.layerbase.dev",
+        "port": 5432,
+        "user": "layerbase",
+        "password": "kJVd0k4EeOheyX10i98HUDOp",
+        "database": "sqlite_001",
+        "sslmode": "require",
+        "application_name": "layerbase-sqlite"
+      },
+      
+      "pool": {
+        "min_connections": 1,
+        "max_connections": 3,
+        "connect_timeout": 10
+      },
+      
+      "retry": {
+        "max_attempts": 5,
+        "base_delay": 2,
+        "max_delay": 30
+      },
+      
+      "health_check": {
+        "interval": 120,
+        "timeout": 10,
+        "auto_reconnect": true
+      },
+      
+      "features": {
+        "supports_interval": false,
+        "supports_jsonb": false,
+        "supports_arrays": false,
+        "single_writer": true,
+        "engine": "sqlite3"
+      },
+      
+      "quota": {
+        "total_mb": 5120,
+        "reserved_mb": 500,
+        "usable_mb": 4620,
+        "warn_threshold_percent": 80,
+        "critical_threshold_percent": 95,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 98,
+        "per_table": {
+          "predictions_archive": {
+            "max_mb": 2048,
+            "description": "آرشیو پیش‌بینی‌ها (سالانه)"
+          },
+          "models_archive": {
+            "max_mb": 1024,
+            "description": "آرشیو مدل‌های قدیمی"
+          },
+          "logs_archive": {
+            "max_mb": 1024,
+            "description": "آرشیو لاگ‌ها"
+          },
+          "backup_snapshots": {
+            "max_mb": 524,
+            "description": "snapshot‌های دوره‌ای"
+          }
+        }
+      },
+      
+      "roles": ["archive"]
+    },
+    
+    "cache": {
+      "type": "redis",
+      "enabled": true,
+      "description": "کش، session، rate limit - Upstash",
+      "mode": "rest",
+      
+      "connection": {
+        "url": "https://chief-buck-93038.upstash.io",
+        "token": "gQAAAAAAAWtuAAIgcDFiMzEzMzhiOWRlYWI0ZTM2YWU3NTI1MzY0M2Q1ZGFlMA",
+        "readonly_token": "ggAAAAAAAWtuAAIgcDETQlEQImbQ2Lbpvvk2mCw5mDGFPhw-Y5lzyHYm-4flpw",
+        "redis_url": "rediss://default:gQAAAAAAAWtuAAIgcDFiMzEzMzhiOWRlYWI0ZTM2YWU3NTI1MzY0M2Q1ZGFlMA@chief-buck-93038.upstash.io:6379",
+        "readonly_redis_url": "rediss://default_ro:ggAAAAAAAWtuAAIgcDETQlEQImbQ2Lbpvvk2mCw5mDGFPhw-Y5lzyHYm-4flpw@chief-buck-93038.upstash.io:6379"
+      },
+      
+      "pool": {
+        "max_connections": 10,
+        "socket_timeout": 10,
+        "socket_connect_timeout": 10,
+        "retry_on_timeout": true,
+        "health_check_interval": 30
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 0.5,
+        "max_delay": 5
+      },
+      
+      "health_check": {
+        "interval": 30,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 256,
+        "reserved_mb": 56,
+        "usable_mb": 200,
+        "warn_threshold_percent": 75,
+        "critical_threshold_percent": 90,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95,
+        "per_namespace": {
+          "cache:api": {
+            "max_mb": 80,
+            "ttl_default": 3600,
+            "description": "کش داده‌های API"
+          },
+          "cache:coin": {
+            "max_mb": 40,
+            "ttl_default": 60,
+            "description": "کش قیمت‌ها"
+          },
+          "cache:chart": {
+            "max_mb": 40,
+            "ttl_default": 3600,
+            "description": "کش نمودارها"
+          },
+          "session": {
+            "max_mb": 20,
+            "ttl_default": 86400,
+            "description": "session کاربران"
+          },
+          "ratelimit": {
+            "max_mb": 10,
+            "ttl_default": 60,
+            "description": "محدودیت نرخ"
+          },
+          "pubsub": {
+            "max_mb": 10,
+            "ttl_default": 0,
+            "description": "Pub/Sub"
+          }
+        }
+      },
+      
+      "roles": ["cache", "session", "ratelimit", "pubsub"]
     }
+  },
+  
+  "routing": {
+    "models": "primary",
+    "predictions": "primary",
+    "users": "primary",
+    "training_history": "primary",
+    "fear_greed_history": "primary",
+    "btc_dominance_history": "primary",
+    "global_market_history": "primary",
+    "commands_log": "primary",
+    
+    "model_backup": "backup",
+    "predictions_backup": "backup",
+    "system_state": "backup",
+    
+    "analytics": "analytics",
+    "model_performance": "analytics",
+    "market_analytics": "analytics",
+    "signal_statistics": "analytics",
+    "daily_summary": "analytics",
+    "reports": "analytics",
+    
+    "system_logs": "logs",
+    "error_logs": "logs",
+    "api_logs": "logs",
+    "audit_logs": "logs",
+    
+    "archive": "archive",
+    "predictions_archive": "archive",
+    "models_archive": "archive",
+    "logs_archive": "archive",
+    
+    "cache": "cache",
+    "session": "cache",
+    "temp_data": "cache",
+    "ratelimit": "cache",
+    "pubsub": "cache"
+  },
+  
+  "default": "primary",
+  
+  "settings": {
+    "cache_ttl": 3600,
+    "session_ttl": 86400,
+    "retry_attempts": 3,
+    "retry_delay": 1,
+    "health_check_interval": 30,
+    "backup_interval": 86400,
+    "archive_interval": 604800,
+    "cleanup_interval": 3600,
+    "quota_check_interval": 300,
+    "auto_migrate_on_startup": true
+  },
+  
+  "alerts": {
+    "quota_warning": {
+      "enabled": true,
+      "channels": ["log", "websocket"],
+      "threshold_percent": 75
+    },
+    "quota_critical": {
+      "enabled": true,
+      "channels": ["log", "websocket", "email"],
+      "threshold_percent": 90
+    },
+    "connection_lost": {
+      "enabled": true,
+      "channels": ["log", "websocket"],
+      "threshold_seconds": 60
+    }
+  }
 }
