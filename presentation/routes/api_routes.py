@@ -265,6 +265,48 @@ def get_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+
+# ============================================================
+# ROUTER & REGISTRY STATS
+# ============================================================
+
+@api_bp.route('/db/router/stats', methods=['GET'])
+@require_auth()
+def db_router_stats():
+    """آمار Router (routes, failovers)"""
+    try:
+        stats = get_router_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/router/rules', methods=['GET'])
+@require_auth()
+def db_router_rules():
+    """نقشه routing فعلی"""
+    try:
+        from infrastructure.database import _get_router
+        router = _get_router()
+        return jsonify({
+            'success': True,
+            'data': router.get_routing_map(),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/registry/summary', methods=['GET'])
+@require_auth()
+def db_registry_summary():
+    """خلاصه Registry"""
+    try:
+        stats = get_registry_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ۴. آمار واقعی اپلیکیشن (APP STATS) - جدید
 # ============================================================
@@ -355,61 +397,67 @@ def format_uptime(seconds):
 
 
 # ============================================================
-# ۵. دیتابیس - PostgreSQL
+# POSTGRESQL ENDPOINTS
 # ============================================================
 
-@api_bp.route('/db/postgresql/tables', methods=['GET'])
+@api_bp.route('/db/postgresql/<db_name>/tables', methods=['GET'])
 @require_auth()
-def postgresql_tables():
-    """دریافت لیست جدول‌های PostgreSQL با جزئیات کامل"""
+def pg_tables(db_name):
+    """
+    لیست جداول PostgreSQL
+    [جایگزین] /api/db/postgresql/tables قدیمی
+    db_name: primary | backup | analytics | logs
+    """
     try:
-        db = get_primary()
+        db = get_db(db_name)
         if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
         
         result = db.execute("""
             SELECT 
                 table_name,
-                (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = t.table_name) as row_count
+                (SELECT COUNT(*) FROM information_schema.tables 
+                 WHERE table_name = t.table_name) as row_count
             FROM information_schema.tables t
             WHERE table_schema = 'public'
             ORDER BY table_name
         """)
         
+        # افزودن حجم هر جدول
         for table in result:
-            # حجم جدول
-            size_result = db.execute(f"""
-                SELECT pg_total_relation_size('{table['table_name']}') / 1024 / 1024 as size_mb
-            """)
-            table['size_mb'] = size_result[0]['size_mb'] if size_result else 0
-            
-            # آخرین بروزرسانی
             try:
-                update_result = db.execute(f"""
-                    SELECT MAX(updated_at) as last_update FROM "{table['table_name']}"
+                size_result = db.execute(f"""
+                    SELECT pg_total_relation_size('{table["table_name"]}') / 1024.0 / 1024.0 as size_mb
                 """)
-                table['last_update'] = update_result[0]['last_update'] if update_result else None
-            except:
-                table['last_update'] = None
+                table['size_mb'] = round(size_result[0]['size_mb'], 2) if size_result else 0
+            except Exception:
+                table['size_mb'] = 0
         
         return jsonify({
             'success': True,
             'data': result,
-            'count': len(result)
+            'db_name': db_name,
+            'count': len(result),
         })
     except Exception as e:
-        logger.error(f"PostgreSQL tables error: {e}", exc_info=True)
+        logger.error(f"PG tables error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/postgresql/table/<table_name>', methods=['GET'])
+@api_bp.route('/db/postgresql/<db_name>/tables/<table_name>', methods=['GET'])
 @require_auth()
-def postgresql_table_data(table_name):
-    """دریافت داده‌های یک جدول خاص PostgreSQL با قابلیت صفحه‌بندی و جستجو"""
+def pg_table_data(db_name, table_name):
+    """
+    داده‌های یک جدول
+    [جایگزین] /api/db/postgresql/table/<n> قدیمی
+    """
     try:
-        db = get_primary()
+        db = get_db(db_name)
         if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
+            return jsonify({'success': False, 'error': f'DB not connected'}), 503
         
         limit = request.args.get('limit', 100, type=int)
         offset = request.args.get('offset', 0, type=int)
@@ -418,251 +466,268 @@ def postgresql_table_data(table_name):
         sort_order = request.args.get('sort_order', 'DESC')
         format_type = request.args.get('format', 'json')
         
-        # بررسی وجود جدول
-        columns = db.execute("""
-            SELECT column_name, data_type
-            FROM information_schema.columns 
-            WHERE table_name = %s
-            ORDER BY ordinal_position
-        """, (table_name,))
+        # اعتبارسنجی sort
+        if sort_order.upper() not in ['ASC', 'DESC']:
+            sort_order = 'DESC'
         
-        if not columns:
-            return jsonify({'success': False, 'error': 'Table not found'}), 404
-        
-        col_names = [c['column_name'] for c in columns]
-        
-        # ساخت کوئری با جستجو
+        # ساخت کوئری
         query = f'SELECT * FROM "{table_name}"'
         params = []
         
         if search:
-            search_conditions = []
+            # گرفتن ستون‌ها
+            columns = db.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s
+            """, (table_name,))
+            
+            col_names = [c['column_name'] for c in columns]
+            
+            conditions = []
             for col in col_names:
                 if col in ['id', 'created_at', 'updated_at']:
                     continue
-                search_conditions.append(f'"{col}"::text ILIKE %s')
+                conditions.append(f'"{col}"::text ILIKE %s')
                 params.append(f'%{search}%')
             
-            if search_conditions:
-                query += ' WHERE ' + ' OR '.join(search_conditions)
+            if conditions:
+                query += ' WHERE ' + ' OR '.join(conditions)
         
-        # مرتب‌سازی
-        if sort_by in col_names:
-            query += f' ORDER BY "{sort_by}" {sort_order}'
-        else:
-            query += ' ORDER BY id DESC'
-        
-        # صفحه‌بندی
-        query += ' LIMIT %s OFFSET %s'
+        query += f' ORDER BY "{sort_by}" {sort_order} LIMIT %s OFFSET %s'
         params.extend([limit, offset])
         
         rows = db.execute(query, tuple(params))
         
-        # دریافت تعداد کل
+        # total
         count_query = f'SELECT COUNT(*) as total FROM "{table_name}"'
         count_params = []
-        
         if search:
-            count_query += ' WHERE ' + ' OR '.join(search_conditions)
-            count_params = [f'%{search}%'] * len(search_conditions) if search_conditions else []
+            count_query += ' WHERE ' + ' OR '.join(conditions)
+            count_params = [f'%{search}%'] * len(conditions)
         
         total_result = db.execute(count_query, tuple(count_params))
         total = total_result[0]['total'] if total_result else 0
         
-        # خروجی CSV
+        # CSV
         if format_type == 'csv':
+            import io, csv
             output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=col_names)
-            writer.writeheader()
-            writer.writerows(rows)
+            if rows:
+                writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
             output.seek(0)
             return send_file(
                 io.BytesIO(output.getvalue().encode('utf-8')),
                 as_attachment=True,
                 download_name=f'{table_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
+                mimetype='text/csv',
             )
         
         return jsonify({
             'success': True,
             'data': {
+                'db_name': db_name,
                 'table': table_name,
-                'columns': col_names,
                 'rows': rows,
                 'total': total,
                 'limit': limit,
                 'offset': offset,
-                'has_more': (offset + limit) < total
-            }
+                'has_more': (offset + limit) < total,
+            },
         })
     except Exception as e:
-        logger.error(f"PostgreSQL table data error: {e}", exc_info=True)
+        logger.error(f"PG table data error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/postgresql/stats', methods=['GET'])
+@api_bp.route('/db/postgresql/<db_name>/table-sizes', methods=['GET'])
 @require_auth()
-def postgresql_stats():
-    """دریافت آمار کامل PostgreSQL"""
+def pg_table_sizes(db_name):
+    """
+    حجم همه جداول
+    [جدید]
+    """
     try:
-        db = get_primary()
+        db = get_db(db_name)
         if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
+            return jsonify({'success': False, 'error': 'DB not connected'}), 503
         
-        # حجم کل دیتابیس
-        size = db.execute("""
-            SELECT 
-                pg_database_size(current_database()) / 1024 / 1024 as total_size_mb,
-                pg_database_size(current_database()) as total_size_bytes
-        """)
+        if hasattr(db, 'get_table_sizes'):
+            sizes = db.get_table_sizes()
+        else:
+            sizes = []
         
-        # تعداد جدول‌ها
-        tables = db.execute("""
-            SELECT COUNT(*) as table_count 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
+        return jsonify({
+            'success': True,
+            'data': sizes,
+            'db_name': db_name,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/postgresql/<db_name>/stats', methods=['GET'])
+@require_auth()
+def pg_stats(db_name):
+    """
+    آمار PostgreSQL
+    [جایگزین] /api/db/postgresql/stats قدیمی
+    """
+    try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'DB not connected'}), 503
         
-        # تعداد کل رکوردها (تقریبی)
-        total_rows = 0
-        table_list = db.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
-        for t in table_list:
-            try:
-                count = db.execute(f'SELECT COUNT(*) as count FROM "{t["table_name"]}"')
-                total_rows += count[0]['count'] if count else 0
-            except:
-                pass
-        
-        # اتصالات فعال
-        connections = db.execute("""
-            SELECT COUNT(*) as active_connections 
-            FROM pg_stat_activity 
-            WHERE state = 'active'
-        """)
+        stats = db.get_stats() if hasattr(db, 'get_stats') else {}
+        quota = db._get_quota_summary() if hasattr(db, '_get_quota_summary') else {}
         
         return jsonify({
             'success': True,
             'data': {
-                'total_size_mb': size[0]['total_size_mb'] if size else 0,
-                'total_size_bytes': size[0]['total_size_bytes'] if size else 0,
-                'table_count': tables[0]['table_count'] if tables else 0,
-                'total_rows': total_rows,
-                'active_connections': connections[0]['active_connections'] if connections else 0,
-                'connected': True,
-                'timestamp': datetime.now().isoformat()
-            }
+                'db_name': db_name,
+                'stats': stats,
+                'quota': quota,
+            },
         })
     except Exception as e:
-        logger.error(f"PostgreSQL stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/postgresql/export/<table_name>', methods=['GET'])
+@api_bp.route('/db/postgresql/<db_name>/export/<table_name>', methods=['GET'])
 @require_auth()
-def postgresql_export(table_name):
-    """خروجی کامل یک جدول PostgreSQL (CSV/JSON)"""
+def pg_export(db_name, table_name):
+    """
+    خروجی CSV/JSON
+    [جایگزین] /api/db/postgresql/export/<n> قدیمی
+    """
     try:
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'DB not connected'}), 503
+        
         format_type = request.args.get('format', 'csv')
         limit = request.args.get('limit', 10000, type=int)
         
-        db = get_primary()
-        if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
-        
-        # بررسی وجود جدول
-        columns = db.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = %s
-            ORDER BY ordinal_position
-        """, (table_name,))
-        
-        if not columns:
-            return jsonify({'success': False, 'error': 'Table not found'}), 404
-        
-        col_names = [c['column_name'] for c in columns]
-        
-        # دریافت داده‌ها
-        rows = db.execute(f'SELECT * FROM "{table_name}" ORDER BY id DESC LIMIT %s', (limit,))
+        rows = db.execute(
+            f'SELECT * FROM "{table_name}" ORDER BY id DESC LIMIT %s',
+            (limit,),
+        )
         
         if format_type == 'csv':
+            import io, csv
             output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=col_names)
-            writer.writeheader()
-            writer.writerows(rows)
+            if rows:
+                writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
             output.seek(0)
             return send_file(
                 io.BytesIO(output.getvalue().encode('utf-8')),
                 as_attachment=True,
-                download_name=f'{table_name}_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
+                download_name=f'{db_name}_{table_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                mimetype='text/csv',
             )
         
-        # JSON
         return jsonify({
             'success': True,
             'data': {
+                'db_name': db_name,
                 'table': table_name,
-                'columns': col_names,
                 'rows': rows,
                 'count': len(rows),
-                'exported_at': datetime.now().isoformat()
-            }
+            },
         })
     except Exception as e:
-        logger.error(f"PostgreSQL export error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/postgresql/backup', methods=['GET'])
-@require_auth('admin')
-def postgresql_backup():
-    """بک‌آپ کامل PostgreSQL (دانلود فایل SQL)"""
+@api_bp.route('/db/postgresql/<db_name>/tables/<table_name>/row/<int:row_id>', methods=['GET'])
+@require_auth()
+def pg_export_row(db_name, table_name, row_id):
+    """
+    خروجی یک ردیف
+    [جایگزین] /api/db/postgresql/table/<n>/export/row/<id> قدیمی
+    """
     try:
-        import subprocess
-        import tempfile
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'DB not connected'}), 503
         
-        # دریافت تنظیمات دیتابیس از محیط
-        db_name = os.getenv('POSTGRES_DB', 'trading')
-        db_user = os.getenv('POSTGRES_USER', 'postgres')
-        db_host = os.getenv('POSTGRES_HOST', 'localhost')
-        db_port = os.getenv('POSTGRES_PORT', '5432')
-        
-        # ایجاد فایل موقت
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.sql') as tmp:
-            tmp_path = tmp.name
-        
-        # اجرای pg_dump
-        cmd = f'pg_dump -h {db_host} -p {db_port} -U {db_user} -d {db_name} -f {tmp_path}'
-        try:
-            subprocess.run(cmd, shell=True, check=True, capture_output=True)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"pg_dump failed: {e.stderr}")
-            return jsonify({'success': False, 'error': 'Backup failed'}), 500
-        
-        return send_file(
-            tmp_path,
-            as_attachment=True,
-            download_name=f'postgresql_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.sql',
-            mimetype='application/sql'
+        row = db.execute(
+            f'SELECT * FROM "{table_name}" WHERE id = %s',
+            (row_id,),
         )
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Row not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'table': table_name,
+                'row_id': row_id,
+                'row': row[0],
+            },
+        })
     except Exception as e:
-        logger.error(f"PostgreSQL backup error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/postgresql/<db_name>/query', methods=['POST'])
+@require_auth('admin')
+def pg_query(db_name):
+    """
+    اجرای کوئری SELECT
+    [جدید + جایگزین /api/db/query قدیمی]
+    """
+    try:
+        data = request.json or {}
+        query_text = data.get('query', '').strip()
+        
+        if not query_text:
+            return jsonify({'success': False, 'error': 'Query required'}), 400
+        
+        # فقط SELECT
+        query_upper = query_text.upper().strip()
+        allowed = ['SELECT', 'WITH', 'EXPLAIN', 'SHOW']
+        if not any(query_upper.startswith(a) for a in allowed):
+            return jsonify({
+                'success': False,
+                'error': f'Only {allowed} allowed',
+            }), 403
+        
+        db = get_db(db_name)
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'DB not connected'}), 503
+        
+        result = db.execute(query_text)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'rows': result,
+                'count': len(result),
+            },
+        })
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================
-# ۶. دیتابیس - Redis
+# REDIS ENDPOINTS
 # ============================================================
 
 @api_bp.route('/db/redis/keys', methods=['GET'])
 @require_auth()
 def redis_keys():
-    """دریافت کلیدهای Redis با جزئیات کامل و قابلیت جستجو"""
+    """
+    لیست کلیدهای Redis با filter
+    [جایگزین نسخه قدیمی — بهتر]
+    """
     try:
         cache = get_cache()
         if not cache or not cache.is_connected():
@@ -672,52 +737,45 @@ def redis_keys():
         limit = request.args.get('limit', 100, type=int)
         search = request.args.get('search', '')
         
-        # دریافت کلیدها
-        keys = cache._client.keys(pattern)
+        # استفاده از SCAN به جای KEYS
+        if hasattr(cache, 'scan_keys'):
+            keys = cache.scan_keys(pattern, count=200)
+        else:
+            keys = cache.keys(pattern)
         
-        # فیلتر بر اساس جستجو
+        # filter بر اساس search
         if search:
-            keys = [k for k in keys if search.lower() in (k.decode('utf-8') if isinstance(k, bytes) else k).lower()]
+            keys = [k for k in keys if search.lower() in k.lower()]
         
         keys = keys[:limit]
         
+        # اطلاعات هر کلید
         result = []
         for key in keys:
-            key_str = key.decode('utf-8') if isinstance(key, bytes) else key
-            key_type = cache._client.type(key)
-            type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
-            ttl = cache._client.ttl(key)
-            
-            # دریافت مقدار (برای نمایش)
-            value = None
             try:
-                if type_str == 'string':
+                key_type = cache._client.type(key)
+                type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
+                ttl = cache._client.ttl(key)
+                
+                # مقدار برای preview
+                preview = None
+                try:
                     val = cache._client.get(key)
-                    value = val.decode('utf-8') if isinstance(val, bytes) else val
-                elif type_str == 'hash':
-                    val = cache._client.hgetall(key)
-                    value = {k.decode('utf-8') if isinstance(k, bytes) else k: 
-                            v.decode('utf-8') if isinstance(v, bytes) else v 
-                            for k, v in val.items()}
-                elif type_str == 'list':
-                    val = cache._client.lrange(key, 0, 10)
-                    value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in val]
-                elif type_str == 'set':
-                    val = cache._client.smembers(key)
-                    value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)[:10]]
-                elif type_str == 'zset':
-                    val = cache._client.zrange(key, 0, 10, withscores=True)
-                    value = [{v.decode('utf-8') if isinstance(v, bytes) else v: score} for v, score in val]
-            except:
-                value = '—'
-            
-            result.append({
-                'key': key_str,
-                'type': type_str,
-                'ttl': f'{ttl}s' if ttl > 0 else '∞' if ttl == -1 else 'expired',
-                'value': value,
-                'size': len(key_str) + (len(str(value)) if value else 0)
-            })
+                    if val:
+                        val_str = val.decode() if isinstance(val, bytes) else str(val)
+                        preview = val_str[:100]
+                except Exception:
+                    pass
+                
+                result.append({
+                    'key': key,
+                    'type': type_str,
+                    'ttl': ttl if ttl > 0 else None,
+                    'preview': preview,
+                })
+            except Exception as e:
+                logger.debug(f"Key info error for {key}: {e}")
+                continue
         
         info = cache._client.info()
         
@@ -727,53 +785,54 @@ def redis_keys():
             'count': len(result),
             'stats': {
                 'memory': info.get('used_memory_human', '—'),
-                'clients': info.get('connected_clients', '—'),
+                'clients': info.get('connected_clients', 0),
                 'total_keys': info.get('db0', {}).get('keys', 0),
-                'uptime': info.get('uptime_in_seconds', 0),
-                'hit_rate': info.get('keyspace_hits', 0) / (info.get('keyspace_hits', 0) + info.get('keyspace_misses', 1)) * 100
-            }
+            },
         })
     except Exception as e:
         logger.error(f"Redis keys error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/redis/key/<path:key>', methods=['GET'])
+@api_bp.route('/db/redis/keys/<path:key>', methods=['GET'])
 @require_auth()
 def redis_get_key(key):
-    """دریافت مقدار یک کلید خاص Redis"""
+    """
+    مقدار یک کلید
+    [جایگزین] /api/db/redis/key/<k> قدیمی
+    """
     try:
         cache = get_cache()
         if not cache or not cache.is_connected():
             return jsonify({'success': False, 'error': 'Redis not connected'}), 503
         
-        # دریافت نوع کلید
         key_type = cache._client.type(key)
-        type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+        type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
         
-        # دریافت مقدار بر اساس نوع
         value = None
         if type_str == 'string':
             val = cache._client.get(key)
-            value = val.decode('utf-8') if isinstance(val, bytes) else val
+            value = val.decode() if isinstance(val, bytes) else val
         elif type_str == 'hash':
             val = cache._client.hgetall(key)
-            value = {k.decode('utf-8') if isinstance(k, bytes) else k: 
-                    v.decode('utf-8') if isinstance(v, bytes) else v 
-                    for k, v in val.items()}
+            value = {
+                k.decode() if isinstance(k, bytes) else k:
+                v.decode() if isinstance(v, bytes) else v
+                for k, v in val.items()
+            }
         elif type_str == 'list':
             val = cache._client.lrange(key, 0, 50)
-            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in val]
+            value = [v.decode() if isinstance(v, bytes) else v for v in val]
         elif type_str == 'set':
             val = cache._client.smembers(key)
-            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)[:50]]
+            value = [v.decode() if isinstance(v, bytes) else v for v in list(val)[:50]]
         elif type_str == 'zset':
             val = cache._client.zrange(key, 0, 50, withscores=True)
-            value = [{v.decode('utf-8') if isinstance(v, bytes) else v: score} for v, score in val]
-        else:
-            value = 'Unsupported type'
+            value = [
+                {v.decode() if isinstance(v, bytes) else v: score}
+                for v, score in val
+            ]
         
-        # دریافت TTL
         ttl = cache._client.ttl(key)
         
         return jsonify({
@@ -782,101 +841,201 @@ def redis_get_key(key):
                 'key': key,
                 'type': type_str,
                 'value': value,
-                'ttl': ttl if ttl > 0 else None
-            }
+                'ttl': ttl if ttl > 0 else None,
+            },
         })
     except Exception as e:
-        logger.error(f"Redis get key error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/redis/keys/<path:key>', methods=['DELETE'])
+@require_auth('admin')
+def redis_delete_key(key):
+    """حذف یک کلید [جدید]"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        deleted = cache._client.delete(key)
+        return jsonify({
+            'success': bool(deleted),
+            'message': f'Key "{key}" deleted' if deleted else 'Key not found',
+        })
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @api_bp.route('/db/redis/stats', methods=['GET'])
 @require_auth()
 def redis_stats():
-    """دریافت آمار کامل Redis"""
+    """آمار کامل Redis [جایگزین بهبود یافته]"""
     try:
         cache = get_cache()
         if not cache or not cache.is_connected():
             return jsonify({'success': False, 'error': 'Redis not connected'}), 503
         
-        info = cache._client.info()
+        stats = cache.get_stats() if hasattr(cache, 'get_stats') else {}
         
         return jsonify({
             'success': True,
-            'data': {
-                'memory': {
-                    'used': info.get('used_memory_human', '—'),
-                    'peak': info.get('used_memory_peak_human', '—'),
-                    'rss': info.get('used_memory_rss_human', '—'),
-                    'max': info.get('maxmemory_human', '—')
-                },
-                'clients': {
-                    'connected': info.get('connected_clients', 0),
-                    'blocked': info.get('blocked_clients', 0),
-                    'max': info.get('maxclients', 10000)
-                },
-                'keys': {
-                    'total': info.get('db0', {}).get('keys', 0),
-                    'expires': info.get('db0', {}).get('expires', 0),
-                    'avg_ttl': info.get('db0', {}).get('avg_ttl', 0)
-                },
-                'performance': {
-                    'hit_rate': info.get('keyspace_hits', 0) / (info.get('keyspace_hits', 0) + info.get('keyspace_misses', 1)) * 100,
-                    'commands_processed': info.get('total_commands_processed', 0),
-                    'connections_received': info.get('total_connections_received', 0)
-                },
-                'uptime': info.get('uptime_in_seconds', 0),
-                'connected': True,
-                'timestamp': datetime.now().isoformat()
-            }
+            'data': stats,
         })
     except Exception as e:
-        logger.error(f"Redis stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/redis/clear', methods=['DELETE'])
+@api_bp.route('/db/redis/namespaces', methods=['GET'])
+@require_auth()
+def redis_namespaces():
+    """آمار namespaceها [جدید]"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        if hasattr(cache, 'get_namespace_stats'):
+            stats = cache.get_namespace_stats()
+        else:
+            stats = {}
+        
+        return jsonify({
+            'success': True,
+            'data': stats,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/redis/namespace/<namespace>', methods=['DELETE'])
 @require_auth('admin')
-def redis_clear():
-    """پاک کردن همه کلیدهای Redis (با تأیید)"""
+def redis_clear_namespace(namespace):
+    """پاک کردن یک namespace [جدید]"""
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        if hasattr(cache, 'cleanup_namespace'):
+            deleted = cache.cleanup_namespace(namespace)
+        else:
+            # Fallback
+            pattern = f"{namespace}:*" if not namespace.endswith(':') else f"{namespace}*"
+            keys = cache.scan_keys(pattern) if hasattr(cache, 'scan_keys') else cache.keys(pattern)
+            deleted = len(keys)
+            if keys:
+                cache.delete_many(keys)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared {deleted} keys from {namespace}',
+            'deleted': deleted,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/redis/flush', methods=['DELETE'])
+@require_auth('admin')
+def redis_flush():
+    """
+    پاک کردن همه کلیدها
+    [جایگزین] /api/db/redis/clear قدیمی
+    """
     try:
         confirm = request.args.get('confirm', 'false').lower() == 'true'
         if not confirm:
             return jsonify({
-                'success': False, 
-                'error': 'Confirmation required. Use ?confirm=true'
+                'success': False,
+                'error': 'Confirmation required. Use ?confirm=true',
             }), 400
         
         cache = get_cache()
         if not cache or not cache.is_connected():
             return jsonify({'success': False, 'error': 'Redis not connected'}), 503
         
-        key_count = len(cache._client.keys('*'))
+        # شمارش قبل از پاک کردن
+        if hasattr(cache, 'scan_keys'):
+            keys_before = len(cache.scan_keys('*', count=1000))
+        else:
+            keys_before = len(cache.keys('*'))
+        
         cache._client.flushdb()
         
         return jsonify({
-            'success': True, 
-            'message': f'Redis cache cleared. {key_count} keys deleted.'
+            'success': True,
+            'message': f'Redis flushed. {keys_before} keys deleted.',
+            'deleted': keys_before,
         })
     except Exception as e:
-        logger.error(f"Redis clear error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/db/redis/keys/<path:key>/export', methods=['GET'])
+@require_auth()
+def redis_export_key(key):
+    """
+    خروجی یک کلید به JSON
+    [جایگزین] /api/db/redis/key/<k>/export قدیمی
+    """
+    try:
+        cache = get_cache()
+        if not cache or not cache.is_connected():
+            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        
+        key_type = cache._client.type(key)
+        type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
+        
+        value = None
+        if type_str == 'string':
+            val = cache._client.get(key)
+            value = val.decode() if isinstance(val, bytes) else val
+        elif type_str == 'hash':
+            val = cache._client.hgetall(key)
+            value = {
+                k.decode() if isinstance(k, bytes) else k:
+                v.decode() if isinstance(v, bytes) else v
+                for k, v in val.items()
+            }
+        elif type_str == 'list':
+            val = cache._client.lrange(key, 0, -1)
+            value = [v.decode() if isinstance(v, bytes) else v for v in val]
+        elif type_str == 'set':
+            val = cache._client.smembers(key)
+            value = [v.decode() if isinstance(v, bytes) else v for v in list(val)]
+        else:
+            value = 'Unsupported type'
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'key': key,
+                'type': type_str,
+                'value': value,
+                'exported_at': datetime.now().isoformat(),
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ============================================================
-# ۷. دیتابیس - SQLite
+# ARCHIVE (SQLite via Layerbase) ENDPOINTS
 # ============================================================
 
-@api_bp.route('/db/sqlite/tables', methods=['GET'])
+@api_bp.route('/db/archive/tables', methods=['GET'])
 @require_auth()
-def sqlite_tables():
-    """دریافت جدول‌های SQLite با تعداد رکوردها و آخرین بروزرسانی"""
+def archive_tables():
+    """
+    لیست جداول Archive
+    [جایگزین] /api/db/sqlite/tables قدیمی
+    """
     try:
-        sqlite = get_backup()
-        if not sqlite or not sqlite.is_connected():
-            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
         
-        tables = sqlite.execute("""
+        # لیست جداول (SQLite)
+        result = db.execute("""
             SELECT name as table_name 
             FROM sqlite_master 
             WHERE type='table' 
@@ -884,96 +1043,71 @@ def sqlite_tables():
             ORDER BY name
         """)
         
-        for table in tables:
+        # شمارش رکوردها
+        for table in result:
             try:
-                count = sqlite.execute(
+                count = db.execute(
                     f"SELECT COUNT(*) as count FROM [{table['table_name']}]"
                 )
                 table['row_count'] = count[0]['count'] if count else 0
-            except:
+            except Exception:
                 table['row_count'] = 0
-            
-            # آخرین بروزرسانی (اگر ستون created_at یا updated_at وجود داشته باشد)
-            try:
-                update = sqlite.execute(
-                    f"SELECT MAX(created_at) as last_update FROM [{table['table_name']}]"
-                )
-                table['last_update'] = update[0]['last_update'] if update else None
-            except:
-                table['last_update'] = None
         
         return jsonify({
             'success': True,
-            'data': tables,
-            'count': len(tables)
+            'data': result,
+            'count': len(result),
         })
     except Exception as e:
-        logger.error(f"SQLite tables error: {e}", exc_info=True)
+        logger.error(f"Archive tables error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/sqlite/table/<table_name>', methods=['GET'])
+@api_bp.route('/db/archive/tables/<table_name>', methods=['GET'])
 @require_auth()
-def sqlite_table_data(table_name):
-    """دریافت داده‌های یک جدول خاص SQLite"""
+def archive_table_data(table_name):
+    """
+    داده‌های یک جدول Archive
+    [جایگزین] /api/db/sqlite/table/<n> قدیمی
+    """
     try:
-        sqlite = get_backup()
-        if not sqlite or not sqlite.is_connected():
-            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
         
         limit = request.args.get('limit', 100, type=int)
         offset = request.args.get('offset', 0, type=int)
         search = request.args.get('search', '')
-        format_type = request.args.get('format', 'json')
         
-        # دریافت اطلاعات ستون‌ها
-        pragma = sqlite.execute(f"PRAGMA table_info({table_name})")
+        # ستون‌ها
+        pragma = db.execute(f"PRAGMA table_info({table_name})")
         if not pragma:
             return jsonify({'success': False, 'error': 'Table not found'}), 404
         
         col_names = [c['name'] for c in pragma]
         
-        # ساخت کوئری
+        # کوئری
         query = f'SELECT * FROM [{table_name}]'
         params = []
         
         if search:
-            search_conditions = []
+            conditions = []
             for col in col_names:
-                if col not in ['id', 'created_at', 'updated_at']:
-                    search_conditions.append(f'"{col}" LIKE ?')
+                if col not in ['id', 'created_at']:
+                    conditions.append(f'"{col}" LIKE ?')
                     params.append(f'%{search}%')
             
-            if search_conditions:
-                query += ' WHERE ' + ' OR '.join(search_conditions)
+            if conditions:
+                query += ' WHERE ' + ' OR '.join(conditions)
         
         query += ' ORDER BY id DESC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         
-        rows = sqlite.execute(query, tuple(params))
+        rows = db.execute(query, tuple(params))
         
-        # تعداد کل
-        count_query = f'SELECT COUNT(*) as total FROM [{table_name}]'
-        count_params = []
-        if search:
-            count_query += ' WHERE ' + ' OR '.join(search_conditions)
-            count_params = [f'%{search}%'] * len(search_conditions) if search_conditions else []
-        
-        total_result = sqlite.execute(count_query, tuple(count_params))
+        # total
+        total_result = db.execute(f'SELECT COUNT(*) as total FROM [{table_name}]')
         total = total_result[0]['total'] if total_result else 0
-        
-        if format_type == 'csv':
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=col_names)
-            writer.writeheader()
-            writer.writerows(rows)
-            output.seek(0)
-            return send_file(
-                io.BytesIO(output.getvalue().encode('utf-8')),
-                as_attachment=True,
-                download_name=f'{table_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
-            )
         
         return jsonify({
             'success': True,
@@ -984,87 +1118,57 @@ def sqlite_table_data(table_name):
                 'total': total,
                 'limit': limit,
                 'offset': offset,
-                'has_more': (offset + limit) < total
-            }
+            },
         })
     except Exception as e:
-        logger.error(f"SQLite table data error: {e}", exc_info=True)
+        logger.error(f"Archive table error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/sqlite/stats', methods=['GET'])
+@api_bp.route('/db/archive/stats', methods=['GET'])
 @require_auth()
-def sqlite_stats():
-    """دریافت آمار SQLite"""
+def archive_stats():
+    """آمار Archive [جایگزین]"""
     try:
-        sqlite = get_backup()
-        if not sqlite or not sqlite.is_connected():
-            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
         
-        # تعداد جدول‌ها
-        tables = sqlite.execute("""
-            SELECT COUNT(*) as count 
-            FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        """)
-        
-        # حجم فایل
-        import os
-        db_path = os.path.join(os.path.dirname(__file__), '../../data/trading.db')
-        size_bytes = os.path.getsize(db_path) if os.path.exists(db_path) else 0
-        
-        # تعداد کل رکوردها
-        total_rows = 0
-        table_list = sqlite.execute("""
-            SELECT name as table_name 
-            FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        """)
-        for t in table_list:
-            try:
-                count = sqlite.execute(f'SELECT COUNT(*) as count FROM [{t["table_name"]}]')
-                total_rows += count[0]['count'] if count else 0
-            except:
-                pass
+        stats = db.get_stats() if hasattr(db, 'get_stats') else {}
         
         return jsonify({
             'success': True,
-            'data': {
-                'table_count': tables[0]['count'] if tables else 0,
-                'total_rows': total_rows,
-                'size_bytes': size_bytes,
-                'size_mb': round(size_bytes / 1024 / 1024, 2),
-                'connected': True,
-                'timestamp': datetime.now().isoformat()
-            }
+            'data': stats,
         })
     except Exception as e:
-        logger.error(f"SQLite stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/sqlite/export/<table_name>', methods=['GET'])
+@api_bp.route('/db/archive/tables/<table_name>/export', methods=['GET'])
 @require_auth()
-def sqlite_export(table_name):
-    """خروجی کامل یک جدول SQLite (CSV/JSON)"""
+def archive_export(table_name):
+    """خروجی یک جدول Archive [جایگزین]"""
     try:
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
+        
         format_type = request.args.get('format', 'csv')
         limit = request.args.get('limit', 10000, type=int)
         
-        sqlite = get_backup()
-        if not sqlite or not sqlite.is_connected():
-            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
-        
-        # دریافت ستون‌ها
-        pragma = sqlite.execute(f"PRAGMA table_info({table_name})")
+        pragma = db.execute(f"PRAGMA table_info({table_name})")
         if not pragma:
             return jsonify({'success': False, 'error': 'Table not found'}), 404
         
         col_names = [c['name'] for c in pragma]
         
-        rows = sqlite.execute(f'SELECT * FROM [{table_name}] ORDER BY id DESC LIMIT ?', (limit,))
+        rows = db.execute(
+            f'SELECT * FROM [{table_name}] ORDER BY id DESC LIMIT ?',
+            (limit,),
+        )
         
         if format_type == 'csv':
+            import io, csv
             output = io.StringIO()
             writer = csv.DictWriter(output, fieldnames=col_names)
             writer.writeheader()
@@ -1073,8 +1177,8 @@ def sqlite_export(table_name):
             return send_file(
                 io.BytesIO(output.getvalue().encode('utf-8')),
                 as_attachment=True,
-                download_name=f'{table_name}_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
+                download_name=f'archive_{table_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                mimetype='text/csv',
             )
         
         return jsonify({
@@ -1084,13 +1188,124 @@ def sqlite_export(table_name):
                 'columns': col_names,
                 'rows': rows,
                 'count': len(rows),
-                'exported_at': datetime.now().isoformat()
-            }
+            },
         })
     except Exception as e:
-        logger.error(f"SQLite export error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@api_bp.route('/db/archive/tables/<table_name>/row/<int:row_id>', methods=['GET'])
+@require_auth()
+def archive_export_row(table_name, row_id):
+    """خروجی یک ردیف Archive [جایگزین]"""
+    try:
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
+        
+        pragma = db.execute(f"PRAGMA table_info({table_name})")
+        if not pragma:
+            return jsonify({'success': False, 'error': 'Table not found'}), 404
+        
+        col_names = [c['name'] for c in pragma]
+        
+        row = db.execute(
+            f'SELECT * FROM [{table_name}] WHERE id = ?',
+            (row_id,),
+        )
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Row not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'table': table_name,
+                'row_id': row_id,
+                'columns': col_names,
+                'row': row[0],
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/archive/cleanup', methods=['POST'])
+@require_auth('admin')
+def archive_cleanup():
+    """
+    پاک کردن رکوردهای قدیمی Archive [جدید]
+    
+    Body:
+        {
+            "table": "predictions_archive",
+            "retention_days": 365
+        }
+    """
+    try:
+        data = request.json or {}
+        table = data.get('table')
+        retention_days = data.get('retention_days', 365)
+        
+        if not table:
+            return jsonify({'success': False, 'error': 'Table required'}), 400
+        
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
+        
+        if hasattr(db, 'cleanup_old_records'):
+            # تشخیص نام ستون تاریخ
+            date_col = 'archived_at' if 'archive' in table else 'created_at'
+            
+            deleted = db.cleanup_old_records(
+                table_name=table,
+                date_column=date_col,
+                retention_days=retention_days,
+            )
+        else:
+            deleted = 0
+        
+        return jsonify({
+            'success': True,
+            'deleted': deleted,
+            'message': f'Deleted {deleted} old records from {table}',
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/archive/features', methods=['GET'])
+@require_auth()
+def archive_features():
+    """
+    ویژگی‌های SQLite (محدودیت‌ها) [جدید]
+    """
+    try:
+        db = get_archive()
+        if not db or not db.is_connected():
+            return jsonify({'success': False, 'error': 'Archive not connected'}), 503
+        
+        config = db.config
+        features = config.get('features', {})
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'engine': 'sqlite3',
+                'features': features,
+                'single_writer': features.get('single_writer', True),
+                'supports_interval': features.get('supports_interval', False),
+                'supports_jsonb': features.get('supports_jsonb', False),
+                'supports_arrays': features.get('supports_arrays', False),
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+#=============================================================
 @api_bp.route('/db/monitor', methods=['GET'])
 @require_auth()
 def db_monitor():
@@ -1607,159 +1822,192 @@ def db_stats():
         logger.error(f"DB stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 # ============================================================
-# اضافه کردن به api_routes.py - بخش دیتابیس
+# QUOTA MANAGEMENT
 # ============================================================
 
-@api_bp.route('/db/postgresql/table/<table_name>/export/row/<int:row_id>', methods=['GET'])
+@api_bp.route('/db/quota', methods=['GET'])
 @require_auth()
-def export_postgresql_row(table_name, row_id):
-    """خروجی یک رکورد خاص از جدول PostgreSQL (JSON/CSV)"""
+def get_all_quotas_endpoint():
+    """دریافت Quota همه دیتابیس‌ها"""
     try:
-        db = get_primary()
+        quotas = get_all_quotas()
+        
+        # افزودن وضعیت لحظه‌ای
+        result = {}
+        for db_name, quota in quotas.items():
+            db = get_db(db_name)
+            if db and db.is_connected():
+                used_mb = 0
+                if hasattr(db, '_calculate_used_size'):
+                    used_mb = db._calculate_used_size()
+                
+                status = get_quota_status(db_name, used_mb)
+                result[db_name] = {
+                    "quota": quota,
+                    "status": status,
+                }
+            else:
+                result[db_name] = {
+                    "quota": quota,
+                    "status": {"connected": False},
+                }
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Get all quotas error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/quota/<db_name>', methods=['GET'])
+@require_auth()
+def get_db_quota(db_name):
+    """دریافت Quota یک دیتابیس"""
+    try:
+        quota = get_quota(db_name)
+        if not quota:
+            return jsonify({
+                'success': False,
+                'error': f'Quota not found for {db_name}',
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'db_name': db_name,
+                'quota': quota,
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/quota/<db_name>/status', methods=['GET'])
+@require_auth()
+def get_db_quota_status(db_name):
+    """دریافت وضعیت لحظه‌ای Quota"""
+    try:
+        db = get_db(db_name)
         if not db or not db.is_connected():
-            return jsonify({'success': False, 'error': 'PostgreSQL not connected'}), 503
+            return jsonify({
+                'success': False,
+                'error': f'Database {db_name} not connected',
+            }), 503
         
-        format_type = request.args.get('format', 'json')
+        used_mb = 0
+        if hasattr(db, '_calculate_used_size'):
+            used_mb = db._calculate_used_size()
         
-        # دریافت ستون‌ها
-        columns = db.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = %s
-            ORDER BY ordinal_position
-        """, (table_name,))
-        
-        if not columns:
-            return jsonify({'success': False, 'error': 'Table not found'}), 404
-        
-        col_names = [c['column_name'] for c in columns]
-        
-        # دریافت رکورد
-        row = db.execute(f'SELECT * FROM "{table_name}" WHERE id = %s', (row_id,))
-        if not row:
-            return jsonify({'success': False, 'error': 'Row not found'}), 404
-        
-        if format_type == 'csv':
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=col_names)
-            writer.writeheader()
-            writer.writerow(row[0])
-            output.seek(0)
-            return send_file(
-                io.BytesIO(output.getvalue().encode('utf-8')),
-                as_attachment=True,
-                download_name=f'{table_name}_row_{row_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
-            )
+        status = get_quota_status(db_name, used_mb)
         
         return jsonify({
             'success': True,
-            'data': {
-                'table': table_name,
-                'row_id': row_id,
-                'columns': col_names,
-                'row': row[0]
-            }
+            'data': status,
+            'timestamp': datetime.now().isoformat(),
         })
     except Exception as e:
-        logger.error(f"Export PostgreSQL row error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/sqlite/table/<table_name>/export/row/<int:row_id>', methods=['GET'])
-@require_auth()
-def export_sqlite_row(table_name, row_id):
-    """خروجی یک رکورد خاص از جدول SQLite (JSON/CSV)"""
+@api_bp.route('/db/quota/<db_name>', methods=['POST'])
+@require_auth('admin')
+def set_db_quota(db_name):
+    """
+    تنظیم محدودیت دیتابیس
+    
+    Body:
+        {
+            "total_mb": 400,
+            "reserved_mb": 100,
+            "warn_threshold": 75,
+            "critical_threshold": 90,
+            "auto_cleanup": true
+        }
+    """
     try:
-        sqlite = get_backup()
-        if not sqlite or not sqlite.is_connected():
-            return jsonify({'success': False, 'error': 'SQLite not connected'}), 503
+        data = request.json or {}
         
-        format_type = request.args.get('format', 'json')
+        result = set_database_limit(
+            db_name=db_name,
+            total_mb=data.get('total_mb'),
+            reserved_mb=data.get('reserved_mb'),
+            warn_threshold=data.get('warn_threshold'),
+            critical_threshold=data.get('critical_threshold'),
+            auto_cleanup=data.get('auto_cleanup'),
+        )
         
-        # دریافت ستون‌ها
-        pragma = sqlite.execute(f"PRAGMA table_info({table_name})")
-        if not pragma:
-            return jsonify({'success': False, 'error': 'Table not found'}), 404
-        
-        col_names = [c['name'] for c in pragma]
-        
-        # دریافت رکورد
-        row = sqlite.execute(f'SELECT * FROM [{table_name}] WHERE id = %s', (row_id,))
-        if not row:
-            return jsonify({'success': False, 'error': 'Row not found'}), 404
-        
-        if format_type == 'csv':
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=col_names)
-            writer.writeheader()
-            writer.writerow(row[0])
-            output.seek(0)
-            return send_file(
-                io.BytesIO(output.getvalue().encode('utf-8')),
-                as_attachment=True,
-                download_name=f'{table_name}_row_{row_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                mimetype='text/csv'
-            )
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'table': table_name,
-                'row_id': row_id,
-                'columns': col_names,
-                'row': row[0]
-            }
-        })
+        return jsonify(result), 200 if result.get('success') else 400
     except Exception as e:
-        logger.error(f"Export SQLite row error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/redis/key/<path:key>/export', methods=['GET'])
-@require_auth()
-def export_redis_key(key):
-    """خروجی یک کلید Redis به صورت JSON"""
+@api_bp.route('/db/quota/<db_name>/table/<table_name>', methods=['POST'])
+@require_auth('admin')
+def set_table_quota(db_name, table_name):
+    """
+    تنظیم محدودیت یک جدول
+    
+    Body:
+        {
+            "max_mb": 200,
+            "retention_days": 30,
+            "keep_last_n": 10
+        }
+    """
     try:
-        cache = get_cache()
-        if not cache or not cache.is_connected():
-            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
+        data = request.json or {}
         
-        key_type = cache._client.type(key)
-        type_str = key_type.decode('utf-8') if isinstance(key_type, bytes) else key_type
+        result = set_table_limit(
+            db_name=db_name,
+            table_name=table_name,
+            max_mb=data.get('max_mb'),
+            retention_days=data.get('retention_days'),
+            keep_last_n=data.get('keep_last_n'),
+        )
         
-        value = None
-        if type_str == 'string':
-            val = cache._client.get(key)
-            value = val.decode('utf-8') if isinstance(val, bytes) else val
-        elif type_str == 'hash':
-            val = cache._client.hgetall(key)
-            value = {k.decode('utf-8') if isinstance(k, bytes) else k: 
-                    v.decode('utf-8') if isinstance(v, bytes) else v 
-                    for k, v in val.items()}
-        elif type_str == 'list':
-            val = cache._client.lrange(key, 0, -1)
-            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in val]
-        elif type_str == 'set':
-            val = cache._client.smembers(key)
-            value = [v.decode('utf-8') if isinstance(v, bytes) else v for v in list(val)]
-        else:
-            value = 'Unsupported type'
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'key': key,
-                'type': type_str,
-                'value': value,
-                'exported_at': datetime.now().isoformat()
-            }
-        })
+        return jsonify(result), 200 if result.get('success') else 400
     except Exception as e:
-        logger.error(f"Export Redis key error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-        
+
+
+@api_bp.route('/db/quota/<db_name>', methods=['DELETE'])
+@require_auth('admin')
+def reset_db_quota(db_name):
+    """ریست overrides یک دیتابیس"""
+    try:
+        result = reset_quota_overrides(db_name)
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/quota', methods=['DELETE'])
+@require_auth('admin')
+def reset_all_quotas():
+    """ریست همه overrides"""
+    try:
+        result = reset_quota_overrides(None)
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/quota/stats', methods=['GET'])
+@require_auth()
+def get_quota_stats():
+    """آمار QuotaManager"""
+    try:
+        stats = get_quota_manager_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================
 # ۹. مدل (MODEL)
 # ============================================================
