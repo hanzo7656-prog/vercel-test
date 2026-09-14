@@ -4776,7 +4776,151 @@ def debug_env():
         "database_factory": factory_status,
         "registry": registry_status,
     })
+
+@api_bp.route('/debug/db-detail', methods=['GET'])
+def debug_db_detail():
+    """
+    تشخیص دقیق مشکل دیتابیس
+    """
+    import os
+    import traceback
     
+    result = {
+        "env_vars": {},
+        "database_factory": {},
+        "registry_module": {},
+        "registry_instance": {},
+        "router": {},
+        "test_neon": {},
+        "test_redis": {},
+    }
+    
+    # ============================================================
+    # ۱. Env
+    # ============================================================
+    
+    for key in ["NEON_PRIMARY_HOST", "UPSTASH_REDIS_URL", "LAYERBASE_HOST"]:
+        result["env_vars"][key] = "✅ SET" if os.getenv(key) else "❌ NOT SET"
+    
+    # ============================================================
+    # ۲. Database Factory
+    # ============================================================
+    
+    try:
+        from infrastructure.database.database_factory import db_factory
+        
+        result["database_factory"] = {
+            "type": str(type(db_factory)),
+            "config": {
+                "databases": list(getattr(db_factory, "_config", {}).get("databases", {}).keys()),
+                "default": getattr(db_factory, "_config", {}).get("default"),
+                "routing_keys": list(getattr(db_factory, "_config", {}).get("routing", {}).keys()),
+            },
+            "init_started": getattr(db_factory, "_init_started_at", None).isoformat() if getattr(db_factory, "_init_started_at", None) else None,
+            "init_completed": getattr(db_factory, "_init_completed_at", None).isoformat() if getattr(db_factory, "_init_completed_at", None) else None,
+            "failed_connections": getattr(db_factory, "_failed_connections", []),
+            "total_retries": getattr(db_factory, "_total_retries", 0),
+        }
+    except Exception as e:
+        result["database_factory"] = {"error": str(e), "traceback": traceback.format_exc()}
+    
+    # ============================================================
+    # ۳. Registry Module (مهم)
+    # ============================================================
+    
+    try:
+        import infrastructure.database.registry as reg_module
+        
+        result["registry_module"] = {
+            "type": str(type(reg_module)),
+            "has_registry": hasattr(reg_module, "registry"),
+            "registry_type": str(type(reg_module.registry)) if hasattr(reg_module, "registry") else None,
+            "dir_sample": [x for x in dir(reg_module) if not x.startswith("__")][:20],
+        }
+    except Exception as e:
+        result["registry_module"] = {"error": str(e), "traceback": traceback.format_exc()}
+    
+    # ============================================================
+    # ۴. Registry Instance (از _get_registry)
+    # ============================================================
+    
+    try:
+        from infrastructure.database import _get_registry
+        reg = _get_registry()
+        
+        result["registry_instance"] = {
+            "type": str(type(reg)),
+            "databases": list(getattr(reg, "_databases", {}).keys()),
+            "roles": dict(getattr(reg, "_roles", {})),
+            "config": getattr(reg, "_config", {}),
+        }
+    except Exception as e:
+        result["registry_instance"] = {"error": str(e), "traceback": traceback.format_exc()}
+    
+    # ============================================================
+    # ۵. Test Neon (مستقیم)
+    # ============================================================
+    
+    try:
+        import psycopg2
+        
+        result["test_neon"]["host"] = os.getenv("NEON_PRIMARY_HOST")
+        result["test_neon"]["user"] = os.getenv("NEON_PRIMARY_USER")
+        
+        conn = psycopg2.connect(
+            host=os.getenv("NEON_PRIMARY_HOST"),
+            port=5432,
+            user=os.getenv("NEON_PRIMARY_USER"),
+            password=os.getenv("NEON_PRIMARY_PASSWORD"),
+            dbname=os.getenv("NEON_PRIMARY_DB"),
+            sslmode="require",
+            channel_binding="require",
+            connect_timeout=15,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT version()")
+        version = cursor.fetchone()[0][:60]
+        cursor.close()
+        conn.close()
+        result["test_neon"]["status"] = "✅ OK"
+        result["test_neon"]["version"] = version
+    except Exception as e:
+        result["test_neon"]["status"] = "❌ FAILED"
+        result["test_neon"]["error"] = str(e)
+        result["test_neon"]["error_type"] = type(e).__name__
+    
+    # ============================================================
+    # ۶. Test Redis (مستقیم)
+    # ============================================================
+    
+    try:
+        import redis
+        
+        redis_url = os.getenv("UPSTASH_REDIS_URL_FULL")
+        result["test_redis"]["url_start"] = redis_url[:30] if redis_url else "NOT SET"
+        
+        r = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_timeout=15,
+            ssl_cert_reqs=None,
+        )
+        pong = r.ping()
+        result["test_redis"]["status"] = f"✅ PONG: {pong}"
+    except Exception as e:
+        result["test_redis"]["status"] = "❌ FAILED"
+        result["test_redis"]["error"] = str(e)
+        result["test_redis"]["error_type"] = type(e).__name__
+    
+    # ============================================================
+    # Output
+    # ============================================================
+    
+    return jsonify({
+        "success": True,
+        "data": result,
+        "timestamp": datetime.now().isoformat(),
+    })w
 # ============================================================
 # اندپوینت‌های Self-Healing
 # ============================================================
