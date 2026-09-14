@@ -2842,38 +2842,72 @@ def analyze_training_endpoint():
         logger.error(f"Analyze training error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
-# ۱۰. زمان‌بندی (SCHEDULE)
+# ۱۰. زمان‌بندی (SCHEDULE) برای auto_trainer.py
 # ============================================================
 
 @api_bp.route('/schedule/status', methods=['GET'])
 @require_auth()
 def schedule_status():
-    """دریافت وضعیت زمان‌بندی آموزش"""
+    """دریافت وضعیت کامل زمان‌بندی آموزش"""
     try:
         container = current_app.container
         trainer = container.get('trainer')
         
         stats = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
+        
         return jsonify({
             'success': True,
             'data': {
+                # وضعیت
                 'is_running': stats.get('is_running', False),
+                'is_training': stats.get('is_training', False),
+                
+                # تنظیمات
                 'interval_hours': stats.get('stats', {}).get('training_period', 6),
+                'period': stats.get('stats', {}).get('training_period', '1m'),
                 'coins': stats.get('coins', []),
+                'profile_name': stats.get('stats', {}).get('profile_name', 'balanced'),
+                
+                # آمار آموزش
+                'total_trainings': stats.get('stats', {}).get('total_trainings', 0),
+                'successful_trainings': stats.get('stats', {}).get('successful_trainings', 0),
+                'failed_trainings': stats.get('stats', {}).get('failed_trainings', 0),
                 'last_training': stats.get('stats', {}).get('last_training'),
-                'period': stats.get('period', '1m'),
-                'next_training': stats.get('stats', {}).get('next_training')
+                'last_error': stats.get('stats', {}).get('last_error'),
+                'last_score': stats.get('stats', {}).get('last_score'),
+                
+                # API
+                'api_status': stats.get('api_status', {}),
+                
+                # Quota
+                'quota': stats.get('quota', {}),
+                
+                # لاگ‌ها (۱۰ تا آخر)
+                'recent_logs': stats.get('logs', [])[-10:],
+                
+                # Timestamp
+                'timestamp': datetime.now().isoformat(),
             }
         })
     except Exception as e:
         logger.error(f"Schedule status error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @api_bp.route('/schedule/start', methods=['POST'])
 @require_auth('admin')
 def schedule_start():
-    """شروع زمان‌بندی آموزش خودکار"""
+    """
+    شروع زمان‌بندی آموزش خودکار
+    
+    Body:
+        {
+            "interval": 6,                    // ساعت
+            "period": "1m",                   // بازه
+            "coins": ["bitcoin", "ethereum"], // ارزها
+            "profile_name": "balanced",       // ← جدید
+            "incremental": false              // ← پیش‌فرض تغییر کرد
+        }
+    """
     try:
         container = current_app.container
         trainer = container.get('trainer')
@@ -2882,16 +2916,132 @@ def schedule_start():
         interval = data.get('interval', 6)
         period = data.get('period', '1m')
         coins = data.get('coins', ['bitcoin', 'ethereum'])
-        incremental = data.get('incremental', True)
+        profile_name = data.get('profile_name', 'balanced')  # ← جدید
+        incremental = data.get('incremental', False)  # ← پیش‌فرض تغییر کرد
         
         result = trainer.start_auto_train(
             interval_hours=interval,
             period=period,
-            incremental=incremental
+            coins=coins,
+            profile_name=profile_name,
+            incremental=incremental,
         )
         return jsonify(result), 200 if result.get('success') else 400
     except Exception as e:
         logger.error(f"Schedule start error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/train-batch', methods=['POST'])
+@require_auth('admin')
+def train_batch_endpoint():
+    """
+    آموزش با چند پروفایل (A/B Testing)
+    
+    Body:
+        {
+            "profiles": ["fast", "balanced", "accurate"],
+            "period": "1m",
+            "coins": ["bitcoin", "ethereum"]
+        }
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                "best_profile": "accurate",
+                "best_accuracy": 0.78,
+                "results": {
+                    "fast": {...},
+                    "balanced": {...},
+                    "accurate": {...}
+                },
+                "final_model": {...},
+                "summary": {...}
+            }
+        }
+    """
+    try:
+        data = request.json or {}
+        profiles = data.get('profiles', [])
+        period = data.get('period', '1m')
+        coins = data.get('coins')
+        
+        if not profiles or len(profiles) < 2:
+            return jsonify({
+                'success': False,
+                'error': 'At least 2 profiles required for A/B testing',
+            }), 400
+        
+        container = current_app.container
+        trainer = container.get('trainer')
+        
+        result = trainer.train_batch(
+            profiles=profiles,
+            period=period,
+            coins=coins,
+        )
+        
+        return jsonify({
+            'success': result.get('success', False),
+            'data': result,
+            'timestamp': datetime.now().isoformat(),
+        }), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Train batch error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/model/analytics-stats', methods=['GET'])
+@require_auth()
+def model_analytics_stats():
+    """
+    دریافت آمار بلندمدت از Analytics DB
+    
+    Query params:
+        days: تعداد روز (پیش‌فرض: 30)
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                "summary": {
+                    "total_records": 45,
+                    "avg_accuracy": 0.72,
+                    "max_accuracy": 0.78,
+                    "min_accuracy": 0.65
+                },
+                "daily": [
+                    {"date": "2026-09-14", "avg_accuracy": 0.75, "models_count": 3},
+                    ...
+                ],
+                "period_days": 30
+            }
+        }
+    """
+    try:
+        days = request.args.get('days', 30, type=int)
+        
+        container = current_app.container
+        trainer = container.get('trainer')
+        
+        if not hasattr(trainer, 'get_analytics_stats'):
+            return jsonify({
+                'success': False,
+                'error': 'Analytics stats not available',
+            }), 503
+        
+        result = trainer.get_analytics_stats(days=days)
+        
+        return jsonify({
+            'success': result.get('success', True),
+            'data': result,
+            'timestamp': datetime.now().isoformat(),
+        }), 200 if 'error' not in result else 500
+        
+    except Exception as e:
+        logger.error(f"Analytics stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
