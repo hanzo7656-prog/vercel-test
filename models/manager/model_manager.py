@@ -739,618 +739,701 @@ class ModelManager:
     # Training - Public API
     # ============================================================
     
+    
     def train(
-        self,
-        period: str = "1m",
-        coins: Optional[List[str]] = None,
-        profile: Optional[Dict[str, Any]] = None,
-        save: bool = True,
-    ) -> Dict[str, Any]:
-        """
-        آموزش مدل با پروفایل
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str = "1m",
+    coins: Optional[List[str]] = None,
+    save: bool = True,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    آموزش مدل با داده صریح
+    
+    پارامترها:
+        X: ویژگی‌ها (shape: n_samples × n_features)
+        y: برچسب‌ها (shape: n_samples,) — مقادیر ۰ یا ۱
+        profile: پروفایل آموزش (شامل hyperparameters و strategy)
+        period: بازه داده (metadata)
+        coins: ارزها (metadata)
+        save: آیا مدل ذخیره بشه؟
+        profile_name: نام پروفایل (برای لاگ)
+    
+    خروجی:
+        دیکشنری نتیجه شامل:
+            - success: bool
+            - version: str
+            - accuracy: float
+            - strategy_used: str
+            - profile_used: str
+            - training_time: float
+            - model_id: int
+            - samples: int
+            - quota: dict
+    """
+    with self._lock:
+        self._stats["trainings"] += 1
         
-        پارامترها:
-            period: بازه داده
-            coins: لیست ارزها
-            profile: پروفایل (اگه None، از پروفایل فعال)
-            save: آیا مدل ذخیره بشه؟
+        # ========== اعتبارسنجی ==========
         
-        خروجی:
-            دیکشنری نتیجه شامل:
-                - success
-                - version
-                - accuracy
-                - strategy_used
-                - profile_used
-                - training_time
-                - model_id
-        """
-        with self._lock:
-            self._stats["trainings"] += 1
-            
-            # انتخاب پروفایل
-            if profile is None:
-                profile = self._active_profile
-            else:
-                validation = self.validate_profile(profile)
-                if not validation["valid"]:
-                    self._stats["errors"] += 1
-                    return {
-                        "success": False,
-                        "error": "Invalid profile",
-                        "details": validation["errors"],
-                    }
-                profile = validation["profile"]
-            
-            strategy = profile.get("learning_strategy", "full")
-            
-            # اعتبارسنجی استراتژی
-            if strategy not in LEARNING_STRATEGIES:
+        # 1. Profile
+        validation = self.validate_profile(profile)
+        if not validation["valid"]:
+            self._stats["errors"] += 1
+            return {
+                "success": False,
+                "error": "Invalid profile",
+                "details": validation["errors"],
+            }
+        
+        validated_profile = validation["profile"]
+        strategy = validated_profile.get("learning_strategy", "full")
+        
+        # 2. داده
+        if X is None or y is None:
+            self._stats["errors"] += 1
+            return {
+                "success": False,
+                "error": "Training data is None",
+            }
+        
+        if len(X) == 0:
+            self._stats["errors"] += 1
+            return {
+                "success": False,
+                "error": "Empty training data",
+            }
+        
+        if len(X) != len(y):
+            self._stats["errors"] += 1
+            return {
+                "success": False,
+                "error": f"X and y size mismatch: {len(X)} vs {len(y)}",
+            }
+        
+        # 3. Strategy
+        if strategy not in LEARNING_STRATEGIES:
+            self._stats["errors"] += 1
+            return {
+                "success": False,
+                "error": f"Invalid strategy: {strategy}",
+            }
+        
+        # 4. نیاز به مدل قبلی؟
+        if LEARNING_STRATEGIES[strategy]["requires_existing_model"]:
+            if self.current_model is None:
                 self._stats["errors"] += 1
                 return {
                     "success": False,
-                    "error": f"Invalid strategy: {strategy}",
+                    "error": f"Strategy '{strategy}' requires existing model",
                 }
-            
-            # چک نیاز به مدل قبلی
-            if LEARNING_STRATEGIES[strategy]["requires_existing_model"]:
-                if self.current_model is None:
-                    self._stats["errors"] += 1
-                    return {
-                        "success": False,
-                        "error": f"Strategy '{strategy}' requires existing model",
-                    }
-            
-            logger.info(
-                f"🚀 Training started "
-                f"(strategy: {strategy}, "
-                f"profile: {profile.get('name')}, "
-                f"period: {period}, "
-                f"coins: {coins})"
-            )
-            
-            # Dispatch بر اساس استراتژی
+        
+        # ========== شروع آموزش ==========
+        
+        logger.info(
+            f"🚀 Training started "
+            f"(strategy: {strategy}, "
+            f"profile: {profile_name or validated_profile.get('name')}, "
+            f"period: {period}, "
+            f"samples: {len(X)})"
+        )
+        
+        # ========== Dispatch ==========
+        
+        try:
             if strategy == "full":
-                return self._train_full(period, coins, profile, save)
+                return self._train_full(
+                    X, y, validated_profile,
+                    period, coins, save, profile_name,
+                )
             elif strategy == "incremental":
-                return self._train_incremental(period, coins, profile, save)
+                return self._train_incremental(
+                    X, y, validated_profile,
+                    period, coins, save, profile_name,
+                )
             elif strategy == "transfer":
-                return self._train_transfer(period, coins, profile, save)
+                return self._train_transfer(
+                    X, y, validated_profile,
+                    period, coins, save, profile_name,
+                )
             elif strategy == "fine_tune":
-                return self._train_fine_tune(period, coins, profile, save)
+                return self._train_fine_tune(
+                    X, y, validated_profile,
+                    period, coins, save, profile_name,
+                )
             elif strategy == "ensemble":
-                return self._train_ensemble(period, coins, profile, save)
+                return self._train_ensemble(
+                    X, y, validated_profile,
+                    period, coins, save, profile_name,
+                )
             else:
+                self._stats["errors"] += 1
                 return {
                     "success": False,
                     "error": f"Strategy '{strategy}' not implemented",
                 }
+        
+        except Exception as e:
+            self._stats["errors"] += 1
+            logger.error(f"❌ Training error: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
     
     def _train_full(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        profile: Dict[str, Any],
-        save: bool,
-    ) -> Dict[str, Any]:
-        """
-        آموزش کامل از صفر
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str,
+    coins: Optional[List[str]],
+    save: bool,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    آموزش کامل از صفر
+    
+    استراتژی: XGBClassifier با hyperparameters از profile
+    """
+    try:
+        # 1. چک Quota (تخمین)
+        quota_result = self._check_quota_before_training(profile)
         
-        از XGBClassifier استفاده می‌کنه
-        """
-        try:
-            # 1. دریافت داده‌های آموزشی
-            training_data = self._fetch_training_data(period, coins)
+        # 2. ساخت مدل
+        hyperparams = profile["hyperparameters"]
+        
+        params = {
+            **hyperparams,
+            "random_state": 42,
+            "eval_metric": "logloss",
+        }
+        
+        # 3. شروع زمان
+        start_time = datetime.now()
+        
+        # 4. آموزش
+        model = xgb.XGBClassifier(**params)
+        model.fit(X, y)
+        
+        training_time = (datetime.now() - start_time).total_seconds()
+        
+        # 5. تبدیل به Booster (برای ذخیره‌سازی یکنواخت)
+        booster = model.get_booster()
+        
+        # 6. ارزیابی
+        accuracy = self._evaluate(booster, X, y)
+        
+        # 7. ذخیره
+        if save:
+            save_result = self.save_model(
+                model=booster,
+                accuracy=accuracy,
+                period=period,
+                coins=coins,
+                features=self.config.get("features", []),
+                training_samples=len(X),
+                set_active=True,
+                backup=True,
+                profile_name=profile_name or profile.get("name"),
+                strategy="full",
+            )
             
-            if training_data.get("error"):
-                return {
-                    "success": False,
-                    "error": training_data["error"],
-                }
+            if not save_result.get("success"):
+                return save_result
             
-            X = training_data["X"]
-            y = training_data["y"]
-            
-            if len(X) == 0:
-                return {"success": False, "error": "No training data"}
-            
-            # 2. چک Quota
-            quota_result = self._check_quota_before_training(profile)
-            
-            # 3. ساخت مدل
-            hyperparams = profile["hyperparameters"]
-            params = {
-                **hyperparams,
-                "random_state": 42,
-                "eval_metric": "logloss",
+            return {
+                "success": True,
+                "version": save_result["version"],
+                "model_id": save_result.get("model_id"),
+                "accuracy": accuracy,
+                "training_time": training_time,
+                "strategy_used": "full",
+                "profile_used": profile_name or profile.get("name"),
+                "samples": len(X),
+                "quota": quota_result,
             }
-            
-            start_time = datetime.now()
-            
-            # آموزش
-            model = xgb.XGBClassifier(**params)
-            model.fit(X, y)
-            
-            training_time = (datetime.now() - start_time).total_seconds()
-            
-            # تبدیل به Booster برای ذخیره‌سازی یکنواخت
-            booster = model.get_booster()
-            
-            # 4. ارزیابی
-            accuracy = self._evaluate(booster, X, y)
-            
-            # 5. ذخیره
+        else:
+            # فقط آموزش بدون ذخیره
+            self.current_model = booster
+            return {
+                "success": True,
+                "accuracy": accuracy,
+                "training_time": training_time,
+                "strategy_used": "full",
+                "profile_used": profile_name or profile.get("name"),
+                "samples": len(X),
+                "saved": False,
+            }
+    
+    except xgb.core.XGBoostError as e:
+        logger.error(f"❌ XGBoost error: {e}")
+        self._stats["errors"] += 1
+        return {"success": False, "error": f"XGBoost error: {str(e)}"}
+    except Exception as e:
+        logger.error(f"❌ Full training error: {e}", exc_info=True)
+        self._stats["errors"] += 1
+        return {"success": False, "error": str(e)}
+        
+    def _train_incremental(
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str,
+    coins: Optional[List[str]],
+    save: bool,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    آموزش افزایشی - اضافه کردن درخت‌های جدید به مدل موجود
+    
+    استراتژی: xgb.train با xgb_model=current_model
+    """
+    try:
+        if self.current_model is None:
+            return {
+                "success": False,
+                "error": "No existing model for incremental training",
+            }
+        
+        # 1. ارزیابی مدل قبلی
+        old_accuracy = self._evaluate(self.current_model, X, y)
+        
+        # 2. hyperparameters با lr کمتر (برای incremental)
+        hyperparams = profile["hyperparameters"].copy()
+        hyperparams["learning_rate"] = min(
+            hyperparams.get("learning_rate", 0.1),
+            0.05,
+        )
+        
+        params = {
+            key: hyperparams[key]
+            for key in [
+                "objective", "learning_rate", "max_depth",
+                "subsample", "colsample_bytree", "min_child_weight",
+                "gamma", "reg_alpha", "reg_lambda", "tree_method",
+            ]
+            if key in hyperparams
+        }
+        
+        # اطمینان از وجود objective
+        params.setdefault("objective", "binary:logistic")
+        params.setdefault("tree_method", "hist")
+        
+        # 3. ساخت DMatrix
+        dtrain = xgb.DMatrix(X, label=y)
+        
+        # 4. آموزش
+        start_time = datetime.now()
+        
+        new_model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=hyperparams.get("n_estimators", 100),
+            xgb_model=self.current_model,
+        )
+        
+        training_time = (datetime.now() - start_time).total_seconds()
+        
+        # 5. ارزیابی جدید
+        new_accuracy = self._evaluate(new_model, X, y)
+        improvement = new_accuracy - old_accuracy
+        
+        # 6. تصمیم
+        if improvement > 0.01:
+            # بهبود خوب — ذخیره
             if save:
-                save_result = self.save_model(
-                    model=booster,
-                    accuracy=accuracy,
+                result = self.save_model(
+                    model=new_model,
+                    accuracy=new_accuracy,
                     period=period,
                     coins=coins,
-                    features=self.config.get("features", []),
                     training_samples=len(X),
                     set_active=True,
                     backup=True,
-                    profile_name=profile.get("name"),
-                    strategy="full",
+                    profile_name=profile_name or profile.get("name"),
+                    strategy="incremental",
                 )
                 
-                if not save_result.get("success"):
-                    return save_result
+                if not result.get("success"):
+                    return result
                 
                 return {
-                    "success": True,
-                    "version": save_result["version"],
-                    "model_id": save_result.get("model_id"),
-                    "accuracy": accuracy,
-                    "training_time": training_time,
-                    "strategy_used": "full",
-                    "profile_used": profile.get("name"),
-                    "samples": len(X),
-                    "quota": quota_result,
-                }
-            else:
-                # فقط آموزش بدون ذخیره
-                self.current_model = booster
-                return {
-                    "success": True,
-                    "accuracy": accuracy,
-                    "training_time": training_time,
-                    "strategy_used": "full",
-                    "profile_used": profile.get("name"),
-                    "samples": len(X),
-                    "saved": False,
-                }
-                
-        except xgb.core.XGBoostError as e:
-            logger.error(f"❌ XGBoost training error: {e}")
-            self._stats["errors"] += 1
-            return {"success": False, "error": f"XGBoost error: {str(e)}"}
-        except Exception as e:
-            logger.error(f"❌ Training error: {e}", exc_info=True)
-            self._stats["errors"] += 1
-            return {"success": False, "error": str(e)}
-    
-    def _train_incremental(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        profile: Dict[str, Any],
-        save: bool,
-    ) -> Dict[str, Any]:
-        """
-        آموزش افزایشی - اضافه کردن درخت‌های جدید
-        """
-        try:
-            if self.current_model is None:
-                return {
-                    "success": False,
-                    "error": "No existing model for incremental training",
-                }
-            
-            # 1. داده
-            training_data = self._fetch_training_data(period, coins)
-            if training_data.get("error"):
-                return training_data
-            
-            X = training_data["X"]
-            y = training_data["y"]
-            
-            # 2. Arزیابی قبلی
-            old_accuracy = self._evaluate(self.current_model, X, y)
-            
-            # 3. آموزش افزایشی
-            hyperparams = profile["hyperparameters"].copy()
-            hyperparams["learning_rate"] = min(
-                hyperparams.get("learning_rate", 0.1),
-                0.05  # برای incremental، lr کمتر
-            )
-            
-            params = {
-                key: hyperparams[key]
-                for key in [
-                    "objective", "learning_rate", "max_depth",
-                    "subsample", "colsample_bytree", "min_child_weight",
-                    "gamma", "reg_alpha", "reg_lambda", "tree_method"
-                ]
-                if key in hyperparams
-            }
-            
-            dtrain = xgb.DMatrix(X, label=y)
-            
-            start_time = datetime.now()
-            
-            new_model = xgb.train(
-                params,
-                dtrain,
-                num_boost_round=hyperparams.get("n_estimators", 100),
-                xgb_model=self.current_model,
-            )
-            
-            training_time = (datetime.now() - start_time).total_seconds()
-            
-            # 4. ارزیابی جدید
-            new_accuracy = self._evaluate(new_model, X, y)
-            improvement = new_accuracy - old_accuracy
-            
-            # 5. تصمیم
-            if improvement > 0.01:
-                # بهبود خوب
-                if save:
-                    result = self.save_model(
-                        model=new_model,
-                        accuracy=new_accuracy,
-                        period=period,
-                        coins=coins,
-                        training_samples=len(X),
-                        set_active=True,
-                        backup=True,
-                        profile_name=profile.get("name"),
-                        strategy="incremental",
-                    )
-                    return {
-                        **result,
-                        "old_accuracy": old_accuracy,
-                        "improvement": improvement,
-                        "strategy_used": "incremental",
-                        "profile_used": profile.get("name"),
-                        "training_time": training_time,
-                    }
-                else:
-                    return {
-                        "success": True,
-                        "accuracy": new_accuracy,
-                        "old_accuracy": old_accuracy,
-                        "improvement": improvement,
-                        "strategy_used": "incremental",
-                        "training_time": training_time,
-                        "saved": False,
-                    }
-            else:
-                # بهبود کافی نبود
-                return {
-                    "success": True,
-                    "message": "Improvement too small, keeping existing model",
-                    "accuracy": old_accuracy,
-                    "new_accuracy": new_accuracy,
+                    **result,
+                    "old_accuracy": old_accuracy,
                     "improvement": improvement,
                     "strategy_used": "incremental",
-                    "profile_used": profile.get("name"),
+                    "profile_used": profile_name or profile.get("name"),
+                    "training_time": training_time,
+                }
+            else:
+                self.current_model = new_model
+                return {
+                    "success": True,
+                    "accuracy": new_accuracy,
+                    "old_accuracy": old_accuracy,
+                    "improvement": improvement,
+                    "strategy_used": "incremental",
+                    "profile_used": profile_name or profile.get("name"),
                     "training_time": training_time,
                     "saved": False,
                 }
-                
-        except Exception as e:
-            logger.error(f"❌ Incremental training error: {e}", exc_info=True)
-            self._stats["errors"] += 1
-            return {"success": False, "error": str(e)}
+        else:
+            # بهبود کافی نبود
+            return {
+                "success": True,
+                "message": "Improvement too small, keeping existing model",
+                "accuracy": old_accuracy,
+                "new_accuracy": new_accuracy,
+                "improvement": improvement,
+                "strategy_used": "incremental",
+                "profile_used": profile_name or profile.get("name"),
+                "training_time": training_time,
+                "saved": False,
+            }
+    
+    except xgb.core.XGBoostError as e:
+        logger.error(f"❌ XGBoost incremental error: {e}")
+        self._stats["errors"] += 1
+        return {"success": False, "error": f"XGBoost error: {str(e)}"}
+    except Exception as e:
+        logger.error(f"❌ Incremental training error: {e}", exc_info=True)
+        self._stats["errors"] += 1
+        return {"success": False, "error": str(e)}
+        
     
     def _train_transfer(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        profile: Dict[str, Any],
-        save: bool,
-    ) -> Dict[str, Any]:
-        """
-        یادگیری انتقالی - شروع از مدل قبلی با lr پایین
-        """
-        try:
-            if self.current_model is None:
-                return {
-                    "success": False,
-                    "error": "No existing model for transfer learning",
-                }
-            
-            # 1. داده
-            training_data = self._fetch_training_data(period, coins)
-            if training_data.get("error"):
-                return training_data
-            
-            X = training_data["X"]
-            y = training_data["y"]
-            
-            # 2. آموزش انتقالی (lr خیلی پایین)
-            hyperparams = profile["hyperparameters"].copy()
-            hyperparams["learning_rate"] = 0.01  # خیلی پایین برای انتقالی
-            
-            params = {
-                **{k: v for k, v in hyperparams.items() 
-                   if k not in ["n_estimators"]},
-                "objective": hyperparams.get("objective", "binary:logistic"),
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str,
+    coins: Optional[List[str]],
+    save: bool,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    یادگیری انتقالی - شروع از مدل قبلی با learning_rate پایین
+    
+    استراتژی: xgb.train با lr خیلی کم روی داده جدید
+    """
+    try:
+        if self.current_model is None:
+            return {
+                "success": False,
+                "error": "No existing model for transfer learning",
             }
-            
-            dtrain = xgb.DMatrix(X, label=y)
-            
-            start_time = datetime.now()
-            
-            new_model = xgb.train(
-                params,
-                dtrain,
-                num_boost_round=hyperparams.get("n_estimators", 50),
-                xgb_model=self.current_model,
+        
+        # 1. ارزیابی مدل قبلی
+        old_accuracy = self._evaluate(self.current_model, X, y)
+        
+        # 2. hyperparameters با lr خیلی پایین
+        hyperparams = profile["hyperparameters"].copy()
+        hyperparams["learning_rate"] = 0.01  # خیلی پایین
+        
+        params = {
+            key: hyperparams[key]
+            for key in [
+                "objective", "learning_rate", "max_depth",
+                "subsample", "colsample_bytree", "min_child_weight",
+                "gamma", "reg_alpha", "reg_lambda", "tree_method",
+            ]
+            if key in hyperparams
+        }
+        
+        params.setdefault("objective", "binary:logistic")
+        params.setdefault("tree_method", "hist")
+        
+        # 3. ساخت DMatrix
+        dtrain = xgb.DMatrix(X, label=y)
+        
+        # 4. آموزش
+        start_time = datetime.now()
+        
+        new_model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=hyperparams.get("n_estimators", 50),
+            xgb_model=self.current_model,
+        )
+        
+        training_time = (datetime.now() - start_time).total_seconds()
+        
+        # 5. ارزیابی
+        new_accuracy = self._evaluate(new_model, X, y)
+        improvement = new_accuracy - old_accuracy
+        
+        # 6. ذخیره
+        if save:
+            result = self.save_model(
+                model=new_model,
+                accuracy=new_accuracy,
+                period=period,
+                coins=coins,
+                training_samples=len(X),
+                set_active=True,
+                backup=True,
+                profile_name=profile_name or profile.get("name"),
+                strategy="transfer",
             )
             
-            training_time = (datetime.now() - start_time).total_seconds()
-            accuracy = self._evaluate(new_model, X, y)
-            
-            # 3. ذخیره
-            if save:
-                result = self.save_model(
-                    model=new_model,
-                    accuracy=accuracy,
-                    period=period,
-                    coins=coins,
-                    training_samples=len(X),
-                    set_active=True,
-                    backup=True,
-                    profile_name=profile.get("name"),
-                    strategy="transfer",
-                )
-                return {
-                    **result,
-                    "strategy_used": "transfer",
-                    "training_time": training_time,
-                }
+            if not result.get("success"):
+                return result
             
             return {
-                "success": True,
-                "accuracy": accuracy,
+                **result,
+                "old_accuracy": old_accuracy,
+                "improvement": improvement,
                 "strategy_used": "transfer",
+                "profile_used": profile_name or profile.get("name"),
+                "training_time": training_time,
+            }
+        else:
+            self.current_model = new_model
+            return {
+                "success": True,
+                "accuracy": new_accuracy,
+                "old_accuracy": old_accuracy,
+                "improvement": improvement,
+                "strategy_used": "transfer",
+                "profile_used": profile_name or profile.get("name"),
                 "training_time": training_time,
                 "saved": False,
             }
-            
-        except Exception as e:
-            logger.error(f"❌ Transfer learning error: {e}", exc_info=True)
-            self._stats["errors"] += 1
-            return {"success": False, "error": str(e)}
+    
+    except xgb.core.XGBoostError as e:
+        logger.error(f"❌ XGBoost transfer error: {e}")
+        self._stats["errors"] += 1
+        return {"success": False, "error": f"XGBoost error: {str(e)}"}
+    except Exception as e:
+        logger.error(f"❌ Transfer learning error: {e}", exc_info=True)
+        self._stats["errors"] += 1
+        return {"success": False, "error": str(e)}
+        
     
     def _train_fine_tune(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        profile: Dict[str, Any],
-        save: bool,
-    ) -> Dict[str, Any]:
-        """
-        تنظیم دقیق - مشابه transfer ولی با داده کم
-        """
-        try:
-            if self.current_model is None:
-                return {
-                    "success": False,
-                    "error": "No existing model for fine-tuning",
-                }
-            
-            # 1. داده (کمتر)
-            training_data = self._fetch_training_data(period, coins, max_samples=500)
-            if training_data.get("error"):
-                return training_data
-            
-            X = training_data["X"]
-            y = training_data["y"]
-            
-            # 2. آموزش با lr خیلی کم و rounds کم
-            hyperparams = profile["hyperparameters"].copy()
-            hyperparams["learning_rate"] = 0.005
-            hyperparams["n_estimators"] = min(
-                hyperparams.get("n_estimators", 50),
-                30,
-            )
-            
-            params = {
-                **{k: v for k, v in hyperparams.items() 
-                   if k not in ["n_estimators"]},
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str,
+    coins: Optional[List[str]],
+    save: bool,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    تنظیم دقیق - مشابه transfer ولی با داده کم و rounds کم
+    
+    استراتژی: lr خیلی کم + rounds خیلی کم
+    """
+    try:
+        if self.current_model is None:
+            return {
+                "success": False,
+                "error": "No existing model for fine-tuning",
             }
-            
-            dtrain = xgb.DMatrix(X, label=y)
-            
-            start_time = datetime.now()
-            
-            new_model = xgb.train(
-                params,
-                dtrain,
-                num_boost_round=hyperparams["n_estimators"],
-                xgb_model=self.current_model,
+        
+        # 1. محدود کردن داده (fine-tune با داده کمتر)
+        max_samples = 500
+        if len(X) > max_samples:
+            indices = np.random.choice(len(X), max_samples, replace=False)
+            X = X[indices]
+            y = y[indices]
+        
+        # 2. ارزیابی مدل قبلی
+        old_accuracy = self._evaluate(self.current_model, X, y)
+        
+        # 3. hyperparameters با lr خیلی کم و rounds کم
+        hyperparams = profile["hyperparameters"].copy()
+        hyperparams["learning_rate"] = 0.005
+        hyperparams["n_estimators"] = min(
+            hyperparams.get("n_estimators", 50),
+            30,
+        )
+        
+        params = {
+            key: hyperparams[key]
+            for key in [
+                "objective", "learning_rate", "max_depth",
+                "subsample", "colsample_bytree", "min_child_weight",
+                "gamma", "reg_alpha", "reg_lambda", "tree_method",
+            ]
+            if key in hyperparams
+        }
+        
+        params.setdefault("objective", "binary:logistic")
+        params.setdefault("tree_method", "hist")
+        
+        # 4. ساخت DMatrix
+        dtrain = xgb.DMatrix(X, label=y)
+        
+        # 5. آموزش
+        start_time = datetime.now()
+        
+        new_model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=hyperparams["n_estimators"],
+            xgb_model=self.current_model,
+        )
+        
+        training_time = (datetime.now() - start_time).total_seconds()
+        
+        # 6. ارزیابی
+        new_accuracy = self._evaluate(new_model, X, y)
+        improvement = new_accuracy - old_accuracy
+        
+        # 7. ذخیره
+        if save:
+            result = self.save_model(
+                model=new_model,
+                accuracy=new_accuracy,
+                period=period,
+                coins=coins,
+                training_samples=len(X),
+                set_active=True,
+                backup=True,
+                profile_name=profile_name or profile.get("name"),
+                strategy="fine_tune",
             )
             
-            training_time = (datetime.now() - start_time).total_seconds()
-            accuracy = self._evaluate(new_model, X, y)
-            
-            if save:
-                result = self.save_model(
-                    model=new_model,
-                    accuracy=accuracy,
-                    period=period,
-                    coins=coins,
-                    training_samples=len(X),
-                    set_active=True,
-                    backup=True,
-                    profile_name=profile.get("name"),
-                    strategy="fine_tune",
-                )
-                return {
-                    **result,
-                    "strategy_used": "fine_tune",
-                    "training_time": training_time,
-                }
+            if not result.get("success"):
+                return result
             
             return {
-                "success": True,
-                "accuracy": accuracy,
+                **result,
+                "old_accuracy": old_accuracy,
+                "improvement": improvement,
                 "strategy_used": "fine_tune",
+                "profile_used": profile_name or profile.get("name"),
+                "training_time": training_time,
+            }
+        else:
+            self.current_model = new_model
+            return {
+                "success": True,
+                "accuracy": new_accuracy,
+                "old_accuracy": old_accuracy,
+                "improvement": improvement,
+                "strategy_used": "fine_tune",
+                "profile_used": profile_name or profile.get("name"),
                 "training_time": training_time,
                 "saved": False,
             }
+    
+    except xgb.core.XGBoostError as e:
+        logger.error(f"❌ XGBoost fine-tune error: {e}")
+        self._stats["errors"] += 1
+        return {"success": False, "error": f"XGBoost error: {str(e)}"}
+    except Exception as e:
+        logger.error(f"❌ Fine-tune error: {e}", exc_info=True)
+        self._stats["errors"] += 1
+        return {"success": False, "error": str(e)}
+        
             
-        except Exception as e:
-            logger.error(f"❌ Fine-tune error: {e}", exc_info=True)
-            self._stats["errors"] += 1
-            return {"success": False, "error": str(e)}
     
     def _train_ensemble(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        profile: Dict[str, Any],
-        save: bool,
-    ) -> Dict[str, Any]:
-        """
-        ترکیب مدل‌ها - ایجاد ensemble
-        """
-        try:
-            # دریافت نسخه‌ها
-            versions = profile.get("data_config", {}).get("ensemble_versions", [])
-            weights = profile.get("data_config", {}).get("ensemble_weights", [])
-            
-            if not versions or len(versions) < 2:
+    self,
+    X: np.ndarray,
+    y: np.ndarray,
+    profile: Dict[str, Any],
+    period: str,
+    coins: Optional[List[str]],
+    save: bool,
+    profile_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    ترکیب مدل‌ها - ایجاد ensemble از چند نسخه
+    
+    استراتژی: بارگذاری چند نسخه + وزن‌دهی + ترکیب
+    """
+    try:
+        # 1. دریافت نسخه‌ها از profile
+        data_config = profile.get("data_config", {})
+        versions = data_config.get("ensemble_versions", [])
+        weights = data_config.get("ensemble_weights", [])
+        
+        if not versions or len(versions) < 2:
+            return {
+                "success": False,
+                "error": "Ensemble needs at least 2 versions in data_config.ensemble_versions",
+            }
+        
+        # 2. بارگذاری مدل‌ها
+        models = []
+        for version in versions:
+            model = self.repository.load_model(version)
+            if model is None:
                 return {
                     "success": False,
-                    "error": "Ensemble needs at least 2 versions",
+                    "error": f"Could not load version '{version}'",
                 }
+            models.append(model)
+        
+        # 3. وزن‌دهی
+        if len(weights) != len(models):
+            # وزن مساوی
+            weights = [1.0 / len(models)] * len(models)
+        
+        # 4. ساخت ensemble
+        ensemble = self._create_weighted_ensemble(models, weights)
+        
+        # 5. ارزیابی
+        start_time = datetime.now()
+        accuracy = self._evaluate(ensemble, X, y)
+        training_time = (datetime.now() - start_time).total_seconds()
+        
+        # 6. ذخیره
+        if save:
+            result = self.save_model(
+                model=ensemble,
+                accuracy=accuracy,
+                period=period,
+                coins=coins,
+                training_samples=len(X),
+                set_active=True,
+                backup=True,
+                profile_name=profile_name or profile.get("name"),
+                strategy="ensemble",
+                is_ensemble=True,
+            )
             
-            # بارگذاری مدل‌ها
-            models = []
-            for version in versions:
-                model = self.repository.load_model(version)
-                if model is None:
-                    return {
-                        "success": False,
-                        "error": f"Could not load version {version}",
-                    }
-                models.append(model)
+            if not result.get("success"):
+                return result
             
-            # وزن‌دهی
-            if len(weights) != len(models):
-                weights = [1.0 / len(models)] * len(models)
-            
-            # ساخت ensemble
-            ensemble = self._create_weighted_ensemble(models, weights)
-            
-            # ارزیابی
-            training_data = self._fetch_training_data(period, coins)
-            if training_data.get("error"):
-                return training_data
-            
-            X = training_data["X"]
-            y = training_data["y"]
-            
-            accuracy = self._evaluate(ensemble, X, y)
-            
-            if save:
-                result = self.save_model(
-                    model=ensemble,
-                    accuracy=accuracy,
-                    period=period,
-                    coins=coins,
-                    training_samples=len(X),
-                    set_active=True,
-                    backup=True,
-                    profile_name=profile.get("name"),
-                    strategy="ensemble",
-                    is_ensemble=True,
-                )
-                return {
-                    **result,
-                    "strategy_used": "ensemble",
-                    "versions_used": versions,
-                    "weights": weights,
-                }
-            
+            return {
+                **result,
+                "strategy_used": "ensemble",
+                "profile_used": profile_name or profile.get("name"),
+                "versions_used": versions,
+                "weights": weights,
+                "training_time": training_time,
+            }
+        else:
+            self.current_model = ensemble
             return {
                 "success": True,
                 "accuracy": accuracy,
                 "strategy_used": "ensemble",
+                "profile_used": profile_name or profile.get("name"),
                 "versions_used": versions,
                 "weights": weights,
+                "training_time": training_time,
                 "saved": False,
             }
-            
-        except Exception as e:
-            logger.error(f"❌ Ensemble error: {e}", exc_info=True)
-            self._stats["errors"] += 1
-            return {"success": False, "error": str(e)}
+    
+    except Exception as e:
+        logger.error(f"❌ Ensemble error: {e}", exc_info=True)
+        self._stats["errors"] += 1
+        return {"success": False, "error": str(e)}
+        
     
     # ============================================================
     # Data Fetching
     # ============================================================
     
-    def _fetch_training_data(
-        self,
-        period: str,
-        coins: Optional[List[str]],
-        max_samples: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        """
-        دریافت داده‌های آموزشی
-        
-        این متد به auto_trainer یا feature_engineer وابسته‌ست.
-        برای فعلاً از یک روش ساده استفاده می‌کنیم که در auto_trainer
-        تکمیل می‌شه.
-        """
-        try:
-            from models.trainer.auto_trainer import AutoTrainer
-            
-            # ساختن trainer موقت (یا استفاده از container)
-            try:
-                from container import container
-                trainer = container.get('trainer')
-            except Exception:
-                trainer = AutoTrainer(api=self.api, model_manager=self)
-            
-            # دریافت داده
-            coins = coins or self.config.get("coins", ["bitcoin", "ethereum"])
-            
-            all_features = []
-            all_labels = []
-            
-            for coin in coins:
-                chart_data = trainer.fetch_data_for_coin(coin, period)
-                if not chart_data:
-                    continue
-                
-                features, labels = trainer.extract_features_for_training(chart_data)
-                if features is not None and len(features) > 0:
-                    all_features.append(features)
-                    all_labels.append(labels)
-            
-            if not all_features:
-                return {"error": "No training data available"}
-            
-            X = np.vstack(all_features)
-            y = np.concatenate(all_labels)
-            
-            # محدودیت نمونه
-            if max_samples and len(X) > max_samples:
-                indices = np.random.choice(len(X), max_samples, replace=False)
-                X = X[indices]
-                y = y[indices]
-            
-            return {"X": X, "y": y}
-            
-        except Exception as e:
-            logger.error(f"❌ Fetch training data error: {e}", exc_info=True)
-            return {"error": str(e)}
+    
     
     # ============================================================
     # Save Model (بهبود)
@@ -1855,7 +1938,284 @@ class ModelManager:
     def get_quota_status(self) -> Dict[str, Any]:
         """وضعیت Quota"""
         return self._get_quota_summary()
+
+    def analyze_training(
+        self,
+        profile: Dict[str, Any],
+        coins_count: int = 2,
+        period: str = "1m",
+    ) -> Dict[str, Any]:
+        """
+        تحلیل آموزش بدون اجرا (تخمین زمان و نتیجه)
     
+        این متد برای فرانت‌اند استفاده می‌شه که قبل از آموزش،
+        کاربر بتونه ببینه چقدر طول می‌کشه و آیا فضا کافیه.
+    
+        پارامترها:
+            profile: پروفایل آموزش (hyperparameters + strategy)
+            coins_count: تعداد ارزهایی که آموزش داده می‌شن
+            period: بازه داده (24h, 1w, 1m, 3m, 6m)
+    
+        خروجی:
+            دیکشنری شامل:
+                - valid: bool — آیا پروفایل معتبره؟
+                - errors: List[str] — خطاهای اعتبارسنجی (اگه valid=False)
+                - estimated_time_seconds: float — تخمین زمان
+                - estimated_time_formatted: str — زمان قابل خواندن
+                - estimated_model_size_mb: float — تخمین حجم مدل
+                - available_mb: float — فضای آزاد
+                - used_mb: float — فضای استفاده‌شده
+                - usable_mb: float — فضای قابل استفاده
+                - can_proceed: bool — آیا فضا کافیه؟
+                - strategy: str — استراتژی
+                - hyperparameters: dict — پارامترها
+                - warning: str (اختیاری) — هشدار
+    
+        مثال:
+            >>> mm = ModelManager()
+            >>> result = mm.analyze_training(
+            ...     profile={"hyperparameters": {"n_estimators": 100, "max_depth": 5}},
+            ...     coins_count=5,
+            ...     period="1m",
+            ... )
+            >>> print(result["estimated_time_seconds"])
+            45.5
+        """
+        # ============================================================
+        # ۱. اعتبارسنجی پروفایل
+        # ============================================================
+    
+        
+        validation = self.validate_profile(profile)
+    
+        if not validation["valid"]:
+            return {
+                "valid": False,
+                "errors": validation["errors"],
+                "message": "پروفایل نامعتبر است",
+            }
+    
+        validated_profile = validation["profile"]
+        hyperparams = validated_profile["hyperparameters"]
+        strategy = validated_profile.get("learning_strategy", "full")
+    
+    # ============================================================
+    # ۲. استخراج پارامترهای کلیدی
+    # ============================================================
+    
+        n_estimators = hyperparams.get("n_estimators", 100)
+        max_depth = hyperparams.get("max_depth", 5)
+        learning_rate = hyperparams.get("learning_rate", 0.05)
+        subsample = hyperparams.get("subsample", 0.8)
+        colsample = hyperparams.get("colsample_bytree", 0.8)
+    
+    # ============================================================
+    # ۳. تخمین زمان آموزش
+    # ============================================================
+    
+    # ضرایب بر اساس بازه داده
+        period_multipliers = {
+            "24h": 0.5,
+            "1w": 1.0,
+            "1m": 2.0,
+            "3m": 4.0,
+            "6m": 6.0,
+        }
+        period_mult = period_multipliers.get(period, 2.0)
+    
+    # ضرایب استراتژی
+        strategy_multipliers = {
+            "full": 1.0,
+            "incremental": 0.3,      # سریع‌تر (فقط راندهای جدید)
+            "transfer": 0.5,          # متوسط
+            "fine_tune": 0.2,         # خیلی سریع (rounds کم)
+            "ensemble": 0.1,          # خیلی سریع (فقط ترکیب)
+        }
+        strategy_mult = strategy_multipliers.get(strategy, 1.0)
+    
+    # تخمین پایه:
+    # هر درخت تقریباً 0.05 ثانیه * (عمق / 5) طول می‌کشه
+    # برای هر ارز، ضرب در (coins_count / 2)
+    # ضرب در ضرایب بازه و استراتژی
+    
+        base_time_per_tree = 0.05
+        depth_factor = max_depth / 5.0
+    
+        estimated_time = (
+            n_estimators
+            * base_time_per_tree
+            * depth_factor
+            * period_mult
+            * (coins_count / 2.0)
+            * strategy_mult
+        )
+    
+    # اگه lr بالا باشه، سریع‌تر یاد می‌گیره (rounds کمتر مؤثر)
+        lr_speedup = 1.0 / max(learning_rate * 10, 0.5)
+        estimated_time *= min(lr_speedup, 2.0)  # سقف ۲x
+    
+    # حداقل زمان
+        estimated_time = max(estimated_time, 1.0)
+    
+    # ============================================================
+    # ۴. فرمت کردن زمان
+    # ============================================================
+    
+        def format_time(seconds: float) -> str:
+            """فرمت زمان به شکل خوانا"""
+            if seconds < 60:
+                return f"{round(seconds, 1)} ثانیه"
+            elif seconds < 3600:
+                minutes = int(seconds // 60)
+                secs = int(seconds % 60)
+                return f"{minutes} دقیقه و {secs} ثانیه"
+            else:
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                return f"{hours} ساعت و {minutes} دقیقه"
+    
+        estimated_time_formatted = format_time(estimated_time)
+    
+    # ============================================================
+    # ۵. تخمین حجم مدل
+    # ============================================================
+    
+    # هر درخت تقریباً:
+    # - ۵۰ بایت برای هر node
+    # - 2^max_depth گره در بدترین حالت
+    # ولی معمولاً کمتر — ضریب 0.3
+    
+        nodes_per_tree = (2 ** max_depth) * 0.3
+        bytes_per_node = 50
+    
+        base_size_bytes = n_estimators * nodes_per_tree * bytes_per_node
+        base_size_mb = base_size_bytes / (1024 * 1024)
+    
+    # ضریب اشتراک ویژگی‌ها (colsample_bytree)
+        feature_factor = colsample
+    
+    # ضریب نمونه‌گیری (subsample)
+        sample_factor = subsample
+    
+        estimated_size_mb = base_size_mb * feature_factor * sample_factor
+    
+    # حداقل حجم
+        estimated_size_mb = max(estimated_size_mb, 0.5)
+    
+    # ============================================================
+    # ۶. بررسی Quota
+    # ============================================================
+    
+        try:
+            quota_status = self._get_quota_summary()
+        
+            used_mb = quota_status.get("used_mb", 0) or 0
+            usable_mb = quota_status.get("usable_mb", 0) or 0
+            available_mb = usable_mb - used_mb
+        
+        # برای ensemble، فضای بیشتری لازمه
+            if strategy == "ensemble":
+                estimated_size_mb *= 1.5  # ensemble بزرگ‌تره
+        
+        # چک فضای کافی
+            can_proceed = available_mb > (estimated_size_mb * 1.2)
+        
+        # آستانه هشدار
+            usage_percent = quota_status.get("used_percent", 0) or 0
+            warning = None
+        
+            if usage_percent > 90:
+                warning = "⚠️ فضای دیتابیس تقریباً پره — آموزش ممکنه fail بشه"
+            elif usage_percent > 75:
+                warning = "⚠️ فضای دیتابیس کمه — پاک‌سازی رکوردهای قدیمی پیشنهاد می‌شه"
+            elif not can_proceed:
+                warning = "❌ فضای کافی نیست — پاک‌سازی نیاز است"
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Quota check failed in analyze_training: {e}")
+            used_mb = 0
+            usable_mb = 0
+            available_mb = 0
+            can_proceed = True
+            warning = None
+    
+    # ============================================================
+    # ۷. بررسی نیاز به مدل قبلی
+    # ============================================================
+    
+        requires_model = LEARNING_STRATEGIES[strategy]["requires_existing_model"]
+        has_model = self.current_model is not None
+    
+        if requires_model and not has_model:
+            return {
+                "valid": False,
+                "errors": [
+                    f"استراتژی '{strategy}' نیاز به مدل موجود داره. "
+                    f"اول یک مدل آموزش بده."
+                ],
+                "strategy": strategy,
+                "requires_existing_model": True,
+                "has_existing_model": False,
+            }
+    
+    # ============================================================
+    # ۸. ساختار خروجی
+    # ============================================================
+    
+        result = {
+        # اعتبار
+            "valid": True,
+            "errors": [],
+        
+        # تخمین‌ها
+            "estimated_time_seconds": round(estimated_time, 1),
+            "estimated_time_formatted": estimated_time_formatted,
+            "estimated_model_size_mb": round(estimated_size_mb, 2),
+        
+        # Quota
+            "used_mb": round(used_mb, 2),
+            "usable_mb": round(usable_mb, 2),
+            "available_mb": round(available_mb, 2),
+            "used_percent": round(quota_status.get("used_percent", 0) or 0, 1),
+            "can_proceed": can_proceed,
+        
+        # اطلاعات آموزش
+        "strategy": strategy,
+        "strategy_name": LEARNING_STRATEGIES[strategy]["name"],
+        "profile_name": validated_profile.get("name", "custom"),
+        "hyperparameters": hyperparams,
+        
+        # ورودی‌ها
+        "period": period,
+        "coins_count": coins_count,
+        
+        # مدل فعلی
+        "requires_existing_model": requires_model,
+        "has_existing_model": has_model,
+        "current_version": self.current_version,
+    }
+    
+    # اضافه کردن هشدار اگه هست
+    if warning:
+        result["warning"] = warning
+    
+    # اضافه کردن جزئیات بیشتر در صورت نیاز
+    if not can_proceed:
+        result["insufficient_space"] = {
+            "needed_mb": round(estimated_size_mb * 1.2, 2),
+            "available_mb": round(available_mb, 2),
+            "shortage_mb": round(estimated_size_mb * 1.2 - available_mb, 2),
+        }
+    
+    logger.debug(
+        f"📊 analyze_training: "
+        f"strategy={strategy}, "
+        f"time={estimated_time:.1f}s, "
+        f"size={estimated_size_mb:.2f}MB, "
+        f"can_proceed={can_proceed}"
+    )
+    
+    return result
     def _get_quota_summary(self) -> Dict[str, Any]:
         """خلاصه Quota"""
         try:
