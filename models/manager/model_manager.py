@@ -849,7 +849,7 @@ class ModelManager:
                         X, y, validated_profile,
                         period, coins, save, profile_name,
                     )
-         ‌       elif strategy == "incremental":
+                elif strategy == "incremental":
                     return self._train_incremental(
                         X, y, validated_profile,
                         period, coins, save, profile_name,
