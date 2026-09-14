@@ -2244,6 +2244,58 @@ def model_status():
         logger.error(f"Model status error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@api_bp.route('/model/train', methods=['POST'])
+@require_auth('admin')
+def model_train():
+    """
+    آموزش مدل جدید (با Profile support)
+    
+    Body:
+        {
+            "period": "1m",
+            "coins": ["bitcoin", "ethereum"],
+            "profile_name": "accurate",       // ← جدید
+            "profile": {...},                 // ← جدید
+            "strategy": "full",               // ← جدید
+            "save": true                      // ← جدید
+        }
+    """
+    try:
+        data = request.json or {}
+        
+        # اعتبارسنجی با DTO
+        from application.dto import TrainRequestDTO
+        
+        dto = TrainRequestDTO.from_dict(data)
+        valid, errors = dto.validate()
+        
+        if not valid:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid request',
+                'details': errors,
+            }), 400
+        
+        # اجرا
+        container = current_app.container
+        trainer = container.get('trainer')
+        
+        result = trainer.train_model(
+            period=dto.period,
+            coins=dto.coins,
+            profile_name=dto.profile_name,
+            profile=dto.profile,
+            strategy=dto.strategy,
+            save=dto.save,
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Model train error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/model/history', methods=['GET'])
 @require_auth()
 def model_history():
@@ -2461,6 +2513,56 @@ def predict_history():
         })
     except Exception as e:
         logger.error(f"Predict history error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/predict/history/stats', methods=['GET'])
+@require_auth()
+def predict_history_stats():
+    """
+    دریافت آمار پیش‌بینی‌های ذخیره‌شده
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                "total": 1234,
+                "by_signal": {
+                    "BUY": 400,
+                    "SELL": 300,
+                    "NEUTRAL": 534
+                },
+                "by_coin": [
+                    {"coin": "bitcoin", "count": 500},
+                    {"coin": "ethereum", "count": 400},
+                    ...
+                ],
+                "by_period": {
+                    "24h": 800,
+                    "1w": 434
+                },
+                "confidence": {
+                    "avg": 72.5,
+                    "min": 15,
+                    "max": 98
+                },
+                "recent_24h": 45
+            }
+        }
+    """
+    try:
+        from infrastructure.repositories import repos
+        
+        stats = repos.prediction.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Predict history stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -2844,16 +2946,20 @@ def analyze_training_endpoint():
 # ============================================================
 # ۱۰. زمان‌بندی (SCHEDULE) برای auto_trainer.py / manual_trainer.py
 # ============================================================
-
 @api_bp.route('/schedule/status', methods=['GET'])
 @require_auth()
 def schedule_status():
-    """دریافت وضعیت کامل زمان‌بندی آموزش"""
+    """
+    دریافت وضعیت کامل زمان‌بندی آموزش
+    
+    خروجی: اطلاعات کامل AutoTrainer
+    """
     try:
         container = current_app.container
         trainer = container.get('trainer')
         
         stats = trainer.get_stats() if hasattr(trainer, 'get_stats') else {}
+        inner_stats = stats.get('stats', {})
         
         return jsonify({
             'success': True,
@@ -2863,18 +2969,18 @@ def schedule_status():
                 'is_training': stats.get('is_training', False),
                 
                 # تنظیمات
-                'interval_hours': stats.get('stats', {}).get('training_period', 6),
-                'period': stats.get('stats', {}).get('training_period', '1m'),
+                'interval_hours': inner_stats.get('training_period', 6),
+                'period': inner_stats.get('training_period', '1m'),
                 'coins': stats.get('coins', []),
-                'profile_name': stats.get('stats', {}).get('profile_name', 'balanced'),
+                'profile_name': inner_stats.get('profile_name', 'balanced'),
                 
                 # آمار آموزش
-                'total_trainings': stats.get('stats', {}).get('total_trainings', 0),
-                'successful_trainings': stats.get('stats', {}).get('successful_trainings', 0),
-                'failed_trainings': stats.get('stats', {}).get('failed_trainings', 0),
-                'last_training': stats.get('stats', {}).get('last_training'),
-                'last_error': stats.get('stats', {}).get('last_error'),
-                'last_score': stats.get('stats', {}).get('last_score'),
+                'total_trainings': inner_stats.get('total_trainings', 0),
+                'successful_trainings': inner_stats.get('successful_trainings', 0),
+                'failed_trainings': inner_stats.get('failed_trainings', 0),
+                'last_training': inner_stats.get('last_training'),
+                'last_error': inner_stats.get('last_error'),
+                'last_score': inner_stats.get('last_score'),
                 
                 # API
                 'api_status': stats.get('api_status', {}),
@@ -2882,10 +2988,9 @@ def schedule_status():
                 # Quota
                 'quota': stats.get('quota', {}),
                 
-                # لاگ‌ها (۱۰ تا آخر)
+                # لاگ‌ها (آخرین ۱۰)
                 'recent_logs': stats.get('logs', [])[-10:],
                 
-                # Timestamp
                 'timestamp': datetime.now().isoformat(),
             }
         })
@@ -2905,7 +3010,7 @@ def schedule_start():
             "period": "1m",                   // بازه
             "coins": ["bitcoin", "ethereum"], // ارزها
             "profile_name": "balanced",       // ← جدید
-            "incremental": false              // ← پیش‌فرض تغییر کرد
+            "incremental": false              // ← پیش‌فرض عوض شد
         }
     """
     try:
@@ -2916,8 +3021,8 @@ def schedule_start():
         interval = data.get('interval', 6)
         period = data.get('period', '1m')
         coins = data.get('coins', ['bitcoin', 'ethereum'])
-        profile_name = data.get('profile_name', 'balanced')  # ← جدید
-        incremental = data.get('incremental', False)  # ← پیش‌فرض تغییر کرد
+        profile_name = data.get('profile_name', 'balanced')  # جدید
+        incremental = data.get('incremental', False)  # پیش‌فرض جدید
         
         result = trainer.start_auto_train(
             interval_hours=interval,
@@ -2926,11 +3031,12 @@ def schedule_start():
             profile_name=profile_name,
             incremental=incremental,
         )
+        
         return jsonify(result), 200 if result.get('success') else 400
+        
     except Exception as e:
         logger.error(f"Schedule start error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @api_bp.route('/model/train-batch', methods=['POST'])
 @require_auth('admin')
