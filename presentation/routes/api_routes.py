@@ -2766,69 +2766,81 @@ def train_with_profile():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/model/predict-profile', methods=['POST'])
+@api_bp.route('/model/analyze-training', methods=['POST'])
 @require_auth()
-def predict_training_profile():
+def analyze_training_endpoint():
     """
-    تخمین زمان و نتیجه آموزش بدون اجرا
+    تحلیل آموزش بدون اجرا (تخمین زمان، حجم، فضا)
     
     Body:
         {
-            "profile": { ... },
+            "profile": { ... },           // پروفایل آموزش
+            "coins_count": 5,             // تعداد ارزها
+            "period": "1m"                // بازه داده
+        }
+        OR
+        {
+            "profile_name": "accurate",   // نام پروفایل ذخیره‌شده
             "coins_count": 5,
             "period": "1m"
+        }
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                "valid": true,
+                "estimated_time_seconds": 45.5,
+                "estimated_time_formatted": "45.5 ثانیه",
+                "estimated_model_size_mb": 3.2,
+                "available_mb": 350.5,
+                "can_proceed": true,
+                "strategy": "full",
+                "hyperparameters": {...},
+                "warning": null
+            }
         }
     """
     try:
         data = request.json or {}
-        profile = data.get('profile', {})
-        coins_count = data.get('coins_count', 2)
         period = data.get('period', '1m')
+        coins_count = data.get('coins_count', 2)
+        profile = data.get('profile')
+        profile_name = data.get('profile_name')
         
         container = current_app.container
         mm = container.get('model_manager')
         
-        # اعتبارسنجی
-        validation = mm.validate_profile(profile)
-        if not validation['valid']:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid profile',
-                'details': validation['errors'],
-            }), 400
+        # اگه نام پروفایل داده شده
+        if profile_name and not profile:
+            load_result = mm.load_profile(profile_name)
+            if not load_result.get('success'):
+                return jsonify({
+                    'success': False,
+                    'error': f'Profile "{profile_name}" not found',
+                }), 404
+            profile = load_result['profile']
         
-        # تخمین
-        hp = validation['profile']['hyperparameters']
-        n_est = hp.get('n_estimators', 100)
-        depth = hp.get('max_depth', 5)
+        # اگه هیچ پروفایلی ندادی، از فعال استفاده کن
+        if not profile:
+            profile = mm.get_current_profile()
         
-        period_mult = {'24h': 0.5, '1w': 1, '1m': 2, '3m': 4, '6m': 6}
-        base_time = n_est * depth * 0.02  # ثانیه
-        estimated_time = base_time * period_mult.get(period, 2) * (coins_count / 2)
-        
-        # تخمین سایز
-        estimated_size_mb = (n_est * 50 * depth) / (1024 * 1024) * 10
-        
-        # Quota
-        quota = mm.get_quota_status()
-        available_mb = (
-            quota.get('usable_mb', 0) - quota.get('used_mb', 0)
+        # تحلیل
+        result = mm.analyze_training(
+            profile=profile,
+            coins_count=coins_count,
+            period=period,
         )
         
         return jsonify({
             'success': True,
-            'data': {
-                'estimated_time_seconds': round(estimated_time, 1),
-                'estimated_model_size_mb': round(estimated_size_mb, 2),
-                'available_mb': round(available_mb, 2),
-                'can_proceed': available_mb > estimated_size_mb * 1.5,
-                'validation': validation,
-            },
-        })
+            'data': result,
+            'timestamp': datetime.now().isoformat(),
+        }), 200 if result.get('valid') else 400
         
     except Exception as e:
+        logger.error(f"Analyze training error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-        
 # ============================================================
 # ۱۰. زمان‌بندی (SCHEDULE)
 # ============================================================
