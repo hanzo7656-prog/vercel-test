@@ -1,7 +1,7 @@
 # container.py
 # ============================================================
 # Container - مدیریت وابستگی‌ها (Dependency Injection)
-# نسخه ۳.۰ - Repository + Database + Lifecycle
+# نسخه ۳.۱ - Repository + Database + Lifecycle + Convenience
 # ============================================================
 
 import os
@@ -26,12 +26,7 @@ class Container:
         - Service lifecycle
         - Error handling
         - Status reporting
-    
-    ارتقاها:
-        - Repositoryها
-        - Database factory
-        - Quota manager
-        - Service lifecycle
+        - Convenience methods
     """
     
     _instance: Optional['Container'] = None
@@ -49,7 +44,7 @@ class Container:
             return
         self._initialized = True
         self._init_time = datetime.now()
-        logger.info("✅ Container v3.0 initialized")
+        logger.info("Container v3.1 initialized")
     
     # ============================================================
     # Register
@@ -61,50 +56,30 @@ class Container:
         service: Any,
         singleton: bool = True,
     ) -> None:
-        """
-        ثبت یک سرویس
-        
-        پارامترها:
-            name: نام سرویس
-            service: نمونه یا factory function
-            singleton: singleton باشه؟
-        """
+        """ثبت یک سرویس"""
         if singleton:
-            # اگه callable بود، ذخیره می‌کنیم تا بعداً صدا بزنیم
             self._singletons[name] = service
         else:
             self._services[name] = service
         
-        logger.debug(f"✅ Service registered: {name}")
+        logger.debug(f"Service registered: {name}")
     
     # ============================================================
     # Get
     # ============================================================
     
     def get(self, name: str) -> Any:
-        """
-        دریافت یک سرویس
-        
-        پارامترها:
-            name: نام سرویس
-        
-        خروجی:
-            نمونه سرویس
-        
-        استثناها:
-            KeyError: اگه سرویس نباشه
-        """
+        """دریافت یک سرویس"""
         # Singleton
         if name in self._singletons:
             service = self._singletons[name]
             
-            # اگه callable هست و هنوز ساخته نشده
             if callable(service) and not isinstance(service, type):
                 try:
                     service = service()
                     self._singletons[name] = service
                 except Exception as e:
-                    logger.error(f"❌ Failed to create '{name}': {e}")
+                    logger.error(f"Failed to create '{name}': {e}")
                     raise
             
             return service
@@ -126,7 +101,7 @@ class Container:
         """پاک کردن همه سرویس‌ها"""
         self._singletons.clear()
         self._services.clear()
-        logger.info("🧹 Container cleared")
+        logger.info("Container cleared")
     
     def list_services(self) -> List[str]:
         """لیست همه سرویس‌ها"""
@@ -137,12 +112,7 @@ class Container:
     # ============================================================
     
     def get_status(self) -> Dict[str, Any]:
-        """
-        دریافت وضعیت Container
-        
-        خروجی:
-            دیکشنری وضعیت
-        """
+        """دریافت وضعیت Container"""
         return {
             "initialized": True,
             "init_time": self._init_time.isoformat() if self._init_time else None,
@@ -152,6 +122,113 @@ class Container:
             "services": self.list_services(),
             "timestamp": datetime.now().isoformat(),
         }
+    
+    # ============================================================
+    # Convenience Methods (برای سازگاری با api_routes.py)
+    # ============================================================
+    
+    def api_client(self) -> Any:
+        """دریافت API client"""
+        return self.get('api_client')
+    
+    def cache_manager(self) -> Any:
+        """دریافت cache manager"""
+        return self.get('cache_manager')
+    
+    def model_manager(self) -> Any:
+        """دریافت ModelManager"""
+        return self.get('model_manager')
+    
+    def trainer(self) -> Any:
+        """دریافت AutoTrainer"""
+        return self.get('trainer')
+    
+    def prediction_service(self) -> Any:
+        """دریافت PredictionService"""
+        return self.get('prediction_service')
+    
+    def monitoring_service(self) -> Any:
+        """دریافت MonitoringService"""
+        return self.get('monitoring_service')
+    
+    def command_system(self) -> Any:
+        """دریافت CommandSystem"""
+        return self.get('command_system')
+    
+    def self_healer(self) -> Any:
+        """دریافت SelfHealer"""
+        return self.get('self_healer')
+    
+    def price_manager(self) -> Any:
+        """دریافت PriceManager"""
+        return self.get('price_manager')
+    
+    def user_tracker(self) -> Any:
+        """دریافت UserTracker"""
+        return self.get('user_tracker')
+    
+    def metrics_scheduler(self) -> Any:
+        """دریافت MetricsScheduler"""
+        return self.get('metrics_scheduler')
+    
+    def threading_manager(self) -> Any:
+        """دریافت ThreadingManager"""
+        return self.get('threading_manager')
+    
+    def feature_engineer(self) -> Any:
+        """دریافت FeatureEngineer"""
+        return self.get('feature_engineer')
+    
+    def indicators(self) -> Any:
+        """دریافت indicators"""
+        return self.get('indicators')
+    
+    def free_crypto_client(self) -> Any:
+        """دریافت FreeCryptoClient"""
+        return self.get('free_crypto_client')
+    
+    def db_factory(self) -> Any:
+        """دریافت DatabaseFactory"""
+        return self.get('db_factory')
+    
+    def quota_manager(self) -> Any:
+        """دریافت QuotaManager"""
+        return self.get('quota_manager')
+    
+    def database_registry(self) -> Any:
+        """دریافت DatabaseRegistry"""
+        return self.get('database_registry')
+    
+    def database_router(self) -> Any:
+        """دریافت DatabaseRouter"""
+        return self.get('database_router')
+    
+    def repo_container(self) -> Any:
+        """دریافت RepositoryContainer"""
+        return self.get('repo_container')
+    
+    def model_repository(self) -> Any:
+        """دریافت ModelRepository"""
+        return self.get('model_repository')
+    
+    def prediction_repository(self) -> Any:
+        """دریافت PredictionRepository"""
+        return self.get('prediction_repository')
+    
+    def predict_use_case(self) -> Any:
+        """دریافت PredictUseCase"""
+        return self.get('predict_use_case')
+    
+    def train_use_case(self) -> Any:
+        """دریافت TrainUseCase"""
+        return self.get('train_use_case')
+    
+    def health_use_case(self) -> Any:
+        """دریافت HealthUseCase"""
+        return self.get('health_use_case')
+    
+    def __repr__(self) -> str:
+        return f"<Container services={len(self.list_services())}>"
 
 
 # ============================================================
@@ -166,19 +243,8 @@ container: Container = Container()
 # ============================================================
 
 def register_services() -> None:
-    """
-    ثبت همه سرویس‌ها در Container
-    
-    ترتیب:
-        ۱. Infrastructure
-        ۲. Database
-        ۳. Repository
-        ۴. Model
-        ۵. Core
-        ۶. Application
-        ۷. System
-    """
-    logger.info("🔄 Registering services...")
+    """ثبت همه سرویس‌ها در Container"""
+    logger.info("Registering services...")
     
     # ============================================================
     # ۱. Infrastructure
@@ -193,12 +259,11 @@ def register_services() -> None:
         return cache_manager
     
     def create_free_crypto_client():
-        """ایجاد FreeCryptoClient"""
         from infrastructure.api.free_crypto_client import create_free_crypto_client as _create
         
         api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
         client = _create(api_key)
-        logger.info("✅ FreeCryptoClient created")
+        logger.info("FreeCryptoClient created")
         return client
     
     container.register('api_client', get_api_client, singleton=True)
@@ -231,7 +296,7 @@ def register_services() -> None:
     container.register('database_router', get_database_router, singleton=True)
     
     # ============================================================
-    # ۳. Repository 🆕
+    # ۳. Repository
     # ============================================================
     
     def get_repo_container():
@@ -288,8 +353,6 @@ def register_services() -> None:
             free_client=container.get('free_crypto_client'),
             user_tracker=container.get('user_tracker'),
             cache=get_cache(),
-            update_interval=10,
-            fallback_interval=60,
         )
     
     def get_indicators():
@@ -314,7 +377,7 @@ def register_services() -> None:
     container.register('indicators', get_indicators, singleton=True)
     
     # ============================================================
-    # ۶. Application 🆕
+    # ۶. Application
     # ============================================================
     
     def get_predict_use_case():
@@ -395,96 +458,64 @@ def register_services() -> None:
     # Summary
     # ============================================================
     
-    logger.info(
-        f"✅ {len(container.list_services())} services registered"
-    )
-    logger.debug(f"   Services: {container.list_services()}")
+    logger.info(f"{len(container.list_services())} services registered")
 
 
 # ============================================================
-# Start Services
+# Start/Stop Services
 # ============================================================
 
 def start_services() -> None:
-    """
-    شروع سرویس‌های پس‌زمینه
-    
-    - FreeCryptoClient
-    - PriceManager
-    """
-    logger.info("🚀 Starting background services...")
+    """شروع سرویس‌های پس‌زمینه"""
+    logger.info("Starting background services...")
     
     # ۱. FreeCryptoClient
     try:
         free_client = container.get('free_crypto_client')
         if free_client:
-            logger.info("✅ FreeCryptoClient started")
+            logger.info("FreeCryptoClient started")
     except Exception as e:
-        logger.error(f"❌ FreeCryptoClient start failed: {e}")
+        logger.error(f"FreeCryptoClient start failed: {e}")
     
     # ۲. PriceManager
     try:
         price_manager = container.get('price_manager')
         if price_manager and hasattr(price_manager, 'start'):
             price_manager.start()
-            logger.info("✅ PriceManager started")
+            logger.info("PriceManager started")
     except Exception as e:
-        logger.error(f"❌ PriceManager start failed: {e}")
+        logger.error(f"PriceManager start failed: {e}")
     
-    logger.info("✅ Background services started")
+    logger.info("Background services started")
 
-
-# ============================================================
-# Stop Services
-# ============================================================
 
 def stop_services() -> None:
-    """
-    توقف سرویس‌های پس‌زمینه
-    """
-    logger.info("⏹️ Stopping background services...")
+    """توقف سرویس‌های پس‌زمینه"""
+    logger.info("Stopping background services...")
     
     # ۱. PriceManager
     try:
         price_manager = container.get('price_manager')
         if price_manager and hasattr(price_manager, 'stop'):
             price_manager.stop()
-            logger.info("✅ PriceManager stopped")
+            logger.info("PriceManager stopped")
     except Exception as e:
-        logger.error(f"❌ PriceManager stop failed: {e}")
+        logger.error(f"PriceManager stop failed: {e}")
     
     # ۲. FreeCryptoClient
     try:
         free_client = container.get('free_crypto_client')
         if free_client and hasattr(free_client, 'stop'):
             free_client.stop()
-            logger.info("✅ FreeCryptoClient stopped")
+            logger.info("FreeCryptoClient stopped")
     except Exception as e:
-        logger.error(f"❌ FreeCryptoClient stop failed: {e}")
+        logger.error(f"FreeCryptoClient stop failed: {e}")
     
-    # ۳. Metrics Scheduler
-    try:
-        metrics = container.get('metrics_scheduler')
-        if metrics and hasattr(metrics, 'stop'):
-            metrics.stop()
-            logger.info("✅ MetricsScheduler stopped")
-    except Exception as e:
-        logger.error(f"❌ MetricsScheduler stop failed: {e}")
-    
-    # ۴. Threading Manager
-    try:
-        threading = container.get('threading_manager')
-        if threading and hasattr(threading, 'stop_all'):
-            threading.stop_all()
-            logger.info("✅ ThreadingManager stopped")
-    except Exception as e:
-        logger.error(f"❌ ThreadingManager stop failed: {e}")
-    
-    logger.info("⏹️ All background services stopped")
+    logger.info("All background services stopped")
 
 
 # ============================================================
-# Auto-register on import
+# Auto-register
 # ============================================================
 
 register_services()
