@@ -4600,7 +4600,79 @@ def cache_purge():
     except Exception as e:
         logger.error(f"Cache purge error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
+        
+@api_bp.route('/debug/env', methods=['GET'])
+def debug_env():
+    """چک کردن Environment Variables (موقت - بعداً حذف کن)"""
+    import os
+    
+    # فقط کلیدها رو نشون بده، نه مقادیر (برای امنیت)
+    env_keys = [
+        "NEON_PRIMARY_HOST",
+        "NEON_PRIMARY_USER",
+        "NEON_PRIMARY_PASSWORD",
+        "NEON_PRIMARY_DB",
+        "NEON_BACKUP_HOST",
+        "NEON_BACKUP_USER",
+        "NEON_BACKUP_PASSWORD",
+        "NEON_BACKUP_DB",
+        "NEON_ANALYTICS_HOST",
+        "NEON_ANALYTICS_USER",
+        "NEON_ANALYTICS_PASSWORD",
+        "NEON_ANALYTICS_DB",
+        "NEON_LOGS_HOST",
+        "NEON_LOGS_USER",
+        "NEON_LOGS_PASSWORD",
+        "NEON_LOGS_DB",
+        "LAYERBASE_HOST",
+        "LAYERBASE_USER",
+        "LAYERBASE_PASSWORD",
+        "LAYERBASE_DB",
+        "UPSTASH_REDIS_URL",
+        "UPSTASH_REDIS_TOKEN",
+        "UPSTASH_REDIS_URL_FULL",
+        "COINSTATS_API_KEY",
+        "FREE_CRYPTO_API_KEY",
+        "SECRET_KEY",
+        "FLASK_ENV",
+    ]
+    
+    result = {}
+    for key in env_keys:
+        val = os.getenv(key, "")
+        if val:
+            # نشون بده که هست ولی فقط ۱۰ کاراکتر اول
+            result[key] = f"✅ {val[:10]}...({len(val)} chars)"
+        else:
+            result[key] = "❌ NOT SET"
+    
+    # Database factory status
+    try:
+        from infrastructure.database.database_factory import db_factory
+        factory_status = {
+            "initialized": hasattr(db_factory, "_init_completed_at"),
+            "failed_connections": getattr(db_factory, "_failed_connections", []),
+            "total_retries": getattr(db_factory, "_total_retries", 0),
+        }
+    except Exception as e:
+        factory_status = {"error": str(e)}
+    
+    # Registry status
+    try:
+        from infrastructure.database import registry
+        registry_status = {
+            "databases": list(registry._databases.keys()),
+            "roles": registry._roles,
+        }
+    except Exception as e:
+        registry_status = {"error": str(e)}
+    
+    return jsonify({
+        "env": result,
+        "database_factory": factory_status,
+        "registry": registry_status,
+    })
+    
 # ============================================================
 # اندپوینت‌های Self-Healing
 # ============================================================
