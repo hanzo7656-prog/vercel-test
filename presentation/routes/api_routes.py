@@ -2842,7 +2842,7 @@ def analyze_training_endpoint():
         logger.error(f"Analyze training error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
-# ۱۰. زمان‌بندی (SCHEDULE) برای auto_trainer.py
+# ۱۰. زمان‌بندی (SCHEDULE) برای auto_trainer.py / manual_trainer.py
 # ============================================================
 
 @api_bp.route('/schedule/status', methods=['GET'])
@@ -3044,7 +3044,83 @@ def model_analytics_stats():
         logger.error(f"Analytics stats error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
+@api_bp.route('/model/trainer-stats', methods=['GET'])
+@require_auth()
+def model_trainer_stats():
+    """
+    دریافت آمار کامل AutoTrainer (trainer stats)
+    
+    این endpoint معادل CLI `--stats` هست ولی برای فرانت.
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                // وضعیت
+                "is_running": bool,
+                "is_training": bool,
+                "mode": "DEMO" | "BETA",
+                
+                // آموزش
+                "total_trainings": int,
+                "successful_trainings": int,
+                "failed_trainings": int,
+                "last_training": str,
+                "last_error": str,
+                "last_score": float,
+                "data_points_used": int,
+                "training_period": str,
+                
+                // API
+                "api_status": str,
+                "credits_remaining": int,
+                "api_calls": int,
+                "api_errors": int,
+                
+                // مدل
+                "model_exists": bool,
+                "current_version": str,
+                
+                // Quota
+                "quota": {...},
+                
+                // لاگ‌ها
+                "recent_logs": [...],
+                
+                // Config
+                "coins": [...],
+                "points_config": {...},
+                
+                // Timestamp
+                "timestamp": str
+            }
+        }
+    """
+    try:
+        container = current_app.container
+        trainer = container.get('trainer')
+        
+        if not hasattr(trainer, 'get_stats'):
+            return jsonify({
+                'success': False,
+                'error': 'Trainer does not support get_stats',
+            }), 503
+        
+        stats = trainer.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now().isoformat(),
+        })
+    
+    except Exception as e:
+        logger.error(f"Trainer stats error: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+        }), 500
+        
 @api_bp.route('/schedule/stop', methods=['POST'])
 @require_auth('admin')
 def schedule_stop():
