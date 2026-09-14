@@ -1,6 +1,7 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۹.۳ (با WebSocket)
+# ورودی اصلی سیستم - نسخه ۱۰.۰
+# Bootstrap + Graceful Shutdown + Error Handling
 # ============================================================
 
 import os
@@ -14,58 +15,69 @@ from config.version import VERSION, APP_NAME
 from container import container
 from providers import init_container, shutdown_services
 
-# ✅ فقط Import‌های مورد نیاز برای API
-from infrastructure.external.alerter import alerter
-from application.services.self_healer import SelfHealer
-
+# Flask app
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Signal Handler (با پشتیبانی از WebSocket)
+# Signal Handler
 # ============================================================
 
 def signal_handler(sig, frame) -> None:
-    logger.info(f"🛑 Received signal {sig}, shutting down gracefully...")
+    """Graceful shutdown"""
+    logger.info(f"🛑 Signal {sig} received, shutting down...")
     
-    # ۱. توقف WebSocket
+    # ۱. سرویس‌های پس‌زمینه
     try:
         shutdown_services()
     except Exception as e:
-        logger.error(f"❌ Error shutting down services: {e}")
+        logger.error(f"❌ Shutdown services error: {e}")
     
-    # ۲. توقف Metrics Scheduler
+    # ۲. Metrics Scheduler
     try:
-        metrics_scheduler = container.get('metrics_scheduler')
-        if metrics_scheduler:
-            metrics_scheduler.stop()
+        if container.has('metrics_scheduler'):
+            metrics = container.get('metrics_scheduler')
+            if metrics and hasattr(metrics, 'stop'):
+                metrics.stop()
     except Exception as e:
-        logger.error(f"❌ Error stopping metrics scheduler: {e}")
+        logger.error(f"❌ Metrics stop error: {e}")
     
-    # ۳. توقف Threadها
+    # ۳. Threading
     try:
-        threading_manager = container.get('threading_manager')
-        if threading_manager:
-            threading_manager.stop_all()
+        if container.has('threading_manager'):
+            tm = container.get('threading_manager')
+            if tm and hasattr(tm, 'stop_all'):
+                tm.stop_all()
     except Exception as e:
-        logger.error(f"❌ Error stopping threads: {e}")
+        logger.error(f"❌ Threading stop error: {e}")
     
-    # ۴. خاموش کردن Parallel Processor
+    # ۴. Parallel Processor
     try:
         from core.parallel_processor import parallel_processor
         parallel_processor.shutdown()
     except Exception as e:
-        logger.error(f"❌ Error shutting down parallel processor: {e}")
+        logger.error(f"❌ Parallel shutdown error: {e}")
+    
+    # ۵. Database Factory 🆕
+    try:
+        if container.has('db_factory'):
+            db_factory = container.get('db_factory')
+            if hasattr(db_factory, 'shutdown'):
+                db_factory.shutdown()
+                logger.info("✅ Database factory shutdown")
+    except Exception as e:
+        logger.error(f"❌ DB factory shutdown error: {e}")
     
     logger.info("✅ Graceful shutdown complete")
     sys.exit(0)
+
 
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 
 # ============================================================
-# ایجاد Flask App
+# Flask App
 # ============================================================
 
 app = Flask(__name__)
@@ -75,15 +87,15 @@ app.config['JSON_AS_ASCII'] = False
 
 
 # ============================================================
-# راه‌اندازی Container (با WebSocket)
+# Container Init
 # ============================================================
 
 init_container(app)
-logger.info("✅ Container initialized with WebSocket services")
+logger.info("✅ Container initialized")
 
 
 # ============================================================
-# ✅ ثبت Blueprintها
+# Register Blueprints
 # ============================================================
 
 from presentation.routes.api_routes import api_bp
@@ -98,131 +110,160 @@ logger.info("✅ Blueprints registered")
 
 
 # ============================================================
-# راه‌اندازی Scheduler
+# Start Metrics Scheduler
 # ============================================================
 
 def start_metrics_scheduler() -> None:
+    """شروع Metrics Scheduler"""
     try:
-        metrics_scheduler = container.get('metrics_scheduler')
-        if metrics_scheduler:
-            threading_manager = container.get('threading_manager')
-            if threading_manager:
-                threading_manager.register(
-                    name="metrics_scheduler",
-                    target=metrics_scheduler.start,
-                    daemon=False,
-                    auto_restart=True,
-                    max_restarts=3,
-                    restart_delay=10
-                )
-                logger.info("✅ Metrics Scheduler started via ThreadingManager")
-            else:
-                metrics_scheduler.start()
-                logger.info("✅ Metrics Scheduler started directly")
+        metrics = container.get('metrics_scheduler')
+        if not metrics:
+            logger.warning("⚠️ Metrics scheduler not available")
+            return
+        
+        # از threading_manager استفاده کن
+        if container.has('threading_manager'):
+            tm = container.get('threading_manager')
+            tm.register(
+                name="metrics_scheduler",
+                target=metrics.start,
+                daemon=False,
+                auto_restart=True,
+                max_restarts=3,
+                restart_delay=10,
+            )
+            logger.info("✅ Metrics Scheduler via ThreadingManager")
+        else:
+            metrics.start()
+            logger.info("✅ Metrics Scheduler started")
+    
     except Exception as e:
-        logger.error(f"❌ Failed to start metrics scheduler: {e}")
+        logger.error(f"❌ Metrics scheduler failed: {e}")
 
 
 # ============================================================
-# راه‌اندازی Alert و Self-Healing
+# Start Alert System
 # ============================================================
 
 def start_alert_system() -> None:
+    """
+    شروع سیستم Alert + Self-Healing
+    
+    ⚠️ توجه: خودکار alert_loop رو اجرا می‌کنه
+    """
     try:
-        metrics_scheduler = container.get('metrics_scheduler')
+        from infrastructure.external.alerter import alerter
         
-        if metrics_scheduler is None:
-            logger.error("❌ metrics_scheduler is None, alert system disabled")
+        # Metrics Scheduler (اگه داره healer)
+        metrics = container.get('metrics_scheduler')
+        if not metrics:
+            logger.warning("⚠️ Alert system disabled (no metrics)")
             return
         
-        if metrics_scheduler.healer is None:
-            logger.warning("⚠️ SelfHealer is None in metrics_scheduler, creating new one...")
-            from application.services.self_healer import SelfHealer
-            model_manager = container.get('model_manager')
-            trainer = container.get('trainer')
-            api_client = container.get('api_client')
-            
-            healer = SelfHealer(
-                model_manager=model_manager,
-                trainer=trainer,
-                api_client=api_client
-            )
-            metrics_scheduler.healer = healer
-            logger.info("✅ SelfHealer created and assigned to metrics_scheduler")
+        # اگه healer نداره، بساز
+        if getattr(metrics, 'healer', None) is None:
+            try:
+                healer = container.get('self_healer')
+                metrics.healer = healer
+                logger.info("✅ SelfHealer attached to metrics")
+            except Exception as e:
+                logger.warning(f"⚠️ SelfHealer not available: {e}")
         
+        # Alert loop
         def alert_loop() -> None:
             import time
             while True:
                 try:
-                    scheduler = container.get('metrics_scheduler')
-                    if scheduler:
-                        alert_metrics = scheduler.get_alert_metrics()
-                        alerts = alerter.check_and_alert(alert_metrics)
+                    metrics_s = container.get('metrics_scheduler')
+                    if metrics_s:
+                        alert_metrics = metrics_s.get_alert_metrics()
+                        alerter.check_and_alert(alert_metrics)
                         
-                        if scheduler.healer:
-                            scheduler.healer.check_and_heal(alert_metrics)
+                        if metrics_s.healer:
+                            metrics_s.healer.check_and_heal(alert_metrics)
+                    
                     time.sleep(30)
                 except Exception as e:
                     logger.error(f"❌ Alert loop error: {e}")
                     time.sleep(30)
         
-        threading_manager = container.get('threading_manager')
-        if threading_manager:
-            threading_manager.register(
+        # از threading_manager
+        if container.has('threading_manager'):
+            tm = container.get('threading_manager')
+            tm.register(
                 name="alert_system",
                 target=alert_loop,
                 daemon=False,
                 auto_restart=True,
                 max_restarts=5,
-                restart_delay=15
+                restart_delay=15,
             )
-            logger.info("✅ Alert system started via ThreadingManager")
+            logger.info("✅ Alert system via ThreadingManager")
         else:
             import threading
             alert_thread = threading.Thread(target=alert_loop, daemon=False)
             alert_thread.start()
-            logger.info("✅ Alert system started directly")
-            
+            logger.info("✅ Alert system started")
+    
     except Exception as e:
-        logger.error(f"❌ Failed to start alert system: {e}")
+        logger.error(f"❌ Alert system failed: {e}")
         import traceback
         logger.error(traceback.format_exc())
 
 
 # ============================================================
-# راه‌اندازی Database Health Check
+# Start DB Health Check (🆕)
 # ============================================================
 
 def start_db_health_check() -> None:
+    """
+    شروع DB Health Check با Self-Healing
+    
+    ارتقا: الان از db_factory استفاده می‌کنه
+    """
     try:
-        from infrastructure.database.database_factory import ensure_databases_connected
+        if not container.has('db_factory'):
+            logger.warning("⚠️ DB factory not available")
+            return
         
         def db_health_loop() -> None:
             import time
             while True:
                 try:
-                    ensure_databases_connected()
+                    from infrastructure.database import health_check
+                    health = health_check()
+                    
+                    # بررسی سلامت
+                    disconnected = [
+                        name for name, info in health.items()
+                        if not info.get('connected', False)
+                    ]
+                    
+                    if disconnected:
+                        logger.warning(f"⚠️ DBs disconnected: {disconnected}")
+                    
                     time.sleep(60)
                 except Exception as e:
-                    logger.error(f"❌ DB health check error: {e}")
+                    logger.error(f"❌ DB health error: {e}")
                     time.sleep(120)
         
-        threading_manager = container.get('threading_manager')
-        if threading_manager:
-            threading_manager.register(
+        if container.has('threading_manager'):
+            tm = container.get('threading_manager')
+            tm.register(
                 name="db_health_check",
                 target=db_health_loop,
                 daemon=True,
                 auto_restart=True,
-                max_restarts=10
+                max_restarts=10,
             )
-            logger.info("✅ Database health check started")
+            logger.info("✅ DB health check started")
+    
     except Exception as e:
-        logger.error(f"❌ Failed to start DB health check: {e}")
+        logger.error(f"❌ DB health check failed: {e}")
 
 
 # ============================================================
-# اجرای راه‌اندازی‌ها
+# Start All
 # ============================================================
 
 start_metrics_scheduler()
@@ -231,7 +272,7 @@ start_db_health_check()
 
 
 # ============================================================
-# ✅ Error Handlers (فقط JSON)
+# Error Handlers
 # ============================================================
 
 @app.errorhandler(404)
@@ -240,7 +281,7 @@ def not_found(error):
         'success': False,
         'error': 'NotFound',
         'message': 'Endpoint not found',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
     }), 404
 
 
@@ -250,7 +291,7 @@ def method_not_allowed(error):
         'success': False,
         'error': 'MethodNotAllowed',
         'message': 'Method not allowed',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
     }), 405
 
 
@@ -261,86 +302,96 @@ def internal_error(error):
         'success': False,
         'error': 'InternalServerError',
         'message': 'An internal error occurred',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
     }), 500
 
 
 # ============================================================
-# ✅ روت ساده برای بررسی وضعیت
+# Root Endpoint
 # ============================================================
 
 @app.route('/')
 def home():
-    return jsonify({
-        'name': APP_NAME,
-        'version': VERSION,
-        'status': 'running',
-        'websocket': {
-            'connected': container.get('free_crypto_client').is_connected if container.has('free_crypto_client') else False
-        },
-        'timestamp': datetime.now().isoformat(),
-        'endpoints': [
-            '/api/metrics',
-            '/api/predict',
-            '/api/model/status',
-            '/api/model/train',
-            '/api/health',
-            '/api/alerts',
-            '/api/credits',
-            '/api/crypto/prices',
-            '/api/crypto/price/<symbol>',
-            '/api/crypto/stats'
-        ]
-    })
+    """روت ساده"""
+    try:
+        container_status = container.get_status()
+        ws_connected = False
+        try:
+            if container.has('free_crypto_client'):
+                fc = container.get('free_crypto_client')
+                ws_connected = fc.is_connected if fc else False
+        except Exception:
+            pass
+        
+        return jsonify({
+            'name': APP_NAME,
+            'version': VERSION,
+            'status': 'running',
+            'container': {
+                'services_count': container_status.get('total', 0),
+            },
+            'websocket': {'connected': ws_connected},
+            'timestamp': datetime.now().isoformat(),
+            'endpoints': [
+                '/api/health',
+                '/api/metrics',
+                '/api/model/status',
+                '/api/model/profiles/presets',
+                '/api/predict/single',
+                '/api/crypto/prices',
+            ],
+        })
+    except Exception as e:
+        logger.error(f"Root endpoint error: {e}")
+        return jsonify({
+            'name': APP_NAME,
+            'version': VERSION,
+            'status': 'running',
+        })
 
 
 # ============================================================
-# راه‌اندازی Watchdog
+# Watchdog
 # ============================================================
 
 try:
-    threading_manager = container.get('threading_manager')
-    if threading_manager:
-        threading_manager.start_watchdog(check_interval=10)
+    if container.has('threading_manager'):
+        tm = container.get('threading_manager')
+        tm.start_watchdog(check_interval=10)
         logger.info("✅ Watchdog started")
 except Exception as e:
-    logger.error(f"❌ Failed to start watchdog: {e}")
+    logger.error(f"❌ Watchdog failed: {e}")
 
 
 # ============================================================
-# اجرای اصلی
+# Main
 # ============================================================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
     
-    container_status = container.get_status()
+    # Status
+    try:
+        status = container.get_status()
+        services_count = status.get('total', 0)
+    except Exception:
+        services_count = 0
     
     print("=" * 70)
-    print(f"🚀 {APP_NAME} v{VERSION} (API Only)")
+    print(f"🚀 {APP_NAME} v{VERSION}")
     print(f"📡 Port: {port}")
     print(f"🐛 Debug: {debug}")
-    print(f"🔌 WebSocket: {'✅ Enabled' if container.has('free_crypto_client') else '❌ Disabled'}")
-    print("=" * 70)
-    print("📊 API Endpoints:")
-    print("  GET  /api/metrics           - System metrics")
-    print("  GET  /api/predict           - Predict single coin")
-    print("  POST /api/predict/multiple  - Predict multiple coins")
-    print("  GET  /api/model/status      - Model status")
-    print("  POST /api/model/train       - Train model")
-    print("  GET  /api/health            - Health check")
-    print("  GET  /api/alerts            - Get alerts")
-    print("  GET  /api/credits           - API credits")
-    print("  GET  /api/crypto/prices     - Real-time prices (WebSocket)")
-    print("  GET  /api/crypto/price/<s>  - Real-time price (WebSocket)")
-    print("  GET  /api/crypto/stats      - WebSocket stats")
-    print("=" * 70)
-    print("🔧 Use CTRL+C to stop gracefully")
+    print(f"📦 Services: {services_count}")
     print("=" * 70)
     
     try:
-        app.run(host="0.0.0.0", port=port, debug=debug, threaded=True)
+        app.run(
+            host="0.0.0.0",
+            port=port,
+            debug=debug,
+            threaded=True,
+        )
     except KeyboardInterrupt:
         logger.info("🛑 Shutting down...")
         signal_handler(signal.SIGINT, None)
