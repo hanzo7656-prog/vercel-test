@@ -48,84 +48,149 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 # ============================================================
 # ۱. صفحه اصلی (HOME)
 # ============================================================
-
 @api_bp.route('', methods=['GET'])
 def api_home():
     """صفحه اصلی API - لیست همه اندپوینت‌ها"""
     return jsonify({
         'name': 'Trading Signal System API',
-        'version': '10.0.0',
+        'version': '11.0.0',
         'status': 'running',
         'timestamp': datetime.now().isoformat(),
         'endpoints': {
             'system': {
                 'health': '/api/health',
                 'health_simple': '/api/health/simple',
-                'health_database': '/api/health/database',
                 'stats': '/api/stats',
                 'metrics': '/api/metrics',
                 'metrics_summary': '/api/metrics/summary',
-                'metrics_dashboard': '/api/metrics/dashboard'
+                'metrics_dashboard': '/api/metrics/dashboard',
             },
             'app_stats': {
-                'stats': '/api/app/stats'
+                'stats': '/api/app/stats',
             },
-            'database': {
-                'postgresql_tables': '/api/db/postgresql/tables',
-                'postgresql_table': '/api/db/postgresql/table/<name>',
-                'postgresql_stats': '/api/db/postgresql/stats',
-                'postgresql_export': '/api/db/postgresql/export/<name>',
-                'postgresql_backup': '/api/db/postgresql/backup',
-                'redis_keys': '/api/db/redis/keys',
-                'redis_key': '/api/db/redis/key/<key>',
-                'redis_stats': '/api/db/redis/stats',
-                'redis_clear': '/api/db/redis/clear',
-                'sqlite_tables': '/api/db/sqlite/tables',
-                'sqlite_table': '/api/db/sqlite/table/<name>',
-                'sqlite_stats': '/api/db/sqlite/stats',
-                'sqlite_export': '/api/db/sqlite/export/<name>',
-                'search': '/api/db/search',
-                'health': '/api/db/health',
-                'query': '/api/db/query',
-                'tables': '/api/db/tables',
-                'stats_general': '/api/db/stats'
+            'database_quota': {
+                'all': '/api/db/quota',
+                'one': '/api/db/quota/<db_name>',
+                'status': '/api/db/quota/<db_name>/status',
+                'stats': '/api/db/quota/stats',
+            },
+            'database_health': {
+                'summary': '/api/db/health/summary',
+                'full': '/api/db/health/full',
+                'list': '/api/db/list',
+                'ping': '/api/db/<db_name>/ping',
+                'ready': '/api/db/ready',
+                'factory_status': '/api/db/factory/status',
+            },
+            'database_postgresql': {
+                'tables': '/api/db/postgresql/<db_name>/tables',
+                'table_data': '/api/db/postgresql/<db_name>/tables/<table_name>',
+                'table_sizes': '/api/db/postgresql/<db_name>/table-sizes',
+                'stats': '/api/db/postgresql/<db_name>/stats',
+                'export': '/api/db/postgresql/<db_name>/export/<table_name>',
+                'export_row': '/api/db/postgresql/<db_name>/tables/<table_name>/row/<row_id>',
+                'query': '/api/db/postgresql/<db_name>/query',
+            },
+            'database_redis': {
+                'keys': '/api/db/redis/keys',
+                'key': '/api/db/redis/keys/<key>',
+                'delete_key': '/api/db/redis/keys/<key>',
+                'stats': '/api/db/redis/stats',
+                'namespaces': '/api/db/redis/namespaces',
+                'clear_namespace': '/api/db/redis/namespace/<namespace>',
+                'flush': '/api/db/redis/flush',
+                'export_key': '/api/db/redis/keys/<key>/export',
+            },
+            'database_archive': {
+                'tables': '/api/db/archive/tables',
+                'table_data': '/api/db/archive/tables/<table_name>',
+                'stats': '/api/db/archive/stats',
+                'export': '/api/db/archive/tables/<table_name>/export',
+                'export_row': '/api/db/archive/tables/<table_name>/row/<row_id>',
+                'cleanup': '/api/db/archive/cleanup',
+                'features': '/api/db/archive/features',
+            },
+            'database_router': {
+                'stats': '/api/db/router/stats',
+                'rules': '/api/db/router/rules',
+                'registry_summary': '/api/db/registry/summary',
+            },
+            'database_maintenance': {
+                'vacuum': '/api/db/<db_name>/vacuum',
+                'vacuum_all': '/api/db/vacuum-all',
+                'analyze': '/api/db/<db_name>/analyze',
+                'backup_create': '/api/db/backup/create',
+                'backup_list': '/api/db/backup/list',
+                'delete_old': '/api/db/<db_name>/tables/<table_name>/delete-old',
+                'table_count': '/api/db/<db_name>/tables/<table_name>/count',
+                'table_size': '/api/db/<db_name>/tables/<table_name>/size',
+                'truncate': '/api/db/<db_name>/tables/<table_name>/truncate',
+                'transaction': '/api/db/transaction',
             },
             'model': {
                 'status': '/api/model/status',
+                'stats': '/api/model/trainer-stats',
                 'history': '/api/model/history',
                 'features': '/api/model/features',
                 'data': '/api/model/data',
                 'train': '/api/model/train',
+                'train_batch': '/api/model/train-batch',
+                'analyze_training': '/api/model/analyze-training',
                 'export': '/api/model/export',
                 'import': '/api/model/import',
                 'activate': '/api/model/activate',
-                'delete': '/api/model/delete'
+                'delete': '/api/model/delete',
+                'importance': '/api/model/importance',
+                'performance': '/api/model/performance',
+                'analytics_stats': '/api/model/analytics-stats',
+                'latest_report': '/api/model/latest-report',
+                'report_version': '/api/model/report/<version>',
+            },
+            'model_profiles': {
+                'presets': '/api/model/profiles/presets',
+                'preset': '/api/model/profiles/presets/<preset_id>',
+                'strategies': '/api/model/profiles/strategies',
+                'hyperparameter_limits': '/api/model/profiles/hyperparameter-limits',
+                'current': '/api/model/profiles/current',
+                'validate': '/api/model/profiles/validate',
+                'saved': '/api/model/profiles/saved',
+                'saved_one': '/api/model/profiles/saved/<name>',
             },
             'schedule': {
                 'status': '/api/schedule/status',
                 'start': '/api/schedule/start',
-                'stop': '/api/schedule/stop'
+                'stop': '/api/schedule/stop',
             },
             'predict': {
                 'single': '/api/predict/single',
                 'multiple': '/api/predict/multiple',
-                'explain': '/api/predict/explain'
+                'explain': '/api/predict/explain',
+                'history': '/api/predict/history',
+                'history_stats': '/api/predict/history/stats',
             },
             'coinstats': {
+                'coins': '/api/coinstats/coins',
                 'price': '/api/coinstats/price/<coin>',
                 'prices': '/api/coinstats/prices',
                 'fear_greed': '/api/coinstats/fear-greed',
                 'btc_dominance': '/api/coinstats/btc-dominance',
-                'all': '/api/coinstats/all'
+                'all': '/api/coinstats/all',
+                'chart': '/api/coinstats/chart/<coin>',
+            },
+            'crypto': {
+                'prices': '/api/crypto/prices',
+                'price': '/api/crypto/price/<symbol>',
+                'stats': '/api/crypto/stats',
+                'heartbeat': '/api/crypto/heartbeat',
             },
             'alerts': {
                 'list': '/api/alerts',
                 'resolve': '/api/alerts/<id>/resolve',
-                'resolve_all': '/api/alerts/resolve-all'
+                'resolve_all': '/api/alerts/resolve-all',
             },
             'user': {
                 'info': '/api/user',
-                'credits': '/api/credits'
+                'credits': '/api/credits',
             },
             'debug': {
                 'status': '/api/debug/status',
@@ -136,11 +201,16 @@ def api_home():
                 'exec': '/api/debug/exec',
                 'cache': '/api/debug/cache',
                 'cache_clear': '/api/debug/cache/clear',
-                'loglevel': '/api/debug/loglevel'
+                'loglevel': '/api/debug/loglevel',
+            },
+            'healing': {
+                'status': '/api/healing/status',
+                'trigger': '/api/healing/trigger',
+                'reset': '/api/healing/reset',
             },
             'auth': {
-                'login': '/api/login'
-            }
+                'login': '/api/login',
+            },
         }
     })
 
