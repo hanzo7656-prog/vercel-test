@@ -1349,84 +1349,84 @@ class ModelManager:
         استراتژی: بارگذاری چند نسخه + وزن‌دهی + ترکیب
         """
         try:
-        # 1. دریافت نسخه‌ها از profile
-        data_config = profile.get("data_config", {})
-        versions = data_config.get("ensemble_versions", [])
-        weights = data_config.get("ensemble_weights", [])
+            # 1. دریافت نسخه‌ها از profile
+            data_config = profile.get("data_config", {})
+            versions = data_config.get("ensemble_versions", [])
+            weights = data_config.get("ensemble_weights", [])
         
-        if not versions or len(versions) < 2:
-            return {
-                "success": False,
-                "error": "Ensemble needs at least 2 versions in data_config.ensemble_versions",
-            }
-        
-        # 2. بارگذاری مدل‌ها
-        models = []
-        for version in versions:
-            model = self.repository.load_model(version)
-            if model is None:
+            if not versions or len(versions) < 2:
                 return {
                     "success": False,
-                    "error": f"Could not load version '{version}'",
+                    "error": "Ensemble needs at least 2 versions in data_config.ensemble_versions",
                 }
-            models.append(model)
         
-        # 3. وزن‌دهی
-        if len(weights) != len(models):
-            # وزن مساوی
-            weights = [1.0 / len(models)] * len(models)
+            # 2. بارگذاری مدل‌ها
+            models = []
+            for version in versions:
+                model = self.repository.load_model(version)
+                if model is None:
+                    return {
+                        "success": False,
+                        "error": f"Could not load version '{version}'",
+                    }
+                models.append(model)
         
-        # 4. ساخت ensemble
-        ensemble = self._create_weighted_ensemble(models, weights)
+            # 3. وزن‌دهی
+            if len(weights) != len(models):
+                # وزن مساوی
+                weights = [1.0 / len(models)] * len(models)
         
-        # 5. ارزیابی
-        start_time = datetime.now()
-        accuracy = self._evaluate(ensemble, X, y)
-        training_time = (datetime.now() - start_time).total_seconds()
+            # 4. ساخت ensemble
+            ensemble = self._create_weighted_ensemble(models, weights)
         
-        # 6. ذخیره
-        if save:
-            result = self.save_model(
-                model=ensemble,
-                accuracy=accuracy,
-                period=period,
-                coins=coins,
-                training_samples=len(X),
-                set_active=True,
-                backup=True,
-                profile_name=profile_name or profile.get("name"),
-                strategy="ensemble",
-                is_ensemble=True,
-            )
+            # 5. ارزیابی
+            start_time = datetime.now()
+            accuracy = self._evaluate(ensemble, X, y)
+            training_time = (datetime.now() - start_time).total_seconds()
+        
+            # 6. ذخیره
+            if save:
+                result = self.save_model(
+                    model=ensemble,
+                    accuracy=accuracy,
+                    period=period,
+                    coins=coins,
+                    training_samples=len(X),
+                    set_active=True,
+                    backup=True,
+                    profile_name=profile_name or profile.get("name"),
+                    strategy="ensemble",
+                    is_ensemble=True,
+                )
             
-            if not result.get("success"):
-                return result
+                if not result.get("success"):
+                    return result
             
-            return {
-                **result,
-                "strategy_used": "ensemble",
-                "profile_used": profile_name or profile.get("name"),
-                "versions_used": versions,
-                "weights": weights,
-                "training_time": training_time,
-            }
-        else:
-            self.current_model = ensemble
-            return {
-                "success": True,
-                "accuracy": accuracy,
-                "strategy_used": "ensemble",
-                "profile_used": profile_name or profile.get("name"),
-                "versions_used": versions,
-                "weights": weights,
-                "training_time": training_time,
-                "saved": False,
-            }
+                return {
+                    **result,
+                    "strategy_used": "ensemble",
+                    "profile_used": profile_name or profile.get("name"),
+                    "versions_used": versions,
+                    "weights": weights,
+                    "training_time": training_time,
+                }
+            else:
+                self.current_model = ensemble
+                return {
+                    "success": True,
+                    "accuracy": accuracy,
+                    "strategy_used": "ensemble",
+                    "profile_used": profile_name or profile.get("name"),
+                    "versions_used": versions,
+                    "weights": weights,
+                    "training_time": training_time,
+                    "saved": False,
+                }
     
-    except Exception as e:
-        logger.error(f"❌ Ensemble error: {e}", exc_info=True)
-        self._stats["errors"] += 1
-        return {"success": False, "error": str(e)}
+        except Exception as e:
+            logger.error(f"❌ Ensemble error: {e}", exc_info=True)
+            self._stats["errors"] += 1
+            return {"success": False, "error": str(e)}
         
     
     # ============================================================
@@ -2013,7 +2013,7 @@ class ModelManager:
     # ۳. تخمین زمان آموزش
     # ============================================================
     
-    # ضرایب بر اساس بازه داده
+        # ضرایب بر اساس بازه داده
         period_multipliers = {
             "24h": 0.5,
             "1w": 1.0,
@@ -2023,7 +2023,7 @@ class ModelManager:
         }
         period_mult = period_multipliers.get(period, 2.0)
     
-    # ضرایب استراتژی
+        # ضرایب استراتژی
         strategy_multipliers = {
             "full": 1.0,
             "incremental": 0.3,      # سریع‌تر (فقط راندهای جدید)
@@ -2033,10 +2033,10 @@ class ModelManager:
         }
         strategy_mult = strategy_multipliers.get(strategy, 1.0)
     
-    # تخمین پایه:
-    # هر درخت تقریباً 0.05 ثانیه * (عمق / 5) طول می‌کشه
-    # برای هر ارز، ضرب در (coins_count / 2)
-    # ضرب در ضرایب بازه و استراتژی
+        # تخمین پایه:
+        # هر درخت تقریباً 0.05 ثانیه * (عمق / 5) طول می‌کشه
+        # برای هر ارز، ضرب در (coins_count / 2)
+        # ضرب در ضرایب بازه و استراتژی
     
         base_time_per_tree = 0.05
         depth_factor = max_depth / 5.0
@@ -2050,11 +2050,11 @@ class ModelManager:
             * strategy_mult
         )
     
-    # اگه lr بالا باشه، سریع‌تر یاد می‌گیره (rounds کمتر مؤثر)
+        # اگه lr بالا باشه، سریع‌تر یاد می‌گیره (rounds کمتر مؤثر)
         lr_speedup = 1.0 / max(learning_rate * 10, 0.5)
         estimated_time *= min(lr_speedup, 2.0)  # سقف ۲x
     
-    # حداقل زمان
+        # حداقل زمان
         estimated_time = max(estimated_time, 1.0)
     
     # ============================================================
@@ -2080,10 +2080,10 @@ class ModelManager:
     # ۵. تخمین حجم مدل
     # ============================================================
     
-    # هر درخت تقریباً:
-    # - ۵۰ بایت برای هر node
-    # - 2^max_depth گره در بدترین حالت
-    # ولی معمولاً کمتر — ضریب 0.3
+        # هر درخت تقریباً:
+        # - ۵۰ بایت برای هر node
+        # - 2^max_depth گره در بدترین حالت
+        # ولی معمولاً کمتر — ضریب 0.3
     
         nodes_per_tree = (2 ** max_depth) * 0.3
         bytes_per_node = 50
@@ -2091,15 +2091,15 @@ class ModelManager:
         base_size_bytes = n_estimators * nodes_per_tree * bytes_per_node
         base_size_mb = base_size_bytes / (1024 * 1024)
     
-    # ضریب اشتراک ویژگی‌ها (colsample_bytree)
+        # ضریب اشتراک ویژگی‌ها (colsample_bytree)
         feature_factor = colsample
     
-    # ضریب نمونه‌گیری (subsample)
+        # ضریب نمونه‌گیری (subsample)
         sample_factor = subsample
     
         estimated_size_mb = base_size_mb * feature_factor * sample_factor
     
-    # حداقل حجم
+        # حداقل حجم
         estimated_size_mb = max(estimated_size_mb, 0.5)
     
     # ============================================================
@@ -2113,14 +2113,14 @@ class ModelManager:
             usable_mb = quota_status.get("usable_mb", 0) or 0
             available_mb = usable_mb - used_mb
         
-        # برای ensemble، فضای بیشتری لازمه
+            # برای ensemble، فضای بیشتری لازمه
             if strategy == "ensemble":
                 estimated_size_mb *= 1.5  # ensemble بزرگ‌تره
         
-        # چک فضای کافی
+            # چک فضای کافی
             can_proceed = available_mb > (estimated_size_mb * 1.2)
         
-        # آستانه هشدار
+            # آستانه هشدار
             usage_percent = quota_status.get("used_percent", 0) or 0
             warning = None
         
@@ -2163,59 +2163,60 @@ class ModelManager:
     # ============================================================
     
         result = {
-        # اعتبار
+            # اعتبار
             "valid": True,
             "errors": [],
         
-        # تخمین‌ها
+            # تخمین‌ها
             "estimated_time_seconds": round(estimated_time, 1),
             "estimated_time_formatted": estimated_time_formatted,
             "estimated_model_size_mb": round(estimated_size_mb, 2),
         
-        # Quota
+            # Quota
             "used_mb": round(used_mb, 2),
             "usable_mb": round(usable_mb, 2),
             "available_mb": round(available_mb, 2),
             "used_percent": round(quota_status.get("used_percent", 0) or 0, 1),
             "can_proceed": can_proceed,
         
-        # اطلاعات آموزش
-        "strategy": strategy,
-        "strategy_name": LEARNING_STRATEGIES[strategy]["name"],
-        "profile_name": validated_profile.get("name", "custom"),
-        "hyperparameters": hyperparams,
+            # اطلاعات آموزش
+            "strategy": strategy,
+            "strategy_name": LEARNING_STRATEGIES[strategy]["name"],
+            "profile_name": validated_profile.get("name", "custom"),
+            "hyperparameters": hyperparams,
         
-        # ورودی‌ها
-        "period": period,
-        "coins_count": coins_count,
+            # ورودی‌ها
+            "period": period,
+            "coins_count": coins_count,
         
-        # مدل فعلی
-        "requires_existing_model": requires_model,
-        "has_existing_model": has_model,
-        "current_version": self.current_version,
-    }
-    
-    # اضافه کردن هشدار اگه هست
-    if warning:
-        result["warning"] = warning
-    
-    # اضافه کردن جزئیات بیشتر در صورت نیاز
-    if not can_proceed:
-        result["insufficient_space"] = {
-            "needed_mb": round(estimated_size_mb * 1.2, 2),
-            "available_mb": round(available_mb, 2),
-            "shortage_mb": round(estimated_size_mb * 1.2 - available_mb, 2),
+            # مدل فعلی
+            "requires_existing_model": requires_model,
+            "has_existing_model": has_model,
+            "current_version": self.current_version,
         }
     
-    logger.debug(
-        f"📊 analyze_training: "
-        f"strategy={strategy}, "
-        f"time={estimated_time:.1f}s, "
-        f"size={estimated_size_mb:.2f}MB, "
-        f"can_proceed={can_proceed}"
-    )
+        # اضافه کردن هشدار اگه هست
+        if warning:
+            result["warning"] = warning
     
-    return result
+        # اضافه کردن جزئیات بیشتر در صورت نیاز
+        if not can_proceed:
+            result["insufficient_space"] = {
+                "needed_mb": round(estimated_size_mb * 1.2, 2),
+                "available_mb": round(available_mb, 2),
+                "shortage_mb": round(estimated_size_mb * 1.2 - available_mb, 2),
+            }
+    
+        logger.debug(
+            f"📊 analyze_training: "
+            f"strategy={strategy}, "
+            f"time={estimated_time:.1f}s, "
+            f"size={estimated_size_mb:.2f}MB, "
+            f"can_proceed={can_proceed}"
+        )
+    
+        return result
+
     def _get_quota_summary(self) -> Dict[str, Any]:
         """خلاصه Quota"""
         try:
