@@ -38,7 +38,41 @@ from application.services.monitoring_service import MonitoringService
 from application.use_cases.train_model import TrainModelUseCase
 from infrastructure.auth.auth_manager import require_auth
 from infrastructure.external.alerter import alerter
-from infrastructure.database import get_primary, get_cache, get_backup, health_check, registry
+from infrastructure.database import (
+    # دسترسی به دیتابیس‌ها
+    get_primary,
+    get_backup,
+    get_analytics,
+    get_logs_db,
+    get_archive,
+    get_cache,
+    get_db,
+    
+    # Quota
+    get_quota,
+    get_all_quotas,
+    set_database_limit,
+    set_table_limit,
+    get_quota_status,
+    get_quota_manager_stats,
+    reset_quota_overrides,
+    
+    # Health
+    health_check,
+    health_summary,
+    get_database_status,
+    get_factory_status,
+    get_databases_info,
+    is_ready,
+    force_reconnect,
+    reload_config,
+    get_all_databases,
+    
+    # Router/Registry
+    get_registry_stats,
+    get_router_stats,
+    get_all_stats,
+)
 
 logger = logging.getLogger(__name__)
 
