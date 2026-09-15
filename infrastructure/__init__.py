@@ -68,6 +68,13 @@ def get_alerter():
     from infrastructure.external.alerter import alerter
     return alerter
 
+# در تابع موجود اضافه کن:
+def get_settings_repository():
+    """دریافت Repository تنظیمات (Lazy Import)"""
+    from infrastructure.repositories.settings_repository import SettingsRepository
+    return SettingsRepository()
+
+
 
 __all__ = [
     # Lazy Loaders
@@ -81,4 +88,5 @@ __all__ = [
     'get_prediction_repository',
     'get_auth_manager',
     'get_alerter',
+    'get_settings_repository',
 ]
