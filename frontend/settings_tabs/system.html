@@ -1,0 +1,403 @@
+<!-- ============================================================
+     settings_tabs/system.html - تب سیستم
+     نسخه ۱.۰ - اطلاعات سیستم
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: اطلاعات نسخه ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-info-circle"></i>
+            <span>اطلاعات سیستم</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-tag"></i>
+                نسخه برنامه
+            </span>
+            <span class="info-value cyan" id="sys_version">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-cube"></i>
+                نام برنامه
+            </span>
+            <span class="info-value" id="sys_name">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-server"></i>
+                محیط
+            </span>
+            <span class="info-value" id="sys_env">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-clock"></i>
+                Uptime
+            </span>
+            <span class="info-value green" id="sys_uptime">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-heartbeat"></i>
+                وضعیت سلامت
+            </span>
+            <span class="info-value" id="sys_health">—</span>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: وضعیت دیتابیس‌ها ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-database"></i>
+            <span>وضعیت دیتابیس‌ها</span>
+        </div>
+
+        <div id="sys_database_list">
+            <div class="settings-info-item">
+                <span class="info-label">در حال بررسی...</span>
+                <span class="info-value">—</span>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-secondary" onclick="refreshSystemInfo()">
+                <i class="fas fa-sync-alt"></i>
+                بروزرسانی
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۳: API & Credits ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-cloud"></i>
+            <span>وضعیت API</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-wifi"></i>
+                وضعیت API
+            </span>
+            <span class="info-value" id="sys_api_status">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-coins"></i>
+                اعتبار باقیمانده
+            </span>
+            <span class="info-value cyan" id="sys_api_credits">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-chart-bar"></i>
+                درخواست‌های امروز
+            </span>
+            <span class="info-value purple" id="sys_api_requests">—</span>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۴: عملیات ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-tools"></i>
+            <span>عملیات سیستم</span>
+        </div>
+
+        <div class="settings-actions" style="margin-top: 0; padding-top: 0; border-top: none;">
+            <button class="settings-btn settings-btn-secondary" onclick="exportSettings()">
+                <i class="fas fa-download"></i>
+                خروجی تنظیمات
+            </button>
+            <button class="settings-btn settings-btn-secondary" onclick="openDebugPage()">
+                <i class="fas fa-bug"></i>
+                صفحه دیباگ
+            </button>
+            <button class="settings-btn settings-btn-secondary" onclick="openDatabasePage()">
+                <i class="fas fa-database"></i>
+                مدیریت دیتابیس
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// SYSTEM TAB CONTROLLER
+// ============================================================
+
+function init_settings_system() {
+    console.log('⚙️ Initializing system tab...');
+    loadSystemInfo();
+    
+    // شروع بروزرسانی خودکار
+    if (window._systemInfoInterval) {
+        clearInterval(window._systemInfoInterval);
+    }
+    window._systemInfoInterval = setInterval(loadSystemInfo, 30000);
+}
+
+function cleanup_settings_system() {
+    console.log('🧹 Cleaning up system tab...');
+    
+    if (window._systemInfoInterval) {
+        clearInterval(window._systemInfoInterval);
+        window._systemInfoInterval = null;
+    }
+}
+
+// ============================================================
+// LOAD SYSTEM INFO
+// ============================================================
+
+async function loadSystemInfo() {
+    try {
+        // نسخه از API root
+        try {
+            const res = await fetch('/api');
+            const data = await res.json();
+            
+            const versionEl = document.getElementById('sys_version');
+            if (versionEl) versionEl.textContent = data.version || '—';
+            
+            const nameEl = document.getElementById('sys_name');
+            if (nameEl) nameEl.textContent = data.name || 'Trading Signal System';
+        } catch (e) {
+            console.debug('Could not fetch API root:', e);
+        }
+        
+        // Environment
+        const envEl = document.getElementById('sys_env');
+        if (envEl) envEl.textContent = 'Production';
+        
+        // Health
+        try {
+            const health = await window.api.getHealth();
+            
+            const healthEl = document.getElementById('sys_health');
+            if (healthEl) {
+                const status = health.status || 'unknown';
+                if (status === 'ok') {
+                    healthEl.innerHTML = '<span class="settings-live-dot"></span> پایدار';
+                    healthEl.className = 'info-value green';
+                } else if (status === 'degraded') {
+                    healthEl.textContent = '⚠️ ضعیف';
+                    healthEl.className = 'info-value orange';
+                } else {
+                    healthEl.textContent = '❌ خطا';
+                    healthEl.className = 'info-value red';
+                }
+            }
+        } catch (e) {
+            console.debug('Health check error:', e);
+        }
+        
+        // Uptime
+        try {
+            const stats = await window.api.getAppStats();
+            if (stats.success && stats.data?.uptime) {
+                const uptimeEl = document.getElementById('sys_uptime');
+                if (uptimeEl) uptimeEl.textContent = stats.data.uptime.app_formatted || '—';
+            }
+        } catch (e) {
+            console.debug('Stats error:', e);
+        }
+        
+        // Databases
+        await loadDatabasesStatus();
+        
+        // API Status
+        await loadApiStatus();
+        
+        console.log('✅ System info loaded');
+    } catch (err) {
+        console.error('❌ Failed to load system info:', err);
+    }
+}
+
+// ============================================================
+// LOAD DATABASES STATUS
+// ============================================================
+
+async function loadDatabasesStatus() {
+    try {
+        const health = await window.api.getHealthSummary();
+        const container = document.getElementById('sys_database_list');
+        
+        if (!container) return;
+        
+        if (!health.success || !health.data) {
+            container.innerHTML = `
+                <div class="settings-info-item">
+                    <span class="info-label">خطا در دریافت داده</span>
+                    <span class="info-value red">—</span>
+                </div>
+            `;
+            return;
+        }
+        
+        const data = health.data;
+        const details = data.details || {};
+        
+        const dbNames = ['primary', 'backup', 'analytics', 'logs', 'archive', 'cache'];
+        const dbLabels = {
+            primary: 'دیتابیس اصلی',
+            backup: 'پشتیبان',
+            analytics: 'تحلیل و آمار',
+            logs: 'لاگ‌ها',
+            archive: 'آرشیو',
+            cache: 'کش (Redis)',
+        };
+        
+        const dbIcons = {
+            primary: 'fa-database',
+            backup: 'fa-archive',
+            analytics: 'fa-chart-bar',
+            logs: 'fa-file-alt',
+            archive: 'fa-box-archive',
+            cache: 'fa-bolt',
+        };
+        
+        container.innerHTML = dbNames.map(dbName => {
+            const info = details[dbName] || {};
+            const isConnected = info.connected === true || info.status === 'online';
+            
+            const statusIcon = isConnected 
+                ? '<span class="settings-live-dot"></span>' 
+                : '❌';
+            
+            const statusClass = isConnected ? 'green' : 'red';
+            const statusText = isConnected ? 'متصل' : 'قطع';
+            
+            return `
+                <div class="settings-info-item">
+                    <span class="info-label">
+                        <i class="fas ${dbIcons[dbName] || 'fa-database'}"></i>
+                        ${dbLabels[dbName] || dbName}
+                    </span>
+                    <span class="info-value ${statusClass}">
+                        ${statusIcon} ${statusText}
+                    </span>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (err) {
+        console.error('❌ Failed to load databases status:', err);
+    }
+}
+
+// ============================================================
+// LOAD API STATUS
+// ============================================================
+
+async function loadApiStatus() {
+    try {
+        // API Status
+        try {
+            const status = await window.api.getStatus();
+            const statusEl = document.getElementById('sys_api_status');
+            if (statusEl) {
+                if (status?.status === 'ok') {
+                    statusEl.innerHTML = '<span class="settings-live-dot"></span> فعال';
+                    statusEl.className = 'info-value green';
+                } else {
+                    statusEl.textContent = '⚠️ غیرفعال';
+                    statusEl.className = 'info-value orange';
+                }
+            }
+        } catch (e) {
+            console.debug('API status error:', e);
+        }
+        
+        // Credits
+        try {
+            const credits = await window.api.getCredits();
+            const creditsEl = document.getElementById('sys_api_credits');
+            if (creditsEl && credits?.data) {
+                const remaining = credits.data.remainingCredits || 0;
+                creditsEl.textContent = remaining.toLocaleString('fa-IR');
+                
+                // رنگ بر اساس اعتبار
+                if (remaining < 100) {
+                    creditsEl.className = 'info-value red';
+                } else if (remaining < 500) {
+                    creditsEl.className = 'info-value orange';
+                } else {
+                    creditsEl.className = 'info-value cyan';
+                }
+            }
+        } catch (e) {
+            console.debug('Credits error:', e);
+        }
+        
+        // Request count (از app metrics)
+        try {
+            const metrics = window.appMetrics?.get?.() || {};
+            const requestsEl = document.getElementById('sys_api_requests');
+            if (requestsEl) {
+                requestsEl.textContent = (metrics.totalRequests || 0).toLocaleString('fa-IR');
+            }
+        } catch (e) {
+            console.debug('Metrics error:', e);
+        }
+    } catch (err) {
+        console.error('❌ Failed to load API status:', err);
+    }
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+
+function refreshSystemInfo() {
+    window.showToast?.('🔄 در حال بروزرسانی...', 'info', 1500);
+    loadSystemInfo();
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+
+function exportSettings() {
+    try {
+        const settings = {
+            scheduler: appSettings.get('scheduler'),
+            theme: appSettings.get('theme'),
+            cache: appSettings.get('cache'),
+            notifications: appSettings.get('notifications'),
+            dashboard: appSettings.get('dashboard'),
+            exported_at: new Date().toISOString(),
+        };
+        
+        const filename = `settings_${new Date().toISOString().slice(0, 10)}.json`;
+        window.downloadJSON?.(settings, filename);
+        
+        window.showToast?.('📥 دانلود شروع شد', 'success');
+    } catch (err) {
+        console.error('❌ Export settings error:', err);
+        window.showToast?.('❌ خطا در خروجی', 'error');
+    }
+}
+
+function openDebugPage() {
+    window.open('/debug', '_blank');
+}
+
+function openDatabasePage() {
+    window.open('/database', '_blank');
+}
+
+console.log('✅ System tab script loaded');
+</script>
