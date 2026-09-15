@@ -20,19 +20,19 @@
     };
 
     const DEFAULT_THEME = {
-        mode: 'dark',          // 'dark' | 'light' | 'auto'
-        accent: 'cyan',        // cyan | blue | purple | green | orange
+        mode: 'dark',
+        accent: 'cyan',
         fontSize: 16,
         font: 'Vazir',
     };
 
     const DEFAULT_CACHE = {
-        coinsList: 86400,      // 24h
-        prices: 60,             // 1min
-        fearGreed: 300,         // 5min
-        btcDominance: 300,      // 5min
-        modelStatus: 10,        // 10s
-        chart: 3600,            // 1h
+        coinsList: 86400,
+        prices: 60,
+        fearGreed: 300,
+        btcDominance: 300,
+        modelStatus: 10,
+        chart: 3600,
     };
 
     const DEFAULT_NOTIFICATIONS = {
@@ -73,14 +73,14 @@
                 dbHealth: null,
                 health: null,
                 
-                // مدل (🆕)
+                // مدل
                 modelStatus: null,
                 trainerStats: null,
                 currentProfile: null,
                 trainingPresets: [],
                 learningStrategies: [],
                 
-                // دیتابیس (🆕)
+                // دیتابیس
                 databases: {},
                 quotas: {},
                 dbList: [],
@@ -91,7 +91,7 @@
                 alerts: [],
                 unreadAlertsCount: 0,
                 
-                // کش (🆕)
+                // کش
                 cache: {
                     coinsList: null,
                     fearGreed: null,
@@ -105,13 +105,13 @@
                 isInitialized: false,
                 isOnline: navigator.onLine,
                 
-                // تنظیمات (🆕)
+                // تنظیمات - مقدار اولیه خالی (از API میان)
                 settings: {
-                    scheduler: this._loadSettings('scheduler', DEFAULT_SCHEDULER),
-                    theme: this._loadSettings('theme', DEFAULT_THEME),
-                    cache: this._loadSettings('cache', DEFAULT_CACHE),
-                    notifications: this._loadSettings('notifications', DEFAULT_NOTIFICATIONS),
-                    dashboard: this._loadSettings('dashboard', DEFAULT_DASHBOARD),
+                    scheduler: JSON.parse(JSON.stringify(DEFAULT_SCHEDULER)),
+                    theme: JSON.parse(JSON.stringify(DEFAULT_THEME)),
+                    cache: JSON.parse(JSON.stringify(DEFAULT_CACHE)),
+                    notifications: JSON.parse(JSON.stringify(DEFAULT_NOTIFICATIONS)),
+                    dashboard: JSON.parse(JSON.stringify(DEFAULT_DASHBOARD)),
                 },
             };
             
@@ -127,14 +127,14 @@
             // Scheduler
             // ============================================================
             
-            this._tasks = new Map();       // { name: { timer, fn, interval, enabled } }
+            this._tasks = new Map();
             this._isPaused = false;
             
             // ============================================================
             // Cache Layer
             // ============================================================
             
-            this._cache = new Map();       // { key: { value, expires } }
+            this._cache = new Map();
             
             // ============================================================
             // Metrics (Self)
@@ -150,7 +150,7 @@
             };
             
             // ============================================================
-            // Listeners (برای سازگاری با کد قدیمی)
+            // Listeners
             // ============================================================
             
             this.listeners = [];
@@ -163,21 +163,57 @@
         }
 
         // ============================================================
-        // Settings System
+        // Settings System - API Based
         // ============================================================
 
-        _loadSettings(category, defaults) {
+        /**
+         * بارگذاری تنظیمات از API
+         */
+        async _loadSettingsFromAPI(category) {
+            const defaults = {
+                scheduler: DEFAULT_SCHEDULER,
+                theme: DEFAULT_THEME,
+                cache: DEFAULT_CACHE,
+                notifications: DEFAULT_NOTIFICATIONS,
+                dashboard: DEFAULT_DASHBOARD,
+            }[category];
+            
+            if (!defaults) return {};
+            
             try {
-                const saved = localStorage.getItem(`app:settings:${category}`);
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    // Deep merge
-                    return this._deepMerge(defaults, parsed);
+                const data = await window.api.getSettingsCategory(category);
+                
+                if (data.success && data.data?.value) {
+                    // Deep merge با defaults
+                    return this._deepMerge(defaults, data.data.value);
                 }
             } catch (e) {
-                console.warn(`Failed to load settings '${category}':`, e);
+                console.warn(`Failed to load settings '${category}' from API:`, e);
             }
+            
             return JSON.parse(JSON.stringify(defaults));
+        }
+
+        /**
+         * بارگذاری همه تنظیمات
+         */
+        async _loadAllSettings() {
+            const categories = ['scheduler', 'theme', 'cache', 'notifications', 'dashboard'];
+            
+            const results = await Promise.allSettled(
+                categories.map(cat => this._loadSettingsFromAPI(cat))
+            );
+            
+            for (let i = 0; i < categories.length; i++) {
+                const cat = categories[i];
+                const result = results[i];
+                
+                if (result.status === 'fulfilled') {
+                    this.state.settings[cat] = result.value;
+                }
+            }
+            
+            this.events.emit('settings:loaded', this.state.settings);
         }
 
         _deepMerge(target, source) {
@@ -196,27 +232,67 @@
             return this.state.settings[category];
         }
 
-        saveSettings(category, values) {
+        /**
+         * ذخیره تنظیمات در API
+         */
+        async saveSettings(category, values) {
+            // Update local
             this.state.settings[category] = {
                 ...this.state.settings[category],
                 ...values,
             };
             
+            // Save to API
             try {
-                localStorage.setItem(
-                    `app:settings:${category}`,
-                    JSON.stringify(this.state.settings[category])
+                const result = await window.api.saveSettingsCategory(
+                    category,
+                    this.state.settings[category]
                 );
+                
+                if (!result.success) {
+                    console.warn('Failed to save settings:', result.error);
+                    this.events.emit('settings:saveFailed', { category, error: result.error });
+                    return false;
+                }
+                
+                this.events.emit('settings:saved', { category, values });
             } catch (e) {
                 console.warn(`Failed to save settings '${category}':`, e);
+                this.events.emit('settings:saveFailed', { category, error: e.message });
+                return false;
             }
             
+            // Apply
             this.applySettings(category);
             this.events.emit(`settings:${category}:changed`, this.state.settings[category]);
             this.notifyListeners();
+            
+            return true;
         }
 
-        resetSettings(category) {
+        /**
+         * ذخیره همه تنظیمات
+         */
+        async saveAllSettings() {
+            const categories = ['scheduler', 'theme', 'cache', 'notifications', 'dashboard'];
+            
+            const results = await Promise.allSettled(
+                categories.map(cat => 
+                    window.api.saveSettingsCategory(cat, this.state.settings[cat])
+                )
+            );
+            
+            const allSuccess = results.every(r => 
+                r.status === 'fulfilled' && r.value.success
+            );
+            
+            return allSuccess;
+        }
+
+        /**
+         * ریست تنظیمات یک دسته
+         */
+        async resetSettings(category) {
             const defaults = {
                 scheduler: DEFAULT_SCHEDULER,
                 theme: DEFAULT_THEME,
@@ -227,10 +303,37 @@
             
             if (!defaults) return;
             
-            this.state.settings[category] = JSON.parse(JSON.stringify(defaults));
-            localStorage.removeItem(`app:settings:${category}`);
-            this.applySettings(category);
-            this.events.emit(`settings:${category}:reset`, defaults);
+            try {
+                await window.api.resetSettingsCategory(category);
+                this.state.settings[category] = JSON.parse(JSON.stringify(defaults));
+                this.applySettings(category);
+                this.events.emit(`settings:${category}:reset`, defaults);
+            } catch (e) {
+                console.error(`Reset settings '${category}' error:`, e);
+            }
+        }
+
+        /**
+         * ریست همه تنظیمات
+         */
+        async resetAllSettings() {
+            try {
+                await window.api.resetAllSettings();
+                
+                this.state.settings = {
+                    scheduler: JSON.parse(JSON.stringify(DEFAULT_SCHEDULER)),
+                    theme: JSON.parse(JSON.stringify(DEFAULT_THEME)),
+                    cache: JSON.parse(JSON.stringify(DEFAULT_CACHE)),
+                    notifications: JSON.parse(JSON.stringify(DEFAULT_NOTIFICATIONS)),
+                    dashboard: JSON.parse(JSON.stringify(DEFAULT_DASHBOARD)),
+                };
+                
+                this.events.emit('settings:allReset');
+                return true;
+            } catch (e) {
+                console.error('Reset all settings error:', e);
+                return false;
+            }
         }
 
         applySettings(category) {
@@ -248,12 +351,11 @@
         _applySchedulerSettings() {
             const { scheduler } = this.state.settings;
             
-            // لغو همه تسک‌های فعلی
+            // لغو همه
             for (const name of this._tasks.keys()) {
                 this._unscheduleTask(name);
             }
             
-            // تسک‌های جدید
             const taskFunctions = {
                 metrics: () => this.loadMetrics(),
                 appStats: () => this.loadAppStats(),
@@ -376,37 +478,33 @@
 
             console.log('🚀 App initializing...');
 
-            // اعمال تم
-            this.applyTheme(this.state.settings.theme.mode);
-
-            // اعمال تنظیمات Scheduler
-            this._applySchedulerSettings();
-
-            // Setup listeners
-            this._setupVisibilityListeners();
-            this._setupOnlineListeners();
-            this._setupErrorHandlers();
-
             try {
-                // دریافت اطلاعات کاربر
+                // ۱. بارگذاری تنظیمات از API
+                await this._loadAllSettings();
+                
+                // ۲. اعمال تم
+                this.applyTheme(this.state.settings.theme.mode);
+                
+                // ۳. اعمال Scheduler
+                this._applySchedulerSettings();
+                
+                // ۴. Setup listeners
+                this._setupVisibilityListeners();
+                this._setupOnlineListeners();
+                this._setupErrorHandlers();
+                
+                // ۵. دریافت اطلاعات
                 await this.loadUser();
-
-                // دریافت متریک‌ها
                 await this.loadMetrics();
-
-                // دریافت آمار اپلیکیشن
                 await this.loadAppStats();
-
-                // دریافت وضعیت دیتابیس
                 await this.loadDatabaseHealth();
-
-                // دریافت هشدارها
                 await this.loadAlerts();
-
+                
+                // ۶. علامت‌گذاری
                 this.state.isInitialized = true;
                 this.notifyListeners();
                 this.events.emit('app:ready', this.state);
-
+                
                 console.log('✅ App initialized successfully');
             } catch (err) {
                 console.error('❌ App initialization failed:', err);
@@ -420,7 +518,6 @@
                     this.events.emit('app:hidden');
                 } else {
                     this.events.emit('app:visible');
-                    // Refresh سریع بعد از برگشتن
                     this.loadMetrics();
                 }
             });
@@ -484,7 +581,7 @@
         }
 
         // ============================================================
-        // Event Bus (علاوه بر mitt)
+        // Event Bus
         // ============================================================
 
         on(event, handler) {
@@ -637,7 +734,7 @@
         }
 
         // ============================================================
-        // 🆕 Model Loaders
+        // Model Loaders
         // ============================================================
 
         async loadModelStatus() {
@@ -685,7 +782,7 @@
         }
 
         // ============================================================
-        // 🆕 Database Loaders
+        // Database Loaders
         // ============================================================
 
         async loadQuotas() {
@@ -746,7 +843,6 @@
         // ============================================================
 
         applyTheme(theme) {
-            // اگه auto بود
             if (theme === 'auto') {
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 theme = prefersDark ? 'dark' : 'light';
@@ -755,10 +851,6 @@
             document.documentElement.setAttribute('data-theme', theme);
             this.state.theme = theme;
             
-            // آپدیت تنظیمات
-            this.state.settings.theme.mode = theme;
-            
-            // آپدیت آیکون
             const icon = document.getElementById('themeIcon');
             const label = document.getElementById('themeLabel');
             if (icon && label) {
@@ -774,9 +866,9 @@
             this.events.emit('theme:changed', theme);
         }
 
-        toggleTheme() {
+        async toggleTheme() {
             const newTheme = this.state.theme === 'dark' ? 'light' : 'dark';
-            this.saveSettings('theme', { mode: newTheme });
+            await this.saveSettings('theme', { mode: newTheme });
             this.applyTheme(newTheme);
             this.notifyListeners();
             window.showToast?.(`🌓 حالت ${newTheme === 'dark' ? 'تیره' : 'روشن'}`, 'info', 1500);
@@ -822,13 +914,10 @@
         // ============================================================
 
         destroy() {
-            // لغو همه تسک‌ها
             for (const name of this._tasks.keys()) {
                 this._unscheduleTask(name);
             }
-            // پاک کردن کش
             this._cache.clear();
-            // ریست
             this.state.isInitialized = false;
         }
     }
@@ -856,7 +945,9 @@
     window.appSettings = {
         get: (cat) => app.getSettings(cat),
         save: (cat, vals) => app.saveSettings(cat, vals),
+        saveAll: () => app.saveAllSettings(),
         reset: (cat) => app.resetSettings(cat),
+        resetAll: () => app.resetAllSettings(),
     };
 
     window.appCache = {
