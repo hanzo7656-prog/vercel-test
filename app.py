@@ -90,6 +90,16 @@ app.config['JSON_AS_ASCII'] = False
 # Container Init
 # ============================================================
 
+# ✅ Force init database_factory FIRST
+try:
+    from infrastructure.database.database_factory import db_factory
+    logger.info(f"✅ database_factory initialized")
+except Exception as e:
+    logger.error(f"❌ database_factory init failed: {e}")
+    import traceback
+    logger.error(traceback.format_exc())
+
+# راه‌اندازی Container
 init_container(app)
 logger.info("✅ Container initialized")
 
