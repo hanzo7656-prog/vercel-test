@@ -791,6 +791,52 @@ class ApiClient {
         });
     }
 
+    // در ApiClient class اضافه کن:
+
+// ============================================================
+// ۲۳. تنظیمات (SETTINGS)
+// ============================================================
+
+    getSettings() {
+        return this.request('/api/settings');
+    }
+
+    getSettingsCategories() {
+        return this.request('/api/settings/categories');
+    }
+
+    getSettingsCategory(category) {
+        return this.request(`/api/settings/${category}`);
+    }
+
+    saveSettingsCategory(category, data) {
+        return this.request(`/api/settings/${category}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    resetSettingsCategory(category) {
+        return this.request(`/api/settings/${category}`, {
+            method: 'DELETE'
+        });
+    }
+
+    resetAllSettings() {
+        return this.request('/api/settings/reset', {
+            method: 'POST'
+        });
+    }
+
+    changePassword(currentPassword, newPassword) {
+        return this.request('/api/user/change-password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+    }
     // ============================================================
     // ۲۲. Debug - جدید (🆕)
     // ============================================================
