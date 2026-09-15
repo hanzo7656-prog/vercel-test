@@ -1,7 +1,7 @@
 # infrastructure/repositories/__init__.py
 # ============================================================
-# Repositories - مخازن داده - نسخه ۲.۰
-# Export کامل + RepositoryContainer
+# Repositories - مخازن داده - نسخه ۳.۰
+# Export کامل + RepositoryContainer + SettingsRepository
 # ============================================================
 
 import logging
@@ -24,6 +24,12 @@ def _get_prediction_repository_class():
     """Lazy import PredictionRepository"""
     from infrastructure.repositories.prediction_repository import PredictionRepository
     return PredictionRepository
+
+
+def _get_settings_repository_class():
+    """Lazy import SettingsRepository"""
+    from infrastructure.repositories.settings_repository import SettingsRepository
+    return SettingsRepository
 
 
 def _get_container():
@@ -64,6 +70,20 @@ def get_prediction_repository():
     return PredictionRepository()
 
 
+def get_settings_repository():
+    """
+    دریافت SettingsRepository (نمونه جدید)
+    
+    خروجی:
+        SettingsRepository instance
+    
+    توجه:
+        برای استفاده از singleton، از repo_container استفاده کن
+    """
+    SettingsRepository = _get_settings_repository_class()
+    return SettingsRepository()
+
+
 # ============================================================
 # Container Access (Singleton)
 # ============================================================
@@ -83,7 +103,7 @@ def get_repository(name: str):
     دریافت Repository با نام از Container
     
     پارامترها:
-        name: نام Repository (model, prediction)
+        name: نام Repository (model, prediction, settings)
     
     خروجی:
         Repository instance
@@ -130,6 +150,7 @@ class Repositories:
         
         repos.model.save_model(...)
         repos.prediction.save(...)
+        repos.settings.get_all(...)
     """
     
     @property
@@ -141,6 +162,11 @@ class Repositories:
     def prediction(self):
         """PredictionRepository (singleton)"""
         return _get_container().prediction
+    
+    @property
+    def settings(self):
+        """SettingsRepository (singleton)"""
+        return _get_container().settings
     
     def get(self, name: str):
         """دریافت Repository با نام"""
@@ -171,11 +197,13 @@ __all__ = [
     # Classes
     "ModelRepository",
     "PredictionRepository",
+    "SettingsRepository",
     "RepositoryContainer",
     
     # Direct access
     "get_model_repository",
     "get_prediction_repository",
+    "get_settings_repository",
     
     # Container
     "get_container",
@@ -204,6 +232,8 @@ def __getattr__(name: str):
         return _get_model_repository_class()
     elif name == "PredictionRepository":
         return _get_prediction_repository_class()
+    elif name == "SettingsRepository":
+        return _get_settings_repository_class()
     elif name == "RepositoryContainer":
         from infrastructure.repositories.init_repository import (
             RepositoryContainer
