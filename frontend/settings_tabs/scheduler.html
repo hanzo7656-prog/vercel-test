@@ -1,0 +1,394 @@
+<!-- ============================================================
+     settings_tabs/scheduler.html - تب همگام‌سازی
+     نسخه ۱.۰ - تنظیمات Auto-Update
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: زمان‌بندی بروزرسانی ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-sync-alt"></i>
+            <span>زمان‌بندی بروزرسانی خودکار</span>
+        </div>
+
+        <!-- Metrics -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-chart-line"></i>
+                <span>متریک‌های سیستم</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_metrics_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_metrics_interval" 
+                       min="1" max="300" step="1" value="10"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- App Stats -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-microchip"></i>
+                <span>آمار اپلیکیشن</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_appStats_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_appStats_interval" 
+                       min="1" max="300" step="1" value="3"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-bell"></i>
+                <span>هشدارها</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_alerts_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_alerts_interval" 
+                       min="1" max="600" step="1" value="30"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- DB Health -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-database"></i>
+                <span>وضعیت دیتابیس</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_dbHealth_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_dbHealth_interval" 
+                       min="5" max="600" step="1" value="60"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- Model Status -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-brain"></i>
+                <span>وضعیت مدل</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_modelStatus_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_modelStatus_interval" 
+                       min="5" max="600" step="1" value="15"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- Quotas -->
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-hdd"></i>
+                <span>وضعیت Quota</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="scheduler_quotas_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <input type="number" id="scheduler_quotas_interval" 
+                       min="10" max="1800" step="1" value="120"
+                       style="width: 80px;">
+                <span class="toggle-label">ثانیه</span>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-primary" onclick="saveSchedulerSettings()">
+                <i class="fas fa-save"></i>
+                ذخیره
+            </button>
+            <button class="settings-btn settings-btn-secondary" onclick="applySchedulerNow()">
+                <i class="fas fa-play"></i>
+                اعمال فوری
+            </button>
+            <button class="settings-btn settings-btn-secondary" onclick="resetSchedulerSettings()">
+                <i class="fas fa-undo"></i>
+                بازنشانی
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: وضعیت فعلی ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-info-circle"></i>
+            <span>وضعیت فعلی Scheduler</span>
+        </div>
+
+        <div id="scheduler_status_container">
+            <div class="settings-info-item">
+                <span class="info-label">وضعیت کلی</span>
+                <span class="info-value" id="scheduler_overall_status">
+                    <span class="settings-live-dot"></span>
+                    در حال بررسی...
+                </span>
+            </div>
+            <div class="settings-info-item">
+                <span class="info-label">تعداد تسک‌های فعال</span>
+                <span class="info-value cyan" id="scheduler_active_tasks">—</span>
+            </div>
+            <div class="settings-info-item">
+                <span class="info-label">حالت Pause</span>
+                <span class="info-value" id="scheduler_paused">—</span>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-secondary" onclick="pauseAllSchedulerTasks()">
+                <i class="fas fa-pause"></i>
+                توقف همه
+            </button>
+            <button class="settings-btn settings-btn-primary" onclick="resumeAllSchedulerTasks()">
+                <i class="fas fa-play"></i>
+                ادامه همه
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// SCHEDULER TAB CONTROLLER
+// ============================================================
+
+function init_settings_scheduler() {
+    console.log('🔄 Initializing scheduler tab...');
+    
+    // لود تنظیمات فعلی
+    loadSchedulerSettings();
+    
+    // لود وضعیت فعلی
+    loadSchedulerStatus();
+    
+    // شروع بروزرسانی خودکار وضعیت
+    startSchedulerStatusUpdate();
+}
+
+function cleanup_settings_scheduler() {
+    console.log('🧹 Cleaning up scheduler tab...');
+    
+    // پاک کردن interval
+    if (window._schedulerStatusInterval) {
+        clearInterval(window._schedulerStatusInterval);
+        window._schedulerStatusInterval = null;
+    }
+}
+
+// ============================================================
+// LOAD SETTINGS
+// ============================================================
+
+function loadSchedulerSettings() {
+    try {
+        const settings = appSettings.get('scheduler') || {};
+        
+        const tasks = ['metrics', 'appStats', 'alerts', 'dbHealth', 'modelStatus', 'quotas'];
+        
+        tasks.forEach(task => {
+            const taskConfig = settings[task] || {};
+            
+            const enabledEl = document.getElementById(`scheduler_${task}_enabled`);
+            const intervalEl = document.getElementById(`scheduler_${task}_interval`);
+            
+            if (enabledEl) enabledEl.checked = taskConfig.enabled === true;
+            if (intervalEl) intervalEl.value = (taskConfig.interval || 10000) / 1000;
+        });
+        
+        console.log('✅ Scheduler settings loaded');
+    } catch (err) {
+        console.error('❌ Failed to load scheduler settings:', err);
+    }
+}
+
+// ============================================================
+// SAVE SETTINGS
+// ============================================================
+
+async function saveSchedulerSettings() {
+    try {
+        const tasks = ['metrics', 'appStats', 'alerts', 'dbHealth', 'modelStatus', 'quotas'];
+        const newSettings = {};
+        
+        tasks.forEach(task => {
+            const enabledEl = document.getElementById(`scheduler_${task}_enabled`);
+            const intervalEl = document.getElementById(`scheduler_${task}_interval`);
+            
+            newSettings[task] = {
+                enabled: enabledEl ? enabledEl.checked : false,
+                interval: (parseInt(intervalEl?.value) || 10) * 1000,
+            };
+        });
+        
+        // ذخیره در app
+        await appSettings.save('scheduler', newSettings);
+        
+        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
+        console.log('✅ Scheduler settings saved:', newSettings);
+        
+        // بروزرسانی وضعیت
+        setTimeout(loadSchedulerStatus, 500);
+    } catch (err) {
+        console.error('❌ Failed to save scheduler settings:', err);
+        window.showToast?.('❌ خطا در ذخیره', 'error');
+    }
+}
+
+// ============================================================
+// APPLY NOW
+// ============================================================
+
+function applySchedulerNow() {
+    try {
+        // اعمال فوری
+        if (window.app && typeof window.app._applySchedulerSettings === 'function') {
+            window.app._applySchedulerSettings();
+            window.showToast?.('✅ تنظیمات اعمال شد', 'success');
+            setTimeout(loadSchedulerStatus, 300);
+        } else {
+            window.showToast?.('⚠️ در حال توسعه', 'warning');
+        }
+    } catch (err) {
+        console.error('❌ Failed to apply scheduler settings:', err);
+        window.showToast?.('❌ خطا در اعمال', 'error');
+    }
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+async function resetSchedulerSettings() {
+    if (!window.confirm) return;
+    
+    const confirmed = await window.confirm(
+        'بازنشانی تنظیمات',
+        'آیا مطمئن هستید؟ تنظیمات به حالت پیش‌فرض برمی‌گردد.',
+        'بله، بازنشانی',
+        'انصراف'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        appSettings.reset('scheduler');
+        loadSchedulerSettings();
+        window.showToast?.('✅ بازنشانی شد', 'success');
+    } catch (err) {
+        console.error('❌ Failed to reset scheduler settings:', err);
+        window.showToast?.('❌ خطا در بازنشانی', 'error');
+    }
+}
+
+// ============================================================
+// LOAD STATUS
+// ============================================================
+
+function loadSchedulerStatus() {
+    try {
+        const status = window.appTasks?.status?.() || {};
+        const taskCount = Object.keys(status).length;
+        
+        // تعداد تسک فعال
+        const activeCount = Object.values(status).filter(t => t.enabled).length;
+        
+        // آپدیت UI
+        const statusEl = document.getElementById('scheduler_overall_status');
+        const activeEl = document.getElementById('scheduler_active_tasks');
+        const pausedEl = document.getElementById('scheduler_paused');
+        
+        if (statusEl) {
+            if (activeCount > 0) {
+                statusEl.innerHTML = '<span class="settings-live-dot"></span>فعال';
+                statusEl.className = 'info-value green';
+            } else {
+                statusEl.innerHTML = '<span class="info-value">غیرفعال</span>';
+                statusEl.className = 'info-value';
+            }
+        }
+        
+        if (activeEl) {
+            activeEl.textContent = `${activeCount} از ${taskCount}`;
+        }
+        
+        if (pausedEl) {
+            const isPaused = window.app?._isPaused || false;
+            pausedEl.textContent = isPaused ? '⏸️ بله' : '▶️ خیر';
+            pausedEl.className = `info-value ${isPaused ? 'orange' : 'green'}`;
+        }
+    } catch (err) {
+        console.error('❌ Failed to load scheduler status:', err);
+    }
+}
+
+// ============================================================
+// PAUSE / RESUME
+// ============================================================
+
+function pauseAllSchedulerTasks() {
+    try {
+        if (window.appTasks?.pause) {
+            window.appTasks.pause();
+            window.showToast?.('⏸️ همه تسک‌ها متوقف شدند', 'warning');
+            loadSchedulerStatus();
+        }
+    } catch (err) {
+        console.error('❌ Pause error:', err);
+    }
+}
+
+function resumeAllSchedulerTasks() {
+    try {
+        if (window.appTasks?.resume) {
+            window.appTasks.resume();
+            window.showToast?.('▶️ همه تسک‌ها ادامه یافتند', 'success');
+            loadSchedulerStatus();
+        }
+    } catch (err) {
+        console.error('❌ Resume error:', err);
+    }
+}
+
+// ============================================================
+// AUTO UPDATE STATUS
+// ============================================================
+
+function startSchedulerStatusUpdate() {
+    if (window._schedulerStatusInterval) {
+        clearInterval(window._schedulerStatusInterval);
+    }
+    
+    window._schedulerStatusInterval = setInterval(loadSchedulerStatus, 5000);
+}
+
+console.log('✅ Scheduler tab script loaded');
+</script>
