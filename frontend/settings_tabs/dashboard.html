@@ -1,0 +1,248 @@
+<!-- ============================================================
+     settings_tabs/dashboard.html - تب داشبورد
+     نسخه ۱.۰ - تنظیمات نمایش داشبورد
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: نمایش کارت‌ها ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-th-large"></i>
+            <span>نمایش کارت‌ها</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-chart-line"></i>
+                <span>کارت متریک‌ها</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_showMetrics">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-dollar-sign"></i>
+                <span>کارت قیمت‌ها</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_showPrices">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-bell"></i>
+                <span>کارت هشدارها</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_showAlerts">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-brain"></i>
+                <span>کارت مدل</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_showModel">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-hdd"></i>
+                <span>کارت Quota</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_showQuota">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: تب پیش‌فرض ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-home"></i>
+            <span>تنظیمات ورودی</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-star"></i>
+                <span>تب پیش‌فرض</span>
+            </span>
+            <select id="dash_defaultTab">
+                <option value="dashboard">داشبورد</option>
+                <option value="chart">نمودار</option>
+                <option value="analyzer">تحلیلگر</option>
+                <option value="model">مدل</option>
+            </select>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-th"></i>
+                <span>چیدمان کارت‌ها</span>
+            </span>
+            <select id="dash_layout">
+                <option value="grid">Grid (شبکه‌ای)</option>
+                <option value="compact">Compact (فشرده)</option>
+                <option value="comfortable">Comfortable (راحت)</option>
+            </select>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-eye"></i>
+                <span>حالت فشرده</span>
+            </span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dash_compactMode">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۳: اطلاعات ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-info-circle"></i>
+            <span>راهنما</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">تغییرات</span>
+            <span class="info-value">بلافاصله اعمال می‌شوند</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">ذخیره</span>
+            <span class="info-value">در دیتابیس</span>
+        </div>
+    </div>
+
+    <!-- ===== Actions ===== -->
+    <div class="settings-actions">
+        <button class="settings-btn settings-btn-primary" onclick="saveDashboardSettings()">
+            <i class="fas fa-save"></i>
+            ذخیره
+        </button>
+        <button class="settings-btn settings-btn-secondary" onclick="resetDashboardSettings()">
+            <i class="fas fa-undo"></i>
+            بازنشانی
+        </button>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// DASHBOARD TAB CONTROLLER
+// ============================================================
+
+function init_settings_dashboard() {
+    console.log('📊 Initializing dashboard tab...');
+    loadDashboardSettings();
+}
+
+function cleanup_settings_dashboard() {
+    console.log('🧹 Cleaning up dashboard tab...');
+}
+
+// ============================================================
+// LOAD
+// ============================================================
+
+function loadDashboardSettings() {
+    try {
+        const settings = appSettings.get('dashboard') || {};
+        
+        const checkboxes = {
+            dash_showMetrics: settings.showMetrics,
+            dash_showPrices: settings.showPrices,
+            dash_showAlerts: settings.showAlerts,
+            dash_showModel: settings.showModel,
+            dash_showQuota: settings.showQuota,
+            dash_compactMode: settings.compactMode,
+        };
+        
+        Object.entries(checkboxes).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = value === true;
+        });
+        
+        const defaultTabEl = document.getElementById('dash_defaultTab');
+        if (defaultTabEl) defaultTabEl.value = settings.defaultTab || 'dashboard';
+        
+        const layoutEl = document.getElementById('dash_layout');
+        if (layoutEl) layoutEl.value = settings.layout || 'grid';
+        
+        console.log('✅ Dashboard settings loaded');
+    } catch (err) {
+        console.error('❌ Failed to load dashboard settings:', err);
+    }
+}
+
+// ============================================================
+// SAVE
+// ============================================================
+
+async function saveDashboardSettings() {
+    try {
+        const newSettings = {
+            showMetrics: document.getElementById('dash_showMetrics')?.checked || false,
+            showPrices: document.getElementById('dash_showPrices')?.checked || false,
+            showAlerts: document.getElementById('dash_showAlerts')?.checked || false,
+            showModel: document.getElementById('dash_showModel')?.checked || false,
+            showQuota: document.getElementById('dash_showQuota')?.checked || false,
+            compactMode: document.getElementById('dash_compactMode')?.checked || false,
+            defaultTab: document.getElementById('dash_defaultTab')?.value || 'dashboard',
+            layout: document.getElementById('dash_layout')?.value || 'grid',
+        };
+        
+        await appSettings.save('dashboard', newSettings);
+        
+        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
+        console.log('✅ Dashboard settings saved:', newSettings);
+    } catch (err) {
+        console.error('❌ Failed to save dashboard settings:', err);
+        window.showToast?.('❌ خطا در ذخیره', 'error');
+    }
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+async function resetDashboardSettings() {
+    if (!window.confirm) return;
+    
+    const confirmed = await window.confirm(
+        'بازنشانی تنظیمات',
+        'آیا مطمئن هستید؟',
+        'بله',
+        'انصراف'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        appSettings.reset('dashboard');
+        loadDashboardSettings();
+        window.showToast?.('✅ بازنشانی شد', 'success');
+    } catch (err) {
+        console.error('❌ Failed to reset:', err);
+    }
+}
+
+console.log('✅ Dashboard tab script loaded');
+</script>
