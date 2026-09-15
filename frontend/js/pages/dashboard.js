@@ -1,6 +1,6 @@
 // ============================================================
 // dashboard.js — Dashboard Page Script
-// نسخه ۱.۰ — سیستم تحلیلگر
+// نسخه ۲.۰ — با SplashLoader + بهبودها
 // ============================================================
 
 (function() {
@@ -12,6 +12,7 @@
 
     let autoUpdateInterval = null;
     let isReady = false;
+    let splashResult = null;
 
     // ============================================================
     // ۱. Floating Particles
@@ -22,7 +23,10 @@
         if (!container) return;
 
         const colors = ['', 'purple', 'pink', 'green'];
-        const count = 25;
+        const count = window.innerWidth < 768 ? 15 : 25;
+
+        // پاک کردن قبلی
+        container.innerHTML = '';
 
         for (let i = 0; i < count; i++) {
             const p = document.createElement('div');
@@ -45,7 +49,7 @@
             container.appendChild(p);
         }
 
-        console.log(`✨ Created ${count} floating particles`);
+        console.log(`✨ Created ${count} particles`);
     }
 
     // ============================================================
@@ -99,7 +103,7 @@
     }
 
     // ============================================================
-    // ۳. Load User Info
+    // ۳. Load User
     // ============================================================
 
     async function loadUserInfo() {
@@ -189,7 +193,7 @@
                     const valEl = document.getElementById('fearGreedValue');
                     const labelEl = document.getElementById('fearGreedLabel');
 
-                    if (valEl && fg.data.value) {
+                    if (valEl && fg.data.value !== undefined) {
                         animateCountUp(valEl, fg.data.value, {
                             duration: 1500,
                             decimals: 0,
@@ -215,7 +219,7 @@
                 const dom = await window.api.getBTCDominance();
                 if (dom && dom.success && dom.data) {
                     const valEl = document.getElementById('btcDominance');
-                    if (valEl && dom.data.value) {
+                    if (valEl && dom.data.value !== undefined) {
                         animateCountUp(valEl, dom.data.value, {
                             duration: 1500,
                             decimals: 1,
@@ -336,7 +340,7 @@
                     items.push({
                         icon: info.icon,
                         cls: info.cls,
-                        text: a.message || 'رویداد جدید',
+                        text: escapeHtml(a.message || 'رویداد جدید'),
                         time: new Date(a.timestamp),
                     });
                 });
@@ -351,13 +355,12 @@
                     items.push({
                         icon: '🧠',
                         cls: 'model',
-                        text: `مدل <span class="highlight">${h.version || 'v1'}</span> با دقت ${acc}%`,
+                        text: `مدل <span class="highlight">${escapeHtml(h.version || 'v1')}</span> با دقت ${acc}%`,
                         time: new Date(h.training_date || h.created_at || Date.now()),
                     });
                 });
             }
 
-            // مرتب‌سازی
             items.sort((a, b) => b.time - a.time);
             const display = items.slice(0, 10);
 
@@ -409,6 +412,9 @@
         if (autoUpdateInterval) clearInterval(autoUpdateInterval);
 
         autoUpdateInterval = setInterval(async () => {
+            // فقط اگه تب فعال باشه
+            if (document.visibilityState !== 'visible') return;
+
             try {
                 await loadMarketData();
                 await loadActivities();
@@ -455,10 +461,24 @@
     }
 
     // ============================================================
-    // ۸. Init
+    // ۸. Helpers
     // ============================================================
 
-    async function init() {
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // ============================================================
+    // ۹. Init Dashboard
+    // ============================================================
+
+    async function initDashboard() {
         if (isReady) return;
         isReady = true;
 
@@ -477,7 +497,82 @@
         // ۳. auto-update
         startAutoUpdate();
 
+        // ۴. resize handler برای particles
+        window.addEventListener('resize', debounce(() => {
+            initParticles();
+        }, 500));
+
         console.log('✅ Dashboard ready');
+    }
+
+    // ============================================================
+    // ۱۰. Bootstrap (Splash → Dashboard)
+    // ============================================================
+
+    async function bootstrap() {
+        console.log('🚀 Dashboard bootstrap...');
+
+        // ۱. لود SplashLoader
+        try {
+            const res = await fetch('/components/loading.html');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const html = await res.text();
+
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            document.body.appendChild(div);
+
+            // اجرای اسکریپت‌ها
+            div.querySelectorAll('script').forEach(old => {
+                const s = document.createElement('script');
+                s.textContent = old.textContent;
+                old.parentNode.replaceChild(s, old);
+            });
+
+        } catch (err) {
+            console.error('❌ Splash load error:', err);
+            // fallback: مستقیم dashboard
+            initDashboard();
+            return;
+        }
+
+        // ۲. صبر کوتاه تا SplashLoader آماده بشه
+        await new Promise(r => setTimeout(r, 100));
+
+        // ۳. شروع Splash
+        if (window.splashLoader?.start) {
+            window.splashLoader.start((result) => {
+                splashResult = result;
+                console.log('✅ Splash complete:', result);
+
+                // نمایش پیام اگه خطا داشته
+                if (result.skipped > 0 && typeof showToast === 'function') {
+                    showToast(
+                        `⚠️ ${result.skipped} مرحله skip شد - سیستم با داده‌های محدود کار می‌کند`,
+                        'warning',
+                        5000
+                    );
+                }
+
+                initDashboard();
+            });
+        } else {
+            console.warn('⚠️ SplashLoader not available, using fallback');
+            initDashboard();
+        }
+    }
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+
+    function debounce(fn, delay = 300) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
     }
 
     // ============================================================
@@ -493,9 +588,9 @@
     // ============================================================
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', bootstrap);
     } else {
-        init();
+        bootstrap();
     }
 
     // Cleanup
@@ -506,5 +601,5 @@
         }
     });
 
-    console.log('✅ Dashboard script loaded');
+    console.log('✅ Dashboard script v2.0 loaded');
 })();
