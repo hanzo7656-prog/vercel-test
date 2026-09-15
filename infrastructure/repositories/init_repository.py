@@ -35,7 +35,7 @@ class RepositoryContainer:
         self._model_repository = None
         self._prediction_repository = None
         self._init_count = 0
-        
+        self._settings_repository = None
         logger.info("✅ RepositoryContainer initialized")
     
     @property
@@ -159,6 +159,8 @@ __all__ = [
     "get_prediction_repository",
     "init_all_repositories",
     "get_repository_stats",
+    "SettingsRepository",
+    "get_settings_repository",
 ]
 
 
