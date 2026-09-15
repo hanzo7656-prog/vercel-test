@@ -59,7 +59,17 @@ class RepositoryContainer:
             logger.info("✅ PredictionRepository initialized")
         
         return self._prediction_repository
-    
+
+    @property
+    def settings(self):
+        """SettingsRepository"""
+        if self._settings_repository is None:
+            from infrastructure.repositories.settings_repository import SettingsRepository
+            self._settings_repository = SettingsRepository()
+            self._init_count += 1
+            logger.info("✅ SettingsRepository initialized")
+        return self._settings_repository
+        
     def get(self, name: str):
         """دریافت Repository با نام"""
         if name == "model":
