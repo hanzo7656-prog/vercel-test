@@ -1,0 +1,404 @@
+<!-- ============================================================
+     settings_tabs/account.html - تب حساب کاربری
+     نسخه ۱.۰ - تنظیمات حساب کاربری
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: اطلاعات کاربر ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-user-circle"></i>
+            <span>اطلاعات کاربری</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-user"></i>
+                نام کاربری
+            </span>
+            <span class="info-value cyan" id="acc_username">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-user-tag"></i>
+                نقش
+            </span>
+            <span class="info-value purple" id="acc_role">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-clock"></i>
+                آخرین ورود
+            </span>
+            <span class="info-value" id="acc_last_login">—</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-key"></i>
+                Session ID
+            </span>
+            <span class="info-value" id="acc_session_id" style="font-size: 0.7rem;">—</span>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: تغییر رمز عبور ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-lock"></i>
+            <span>تغییر رمز عبور</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-lock"></i>
+                <span>رمز فعلی</span>
+            </span>
+            <div class="password-wrapper" style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 300px;">
+                <input type="password" id="acc_current_password" 
+                       placeholder="رمز عبور فعلی" 
+                       style="flex: 1; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8rem; font-family: inherit;">
+                <button type="button" class="settings-btn settings-btn-secondary" 
+                        onclick="togglePasswordVisibility('acc_current_password', this)" 
+                        style="padding: 6px 10px;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-key"></i>
+                <span>رمز جدید</span>
+            </span>
+            <div class="password-wrapper" style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 300px;">
+                <input type="password" id="acc_new_password" 
+                       placeholder="حداقل ۶ کاراکتر" 
+                       style="flex: 1; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8rem; font-family: inherit;">
+                <button type="button" class="settings-btn settings-btn-secondary" 
+                        onclick="togglePasswordVisibility('acc_new_password', this)" 
+                        style="padding: 6px 10px;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-check-double"></i>
+                <span>تکرار رمز جدید</span>
+            </span>
+            <div class="password-wrapper" style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 300px;">
+                <input type="password" id="acc_confirm_password" 
+                       placeholder="تکرار رمز جدید" 
+                       style="flex: 1; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8rem; font-family: inherit;">
+                <button type="button" class="settings-btn settings-btn-secondary" 
+                        onclick="togglePasswordVisibility('acc_confirm_password', this)" 
+                        style="padding: 6px 10px;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- پسورد استرنگث -->
+        <div class="settings-row" id="acc_password_strength_row" style="display: none;">
+            <span class="label">
+                <i class="fas fa-shield-alt"></i>
+                <span>قدرت رمز</span>
+            </span>
+            <div style="flex: 1; max-width: 300px;">
+                <div style="height: 6px; background: var(--bg-input); border-radius: var(--radius-full); overflow: hidden;">
+                    <div id="acc_password_strength_bar" 
+                         style="height: 100%; width: 0%; background: var(--accent-red); transition: all 0.3s ease;"></div>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; text-align: center;" 
+                     id="acc_password_strength_text">—</div>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-primary" onclick="changePasswordSubmit()">
+                <i class="fas fa-key"></i>
+                تغییر رمز عبور
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۳: Session ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-shield-alt"></i>
+            <span>امنیت</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">
+                <i class="fas fa-clock"></i>
+                زمان انقضای Session
+            </span>
+            <span class="info-value" id="acc_session_expiry">۲۴ ساعت</span>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-danger" onclick="logoutAccount()">
+                <i class="fas fa-sign-out-alt"></i>
+                خروج از حساب
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// ACCOUNT TAB CONTROLLER
+// ============================================================
+
+function init_settings_account() {
+    console.log('👤 Initializing account tab...');
+    loadAccountInfo();
+    setupPasswordEvents();
+}
+
+function cleanup_settings_account() {
+    console.log('🧹 Cleaning up account tab...');
+}
+
+// ============================================================
+// LOAD INFO
+// ============================================================
+
+async function loadAccountInfo() {
+    try {
+        const state = window.app?.getState?.() || {};
+        const user = state.user || {};
+        
+        // Username
+        const usernameEl = document.getElementById('acc_username');
+        if (usernameEl) usernameEl.textContent = user.username || '—';
+        
+        // Role
+        const roleEl = document.getElementById('acc_role');
+        if (roleEl) {
+            const roleLabels = {
+                'admin': '👑 ادمین',
+                'user': '👤 کاربر',
+                'guest': '👥 مهمان',
+            };
+            roleEl.textContent = roleLabels[user.role] || user.role || '—';
+        }
+        
+        // Last login
+        const lastLoginEl = document.getElementById('acc_last_login');
+        if (lastLoginEl) {
+            lastLoginEl.textContent = user.login_time 
+                ? (window.formatTimeAgo?.(user.login_time) || '—')
+                : '—';
+        }
+        
+        // Session ID
+        const sessionEl = document.getElementById('acc_session_id');
+        if (sessionEl && user.session_id) {
+            sessionEl.textContent = user.session_id.slice(0, 12) + '...';
+            sessionEl.title = user.session_id;
+        }
+        
+        console.log('✅ Account info loaded');
+    } catch (err) {
+        console.error('❌ Failed to load account info:', err);
+    }
+}
+
+// ============================================================
+// PASSWORD VISIBILITY TOGGLE
+// ============================================================
+
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    
+    const icon = btn.querySelector('i');
+    if (icon) {
+        icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+    }
+}
+
+// ============================================================
+// PASSWORD STRENGTH
+// ============================================================
+
+function setupPasswordEvents() {
+    const newPassEl = document.getElementById('acc_new_password');
+    if (newPassEl) {
+        newPassEl.addEventListener('input', (e) => {
+            updatePasswordStrength(e.target.value);
+        });
+    }
+}
+
+function updatePasswordStrength(password) {
+    const rowEl = document.getElementById('acc_password_strength_row');
+    const barEl = document.getElementById('acc_password_strength_bar');
+    const textEl = document.getElementById('acc_password_strength_text');
+    
+    if (!rowEl || !barEl || !textEl) return;
+    
+    if (!password) {
+        rowEl.style.display = 'none';
+        return;
+    }
+    
+    rowEl.style.display = 'flex';
+    
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    
+    const levels = [
+        { percent: 0, color: 'var(--accent-red)', label: 'خیلی ضعیف' },
+        { percent: 20, color: 'var(--accent-red)', label: 'ضعیف' },
+        { percent: 40, color: 'var(--accent-orange)', label: 'متوسط' },
+        { percent: 60, color: 'var(--accent-orange)', label: 'خوب' },
+        { percent: 80, color: 'var(--accent-green)', label: 'قوی' },
+        { percent: 100, color: 'var(--accent-green)', label: 'خیلی قوی' },
+    ];
+    
+    const level = levels[Math.min(score, 5)];
+    
+    barEl.style.width = level.percent + '%';
+    barEl.style.background = level.color;
+    textEl.textContent = level.label;
+    textEl.style.color = level.color;
+}
+
+// ============================================================
+// CHANGE PASSWORD
+// ============================================================
+
+async function changePasswordSubmit() {
+    try {
+        const currentPassword = document.getElementById('acc_current_password')?.value || '';
+        const newPassword = document.getElementById('acc_new_password')?.value || '';
+        const confirmPassword = document.getElementById('acc_confirm_password')?.value || '';
+        
+        // اعتبارسنجی
+        if (!currentPassword) {
+            window.showToast?.('⚠️ رمز فعلی را وارد کنید', 'warning');
+            return;
+        }
+        
+        if (!newPassword) {
+            window.showToast?.('⚠️ رمز جدید را وارد کنید', 'warning');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            window.showToast?.('❌ رمز جدید باید حداقل ۶ کاراکتر باشد', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            window.showToast?.('❌ رمز جدید و تکرار آن مطابقت ندارند', 'error');
+            return;
+        }
+        
+        if (currentPassword === newPassword) {
+            window.showToast?.('⚠️ رمز جدید باید متفاوت باشد', 'warning');
+            return;
+        }
+        
+        // نمایش loading
+        if (window.loadingSystem) {
+            window.loadingSystem.show({
+                messages: ['در حال تغییر رمز...'],
+                subMessages: ['لطفاً صبر کنید'],
+                duration: 2000,
+            });
+        }
+        
+        // API call
+        try {
+            const result = await window.api.changePassword(currentPassword, newPassword);
+            
+            if (window.loadingSystem) {
+                window.loadingSystem.hide();
+            }
+            
+            if (result.success) {
+                window.showToast?.('✅ رمز عبور با موفقیت تغییر یافت', 'success');
+                
+                // پاک کردن فرم
+                document.getElementById('acc_current_password').value = '';
+                document.getElementById('acc_new_password').value = '';
+                document.getElementById('acc_confirm_password').value = '';
+                
+                // پاک کردن strength
+                const rowEl = document.getElementById('acc_password_strength_row');
+                if (rowEl) rowEl.style.display = 'none';
+            } else {
+                window.showToast?.(`❌ ${result.error || 'خطا در تغییر رمز'}`, 'error');
+            }
+        } catch (err) {
+            if (window.loadingSystem) {
+                window.loadingSystem.hide();
+            }
+            console.error('❌ Change password error:', err);
+            window.showToast?.('⚠️ این قابلیت در حال توسعه است', 'warning');
+        }
+    } catch (err) {
+        console.error('❌ Change password error:', err);
+        window.showToast?.('❌ خطا', 'error');
+    }
+}
+
+// ============================================================
+// LOGOUT
+// ============================================================
+
+async function logoutAccount() {
+    if (!window.confirm) return;
+    
+    const confirmed = await window.confirm(
+        'خروج از حساب',
+        'آیا مطمئن هستید که می‌خواهید از حساب خود خارج شوید؟',
+        'بله، خارج شو',
+        'انصراف'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        if (window.loadingSystem) {
+            window.loadingSystem.show({
+                messages: ['در حال خروج...'],
+                duration: 1500,
+            });
+        }
+        
+        await window.api?.logout?.();
+        
+        // بعد از ۱.۵ ثانیه به صفحه ورود
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1500);
+    } catch (err) {
+        console.error('❌ Logout error:', err);
+        if (window.loadingSystem) {
+            window.loadingSystem.hide();
+        }
+        window.showToast?.('❌ خطا در خروج', 'error');
+    }
+}
+
+console.log('✅ Account tab script loaded');
+</script>
