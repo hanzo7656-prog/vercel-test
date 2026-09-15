@@ -236,7 +236,22 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_cl_created_at ON commands_log(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_cl_status ON commands_log(status);
     """,
-    
+
+    # ------------ تنظیمات ---------------
+    "app_settings": """
+    CREATE TABLE IF NOT EXISTS app_settings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        category VARCHAR(50) NOT NULL,
+        value JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_settings_user_category 
+        ON app_settings(user_id, category);
+    CREATE INDEX IF NOT EXISTS idx_settings_user 
+        ON app_settings(user_id);
+""",
     # --------- کش fallback ---------
     "cache": """
         CREATE TABLE IF NOT EXISTS cache (
