@@ -5364,3 +5364,165 @@ def get_model_report_by_version(version):
     except Exception as e:
         logger.error(f"Report by version error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+@api_bp.route('/settings', methods=['GET'])
+@require_auth()
+def get_all_settings():
+    """دریافت همه تنظیمات کاربر"""
+    try:
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        
+        # user_id از session
+        user_id = None
+        if request.user:
+            username = request.user.get('username')
+            if username:
+                # TODO: get user_id from DB by username
+                user_id = 1  # موقت
+        
+        repo = SettingsRepository()
+        settings = repo.get_all(user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': settings,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Get settings error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/settings/categories', methods=['GET'])
+@require_auth()
+def get_settings_categories():
+    """لیست دسته‌های تنظیمات"""
+    try:
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        repo = SettingsRepository()
+        return jsonify({
+            'success': True,
+            'data': repo.get_categories(),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/settings/<category>', methods=['GET'])
+@require_auth()
+def get_settings_category(category):
+    """دریافت تنظیمات یک دسته"""
+    try:
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        repo = SettingsRepository()
+        
+        user_id = None
+        # TODO: get user_id
+        
+        value = repo.get_category(category, user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'category': category,
+                'value': value,
+            },
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/settings/<category>', methods=['POST'])
+@require_auth('admin')
+def save_settings_category(category):
+    """ذخیره تنظیمات یک دسته"""
+    try:
+        data = request.json or {}
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Empty data'}), 400
+        
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        repo = SettingsRepository()
+        
+        user_id = None
+        # TODO: get user_id
+        
+        result = repo.save_category(category, data, user_id)
+        
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/settings/<category>', methods=['DELETE'])
+@require_auth('admin')
+def reset_settings_category(category):
+    """ریست تنظیمات یک دسته"""
+    try:
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        repo = SettingsRepository()
+        
+        user_id = None
+        
+        result = repo.reset_category(category, user_id)
+        
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/settings/reset', methods=['POST'])
+@require_auth('admin')
+def reset_all_settings():
+    """ریست همه تنظیمات"""
+    try:
+        from infrastructure.repositories.settings_repository import SettingsRepository
+        repo = SettingsRepository()
+        
+        user_id = None
+        
+        result = repo.reset_all(user_id)
+        
+        return jsonify(result), 200 if result.get('success') else 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/user/change-password', methods=['POST'])
+@require_auth()
+def change_password():
+    """تغییر رمز عبور"""
+    try:
+        data = request.json or {}
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+        
+        if not current_password or not new_password:
+            return jsonify({
+                'success': False,
+                'error': 'رمز فعلی و جدید لازمه',
+            }), 400
+        
+        if len(new_password) < 6:
+            return jsonify({
+                'success': False,
+                'error': 'رمز جدید باید حداقل ۶ کاراکتر باشه',
+            }), 400
+        
+        # TODO: پیاده‌سازی تغییر رمز
+        # فعلاً stub
+        
+        return jsonify({
+            'success': False,
+            'error': 'این قابلیت در حال توسعه است',
+        }), 501
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
