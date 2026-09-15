@@ -1,6 +1,6 @@
 // ============================================================
-// api.js - Unified API Client v10.1
-// کاملاً هماهنگ با اندپوینت‌های تفکیک شده بک‌اند
+// api.js - Unified API Client v11.0
+// کاملاً هماهنگ با اندپوینت‌های جدید backend
 // ============================================================
 
 class ApiClient {
@@ -52,10 +52,6 @@ class ApiClient {
         return this.request('/api/health/simple');
     }
 
-    getHealthDatabase() {
-        return this.request('/api/health/database');
-    }
-
     getStats() {
         return this.request('/api/stats');
     }
@@ -73,7 +69,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲. آمار واقعی اپلیکیشن (APP STATS)
+    // ۲. آمار اپلیکیشن (APP STATS)
     // ============================================================
 
     getAppStats() {
@@ -81,42 +77,95 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۳. دیتابیس - PostgreSQL
+    // ۳. Quota Management (🆕)
     // ============================================================
 
-    getPostgreSQLTables() {
-        return this.request('/api/db/postgresql/tables');
+    getAllQuotas() {
+        return this.request('/api/db/quota');
     }
 
-    getPostgreSQLTableData(tableName, options = {}) {
+    getDBQuota(dbName) {
+        return this.request(`/api/db/quota/${dbName}`);
+    }
+
+    getDBQuotaStatus(dbName) {
+        return this.request(`/api/db/quota/${dbName}/status`);
+    }
+
+    setDBQuota(dbName, data) {
+        return this.request(`/api/db/quota/${dbName}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    setTableQuota(dbName, tableName, data) {
+        return this.request(`/api/db/quota/${dbName}/table/${tableName}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    resetDBQuota(dbName) {
+        return this.request(`/api/db/quota/${dbName}`, {
+            method: 'DELETE'
+        });
+    }
+
+    resetAllQuotas() {
+        return this.request('/api/db/quota', {
+            method: 'DELETE'
+        });
+    }
+
+    getQuotaStats() {
+        return this.request('/api/db/quota/stats');
+    }
+
+    // ============================================================
+    // ۴. دیتابیس - PostgreSQL (🆕 Multi-DB)
+    // ============================================================
+
+    getPostgreSQLTables(dbName = 'primary') {
+        return this.request(`/api/db/postgresql/${dbName}/tables`);
+    }
+
+    getPostgreSQLTableData(dbName, tableName, options = {}) {
         const { limit = 100, offset = 0, search = '', sort_by = 'id', sort_order = 'DESC', format = 'json' } = options;
         const params = new URLSearchParams({ limit, offset, search, sort_by, sort_order, format });
-        return this.request(`/api/db/postgresql/table/${tableName}?${params}`);
+        return this.request(`/api/db/postgresql/${dbName}/tables/${tableName}?${params}`);
     }
 
-    getPostgreSQLStats() {
-        return this.request('/api/db/postgresql/stats');
+    getPostgreSQLTableSizes(dbName = 'primary') {
+        return this.request(`/api/db/postgresql/${dbName}/table-sizes`);
     }
 
-    exportPostgreSQLTable(tableName, format = 'csv', limit = 10000) {
-        return this.request(`/api/db/postgresql/export/${tableName}?format=${format}&limit=${limit}`);
+    getPostgreSQLStats(dbName = 'primary') {
+        return this.request(`/api/db/postgresql/${dbName}/stats`);
     }
 
-    exportPostgreSQLTableCSV(tableName) {
-        window.open(`/api/db/postgresql/export/${tableName}?format=csv`, '_blank');
+    exportPostgreSQLTable(dbName, tableName, format = 'csv', limit = 10000) {
+        return this.request(`/api/db/postgresql/${dbName}/export/${tableName}?format=${format}&limit=${limit}`);
     }
 
-    backupPostgreSQL() {
-        window.open('/api/db/postgresql/backup', '_blank');
+    exportPostgreSQLTableCSV(dbName, tableName) {
+        window.open(`/api/db/postgresql/${dbName}/export/${tableName}?format=csv`, '_blank');
     }
 
-    exportPostgreSQLRow(tableName, rowId, format = 'json') {
+    exportPostgreSQLRow(dbName, tableName, rowId, format = 'json') {
         const params = new URLSearchParams({ format });
-        return this.request(`/api/db/postgresql/table/${tableName}/export/row/${rowId}?${params}`);
+        return this.request(`/api/db/postgresql/${dbName}/tables/${tableName}/row/${rowId}?${params}`);
+    }
+
+    executePostgreSQLQuery(dbName, query) {
+        return this.request(`/api/db/postgresql/${dbName}/query`, {
+            method: 'POST',
+            body: JSON.stringify({ query })
+        });
     }
 
     // ============================================================
-    // ۴. دیتابیس - Redis
+    // ۵. دیتابیس - Redis
     // ============================================================
 
     getRedisKeys(options = {}) {
@@ -129,53 +178,197 @@ class ApiClient {
         return this.request('/api/db/redis/stats');
     }
 
-    clearRedis(confirm = true) {
-        return this.request(`/api/db/redis/clear?confirm=${confirm}`, {
+    getRedisNamespaces() {
+        return this.request('/api/db/redis/namespaces');
+    }
+
+    getRedisKey(key) {
+        return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}`);
+    }
+
+    deleteRedisKey(key) {
+        return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}`, {
             method: 'DELETE'
         });
     }
 
-    getRedisKey(key) {
-        return this.request(`/api/db/redis/key/${encodeURIComponent(key)}`);
-    }
-
     exportRedisKey(key) {
-        return this.request(`/api/db/redis/key/${encodeURIComponent(key)}/export`);
+        return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}/export`);
+    }
+
+    clearRedisNamespace(namespace) {
+        return this.request(`/api/db/redis/namespace/${encodeURIComponent(namespace)}`, {
+            method: 'DELETE'
+        });
+    }
+
+    clearRedis(confirm = true) {
+        return this.request(`/api/db/redis/flush?confirm=${confirm}`, {
+            method: 'DELETE'
+        });
     }
 
     // ============================================================
-    // ۵. دیتابیس - SQLite
+    // ۶. دیتابیس - Archive (🆕 جایگزین SQLite)
     // ============================================================
 
-    getSQLiteTables() {
-        return this.request('/api/db/sqlite/tables');
+    getArchiveTables() {
+        return this.request('/api/db/archive/tables');
     }
 
-    getSQLiteTableData(tableName, options = {}) {
+    getArchiveTableData(tableName, options = {}) {
         const { limit = 100, offset = 0, search = '', format = 'json' } = options;
         const params = new URLSearchParams({ limit, offset, search, format });
-        return this.request(`/api/db/sqlite/table/${tableName}?${params}`);
+        return this.request(`/api/db/archive/tables/${tableName}?${params}`);
     }
 
-    getSQLiteStats() {
-        return this.request('/api/db/sqlite/stats');
+    getArchiveStats() {
+        return this.request('/api/db/archive/stats');
     }
 
-    exportSQLiteTable(tableName, format = 'csv', limit = 10000) {
-        return this.request(`/api/db/sqlite/export/${tableName}?format=${format}&limit=${limit}`);
+    exportArchiveTable(tableName, format = 'csv', limit = 10000) {
+        return this.request(`/api/db/archive/tables/${tableName}/export?format=${format}&limit=${limit}`);
     }
 
-    exportSQLiteTableCSV(tableName) {
-        window.open(`/api/db/sqlite/export/${tableName}?format=csv`, '_blank');
-    }
-
-    exportSQLiteRow(tableName, rowId, format = 'json') {
+    exportArchiveRow(tableName, rowId, format = 'json') {
         const params = new URLSearchParams({ format });
-        return this.request(`/api/db/sqlite/table/${tableName}/export/row/${rowId}?${params}`);
+        return this.request(`/api/db/archive/tables/${tableName}/row/${rowId}?${params}`);
+    }
+
+    archiveCleanup(data) {
+        return this.request('/api/db/archive/cleanup', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    getArchiveFeatures() {
+        return this.request('/api/db/archive/features');
     }
 
     // ============================================================
-    // ۶. دیتابیس - عمومی
+    // ۷. دیتابیس - Health & Status (🆕)
+    // ============================================================
+
+    getHealthSummary() {
+        return this.request('/api/db/health/summary');
+    }
+
+    getHealthFull() {
+        return this.request('/api/db/health/full');
+    }
+
+    getDBList() {
+        return this.request('/api/db/list');
+    }
+
+    pingDatabase(dbName) {
+        return this.request(`/api/db/${dbName}/ping`);
+    }
+
+    isReady() {
+        return this.request('/api/db/ready');
+    }
+
+    getFactoryStatus() {
+        return this.request('/api/db/factory/status');
+    }
+
+    forceReconnect(dbName = null) {
+        const url = dbName ? `/api/db/${dbName}/reconnect` : '/api/db/reconnect';
+        return this.request(url, { method: 'POST' });
+    }
+
+    reloadConfig() {
+        return this.request('/api/db/reload-config', { method: 'POST' });
+    }
+
+    // ============================================================
+    // ۸. دیتابیس - Router & Registry (🆕)
+    // ============================================================
+
+    getRouterStats() {
+        return this.request('/api/db/router/stats');
+    }
+
+    getRouterRules() {
+        return this.request('/api/db/router/rules');
+    }
+
+    getRegistrySummary() {
+        return this.request('/api/db/registry/summary');
+    }
+
+    // ============================================================
+    // ۹. دیتابیس - Maintenance (🆕)
+    // ============================================================
+
+    vacuumDatabase(dbName, full = false, analyze = true) {
+        const params = new URLSearchParams({ full, analyze });
+        return this.request(`/api/db/${dbName}/vacuum?${params}`, {
+            method: 'POST'
+        });
+    }
+
+    vacuumAllDatabases(full = false, analyze = true) {
+        const params = new URLSearchParams({ full, analyze });
+        return this.request(`/api/db/vacuum-all?${params}`, {
+            method: 'POST'
+        });
+    }
+
+    analyzeDatabase(dbName, table = null) {
+        const params = table ? `?table=${table}` : '';
+        return this.request(`/api/db/${dbName}/analyze${params}`, {
+            method: 'POST'
+        });
+    }
+
+    createBackup(data) {
+        return this.request('/api/db/backup/create', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    listBackups(options = {}) {
+        const { limit = 50, source_table = '', status = '' } = options;
+        const params = new URLSearchParams({ limit, source_table, status });
+        return this.request(`/api/db/backup/list?${params}`);
+    }
+
+    deleteOldRecords(dbName, tableName, data) {
+        return this.request(`/api/db/${dbName}/tables/${tableName}/delete-old`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    getTableCount(dbName, tableName, where = '') {
+        const params = where ? `?where=${encodeURIComponent(where)}` : '';
+        return this.request(`/api/db/${dbName}/tables/${tableName}/count${params}`);
+    }
+
+    getTableSize(dbName, tableName) {
+        return this.request(`/api/db/${dbName}/tables/${tableName}/size`);
+    }
+
+    truncateTable(dbName, tableName, cascade = false) {
+        const params = new URLSearchParams({ confirm: true, cascade });
+        return this.request(`/api/db/${dbName}/tables/${tableName}/truncate?${params}`, {
+            method: 'POST'
+        });
+    }
+
+    runTransaction(data) {
+        return this.request('/api/db/transaction', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ============================================================
+    // ۱۰. دیتابیس - عمومی
     // ============================================================
 
     searchDatabase(query, tables = '') {
@@ -184,42 +377,20 @@ class ApiClient {
         return this.request(`/api/db/search?${params}`);
     }
 
-    executeQuery(query) {
-        return this.request('/api/db/query', {
-            method: 'POST',
-            body: JSON.stringify({ query })
-        });
-    }
-
     getDatabaseHealth() {
-        return this.request('/api/db/health');
-    }
-
-    getDBMonitor() {
-        return this.request('/api/db/monitor');
-    }
-
-    // ===== جدید: دیتابیس عمومی =====
-    getDBTables() {
-        return this.request('/api/db/tables');
-    }
-
-    getDBStats() {
-        return this.request('/api/db/stats');
-    }
-
-    runDBMigration() {
-        return this.request('/api/db/migrate', {
-            method: 'POST'
-        });
+        return this.request('/api/db/health/summary');  // جایگزین
     }
 
     // ============================================================
-    // ۷. مدل (MODEL)
+    // ۱۱. مدل (MODEL)
     // ============================================================
 
     getModelStatus() {
         return this.request('/api/model/status');
+    }
+
+    getTrainerStats() {
+        return this.request('/api/model/trainer-stats');
     }
 
     getModelHistory(limit = 20) {
@@ -230,26 +401,42 @@ class ApiClient {
         return this.request('/api/model/features');
     }
 
-    // ===== جدید: داده‌های آموزشی مدل =====
     getModelData() {
         return this.request('/api/model/data');
     }
 
-    // ===== جدید: اهمیت ویژگی‌ها =====
     getModelImportance() {
         return this.request('/api/model/importance');
     }
 
-    // ===== جدید: عملکرد مدل برای نمودار =====
     getModelPerformance() {
         return this.request('/api/model/performance');
     }
 
+    getModelAnalyticsStats(days = 30) {
+        return this.request(`/api/model/analytics-stats?days=${days}`);
+    }
+
     trainModel(options = {}) {
-        const { period = '1m', coins = ['bitcoin', 'ethereum'], incremental = false } = options;
+        const { period = '1m', coins = ['bitcoin', 'ethereum'], incremental = false, profile_name = null, strategy = null, save = true } = options;
         return this.request('/api/model/train', {
             method: 'POST',
-            body: JSON.stringify({ period, coins, incremental })
+            body: JSON.stringify({ period, coins, incremental, profile_name, strategy, save })
+        });
+    }
+
+    trainBatch(options = {}) {
+        const { profiles, period = '1m', coins = null } = options;
+        return this.request('/api/model/train-batch', {
+            method: 'POST',
+            body: JSON.stringify({ profiles, period, coins })
+        });
+    }
+
+    analyzeTraining(data) {
+        return this.request('/api/model/analyze-training', {
+            method: 'POST',
+            body: JSON.stringify(data)
         });
     }
 
@@ -285,8 +472,75 @@ class ApiClient {
         });
     }
 
+    getLatestReport() {
+        return this.request('/api/model/latest-report');
+    }
+
+    getReportByVersion(version) {
+        return this.request(`/api/model/report/${version}`);
+    }
+
     // ============================================================
-    // ۸. زمان‌بندی (SCHEDULE)
+    // ۱۲. Model Profiles (🆕)
+    // ============================================================
+
+    getTrainingPresets() {
+        return this.request('/api/model/profiles/presets');
+    }
+
+    getTrainingPreset(presetId) {
+        return this.request(`/api/model/profiles/presets/${presetId}`);
+    }
+
+    getLearningStrategies() {
+        return this.request('/api/model/profiles/strategies');
+    }
+
+    getHyperparameterLimits() {
+        return this.request('/api/model/profiles/hyperparameter-limits');
+    }
+
+    getCurrentProfile() {
+        return this.request('/api/model/profiles/current');
+    }
+
+    setCurrentProfile(data) {
+        return this.request('/api/model/profiles/current', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    validateProfile(data) {
+        return this.request('/api/model/profiles/validate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    listSavedProfiles() {
+        return this.request('/api/model/profiles/saved');
+    }
+
+    saveProfile(data) {
+        return this.request('/api/model/profiles/saved', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    loadProfile(name) {
+        return this.request(`/api/model/profiles/saved/${name}`);
+    }
+
+    deleteProfile(name) {
+        return this.request(`/api/model/profiles/saved/${name}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // ============================================================
+    // ۱۳. زمان‌بندی (SCHEDULE)
     // ============================================================
 
     getScheduleStatus() {
@@ -294,10 +548,10 @@ class ApiClient {
     }
 
     startSchedule(options = {}) {
-        const { interval = 6, period = '1m', coins = ['bitcoin', 'ethereum'], incremental = true } = options;
+        const { interval = 6, period = '1m', coins = ['bitcoin', 'ethereum'], profile_name = 'balanced', incremental = false } = options;
         return this.request('/api/schedule/start', {
             method: 'POST',
-            body: JSON.stringify({ interval, period, coins, incremental })
+            body: JSON.stringify({ interval, period, coins, profile_name, incremental })
         });
     }
 
@@ -308,7 +562,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۹. پیش‌بینی (PREDICTIONS)
+    // ۱۴. پیش‌بینی (PREDICTIONS)
     // ============================================================
 
     predictSingle(coin, period = '24h') {
@@ -326,23 +580,27 @@ class ApiClient {
         return this.request(`/api/predict/explain?coin=${encodeURIComponent(coin)}`);
     }
 
-    // ===== جدید: تاریخچه پیش‌بینی‌ها =====
     getPredictionHistory(limit = 50, coin = null) {
         const params = new URLSearchParams({ limit });
         if (coin) params.append('coin', coin);
         return this.request(`/api/predict/history?${params}`);
     }
 
+    getPredictionHistoryStats() {
+        return this.request('/api/predict/history/stats');
+    }
+
     // ============================================================
-    // ۱۰. کوین‌استتس (COINSTATS)
+    // ۱۵. کوین‌استتس (COINSTATS)
     // ============================================================
-    // ===== دریافت لیست ارزها =====
+
     getCoinsList(options = {}) {
         const { limit = 50, page = 1, currency = 'USD', search = '' } = options;
         const params = new URLSearchParams({ limit, page, currency });
         if (search) params.append('search', search);
         return this.request(`/api/coinstats/coins?${params}`);
     }
+
     getCoinPrice(coin) {
         return this.request(`/api/coinstats/price/${coin}`);
     }
@@ -363,11 +621,14 @@ class ApiClient {
         return this.request('/api/coinstats/all');
     }
 
+    getChartData(coin, period = '1m') {
+        return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
+    }
+
     // ============================================================
-    // اضافه کردن به api.js - متدهای WebSocket
+    // ۱۶. قیمت‌های لحظه‌ای (CRYPTO)
     // ============================================================
 
-    // ===== قیمت‌های لحظه‌ای =====
     getRealtimePrices(symbols = null) {
         const params = new URLSearchParams();
         if (symbols && symbols.length > 0) {
@@ -389,31 +650,9 @@ class ApiClient {
             method: 'POST'
         });
     }
+
     // ============================================================
-    // اضافه کردن به api.js
-    // ============================================================
-
-    // ===== دریافت داده‌های نمودار با اندیکاتورها =====
-    getChartData(coin, period = '1m') {
-        return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
-    }
-
-    // ===== دریافت فقط RSI =====
-    getRSI(coin, period = '1m', rsi_period = 14) {
-        return this.request(`/api/coinstats/rsi/${coin}?period=${period}&rsi_period=${rsi_period}`);
-    }
-
-    // ===== دریافت فقط SMA =====
-    getSMA(coin, period = '1m', sma_period = 20) {
-        return this.request(`/api/coinstats/sma/${coin}?period=${period}&sma_period=${sma_period}`);
-    }
-
-    // ===== دریافت MACD =====
-    getMACD(coin, period = '1m') {
-        return this.request(`/api/coinstats/macd/${coin}?period=${period}`);
-    }
-    // ============================================================
-    // ۱۱. هشدارها (ALERTS)
+    // ۱۷. هشدارها (ALERTS)
     // ============================================================
 
     getAlerts(options = {}) {
@@ -439,7 +678,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۲. کاربر (USER)
+    // ۱۸. کاربر (USER)
     // ============================================================
 
     getUserInfo() {
@@ -451,7 +690,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۳. احراز هویت (AUTH)
+    // ۱۹. احراز هویت (AUTH)
     // ============================================================
 
     login(username, password) {
@@ -466,7 +705,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۴. دیباگ (DEBUG)
+    // ۲۰. دیباگ (DEBUG)
     // ============================================================
 
     getDebugStatus() {
@@ -532,38 +771,8 @@ class ApiClient {
         });
     }
 
-    searchCache(pattern = '*', limit = 50) {
-        const params = new URLSearchParams({ pattern, limit });
-        return this.request(`/api/debug/cache/search?${params}`);
-    }
-
-    deleteCacheKey(key) {
-        const params = new URLSearchParams({ key });
-        return this.request(`/api/debug/cache/key?${params}`, {
-            method: 'DELETE'
-        });
-    }
-
-    purgeCache() {
-        return this.request('/api/debug/cache/purge', {
-            method: 'POST'
-        });
-    }
-
     // ============================================================
-    // اضافه کردن به api.js - متدهای گزارش
-    // ============================================================
-
-    // ===== گزارش مدل =====
-    getLatestReport() {
-        return this.request('/api/model/latest-report');
-    }
-
-    getReportByVersion(version) {
-        return this.request(`/api/model/report/${version}`);
-    }
-    // ============================================================
-    // ۱۵. Self-Healing (خودترمیمی)
+    // ۲۱. Self-Healing
     // ============================================================
 
     getHealingStatus() {
@@ -581,10 +790,26 @@ class ApiClient {
             method: 'POST'
         });
     }
+
+    // ============================================================
+    // ۲۲. Debug - جدید (🆕)
+    // ============================================================
+
+    getDebugEnv() {
+        return this.request('/api/debug/env');
+    }
+
+    getDebugDbDetail() {
+        return this.request('/api/debug/db-detail');
+    }
+
+    getDebugFullStatus() {
+        return this.request('/api/debug/full-status');
+    }
 }
 
 // ===== SINGLETON =====
 const api = new ApiClient();
 window.api = api;
 
-console.log('✅ API Client v10.1 loaded');
+console.log('✅ API Client v11.0 loaded');
