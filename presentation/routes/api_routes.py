@@ -4921,6 +4921,265 @@ def debug_db_detail():
         "data": result,
         "timestamp": datetime.now().isoformat(),
     })
+
+
+@api_bp.route('/debug/full-status', methods=['GET'])
+def debug_full_status():
+    """
+    تشخیص کامل وضعیت سیستم
+    
+    این Endpoint نشون می‌ده:
+    - آیا database_factory init شده؟
+    - آیا registry پر شده؟
+    - آیا router routing داره؟
+    - آیا دیتابیس‌ها وصلن؟
+    - ترتیب import درسته یا نه؟
+    """
+    import os
+    import sys
+    import traceback
+    from datetime import datetime
+    
+    result = {
+        "step_1_imports": {},
+        "step_2_db_factory": {},
+        "step_3_registry": {},
+        "step_4_router": {},
+        "step_5_connections": {},
+        "step_6_get_helpers": {},
+        "summary": {},
+    }
+    
+    # ============================================================
+    # STEP 1: Imports
+    # ============================================================
+    
+    try:
+        import infrastructure.database.database_factory as df_module
+        result["step_1_imports"]["database_factory_module"] = {
+            "type": str(type(df_module)),
+            "has_db_factory": hasattr(df_module, "db_factory"),
+        }
+        
+        if hasattr(df_module, "db_factory"):
+            factory = df_module.db_factory
+            result["step_1_imports"]["db_factory_type"] = str(type(factory))
+            result["step_1_imports"]["db_factory_id"] = id(factory)
+    except Exception as e:
+        result["step_1_imports"]["error"] = str(e)
+        result["step_1_imports"]["traceback"] = traceback.format_exc()
+    
+    # ============================================================
+    # STEP 2: Database Factory
+    # ============================================================
+    
+    try:
+        from infrastructure.database.database_factory import db_factory
+        
+        result["step_2_db_factory"] = {
+            "id": id(db_factory),
+            "init_started": (
+                getattr(db_factory, "_init_started_at", None).isoformat()
+                if getattr(db_factory, "_init_started_at", None) else None
+            ),
+            "init_completed": (
+                getattr(db_factory, "_init_completed_at", None).isoformat()
+                if getattr(db_factory, "_init_completed_at", None) else None
+            ),
+            "failed_connections": getattr(db_factory, "_failed_connections", []),
+            "total_retries": getattr(db_factory, "_total_retries", 0),
+            "config_loaded": bool(getattr(db_factory, "_config", {})),
+            "config_databases": list(
+                getattr(db_factory, "_config", {}).get("databases", {}).keys()
+            ),
+            "health_check_running": getattr(db_factory, "_health_enabled", False),
+        }
+    except Exception as e:
+        result["step_2_db_factory"]["error"] = str(e)
+        result["step_2_db_factory"]["traceback"] = traceback.format_exc()
+    
+    # ============================================================
+    # STEP 3: Registry
+    # ============================================================
+    
+    try:
+        from infrastructure.database.registry import registry as reg_direct
+        
+        result["step_3_registry"] = {
+            "id": id(reg_direct),
+            "databases_count": len(reg_direct._databases),
+            "databases": list(reg_direct._databases.keys()),
+            "roles_count": len(reg_direct._roles),
+            "roles": dict(reg_direct._roles),
+            "config_loaded": bool(reg_direct._config),
+            "default": reg_direct._config.get("default", "N/A"),
+            "reconnect_count": reg_direct._reconnect_count,
+        }
+        
+        # Test get_by_role
+        cache_db = reg_direct.get_by_role("cache", auto_reconnect=False)
+        result["step_3_registry"]["get_by_role_cache"] = {
+            "type": str(type(cache_db)) if cache_db else "None",
+            "is_connected": cache_db.is_connected() if cache_db else None,
+        }
+        
+        primary_db = reg_direct.get_by_role("primary", auto_reconnect=False)
+        result["step_3_registry"]["get_by_role_primary"] = {
+            "type": str(type(primary_db)) if primary_db else "None",
+            "is_connected": primary_db.is_connected() if primary_db else None,
+        }
+        
+    except Exception as e:
+        result["step_3_registry"]["error"] = str(e)
+        result["step_3_registry"]["traceback"] = traceback.format_exc()
+    
+    # ============================================================
+    # STEP 4: Router
+    # ============================================================
+    
+    try:
+        from infrastructure.database.router import router as router_direct
+        
+        result["step_4_router"] = {
+            "id": id(router_direct),
+            "routing_count": len(router_direct._routing),
+            "routing_sample": dict(list(router_direct._routing.items())[:10]),
+            "read_write_split": router_direct._read_write_split,
+            "failover_count": router_direct._failover_count,
+            "route_count": router_direct._route_count,
+        }
+        
+        # Test get_cache_db
+        cache_via_router = router_direct.get_cache_db(auto_reconnect=False)
+        result["step_4_router"]["get_cache_db"] = {
+            "type": str(type(cache_via_router)) if cache_via_router else "None",
+            "is_connected": cache_via_router.is_connected() if cache_via_router else None,
+        }
+        
+        primary_via_router = router_direct.get_primary_db(auto_reconnect=False)
+        result["step_4_router"]["get_primary_db"] = {
+            "type": str(type(primary_via_router)) if primary_via_router else "None",
+            "is_connected": primary_via_router.is_connected() if primary_via_router else None,
+        }
+        
+    except Exception as e:
+        result["step_4_router"]["error"] = str(e)
+        result["step_4_router"]["traceback"] = traceback.format_exc()
+    
+    # ============================================================
+    # STEP 5: Test Connections
+    # ============================================================
+    
+    # Neon Primary
+    try:
+        import psycopg2
+        
+        conn = psycopg2.connect(
+            host=os.getenv("NEON_PRIMARY_HOST"),
+            port=5432,
+            user=os.getenv("NEON_PRIMARY_USER"),
+            password=os.getenv("NEON_PRIMARY_PASSWORD"),
+            dbname=os.getenv("NEON_PRIMARY_DB"),
+            sslmode="require",
+            channel_binding="require",
+            connect_timeout=10,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        conn.close()
+        result["step_5_connections"]["neon_primary"] = "✅ OK"
+    except Exception as e:
+        result["step_5_connections"]["neon_primary"] = f"❌ {type(e).__name__}: {e}"
+    
+    # Upstash Redis
+    try:
+        import redis
+        
+        r = redis.from_url(
+            os.getenv("UPSTASH_REDIS_URL_FULL"),
+            decode_responses=True,
+            socket_timeout=10,
+            ssl_cert_reqs=None,
+        )
+        result["step_5_connections"]["upstash_redis"] = f"✅ PING: {r.ping()}"
+    except Exception as e:
+        result["step_5_connections"]["upstash_redis"] = f"❌ {type(e).__name__}: {e}"
+    
+    # ============================================================
+    # STEP 6: Test get_* helpers
+    # ============================================================
+    
+    # get_primary
+    try:
+        from infrastructure.database import get_primary
+        primary = get_primary()
+        result["step_6_get_helpers"]["get_primary"] = {
+            "type": str(type(primary)) if primary else "None",
+            "is_connected": primary.is_connected() if primary else None,
+        }
+    except Exception as e:
+        result["step_6_get_helpers"]["get_primary"] = f"❌ {e}"
+    
+    # get_cache
+    try:
+        from infrastructure.database import get_cache
+        cache = get_cache()
+        result["step_6_get_helpers"]["get_cache"] = {
+            "type": str(type(cache)) if cache else "None",
+            "is_connected": cache.is_connected() if cache else None,
+        }
+    except Exception as e:
+        result["step_6_get_helpers"]["get_cache"] = f"❌ {e}"
+    
+    # get_archive
+    try:
+        from infrastructure.database import get_archive
+        archive = get_archive()
+        result["step_6_get_helpers"]["get_archive"] = {
+            "type": str(type(archive)) if archive else "None",
+            "is_connected": archive.is_connected() if archive else None,
+        }
+    except Exception as e:
+        result["step_6_get_helpers"]["get_archive"] = f"❌ {e}"
+    
+    # ============================================================
+    # SUMMARY
+    # ============================================================
+    
+    # بررسی سلامت
+    is_db_factory_init = bool(result["step_2_db_factory"].get("init_completed"))
+    registry_has_roles = result["step_3_registry"].get("roles_count", 0) > 0
+    router_has_routing = result["step_4_router"].get("routing_count", 0) > 0
+    
+    result["summary"] = {
+        "db_factory_initialized": is_db_factory_init,
+        "registry_has_roles": registry_has_has_roles if False else registry_has_roles,
+        "router_has_routing": router_has_routing,
+        "can_get_primary": isinstance(result["step_6_get_helpers"].get("get_primary"), dict),
+        "can_get_cache": isinstance(result["step_6_get_helpers"].get("get_cache"), dict),
+        "can_get_archive": isinstance(result["step_6_get_helpers"].get("get_archive"), dict),
+        "diagnosis": "unknown",
+    }
+    
+    # تشخیص
+    if is_db_factory_init and registry_has_roles and router_has_routing:
+        result["summary"]["diagnosis"] = "✅ همه چیز OK"
+    elif not is_db_factory_init:
+        result["summary"]["diagnosis"] = "❌ database_factory init نشده"
+    elif not registry_has_roles:
+        result["summary"]["diagnosis"] = "❌ registry خالیه (set_config صدا زده نشده)"
+    elif not router_has_routing:
+        result["summary"]["diagnosis"] = "❌ router خالیه (set_routing صدا زده نشده)"
+    else:
+        result["summary"]["diagnosis"] = "⚠️ مشکل نامشخص"
+    
+    return jsonify({
+        "success": True,
+        "data": result,
+        "timestamp": datetime.now().isoformat(),
+    })
 # ============================================================
 # اندپوینت‌های Self-Healing
 # ============================================================
