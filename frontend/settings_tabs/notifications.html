@@ -1,0 +1,307 @@
+<!-- ============================================================
+     settings_tabs/notifications.html - تب اعلان‌ها
+     نسخه ۱.۰ - تنظیمات اعلان‌ها
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: تنظیمات پایه ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-bell"></i>
+            <span>تنظیمات اعلان‌ها</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-bell"></i>
+                <span>فعال‌سازی اعلان‌ها</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notif_enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">Browser Notification</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-volume-up"></i>
+                <span>صدای اعلان</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notif_sound">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">پخش صدا</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>فقط هشدارهای بحرانی</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notif_criticalOnly">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">CRITICAL فقط</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: Do Not Disturb ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-moon"></i>
+            <span>حالت مزاحم نشوید (Do Not Disturb)</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-toggle-off"></i>
+                <span>فعال‌سازی</span>
+            </span>
+            <div class="toggle-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notif_doNotDisturb">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">در بازه زیر اعلان‌ها قطع شوند</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-clock"></i>
+                <span>ساعت شروع</span>
+            </span>
+            <input type="time" id="notif_dndStart" value="22:00">
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-clock"></i>
+                <span>ساعت پایان</span>
+            </span>
+            <input type="time" id="notif_dndEnd" value="08:00">
+        </div>
+    </div>
+
+    <!-- ===== گروه ۳: تست ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-flask"></i>
+            <span>تست اعلان‌ها</span>
+        </div>
+
+        <div class="settings-info-item">
+            <span class="info-label">وضعیت دسترسی</span>
+            <span class="info-value" id="notif_permission_status">—</span>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn settings-btn-primary" onclick="requestNotificationPermission()">
+                <i class="fas fa-key"></i>
+                درخواست دسترسی
+            </button>
+            <button class="settings-btn settings-btn-secondary" onclick="testNotification()">
+                <i class="fas fa-bell"></i>
+                ارسال اعلان تست
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== Actions ===== -->
+    <div class="settings-actions">
+        <button class="settings-btn settings-btn-primary" onclick="saveNotificationSettings()">
+            <i class="fas fa-save"></i>
+            ذخیره
+        </button>
+        <button class="settings-btn settings-btn-secondary" onclick="resetNotificationSettings()">
+            <i class="fas fa-undo"></i>
+            بازنشانی
+        </button>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// NOTIFICATIONS TAB CONTROLLER
+// ============================================================
+
+function init_settings_notifications() {
+    console.log('🔔 Initializing notifications tab...');
+    loadNotificationSettings();
+    checkNotificationPermission();
+}
+
+function cleanup_settings_notifications() {
+    console.log('🧹 Cleaning up notifications tab...');
+}
+
+// ============================================================
+// LOAD
+// ============================================================
+
+function loadNotificationSettings() {
+    try {
+        const settings = appSettings.get('notifications') || {};
+        
+        const setChecked = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = value === true;
+        };
+        
+        const setValue = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        };
+        
+        setChecked('notif_enabled', settings.enabled);
+        setChecked('notif_sound', settings.sound);
+        setChecked('notif_criticalOnly', settings.criticalOnly);
+        setChecked('notif_doNotDisturb', settings.doNotDisturb);
+        
+        setValue('notif_dndStart', settings.dndStart || '22:00');
+        setValue('notif_dndEnd', settings.dndEnd || '08:00');
+        
+        console.log('✅ Notification settings loaded');
+    } catch (err) {
+        console.error('❌ Failed to load notification settings:', err);
+    }
+}
+
+// ============================================================
+// SAVE
+// ============================================================
+
+async function saveNotificationSettings() {
+    try {
+        const newSettings = {
+            enabled: document.getElementById('notif_enabled')?.checked || false,
+            sound: document.getElementById('notif_sound')?.checked || false,
+            criticalOnly: document.getElementById('notif_criticalOnly')?.checked || false,
+            doNotDisturb: document.getElementById('notif_doNotDisturb')?.checked || false,
+            dndStart: document.getElementById('notif_dndStart')?.value || '22:00',
+            dndEnd: document.getElementById('notif_dndEnd')?.value || '08:00',
+        };
+        
+        await appSettings.save('notifications', newSettings);
+        
+        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
+        console.log('✅ Notification settings saved:', newSettings);
+    } catch (err) {
+        console.error('❌ Failed to save notification settings:', err);
+        window.showToast?.('❌ خطا در ذخیره', 'error');
+    }
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+async function resetNotificationSettings() {
+    if (!window.confirm) return;
+    
+    const confirmed = await window.confirm(
+        'بازنشانی تنظیمات',
+        'آیا مطمئن هستید؟',
+        'بله',
+        'انصراف'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        appSettings.reset('notifications');
+        loadNotificationSettings();
+        window.showToast?.('✅ بازنشانی شد', 'success');
+    } catch (err) {
+        console.error('❌ Failed to reset:', err);
+    }
+}
+
+// ============================================================
+// PERMISSIONS
+// ============================================================
+
+function checkNotificationPermission() {
+    const el = document.getElementById('notif_permission_status');
+    if (!el) return;
+    
+    if (!('Notification' in window)) {
+        el.textContent = '❌ پشتیبانی نمی‌شود';
+        el.className = 'info-value red';
+        return;
+    }
+    
+    const permission = Notification.permission;
+    
+    const labels = {
+        'granted': '✅ مجاز',
+        'denied': '❌ رد شده',
+        'default': '⚠️ درخواست نشده',
+    };
+    
+    el.textContent = labels[permission] || permission;
+    el.className = `info-value ${permission === 'granted' ? 'green' : permission === 'denied' ? 'red' : 'orange'}`;
+}
+
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        window.showToast?.('❌ مرورگر پشتیبانی نمی‌کند', 'error');
+        return;
+    }
+    
+    try {
+        const permission = await Notification.requestPermission();
+        checkNotificationPermission();
+        
+        if (permission === 'granted') {
+            window.showToast?.('✅ دسترسی داده شد', 'success');
+        } else {
+            window.showToast?.('⚠️ دسترسی داده نشد', 'warning');
+        }
+    } catch (err) {
+        console.error('❌ Permission error:', err);
+    }
+}
+
+// ============================================================
+// TEST
+// ============================================================
+
+function testNotification() {
+    if (!('Notification' in window)) {
+        window.showToast?.('❌ مرورگر پشتیبانی نمی‌کند', 'error');
+        return;
+    }
+    
+    if (Notification.permission !== 'granted') {
+        window.showToast?.('⚠️ ابتدا دسترسی بدهید', 'warning');
+        return;
+    }
+    
+    try {
+        new Notification('🔔 اعلان تست', {
+            body: 'این یک اعلان تست است. اگر این را می‌بینید، اعلان‌ها کار می‌کنند.',
+            icon: '/favicon.ico',
+            tag: 'test-notification',
+        });
+        
+        window.showToast?.('✅ اعلان تست ارسال شد', 'success');
+    } catch (err) {
+        console.error('❌ Test notification error:', err);
+        window.showToast?.('❌ خطا در ارسال', 'error');
+    }
+}
+
+console.log('✅ Notifications tab script loaded');
+</script>
