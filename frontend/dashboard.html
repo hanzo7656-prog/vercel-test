@@ -3,1345 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="theme-color" content="#0a0e1a">
     <title>داشبورد | سیستم تحلیلگر</title>
-    
-    <link rel="stylesheet" href="/css/style.css">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
-    <style>
-        /* ============================================================
-           DASHBOARD - LIQUID GLASS + COUNT-UP + FLOATING PARTICLES
-           ============================================================ */
-        
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.06);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-            --glass-blur: blur(18px);
-            --primary-glow: rgba(0, 212, 255, 0.12);
-            --card-radius: 20px;
-        }
 
-        [data-theme="light"] {
-            --glass-bg: rgba(255, 255, 255, 0.5);
-            --glass-border: rgba(0, 0, 0, 0.06);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            background: radial-gradient(ellipse at 20% 50%, #0f172a 0%, #020617 100%);
-            color: #f1f5f9;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Vazir', sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-            direction: rtl;
-            overflow-x: hidden;
-        }
-
-        [data-theme="light"] body {
-            background: radial-gradient(ellipse at 20% 50%, #f1f5f9 0%, #e2e8f0 100%);
-            color: #0f172a;
-        }
-
-        /* ============================================================
-           FLOATING PARTICLES - ذرات شناور
-           ============================================================ */
-        #particlesBg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .particle {
-            position: absolute;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0));
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-            animation: floatParticle linear infinite;
-            opacity: 0.5;
-        }
-
-        .particle.purple {
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.6), rgba(139, 92, 246, 0));
-            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
-        }
-
-        .particle.pink {
-            background: radial-gradient(circle, rgba(236, 72, 153, 0.5), rgba(236, 72, 153, 0));
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
-        }
-
-        .particle.green {
-            background: radial-gradient(circle, rgba(34, 211, 238, 0.5), rgba(34, 211, 238, 0));
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
-        }
-
-        @keyframes floatParticle {
-            0% {
-                transform: translate(0, 100vh) scale(0.5);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.6;
-            }
-            90% {
-                opacity: 0.6;
-            }
-            100% {
-                transform: translate(var(--drift), -100px) scale(1);
-                opacity: 0;
-            }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            animation: fadeIn 0.6s ease;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ============================================================
-           ANIMATIONS
-           ============================================================ */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
-        }
-
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.05); }
-            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.12); }
-        }
-
-        @keyframes rotateGlow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes counterPop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes skeletonPulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
-        }
-
-        @keyframes pulseDot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-
-        /* ============================================================
-           HEADER
-           ============================================================ */
-        .dashboard-header {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--card-radius);
-            padding: 22px 28px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 14px;
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .dashboard-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 40%, rgba(0, 212, 255, 0.05), transparent 60%);
-            pointer-events: none;
-        }
-
-        .dashboard-header .greeting {
-            font-size: 1.3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        [data-theme="light"] .dashboard-header .greeting {
-            background: linear-gradient(135deg, #0f172a, #475569);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .dashboard-header .greeting .highlight {
-            background: linear-gradient(135deg, #00d4ff, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .dashboard-header .status-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: relative;
-            z-index: 1;
-            flex-wrap: wrap;
-        }
-
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            border-radius: 30px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: #94a3b8;
-        }
-
-        .status-badge .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulseDot 2s infinite;
-        }
-
-        .status-badge .dot.online { background: #22d3ee; box-shadow: 0 0 12px rgba(34, 211, 238, 0.3); }
-        .status-badge .dot.warning { background: #f59e0b; box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-        .status-badge .dot.offline { background: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.3); }
-
-        .status-badge .value { color: #f1f5f9; font-weight: 600; }
-        [data-theme="light"] .status-badge .value { color: #0f172a; }
-
-        .header-actions { display: flex; gap: 8px; position: relative; z-index: 1; }
-
-        .btn-glass {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            color: #94a3b8;
-            font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-            font-family: inherit;
-            text-decoration: none;
-        }
-
-        .btn-glass:hover {
-            border-color: rgba(0, 212, 255, 0.2);
-            color: #f1f5f9;
-            transform: translateY(-2px);
-            box-shadow: var(--primary-glow);
-        }
-
-        [data-theme="light"] .btn-glass:hover { color: #0f172a; }
-
-        .btn-glass-primary {
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
-            border-color: rgba(0, 212, 255, 0.12);
-            color: #00d4ff;
-        }
-
-        .btn-glass-primary:hover {
-            border-color: #00d4ff;
-            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
-        }
-
-        /* ============================================================
-           STATS GRID
-           ============================================================ */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-            gap: 14px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 16px 18px;
-            text-align: center;
-            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.5s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.05s; }
-        .stat-card:nth-child(2) { animation-delay: 0.10s; }
-        .stat-card:nth-child(3) { animation-delay: 0.15s; }
-        .stat-card:nth-child(4) { animation-delay: 0.20s; }
-        .stat-card:nth-child(5) { animation-delay: 0.25s; }
-        .stat-card:nth-child(6) { animation-delay: 0.30s; }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, var(--primary-glow), transparent 70%);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-        }
-
-        .stat-card:hover::before { opacity: 1; }
-        .stat-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(0, 212, 255, 0.12);
-            box-shadow: var(--glass-shadow), var(--primary-glow);
-        }
-
-        .stat-card .stat-icon {
-            font-size: 1.5rem;
-            margin-bottom: 2px;
-            display: block;
-            animation: float 4s ease-in-out infinite;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-label {
-            font-size: 0.55rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-value {
-            font-size: 1.2rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            margin: 2px 0;
-            background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        [data-theme="light"] .stat-card .stat-value {
-            background: linear-gradient(135deg, #0f172a, #475569);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .stat-card .stat-value.cyan { background: linear-gradient(135deg, #00d4ff, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.purple { background: linear-gradient(135deg, #8b5cf6, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.orange { background: linear-gradient(135deg, #f59e0b, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.green { background: linear-gradient(135deg, #22d3ee, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-card .stat-value.pink { background: linear-gradient(135deg, #ec4899, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .stat-card .stat-value.counting {
-            animation: counterPop 0.3s ease;
-        }
-
-        .stat-card .stat-change {
-            font-size: 0.6rem;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card .stat-change.up { color: #22d3ee; }
-        .stat-card .stat-change.up::before { content: '▲ '; }
-        .stat-card .stat-change.down { color: #ef4444; }
-        .stat-card .stat-change.down::before { content: '▼ '; }
-        .stat-card .stat-change.neutral { color: #64748b; }
-
-        .stat-card .stat-sub {
-            font-size: 0.5rem;
-            color: #64748b;
-            position: relative;
-            z-index: 1;
-            margin-top: 2px;
-        }
-
-        /* ============================================================
-           ACTIVITY
-           ============================================================ */
-        .activity-section {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--card-radius);
-            padding: 20px 24px;
-            box-shadow: var(--glass-shadow);
-            animation: slideUp 0.8s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .activity-section .card-glow {
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: conic-gradient(from 0deg, transparent, rgba(245, 158, 11, 0.04), transparent, rgba(0, 212, 255, 0.04), transparent);
-            animation: rotateGlow 30s linear infinite;
-            pointer-events: none;
-            opacity: 0.15;
-        }
-
-        .activity-section .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .activity-section .section-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #94a3b8;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .activity-section .section-title i { color: #f59e0b; }
-
-        .activity-section .section-badge {
-            font-size: 0.5rem;
-            padding: 3px 12px;
-            background: rgba(34, 211, 238, 0.08);
-            color: #22d3ee;
-            border-radius: 20px;
-            border: 1px solid rgba(34, 211, 238, 0.08);
-            animation: pulseGlow 2s infinite;
-        }
-
-        .activity-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.02);
-            margin-bottom: 4px;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        [data-theme="light"] .activity-item {
-            background: rgba(0, 0, 0, 0.02);
-        }
-
-        .activity-item:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(0, 212, 255, 0.05);
-            transform: translateX(-4px);
-        }
-
-        .activity-item .a-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-        }
-
-        .activity-item:hover .a-icon { transform: scale(1.1); }
-        .activity-item .a-icon.alert { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-        .activity-item .a-icon.warning { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-        .activity-item .a-icon.info { background: rgba(0, 212, 255, 0.12); color: #00d4ff; }
-        .activity-item .a-icon.model { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
-
-        .activity-item .a-text {
-            flex: 1;
-            font-size: 0.75rem;
-            color: #f1f5f9;
-        }
-
-        [data-theme="light"] .activity-item .a-text { color: #0f172a; }
-
-        .activity-item .a-text .highlight { color: #00d4ff; font-weight: 500; }
-
-        .activity-item .a-time {
-            font-size: 0.55rem;
-            color: #64748b;
-            font-family: 'Courier New', monospace;
-            padding: 2px 10px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.03);
-            white-space: nowrap;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
-            color: #64748b;
-            position: relative;
-            z-index: 1;
-        }
-
-        .empty-state .icon { font-size: 2.5rem; display: block; margin-bottom: 8px; opacity: 0.5; }
-        .empty-state .title { font-size: 0.9rem; font-weight: 500; color: #94a3b8; }
-        .empty-state .subtitle { font-size: 0.7rem; color: #64748b; margin-top: 4px; }
-
-        .activity-skeleton {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            margin-bottom: 4px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .activity-skeleton .skeleton-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            animation: skeletonPulse 1.5s ease-in-out infinite;
-        }
-
-        .activity-skeleton .skeleton-text {
-            flex: 1;
-            height: 14px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            animation: skeletonPulse 1.5s ease-in-out infinite 0.2s;
-        }
-
-        .activity-skeleton .skeleton-time {
-            width: 60px;
-            height: 12px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            animation: skeletonPulse 1.5s ease-in-out infinite 0.4s;
-        }
-
-        /* ============================================================
-           QUICK ACTIONS
-           ============================================================ */
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .quick-actions .btn-glass {
-            flex: 1;
-            min-width: 90px;
-            justify-content: center;
-            padding: 10px 16px;
-            font-size: 0.7rem;
-        }
-
-        .nav-badge {
-            background: #ef4444;
-            color: white;
-            font-size: 0.5rem;
-            padding: 1px 6px;
-            border-radius: 9999px;
-            min-width: 16px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 1024px) {
-            .stats-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-
-        @media (max-width: 768px) {
-            body { padding: 12px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .dashboard-header { flex-direction: column; align-items: stretch; padding: 16px 18px; }
-            .dashboard-header .status-group { flex-wrap: wrap; }
-            .header-actions { width: 100%; }
-            .header-actions .btn-glass { flex: 1; justify-content: center; }
-            .stat-card { padding: 12px 14px; }
-            .stat-card .stat-value { font-size: 1rem; }
-            .activity-item { flex-wrap: wrap; }
-            .activity-item .a-time { width: 100%; text-align: left; }
-            .quick-actions .btn-glass { flex: 1; min-width: 70px; font-size: 0.65rem; }
-        }
-
-        @media (max-width: 480px) {
-            body { padding: 8px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .stat-card .stat-value { font-size: 0.85rem; }
-            .stat-card .stat-icon { font-size: 1.2rem; }
-            .stat-card .stat-label { font-size: 0.5rem; }
-            .dashboard-header .greeting { font-size: 1rem; }
-            .status-badge { font-size: 0.6rem; padding: 4px 10px; }
-            .activity-item .a-text { font-size: 0.7rem; }
-            .quick-actions .btn-glass { padding: 6px 10px; font-size: 0.6rem; }
-        }
-    </style>
+    <!-- Base CSS (فاز ۰) -->
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/themes.css">
+
+    <!-- Shared -->
+    <link rel="stylesheet" href="/css/nav.css">
+
+    <!-- Page-specific -->
+    <link rel="stylesheet" href="/css/pages/dashboard.css">
 </head>
 <body>
 
     <!-- ============================================================
-    FLOATING PARTICLES BACKGROUND
-    ============================================================ -->
-    <div id="particlesBg"></div>
+         FLOATING PARTICLES
+         ============================================================ -->
+    <div class="dashboard-particles" id="dashboardParticles"></div>
 
     <!-- ============================================================
-    SPLASH LOADER
-    ============================================================ -->
-    <div id="splashLoaderContainer"></div>
-
-    <!-- ============================================================
-    LOADING OVERLAY
-    ============================================================ -->
-    <div id="loadingOverlayContainer"></div>
-
-    <!-- ============================================================
-    NAVIGATION
-    ============================================================ -->
+         NAVIGATION
+         ============================================================ -->
     <div id="navContainer"></div>
 
     <!-- ============================================================
-    MAIN CONTENT
-    ============================================================ -->
-    <div class="container" id="dashboardContent" style="display:none;">
+         MAIN CONTENT
+         ============================================================ -->
+    <div class="dashboard-page">
 
-        <!-- HEADER -->
-        <div class="dashboard-header">
-            <div>
-                <div class="greeting">👋 خوش آمدید، <span class="highlight" id="userName">کاربر</span></div>
-            </div>
-            <div class="status-group">
-                <div class="status-badge">
-                    <span class="dot online" id="statusDot"></span>
-                    <span id="statusText">در حال بارگذاری...</span>
+        <div class="container">
+
+            <!-- ====================================================
+                 WELCOME HERO
+                 ==================================================== -->
+            <div class="welcome-hero">
+                <div class="welcome-hero-content">
+                    <h2>به سیستم تحلیلگر خوش آمدید 🚀</h2>
+                    <p>
+                        تحلیل هوشمند بازار کریپتوکارنسی، آموزش مدل XGBoost،
+                        و مانیتورینگ لحظه‌ای — همه در یک پنل یکپارچه.
+                    </p>
                 </div>
-                <div class="status-badge">
-                    <i class="fas fa-brain" style="color:#8b5cf6;"></i>
-                    <span>مدل:</span>
-                    <span class="value" id="modelStatus">—</span>
-                </div>
-                <div class="header-actions">
-                    <button class="btn-glass btn-glass-primary" onclick="refreshDashboard()">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی
-                    </button>
+                <div class="welcome-hero-badge">
+                    📊
                 </div>
             </div>
+
+            <!-- ====================================================
+                 HEADER
+                 ==================================================== -->
+            <div class="dashboard-header">
+                <h1 class="dashboard-greeting">
+                    <span class="wave">👋</span>
+                    خوش آمدید،
+                    <span class="highlight" id="userName">کاربر</span>
+                </h1>
+
+                <div class="status-group">
+                    <span class="status-badge">
+                        <span class="status-indicator online" id="statusDot"></span>
+                        <span id="statusText">در حال بارگذاری...</span>
+                    </span>
+
+                    <span class="status-badge">
+                        <i class="fas fa-brain" style="color: var(--color-purple);"></i>
+                        <span>مدل:</span>
+                        <strong class="info-value" id="modelStatus">—</strong>
+                    </span>
+
+                    <div class="header-actions">
+                        <button class="btn btn-primary btn-sm" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>بروزرسانی</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 STATS GRID
+                 ==================================================== -->
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <span class="stat-icon">₿</span>
+                    <span class="stat-label">بیت‌کوین</span>
+                    <div class="stat-value cyan" id="btcPrice">—</div>
+                    <div class="stat-change neutral" id="btcChange">—</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="stat-icon">⟠</span>
+                    <span class="stat-label">اتریوم</span>
+                    <div class="stat-value purple" id="ethPrice">—</div>
+                    <div class="stat-change neutral" id="ethChange">—</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="stat-icon">😨</span>
+                    <span class="stat-label">ترس و طمع</span>
+                    <div class="stat-value orange" id="fearGreedValue">—</div>
+                    <div class="stat-change neutral" id="fearGreedLabel">—</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="stat-icon">📊</span>
+                    <span class="stat-label">سلطه بیت‌کوین</span>
+                    <div class="stat-value cyan" id="btcDominance">—</div>
+                    <div class="stat-change neutral">بازار کریپتو</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="stat-icon">📈</span>
+                    <span class="stat-label">سیگنال خرید</span>
+                    <div class="stat-value green" id="buySignals">—</div>
+                    <div class="stat-change neutral">پیش‌بینی‌های اخیر</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="stat-icon">📉</span>
+                    <span class="stat-label">سیگنال فروش</span>
+                    <div class="stat-value pink" id="sellSignals">—</div>
+                    <div class="stat-change neutral">پیش‌بینی‌های اخیر</div>
+                </div>
+
+            </div>
+
+            <!-- ====================================================
+                 ACTIVITY SECTION
+                 ==================================================== -->
+            <div class="activity-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-bolt"></i>
+                        <span>فعالیت‌های اخیر</span>
+                    </div>
+                    <span class="section-badge">لحظه‌ای</span>
+                </div>
+
+                <div id="activityList">
+                    <div class="activity-skeleton">
+                        <div class="skeleton-icon"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-time"></div>
+                    </div>
+                    <div class="activity-skeleton">
+                        <div class="skeleton-icon"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-time"></div>
+                    </div>
+                    <div class="activity-skeleton">
+                        <div class="skeleton-icon"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-time"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 QUICK ACTIONS
+                 ==================================================== -->
+            <div class="quick-actions">
+
+                <a href="/analyzer" class="quick-action">
+                    <i class="fas fa-robot"></i>
+                    <span>تحلیلگر</span>
+                </a>
+
+                <a href="/model" class="quick-action">
+                    <i class="fas fa-brain"></i>
+                    <span>مدل</span>
+                </a>
+
+                <a href="/database" class="quick-action">
+                    <i class="fas fa-database"></i>
+                    <span>دیتابیس</span>
+                </a>
+
+                <a href="/chart" class="quick-action">
+                    <i class="fas fa-chart-line"></i>
+                    <span>نمودار</span>
+                </a>
+
+                <a href="/alerts" class="quick-action">
+                    <i class="fas fa-bell"></i>
+                    <span>هشدارها</span>
+                    <span class="qa-badge" id="alertBadge" style="display:none;">0</span>
+                </a>
+
+                <a href="/settings" class="quick-action">
+                    <i class="fas fa-cog"></i>
+                    <span>تنظیمات</span>
+                </a>
+
+            </div>
+
         </div>
-
-        <!-- STATS GRID -->
-        <div class="stats-grid" id="statsGrid">
-
-            <div class="stat-card">
-                <span class="stat-icon">₿</span>
-                <span class="stat-label">بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcPrice" data-count-to="0" data-prefix="$" data-decimals="2">—</div>
-                <div class="stat-change neutral" id="btcChange">—</div>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-icon">⟠</span>
-                <span class="stat-label">اتریوم</span>
-                <div class="stat-value purple" id="ethPrice" data-count-to="0" data-prefix="$" data-decimals="2">—</div>
-                <div class="stat-change neutral" id="ethChange">—</div>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-icon">😨</span>
-                <span class="stat-label">ترس و طمع</span>
-                <div class="stat-value orange" id="fearGreedValue" data-count-to="0" data-decimals="0">—</div>
-                <div class="stat-change neutral" id="fearGreedLabel">—</div>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-icon">📊</span>
-                <span class="stat-label">سلطه بیت‌کوین</span>
-                <div class="stat-value cyan" id="btcDominance" data-count-to="0" data-suffix="%" data-decimals="1">—</div>
-                <div class="stat-change neutral" id="btcDominanceChange">—</div>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-icon">📈</span>
-                <span class="stat-label">سیگنال خرید</span>
-                <div class="stat-value green" id="buySignals" data-count-to="0" data-decimals="0">—</div>
-                <div class="stat-sub">پیش‌بینی‌های اخیر</div>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-icon">📉</span>
-                <span class="stat-label">سیگنال فروش</span>
-                <div class="stat-value pink" id="sellSignals" data-count-to="0" data-decimals="0">—</div>
-                <div class="stat-sub">پیش‌بینی‌های اخیر</div>
-            </div>
-
-        </div>
-
-        <!-- ACTIVITIES -->
-        <div class="activity-section">
-            <div class="card-glow"></div>
-            <div class="section-header">
-                <div class="section-title">
-                    <i class="fas fa-bolt"></i>
-                    فعالیت‌های اخیر
-                </div>
-                <span class="section-badge">● لحظه‌ای</span>
-            </div>
-            <div id="activityList">
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-                <div class="activity-skeleton">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-time"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- QUICK ACTIONS -->
-        <div class="quick-actions">
-            <a href="/analyzer" class="btn-glass btn-glass-primary">
-                <i class="fas fa-robot"></i> تحلیلگر
-            </a>
-            <a href="/model" class="btn-glass">
-                <i class="fas fa-brain"></i> مدل
-            </a>
-            <a href="/database" class="btn-glass">
-                <i class="fas fa-database"></i> دیتابیس
-            </a>
-            <a href="/chart" class="btn-glass">
-                <i class="fas fa-chart-line"></i> نمودار
-            </a>
-            <a href="/alerts" class="btn-glass">
-                <i class="fas fa-bell"></i> هشدارها
-                <span class="nav-badge" id="alertBadge" style="display:none;">0</span>
-            </a>
-        </div>
-
     </div>
 
     <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
+         SCRIPTS
+         ============================================================ -->
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jalaliday@1/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mitt@3/dist/mitt.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/radash@12/dist/radash.umd.js"></script>
+
+    <!-- App Base -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
 
-    <script>
-        // ============================================================
-        // 1. FLOATING PARTICLES
-        // ============================================================
-        function initParticles() {
-            const container = document.getElementById('particlesBg');
-            if (!container) return;
-            
-            const colors = ['', 'purple', 'pink', 'green'];
-            const particleCount = 25;
-            
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle ' + colors[Math.floor(Math.random() * colors.length)];
-                
-                const size = Math.random() * 8 + 3; // 3-11px
-                const left = Math.random() * 100;
-                const duration = Math.random() * 20 + 15; // 15-35s
-                const delay = Math.random() * -30;
-                const drift = (Math.random() - 0.5) * 200; // -100 to +100
-                
-                particle.style.width = size + 'px';
-                particle.style.height = size + 'px';
-                particle.style.left = left + '%';
-                particle.style.animationDuration = duration + 's';
-                particle.style.animationDelay = delay + 's';
-                particle.style.setProperty('--drift', drift + 'px');
-                
-                container.appendChild(particle);
-            }
-            
-            console.log(`✨ Created ${particleCount} floating particles`);
-        }
+    <!-- Core (فاز ۱) -->
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/tabs.js"></script>
+    <script src="/js/core/nav.js"></script>
+    <script src="/js/core/index.js"></script>
 
-        // ============================================================
-        // 2. COUNT-UP ANIMATION
-        // ============================================================
-        function animateCountUp(element, targetValue, options = {}) {
-            if (!element) return;
-            
-            const {
-                duration = 1500,
-                decimals = 0,
-                prefix = '',
-                suffix = '',
-                useComma = true
-            } = options;
-            
-            // اگه مقدار صفر یا نامعتبر بود، فقط نمایش بده
-            if (!targetValue || targetValue === 0 || isNaN(targetValue)) {
-                element.textContent = prefix + '0' + suffix;
-                return;
-            }
-            
-            const startValue = 0;
-            const startTime = performance.now();
-            
-            element.classList.add('counting');
-            
-            function updateCount(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // easeOutQuart
-                const eased = 1 - Math.pow(1 - progress, 4);
-                
-                const current = startValue + (targetValue - startValue) * eased;
-                
-                let display = current.toFixed(decimals);
-                if (useComma) {
-                    display = Number(display).toLocaleString('en-US', {
-                        minimumFractionDigits: decimals,
-                        maximumFractionDigits: decimals
-                    });
-                }
-                
-                element.textContent = prefix + display + suffix;
-                
-                if (progress < 1) {
-                    requestAnimationFrame(updateCount);
-                } else {
-                    element.classList.remove('counting');
-                }
-            }
-            
-            requestAnimationFrame(updateCount);
-        }
-
-        // ============================================================
-        // 3. TOAST FALLBACK
-        // ============================================================
-        if (typeof showToast !== 'function') {
-            window.showToast = function(message, type = 'info', duration = 3000) {
-                console.log(`[${type}] ${message}`);
-                const existing = document.querySelector('.toast-fallback');
-                if (existing) existing.remove();
-                const div = document.createElement('div');
-                div.className = 'toast-fallback';
-                div.style.cssText = `
-                    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-                    background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#22d3ee' : '#00d4ff'};
-                    color: #0f172a; padding: 12px 24px; border-radius: 12px;
-                    font-size: 0.85rem; font-weight: 500; z-index: 99999;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-                    max-width: 90%;
-                `;
-                div.textContent = message;
-                document.body.appendChild(div);
-                setTimeout(() => {
-                    div.style.opacity = '0';
-                    div.style.transition = 'opacity 0.3s ease';
-                    setTimeout(() => div.remove(), 300);
-                }, duration);
-            };
-        }
-
-        // ============================================================
-        // 4. LOAD COMPONENTS
-        // ============================================================
-        async function loadComponent(id, url) {
-            const container = document.getElementById(id);
-            if (!container) return false;
-            try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const html = await res.text();
-                container.innerHTML = html;
-
-                const scripts = container.querySelectorAll('script');
-                scripts.forEach(old => {
-                    const ns = document.createElement('script');
-                    ns.textContent = old.textContent;
-                    old.parentNode.replaceChild(ns, old);
-                });
-                return true;
-            } catch (err) {
-                console.error(`❌ Failed to load ${url}:`, err);
-                return false;
-            }
-        }
-
-        // ============================================================
-        // 5. INITIALIZE
-        // ============================================================
-        let statsInterval = null;
-        let isDashboardReady = false;
-
-        async function initializeDashboard() {
-            console.log('🚀 Initializing dashboard...');
-
-            // راه‌اندازی ذرات شناور
-            initParticles();
-
-            // بارگذاری کامپوننت‌ها
-            const [splashLoaded, overlayLoaded, navLoaded] = await Promise.all([
-                loadComponent('splashLoaderContainer', '/components/loading.html'),
-                loadComponent('loadingOverlayContainer', '/components/loading-overlay.html'),
-                loadComponent('navContainer', '/nav.html')
-            ]);
-
-            if (!splashLoaded) console.warn('⚠️ Splash loader not loaded');
-            if (!overlayLoaded) console.warn('⚠️ Loading overlay not loaded');
-            if (!navLoaded) console.warn('⚠️ Navigation not loaded');
-
-            // شروع لودینگ اولیه
-            if (window.loading && typeof window.loading.start === 'function') {
-                console.log('🔄 Starting splash loader...');
-                window.loading.start(() => {
-                    console.log('✅ Splash complete');
-                    showDashboard();
-                });
-            } else {
-                console.warn('⚠️ Splash loader not available, using fallback');
-                setTimeout(showDashboard, 1500);
-            }
-        }
-
-        function showDashboard() {
-            const content = document.getElementById('dashboardContent');
-            if (content) content.style.display = 'block';
-            initDashboard();
-        }
-
-        // ============================================================
-        // 6. DASHBOARD LOGIC
-        // ============================================================
-        async function initDashboard() {
-            if (isDashboardReady) return;
-
-            try {
-                console.log('📊 Loading dashboard data...');
-
-                if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-                    window.loadingSystem.show({
-                        messages: ['بارگذاری داده‌ها...', 'دریافت اطلاعات|لطفاً صبر کنید'],
-                        duration: 2000
-                    });
-                }
-
-                await Promise.allSettled([
-                    loadUserInfo(),
-                    loadMarketData(),
-                    loadActivities()
-                ]);
-
-                startAutoUpdate();
-
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
-                }
-
-                isDashboardReady = true;
-                console.log('✅ Dashboard ready');
-
-            } catch (err) {
-                console.error('❌ Dashboard error:', err);
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
-                }
-                showToast('⚠️ خطا در بارگذاری داده‌ها', 'error', 4000);
-            }
-        }
-
-        // ============================================================
-        // 7. DATA LOADERS
-        // ============================================================
-        async function loadUserInfo() {
-            try {
-                const data = await api.getUserInfo();
-                if (data && data.success) {
-                    const nameEl = document.getElementById('userName');
-                    if (nameEl) nameEl.textContent = data.data?.username || 'کاربر';
-                }
-            } catch (err) {
-                console.warn('User info error:', err.message);
-            }
-        }
-
-        async function loadMarketData() {
-            try {
-                console.log('📊 Loading market data...');
-
-                // ===== BTC =====
-                try {
-                    const btc = await api.getCoinPrice('bitcoin');
-                    if (btc && btc.success && btc.data) {
-                        const priceEl = document.getElementById('btcPrice');
-                        const changeEl = document.getElementById('btcChange');
-                        
-                        if (priceEl && btc.data.price) {
-                            animateCountUp(priceEl, btc.data.price, {
-                                duration: 1800,
-                                decimals: 2,
-                                prefix: '$',
-                                useComma: true
-                            });
-                        }
-                        
-                        if (changeEl && btc.data.change_24h !== undefined) {
-                            changeEl.textContent = formatPercent(btc.data.change_24h);
-                            changeEl.className = 'stat-change ' + (btc.data.change_24h >= 0 ? 'up' : 'down');
-                        }
-                    }
-                } catch (e) {
-                    console.warn('BTC error:', e.message);
-                }
-
-                // ===== ETH =====
-                try {
-                    const eth = await api.getCoinPrice('ethereum');
-                    if (eth && eth.success && eth.data) {
-                        const priceEl = document.getElementById('ethPrice');
-                        const changeEl = document.getElementById('ethChange');
-                        
-                        if (priceEl && eth.data.price) {
-                            animateCountUp(priceEl, eth.data.price, {
-                                duration: 1800,
-                                decimals: 2,
-                                prefix: '$',
-                                useComma: true
-                            });
-                        }
-                        
-                        if (changeEl && eth.data.change_24h !== undefined) {
-                            changeEl.textContent = formatPercent(eth.data.change_24h);
-                            changeEl.className = 'stat-change ' + (eth.data.change_24h >= 0 ? 'up' : 'down');
-                        }
-                    }
-                } catch (e) {
-                    console.warn('ETH error:', e.message);
-                }
-
-                // ===== Fear & Greed =====
-                try {
-                    const fg = await api.getFearGreed();
-                    if (fg && fg.success && fg.data) {
-                        const valEl = document.getElementById('fearGreedValue');
-                        const labelEl = document.getElementById('fearGreedLabel');
-                        
-                        if (valEl && fg.data.value) {
-                            animateCountUp(valEl, fg.data.value, {
-                                duration: 1500,
-                                decimals: 0,
-                                useComma: false
-                            });
-                        }
-                        
-                        if (labelEl) {
-                            labelEl.textContent = fg.data.classification || '—';
-                            const cls = fg.data.value <= 45 ? 'down' : fg.data.value >= 55 ? 'up' : 'neutral';
-                            labelEl.className = 'stat-change ' + cls;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('FG error:', e.message);
-                }
-
-                // ===== Dominance =====
-                try {
-                    const dom = await api.getBTCDominance();
-                    if (dom && dom.success && dom.data) {
-                        const valEl = document.getElementById('btcDominance');
-                        if (valEl && dom.data.value) {
-                            animateCountUp(valEl, dom.data.value, {
-                                duration: 1500,
-                                decimals: 1,
-                                suffix: '%',
-                                useComma: false
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Dominance error:', e.message);
-                }
-
-                // ===== Predictions =====
-                try {
-                    const pred = await api.getPredictionHistory(100);
-                    if (pred && pred.success && pred.data) {
-                        const predictions = pred.data;
-                        const buyCount = predictions.filter(p => p.signal_type === 'BUY').length;
-                        const sellCount = predictions.filter(p => p.signal_type === 'SELL').length;
-                        
-                        const buyEl = document.getElementById('buySignals');
-                        const sellEl = document.getElementById('sellSignals');
-                        
-                        if (buyEl) {
-                            animateCountUp(buyEl, buyCount, {
-                                duration: 1500,
-                                decimals: 0,
-                                useComma: false
-                            });
-                        }
-                        if (sellEl) {
-                            animateCountUp(sellEl, sellCount, {
-                                duration: 1500,
-                                decimals: 0,
-                                useComma: false
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Predictions error:', e.message);
-                }
-
-                // ===== Model Status =====
-                try {
-                    const model = await api.getModelStatus();
-                    if (model && model.success && model.data) {
-                        const el = document.getElementById('modelStatus');
-                        if (el) el.textContent = model.data.loaded ? '✅ فعال' : '📦 دمو';
-                    }
-                } catch (e) {
-                    console.warn('Model status error:', e.message);
-                }
-
-                // ===== System Status =====
-                try {
-                    const metrics = await api.getMetrics();
-                    const dot = document.getElementById('statusDot');
-                    const text = document.getElementById('statusText');
-                    if (dot && text && metrics?.success) {
-                        const apiStatus = metrics.data?.metrics?.api_status?.value || 'ok';
-                        dot.className = 'dot';
-                        if (apiStatus === 'ok' || apiStatus === 'healthy') {
-                            dot.classList.add('online');
-                            text.textContent = 'سیستم پایدار';
-                        } else if (apiStatus === 'degraded') {
-                            dot.classList.add('warning');
-                            text.textContent = 'عملکرد کاهش یافته';
-                        } else {
-                            dot.classList.add('online');
-                            text.textContent = 'متصل';
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Metrics error:', e.message);
-                }
-
-                console.log('✅ Market data loaded');
-
-            } catch (err) {
-                console.error('Market data error:', err);
-                throw err;
-            }
-        }
-
-        async function loadActivities() {
-            const container = document.getElementById('activityList');
-            if (!container) return;
-
-            try {
-                const [alertsRes, historyRes] = await Promise.allSettled([
-                    api.getAlerts({ limit: 8, resolved: false }),
-                    api.getModelHistory(5)
-                ]);
-
-                const items = [];
-
-                if (alertsRes.status === 'fulfilled' && alertsRes.value?.success && alertsRes.value.data) {
-                    alertsRes.value.data.forEach(a => {
-                        const levelMap = {
-                            'CRITICAL': { icon: '🚨', cls: 'alert' },
-                            'WARNING': { icon: '⚠️', cls: 'warning' },
-                            'INFO': { icon: 'ℹ️', cls: 'info' }
-                        };
-                        const info = levelMap[a.level] || levelMap.INFO;
-                        items.push({
-                            icon: info.icon,
-                            cls: info.cls,
-                            text: a.message || 'رویداد جدید',
-                            time: new Date(a.timestamp)
-                        });
-                    });
-                }
-
-                if (historyRes.status === 'fulfilled' && historyRes.value?.success && historyRes.value.data) {
-                    historyRes.value.data.slice(0, 3).forEach(h => {
-                        const acc = ((h.accuracy || 0) * 100).toFixed(1);
-                        items.push({
-                            icon: '🧠',
-                            cls: 'model',
-                            text: `مدل <span class="highlight">${h.version || 'v1'}</span> با دقت ${acc}%`,
-                            time: new Date(h.training_date || h.created_at || Date.now())
-                        });
-                    });
-                }
-
-                items.sort((a, b) => b.time - a.time);
-                const display = items.slice(0, 10);
-
-                const badge = document.getElementById('alertBadge');
-                if (badge && alertsRes.status === 'fulfilled' && alertsRes.value?.data) {
-                    const count = alertsRes.value.data.length;
-                    badge.textContent = count;
-                    badge.style.display = count > 0 ? 'inline' : 'none';
-                }
-
-                if (display.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <span class="icon">📭</span>
-                            <div class="title">هیچ فعالیتی ثبت نشده</div>
-                            <div class="subtitle">با تحلیل و آموزش مدل، فعالیت‌ها اینجا نمایش داده می‌شوند</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = display.map(item => `
-                    <div class="activity-item">
-                        <div class="a-icon ${item.cls}">${item.icon}</div>
-                        <div class="a-text">${item.text}</div>
-                        <div class="a-time">${formatTimeAgo ? formatTimeAgo(item.time) : '—'}</div>
-                    </div>
-                `).join('');
-
-            } catch (err) {
-                console.error('Activities error:', err);
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <span class="icon">⚠️</span>
-                        <div class="title">خطا در بارگذاری</div>
-                        <div class="subtitle">لطفاً صفحه را بروزرسانی کنید</div>
-                    </div>
-                `;
-            }
-        }
-
-        // ============================================================
-        // 8. AUTO UPDATE
-        // ============================================================
-        function startAutoUpdate() {
-            if (statsInterval) {
-                clearInterval(statsInterval);
-                statsInterval = null;
-            }
-            statsInterval = setInterval(async () => {
-                try {
-                    await loadMarketData();
-                    await loadActivities();
-                } catch (e) {
-                    // silent
-                }
-            }, 30000);
-        }
-
-        // ============================================================
-        // 9. REFRESH
-        // ============================================================
-        async function refreshDashboard() {
-            console.log('🔄 Refreshing...');
-
-            if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
-                window.loadingSystem.show({
-                    messages: ['بروزرسانی...', 'دریافت اطلاعات جدید|لطفاً صبر کنید'],
-                    duration: 2000
-                });
-            }
-
-            try {
-                await Promise.allSettled([
-                    loadUserInfo(),
-                    loadMarketData(),
-                    loadActivities()
-                ]);
-                showToast('✅ بروزرسانی شد', 'success');
-            } catch (err) {
-                console.error('Refresh error:', err);
-                showToast('❌ خطا در بروزرسانی', 'error');
-            } finally {
-                if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                    window.loadingSystem.hide();
-                }
-            }
-        }
-
-        // ============================================================
-        // 10. START
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Dashboard starting...');
-            initializeDashboard();
-        });
-
-        window.refreshDashboard = refreshDashboard;
-        window.loadMarketData = loadMarketData;
-        window.loadActivities = loadActivities;
-        window.animateCountUp = animateCountUp;
-
-        console.log('✅ Dashboard script loaded');
-    </script>
+    <!-- Page-specific (شامل splash bootstrap) -->
+    <script src="/js/pages/dashboard.js"></script>
 
 </body>
 </html>
