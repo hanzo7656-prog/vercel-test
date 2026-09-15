@@ -1,0 +1,312 @@
+<!-- ============================================================
+     settings_tabs/theme.html - تب ظاهر
+     نسخه ۱.۰ - تنظیمات تم
+     ============================================================ -->
+
+<div class="settings-tab-content">
+
+    <!-- ===== گروه ۱: حالت نمایش ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-adjust"></i>
+            <span>حالت نمایش</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-moon"></i>
+                <span>تم اصلی</span>
+            </span>
+            <select id="theme_mode_select">
+                <option value="dark">🌙 تیره</option>
+                <option value="light">☀️ روشن</option>
+                <option value="auto">🔄 خودکار (سیستم)</option>
+            </select>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-palette"></i>
+                <span>رنگ اصلی</span>
+            </span>
+            <div class="color-swatches" id="theme_accent_swatches">
+                <div class="color-swatch" data-color="cyan" style="background: #00d4ff;" title="فیروزه‌ای"></div>
+                <div class="color-swatch" data-color="blue" style="background: #3b82f6;" title="آبی"></div>
+                <div class="color-swatch" data-color="purple" style="background: #8b5cf6;" title="بنفش"></div>
+                <div class="color-swatch" data-color="green" style="background: #22d3ee;" title="سبز"></div>
+                <div class="color-swatch" data-color="orange" style="background: #f59e0b;" title="نارنجی"></div>
+                <div class="color-swatch" data-color="pink" style="background: #ec4899;" title="صورتی"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۲: تایپوگرافی ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-font"></i>
+            <span>تایپوگرافی</span>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-font"></i>
+                <span>فونت</span>
+            </span>
+            <select id="theme_font_select">
+                <option value="Vazir">Vazir</option>
+                <option value="system">System</option>
+                <option value="mono">Monospace</option>
+            </select>
+        </div>
+
+        <div class="settings-row">
+            <span class="label">
+                <i class="fas fa-text-height"></i>
+                <span>اندازه فونت</span>
+            </span>
+            <div class="interval-slider-wrapper">
+                <input type="range" 
+                       id="theme_font_size" 
+                       class="interval-slider"
+                       min="12" 
+                       max="20" 
+                       step="1" 
+                       value="16"
+                       oninput="updateFontSizePreview(this.value)">
+                <span class="interval-value" id="theme_font_size_value">16px</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== گروه ۳: پیش‌نمایش ===== -->
+    <div class="settings-group">
+        <div class="group-title">
+            <i class="fas fa-eye"></i>
+            <span>پیش‌نمایش</span>
+        </div>
+
+        <div style="padding: 20px; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <h3 style="color: var(--accent-cyan); margin: 0 0 10px 0; font-size: 1.1rem;">
+                <i class="fas fa-rocket"></i>
+                این یک پیش‌نمایش است
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 12px 0;">
+                این متن برای نمایش اندازه فونت و رنگ اصلی استفاده می‌شود.
+            </p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="settings-btn settings-btn-primary">
+                    <i class="fas fa-check"></i>
+                    دکمه اولیه
+                </button>
+                <button class="settings-btn settings-btn-secondary">
+                    دکمه ثانویه
+                </button>
+                <button class="settings-btn settings-btn-danger">
+                    دکمه خطر
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Actions ===== -->
+    <div class="settings-actions">
+        <button class="settings-btn settings-btn-primary" onclick="saveThemeSettings()">
+            <i class="fas fa-save"></i>
+            ذخیره
+        </button>
+        <button class="settings-btn settings-btn-secondary" onclick="resetThemeSettings()">
+            <i class="fas fa-undo"></i>
+            بازنشانی
+        </button>
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// THEME TAB CONTROLLER
+// ============================================================
+
+function init_settings_theme() {
+    console.log('🎨 Initializing theme tab...');
+    loadThemeSettings();
+    setupThemeEvents();
+}
+
+function cleanup_settings_theme() {
+    console.log('🧹 Cleaning up theme tab...');
+    // پاک کردن listenerها
+    const swatches = document.querySelectorAll('#theme_accent_swatches .color-swatch');
+    swatches.forEach(s => {
+        s.replaceWith(s.cloneNode(true));
+    });
+}
+
+// ============================================================
+// LOAD
+// ============================================================
+
+function loadThemeSettings() {
+    try {
+        const settings = appSettings.get('theme') || {};
+        
+        // Mode
+        const modeSelect = document.getElementById('theme_mode_select');
+        if (modeSelect) modeSelect.value = settings.mode || 'dark';
+        
+        // Accent
+        const accent = settings.accent || 'cyan';
+        document.querySelectorAll('#theme_accent_swatches .color-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.color === accent);
+        });
+        
+        // Font
+        const fontSelect = document.getElementById('theme_font_select');
+        if (fontSelect) fontSelect.value = settings.font || 'Vazir';
+        
+        // Font size
+        const fontSize = settings.fontSize || 16;
+        const sizeInput = document.getElementById('theme_font_size');
+        const sizeValue = document.getElementById('theme_font_size_value');
+        if (sizeInput) sizeInput.value = fontSize;
+        if (sizeValue) sizeValue.textContent = fontSize + 'px';
+        
+        console.log('✅ Theme settings loaded');
+    } catch (err) {
+        console.error('❌ Failed to load theme settings:', err);
+    }
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+
+function setupThemeEvents() {
+    // Mode
+    const modeSelect = document.getElementById('theme_mode_select');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', (e) => {
+            const mode = e.target.value;
+            if (window.app) {
+                window.app.applyTheme(mode);
+            }
+        });
+    }
+    
+    // Accent swatches
+    const swatches = document.querySelectorAll('#theme_accent_swatches .color-swatch');
+    swatches.forEach(swatch => {
+        swatch.addEventListener('click', () => {
+            swatches.forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            
+            const color = swatch.dataset.color;
+            applyAccentColor(color);
+        });
+    });
+    
+    // Font size
+    const sizeInput = document.getElementById('theme_font_size');
+    if (sizeInput) {
+        sizeInput.addEventListener('input', (e) => {
+            updateFontSizePreview(e.target.value);
+        });
+    }
+}
+
+// ============================================================
+// PREVIEW
+// ============================================================
+
+function updateFontSizePreview(value) {
+    const valueEl = document.getElementById('theme_font_size_value');
+    if (valueEl) valueEl.textContent = value + 'px';
+    
+    // پیش‌نمایش live
+    document.documentElement.style.setProperty('--font-size-preview', value + 'px');
+}
+
+function applyAccentColor(color) {
+    const colors = {
+        cyan: '#00d4ff',
+        blue: '#3b82f6',
+        purple: '#8b5cf6',
+        green: '#22d3ee',
+        orange: '#f59e0b',
+        pink: '#ec4899',
+    };
+    
+    const hex = colors[color];
+    if (hex) {
+        document.documentElement.style.setProperty('--accent-cyan', hex);
+    }
+}
+
+// ============================================================
+// SAVE
+// ============================================================
+
+async function saveThemeSettings() {
+    try {
+        const mode = document.getElementById('theme_mode_select')?.value || 'dark';
+        const font = document.getElementById('theme_font_select')?.value || 'Vazir';
+        const fontSize = parseInt(document.getElementById('theme_font_size')?.value) || 16;
+        
+        const activeSwatch = document.querySelector('#theme_accent_swatches .color-swatch.active');
+        const accent = activeSwatch ? activeSwatch.dataset.color : 'cyan';
+        
+        const newSettings = {
+            mode,
+            accent,
+            font,
+            fontSize,
+        };
+        
+        await appSettings.save('theme', newSettings);
+        
+        // اعمال
+        if (window.app) {
+            window.app.applyTheme(mode);
+        }
+        
+        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
+        console.log('✅ Theme settings saved:', newSettings);
+    } catch (err) {
+        console.error('❌ Failed to save theme settings:', err);
+        window.showToast?.('❌ خطا در ذخیره', 'error');
+    }
+}
+
+// ============================================================
+// RESET
+// ============================================================
+
+async function resetThemeSettings() {
+    if (!window.confirm) return;
+    
+    const confirmed = await window.confirm(
+        'بازنشانی تنظیمات',
+        'آیا مطمئن هستید؟',
+        'بله، بازنشانی',
+        'انصراف'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        appSettings.reset('theme');
+        loadThemeSettings();
+        
+        // اعمال default
+        if (window.app) {
+            window.app.applyTheme('dark');
+        }
+        
+        window.showToast?.('✅ بازنشانی شد', 'success');
+    } catch (err) {
+        console.error('❌ Failed to reset theme settings:', err);
+    }
+}
+
+console.log('✅ Theme tab script loaded');
+</script>
