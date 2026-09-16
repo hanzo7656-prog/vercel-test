@@ -23,7 +23,7 @@
         constructor(config = {}) {
             this.config = {
                 containerId: config.containerId || 'navContainer',
-                navUrl: config.navUrl || '/nav.html',
+                navUrl: config.navUrl || '/components/nav.html',
                 loadingOverlayUrl: config.loadingOverlayUrl || '/components/loading-overlay.html',
                 autoLoad: config.autoLoad !== false,
                 autoLoadOverlay: config.autoLoadOverlay !== false,
