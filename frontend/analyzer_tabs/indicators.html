@@ -1,151 +1,284 @@
 <!-- ============================================================
-     indicators.html - تب شاخص‌های بازار
-     نسخه ۲.۰ - با CSS مشترک analyzer-animations.css
+     analyzer_tabs/indicators.html — تب شاخص‌ها
+     نسخه ۳.۰ — با RSI/MACD واقعی از getChartData
      ============================================================ -->
 
 <div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-chart-bar"></i>
-        <span>شاخص‌های بازار</span>
-        <span class="analyzer-status-badge unknown" id="indicatorsStatus" style="margin-right:auto;">
-            <span class="status-dot"></span>
-            <span class="status-text">آماده</span>
-        </span>
-        <button class="btn btn-xs btn-outline" onclick="refreshIndicators()" 
-                style="padding:3px 10px;font-size:0.65rem;">
-            <i class="fas fa-sync-alt"></i>
-        </button>
-    </div>
-
-    <!-- ============================================================
-         COIN SELECTOR
-         ============================================================ -->
-    <div class="analyzer-toolbar">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;">
-            <select id="indicatorsCoin" class="analyzer-filter" onchange="loadIndicators()" 
-                    style="min-width:180px;">
-                <option value="bitcoin">₿ بیت‌کوین</option>
-            </select>
-            <span style="font-size:0.7rem;color:var(--text-muted);">
-                شاخص‌های تکنیکال و احساسات بازار
+    <!-- Header -->
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-chart-bar"></i>
+            <span>شاخص‌های بازار</span>
+        </div>
+        <div class="header-actions">
+            <span class="status-badge" id="indicatorsStatus">
+                <span class="status-indicator" style="background: var(--text-muted);"></span>
+                <span class="status-text">آماده</span>
             </span>
+            <button class="btn btn-xs btn-outline" onclick="refreshIndicators()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
         </div>
     </div>
 
-    <!-- ============================================================
-         INDICATORS GRID
-         ============================================================ -->
-    <div id="indicatorsGrid" class="analyzer-indicators-grid">
-        <!-- Skeleton Loading - ۸ کارت -->
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
+    <!-- Coin Selector -->
+    <div class="indicators-toolbar">
+        <select id="indicatorsCoin" class="form-select" onchange="loadIndicators()" style="min-width:200px;">
+            <option value="bitcoin">₿ بیت‌کوین</option>
+        </select>
+        <span class="text-sm text-muted">شاخص‌های تکنیکال و احساسات بازار</span>
+    </div>
+
+    <!-- Indicators Grid -->
+    <div id="indicatorsGrid" class="indicators-grid">
+        <!-- Skeleton - ۸ کارت -->
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
+        <div class="ind-skeleton"></div>
     </div>
 </div>
 
+<style>
+/* ============================================================
+   Indicators Tab Styles
+   ============================================================ */
+
+.indicators-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: var(--space-3);
+}
+
+.ind-skeleton {
+    height: 110px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+/* Indicator Card */
+.indicator-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4);
+    text-align: center;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.4s var(--ease-out) backwards;
+}
+
+.indicator-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(0, 212, 255, 0.04), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-out);
+    pointer-events: none;
+}
+
+.indicator-card:hover::before {
+    opacity: 1;
+}
+
+.indicator-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(0, 212, 255, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.08);
+}
+
+.indicator-card .ic-label {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: var(--fw-semibold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: var(--space-2);
+    position: relative;
+    z-index: 1;
+}
+
+.indicator-card .ic-value {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+    line-height: 1.3;
+    position: relative;
+    z-index: 1;
+    transition: var(--transition);
+}
+
+.indicator-card .ic-value.cyan { color: var(--color-cyan); }
+.indicator-card .ic-value.green { color: var(--color-green); }
+.indicator-card .ic-value.purple { color: var(--color-purple); }
+.indicator-card .ic-value.orange { color: var(--color-orange); }
+.indicator-card .ic-value.red { color: var(--color-red); }
+
+.indicator-card .ic-hint {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+    position: relative;
+    z-index: 1;
+    font-weight: var(--fw-medium);
+}
+
+.indicator-card .ic-gauge {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-full);
+    margin-top: var(--space-2);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.indicator-card .ic-gauge-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--color-green), var(--color-cyan));
+    transition: width 0.8s var(--ease-out);
+}
+
+.indicator-card .ic-gauge-fill.warning {
+    background: linear-gradient(90deg, var(--color-orange), #fb923c);
+}
+
+.indicator-card .ic-gauge-fill.danger {
+    background: linear-gradient(90deg, var(--color-red), var(--color-pink));
+}
+
+/* States */
+.indicator-card.good { border-color: rgba(34, 211, 238, 0.2); }
+.indicator-card.warning { border-color: rgba(245, 158, 11, 0.2); }
+.indicator-card.danger { border-color: rgba(239, 68, 68, 0.2); }
+
+@media (max-width: 768px) {
+    .indicators-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: var(--space-2);
+    }
+}
+
+@media (max-width: 480px) {
+    .indicators-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .indicator-card {
+        padding: var(--space-3);
+    }
+
+    .indicator-card .ic-value {
+        font-size: var(--fs-md);
+    }
+}
+</style>
+
 <script>
 // ============================================================
-// INDICATORS TAB v2.0
+// INDICATORS TAB v3.0
 // ============================================================
 
-// ===== State =====
-let indicatorsInterval = null;
-let isIndicatorsLoaded = false;
-let currentCoin = 'bitcoin';
+let _indicatorsInterval = null;
+let _indicatorsInitialized = false;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// Init
 // ============================================================
 
-window.init_indicators = function() {
+window.init_indicators = async function() {
     console.log('📊 Indicators tab initializing...');
-    if (isIndicatorsLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
-    isIndicatorsLoaded = true;
-    
-    loadIndicatorsCoins().then(() => {
-        loadIndicators();
-    });
-    
-    // auto-refresh هر ۳۰ ثانیه (فقط اگه این تب فعاله)
-    if (indicatorsInterval) clearInterval(indicatorsInterval);
-    indicatorsInterval = setInterval(() => {
+
+    if (_indicatorsInitialized) return;
+    _indicatorsInitialized = true;
+
+    await loadIndicatorsCoins();
+    await loadIndicators();
+
+    if (_indicatorsInterval) clearInterval(_indicatorsInterval);
+    _indicatorsInterval = setInterval(() => {
         const activeTab = document.querySelector('#analyzerTabs .analyzer-tab-btn.active');
-        if (activeTab && activeTab.dataset.tab === 'indicators') {
+        if (activeTab?.dataset.tab === 'indicators') {
             loadIndicators();
         }
     }, 30000);
 };
 
+// ============================================================
+// Cleanup
+// ============================================================
+
 window.cleanup_indicators = function() {
     console.log('🧹 Indicators tab cleaning up...');
-    isIndicatorsLoaded = false;
-    
-    if (indicatorsInterval) {
-        clearInterval(indicatorsInterval);
-        indicatorsInterval = null;
+
+    if (_indicatorsInterval) {
+        clearInterval(_indicatorsInterval);
+        _indicatorsInterval = null;
     }
+
+    _indicatorsInitialized = false;
 };
 
 // ============================================================
-// ۲. LOAD COINS LIST (برای سلکت)
+// Load Coins List
 // ============================================================
 
 async function loadIndicatorsCoins() {
     try {
-        const data = await api.getCoinsList({ limit: 30 });
-        
-        if (data.success && data.data && data.data.length > 0) {
-            const select = document.getElementById('indicatorsCoin');
-            const currentVal = select.value || 'bitcoin';
-            
-            select.innerHTML = data.data.map(coin => {
-                const symbol = escapeHtml(coin.symbol || '');
-                const name = escapeHtml(coin.name || '');
-                return `<option value="${escapeHtml(coin.id)}">${symbol} - ${name}</option>`;
-            }).join('');
-            
-            // بازیابی انتخاب قبلی
-            if (data.data.find(c => c.id === currentVal)) {
-                select.value = currentVal;
-            } else {
-                select.value = 'bitcoin';
-                currentCoin = 'bitcoin';
-            }
+        // ✅ api.getCoinsList() (موجود در api.js)
+        const data = await window.api?.getCoinsList?.({ limit: 30 });
+
+        if (!data?.success || !data.data || data.data.length === 0) return;
+
+        const select = document.getElementById('indicatorsCoin');
+        if (!select) return;
+
+        const currentVal = select.value || 'bitcoin';
+
+        select.innerHTML = data.data.map(coin => {
+            const symbol = escapeIndicatorsHtml(coin.symbol || '');
+            const name = escapeIndicatorsHtml(coin.name || '');
+            return `<option value="${escapeIndicatorsAttr(coin.id)}">${symbol} - ${name}</option>`;
+        }).join('');
+
+        if (data.data.find(c => c.id === currentVal)) {
+            select.value = currentVal;
+        } else {
+            select.value = 'bitcoin';
         }
     } catch (error) {
         console.warn('⚠️ Load indicators coins error:', error.message);
@@ -153,35 +286,35 @@ async function loadIndicatorsCoins() {
 }
 
 // ============================================================
-// ۳. LOAD INDICATORS
+// Load Indicators
 // ============================================================
 
 async function loadIndicators() {
-    const coin = document.getElementById('indicatorsCoin').value;
-    currentCoin = coin;
-    
+    const coin = document.getElementById('indicatorsCoin')?.value || 'bitcoin';
+
     const grid = document.getElementById('indicatorsGrid');
-    updateStatusBadge('unknown', 'در حال بارگذاری...');
-    showSkeletonLoading(grid);
-    
+    if (!grid) return;
+
+    updateIndicatorsStatus('unknown', 'در حال بارگذاری...');
+    showIndicatorsSkeleton(grid);
+
     try {
-        // ===== دریافت داده‌ها به صورت موازی =====
-        const [coinData, fearGreed, dominance] = await Promise.allSettled([
-            api.getCoinPrice(coin),
-            api.getFearGreed(),
-            api.getBTCDominance()
+        // ✅ FIX: دریافت داده‌های موازی از api.js
+        const [coinData, fearGreed, dominance, chartData] = await Promise.allSettled([
+            window.api?.getCoinPrice?.(coin),
+            window.api?.getFearGreed?.(),
+            window.api?.getBTCDominance?.(),
+            window.api?.getChartData?.(coin, '1m'),  // ✅ برای RSI/MACD واقعی
         ]);
-        
-        // ===== استخراج داده‌ها =====
+
         const coinInfo = coinData.status === 'fulfilled' ? coinData.value?.data || {} : {};
         const fgInfo = fearGreed.status === 'fulfilled' ? fearGreed.value?.data || {} : {};
         const domInfo = dominance.status === 'fulfilled' ? dominance.value?.data || {} : {};
-        
-        // ===== دریافت شاخص‌های تکنیکال =====
-        // TODO: اگه /api/coinstats/chart/{coin} کار می‌کنه، از اون استفاده کن
-        const technical = await getTechnicalIndicators(coin, coinInfo);
-        
-        // ===== ساخت آبجکت نهایی =====
+        const chart = chartData.status === 'fulfilled' ? chartData.value?.data : null;
+
+        // محاسبه RSI/MACD از chart data
+        const technical = calculateTechnicalIndicators(chart, coinInfo);
+
         const indicators = {
             // قیمت
             price: coinInfo.price || 0,
@@ -189,232 +322,299 @@ async function loadIndicators() {
             high24h: coinInfo.high_24h || 0,
             low24h: coinInfo.low_24h || 0,
             volume24h: coinInfo.volume_24h || 0,
-            marketCap: coinInfo.market_cap || 0,
-            
-            // تکنیکال
+
+            // تکنیکال (واقعی یا mock بر اساس chart)
             rsi: technical.rsi,
             macd: technical.macd,
-            macdSignal: technical.macdSignal,
-            macdHistogram: technical.macdHistogram,
             sma20: technical.sma20,
-            sma50: technical.sma50,
             support: technical.support,
             resistance: technical.resistance,
             volatility: technical.volatility,
-            
+
             // احساسات
             fearGreed: fgInfo.value || 50,
             fearGreedLabel: fgInfo.classification || 'Neutral',
-            btcDominance: domInfo.value || 50
+            btcDominance: domInfo.value || 50,
         };
-        
+
         renderIndicators(indicators);
-        updateStatusBadge('online', 'بارگذاری شد');
-        
+        updateIndicatorsStatus('online', 'بارگذاری شد');
+
     } catch (error) {
         console.error('❌ Indicators error:', error);
-        showErrorState(grid, error.message || 'خطا در دریافت شاخص‌ها');
-        updateStatusBadge('offline', 'خطا');
+        showIndicatorsError(grid, error.message);
+        updateIndicatorsStatus('offline', 'خطا');
     }
 }
 
 // ============================================================
-// ۴. GET TECHNICAL INDICATORS
+// Calculate Technical Indicators (from chart data)
 // ============================================================
 
-async function getTechnicalIndicators(coin, coinInfo) {
-    // اگه price داری، mock بر اساس اون
-    const price = coinInfo.price || (coin === 'bitcoin' ? 80000 : coin === 'ethereum' ? 2500 : 100);
+function calculateTechnicalIndicators(chart, coinInfo) {
+    const price = coinInfo.price || 1000;
     const change = coinInfo.change_24h || 0;
-    
-    // محاسبه volatility بر اساس change
     const volatility = Math.abs(change) / 100 + 0.01;
-    
-    // TODO: اگه /api/coinstats/chart/{coin} کار می‌کنه، از API بگیر
-    // const chartData = await api.getChartData(coin, '1m');
-    // const rsi = calculateRSI(chartData.prices);
-    // ...
-    
-    // فعلاً mock هوشمند بر اساس price و change
+
+    let prices = [];
+
+    // اگه chart داریم، از اون استفاده کن
+    if (chart && Array.isArray(chart.prices) && chart.prices.length > 14) {
+        prices = chart.prices.map(p => {
+            if (Array.isArray(p)) return p[1];
+            if (typeof p === 'object' && p.price) return p.price;
+            return Number(p);
+        }).filter(p => !isNaN(p) && p > 0);
+    }
+
+    // RSI واقعی اگه داده داریم
+    let rsi = null;
+    if (prices.length >= 15) {
+        rsi = calculateRSI(prices, 14);
+    }
+
+    // MACD واقعی
+    let macd = null;
+    let macdSignal = null;
+    let macdHistogram = null;
+    if (prices.length >= 26) {
+        const macdData = calculateMACD(prices);
+        macd = macdData.macd;
+        macdSignal = macdData.signal;
+        macdHistogram = macdData.histogram;
+    }
+
+    // SMA واقعی
+    let sma20 = null;
+    let sma50 = null;
+    if (prices.length >= 20) {
+        sma20 = prices.slice(-20).reduce((a, b) => a + b, 0) / 20;
+    }
+    if (prices.length >= 50) {
+        sma50 = prices.slice(-50).reduce((a, b) => a + b, 0) / 50;
+    }
+
+    // اگه نداشتیم، mock هوشمند
+    if (rsi === null) rsi = calculateMockRSI(change);
+    if (macd === null) macd = change * 2.5;
+    if (sma20 === null) sma20 = price * 0.995;
+
     return {
-        rsi: calculateMockRSI(change),
-        macd: calculateMockMACD(change),
-        macdSignal: calculateMockMACD(change) * 0.8,
-        macdHistogram: calculateMockMACD(change) * 0.2,
-        sma20: price * (1 - 0.005),
-        sma50: price * (1 - 0.01),
+        rsi: Math.max(15, Math.min(85, rsi)),
+        macd,
+        macdSignal,
+        macdHistogram,
+        sma20,
+        sma50,
         support: price * (1 - volatility * 0.7),
         resistance: price * (1 + volatility * 0.7),
-        volatility: volatility
+        volatility,
     };
 }
 
-function calculateMockRSI(change24h) {
-    // RSI واقع‌گرایانه بر اساس change
-    // اگه change مثبت باشه، RSI بالاتره
-    const base = 50;
-    const impact = Math.max(Math.min(change24h * 3, 45), -45);
-    return Math.max(15, Math.min(85, base + impact));
-}
+// ============================================================
+// RSI Calculation
+// ============================================================
 
-function calculateMockMACD(change24h) {
-    // MACD بر اساس change
-    return change24h * 2.5;
+function calculateRSI(prices, period = 14) {
+    if (prices.length < period + 1) return null;
+
+    let gains = 0;
+    let losses = 0;
+
+    for (let i = 1; i <= period; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+    }
+
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    for (let i = period + 1; i < prices.length; i++) {
+        const diff = prices[i] - prices[i - 1];
+        const gain = diff > 0 ? diff : 0;
+        const loss = diff < 0 ? -diff : 0;
+
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+    }
+
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
 }
 
 // ============================================================
-// ۵. RENDER INDICATORS
+// MACD Calculation
+// ============================================================
+
+function calculateMACD(prices, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+    if (prices.length < slowPeriod + signalPeriod) return null;
+
+    const emaFast = calculateEMA(prices, fastPeriod);
+    const emaSlow = calculateEMA(prices, slowPeriod);
+
+    if (emaFast === null || emaSlow === null) return null;
+
+    const macd = emaFast - emaSlow;
+
+    // Signal line requires MACD history; simplified here
+    const signal = macd * 0.8;
+    const histogram = macd - signal;
+
+    return { macd, signal, histogram };
+}
+
+function calculateEMA(prices, period) {
+    if (prices.length < period) return null;
+
+    const k = 2 / (period + 1);
+    let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+
+    for (let i = period; i < prices.length; i++) {
+        ema = prices[i] * k + ema * (1 - k);
+    }
+
+    return ema;
+}
+
+// ============================================================
+// Mock helpers
+// ============================================================
+
+function calculateMockRSI(change24h) {
+    const base = 50;
+    const impact = Math.max(Math.min(change24h * 3, 45), -45);
+    return base + impact;
+}
+
+// ============================================================
+// Render Indicators
 // ============================================================
 
 function renderIndicators(data) {
     const grid = document.getElementById('indicatorsGrid');
-    
+    if (!grid) return;
+
     const items = [
-        // ===== قیمت‌ها =====
         {
             label: '💰 قیمت',
+            icon: '💰',
             value: formatCurrency(data.price),
             color: 'cyan',
-            icon: '💰',
-            hint: '',
-            gauge: null
         },
         {
             label: '📈 تغییر ۲۴h',
+            icon: '📈',
             value: formatPercent(data.change24h),
             color: data.change24h >= 0 ? 'green' : 'red',
-            icon: '📈',
-            hint: '',
-            gauge: null
         },
         {
             label: '⬆️ بالاترین ۲۴h',
+            icon: '⬆️',
             value: formatCurrency(data.high24h),
             color: 'green',
-            icon: '⬆️',
-            hint: '',
-            gauge: null
         },
         {
             label: '⬇️ پایین‌ترین ۲۴h',
+            icon: '⬇️',
             value: formatCurrency(data.low24h),
             color: 'red',
-            icon: '⬇️',
-            hint: '',
-            gauge: null
         },
-        
-        // ===== تکنیکال =====
         {
             label: '📊 RSI (14)',
+            icon: '📊',
             value: data.rsi.toFixed(1),
             color: data.rsi > 70 ? 'red' : data.rsi < 30 ? 'green' : 'orange',
-            icon: '📊',
             hint: data.rsi > 70 ? 'اشباع خرید' : data.rsi < 30 ? 'اشباع فروش' : 'خنثی',
             gauge: {
                 value: data.rsi,
                 max: 100,
-                type: data.rsi > 70 ? 'danger' : data.rsi < 30 ? 'good' : 'warning'
-            }
+                type: data.rsi > 70 ? 'danger' : data.rsi < 30 ? 'good' : 'warning',
+            },
         },
         {
             label: '📉 MACD',
+            icon: '📉',
             value: data.macd.toFixed(2),
             color: data.macd > 0 ? 'green' : 'red',
-            icon: '📉',
             hint: data.macd > 0 ? 'صعودی' : 'نزولی',
-            gauge: null
         },
         {
             label: '🛡️ حمایت',
+            icon: '🛡️',
             value: formatCurrency(data.support),
             color: 'cyan',
-            icon: '🛡️',
-            hint: '',
-            gauge: null
         },
         {
             label: '⚔️ مقاومت',
+            icon: '⚔️',
             value: formatCurrency(data.resistance),
             color: 'purple',
-            icon: '⚔️',
-            hint: '',
-            gauge: null
         },
-        
-        // ===== احساسات =====
         {
             label: '😨 ترس و طمع',
+            icon: '😨',
             value: data.fearGreed,
             color: data.fearGreed > 70 ? 'red' : data.fearGreed < 30 ? 'green' : 'orange',
-            icon: '😨',
             hint: data.fearGreedLabel,
             gauge: {
                 value: data.fearGreed,
                 max: 100,
-                type: data.fearGreed > 70 ? 'danger' : data.fearGreed < 30 ? 'good' : 'warning'
-            }
+                type: data.fearGreed > 70 ? 'danger' : data.fearGreed < 30 ? 'good' : 'warning',
+            },
         },
         {
             label: '📊 سلطه BTC',
+            icon: '📊',
             value: data.btcDominance.toFixed(1) + '%',
             color: 'cyan',
-            icon: '📊',
-            hint: '',
             gauge: {
                 value: data.btcDominance,
                 max: 100,
-                type: 'good'
-            }
+                type: 'good',
+            },
         },
-        
-        // ===== حجم و نوسان =====
         {
             label: '📦 حجم ۲۴h',
+            icon: '📦',
             value: formatNumber(data.volume24h),
             color: 'cyan',
-            icon: '📦',
-            hint: '',
-            gauge: null
         },
         {
             label: '📈 نوسان',
+            icon: '📈',
             value: (data.volatility * 100).toFixed(2) + '%',
             color: data.volatility > 0.05 ? 'red' : data.volatility > 0.03 ? 'orange' : 'green',
-            icon: '📈',
             hint: data.volatility > 0.05 ? 'بالا' : data.volatility > 0.03 ? 'متوسط' : 'پایین',
-            gauge: null
-        }
+        },
     ];
-    
+
     grid.innerHTML = items.map((item, i) => {
         const delay = Math.min(i * 0.04, 0.5);
-        const colorClass = item.color;
-        
-        // Gauge
+
         let gaugeHtml = '';
         if (item.gauge) {
             const pct = Math.min((item.gauge.value / item.gauge.max) * 100, 100);
-            const gaugeClass = item.gauge.type || '';
             gaugeHtml = `
-                <div class="indicator-gauge">
-                    <div class="gauge-fill ${gaugeClass}" style="width:${pct}%"></div>
+                <div class="ic-gauge">
+                    <div class="ic-gauge-fill ${item.gauge.type || ''}" style="width:${pct}%"></div>
                 </div>
             `;
         }
-        
-        // Hint
-        const hintHtml = item.hint 
-            ? `<div class="indicator-hint">${escapeHtml(item.hint)}</div>` 
+
+        const hintHtml = item.hint
+            ? `<div class="ic-hint">${escapeIndicatorsHtml(item.hint)}</div>`
             : '';
-        
+
         return `
-            <div class="analyzer-indicator-card" style="animation-delay:${delay}s;">
-                <div class="indicator-label">
+            <div class="indicator-card" style="animation-delay:${delay}s;">
+                <div class="ic-label">
                     <span>${item.icon}</span>
-                    <span>${escapeHtml(item.label)}</span>
+                    <span>${escapeIndicatorsHtml(item.label)}</span>
                 </div>
-                <div class="indicator-value text-${colorClass}">
+                <div class="ic-value text-${item.color}">
                     ${item.value}
                 </div>
                 ${hintHtml}
@@ -425,24 +625,21 @@ function renderIndicators(data) {
 }
 
 // ============================================================
-// ۶. SKELETON / ERROR
+// UI States
 // ============================================================
 
-function showSkeletonLoading(grid) {
+function showIndicatorsSkeleton(grid) {
     grid.innerHTML = Array(8).fill('').map((_, i) => `
-        <div class="analyzer-skeleton-card" style="animation-delay:${i * 0.04}s;">
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-        </div>
+        <div class="ind-skeleton" style="animation-delay:${i * 0.04}s;"></div>
     `).join('');
 }
 
-function showErrorState(grid, message) {
+function showIndicatorsError(grid, message) {
     grid.innerHTML = `
-        <div class="analyzer-empty error" style="grid-column:1/-1;">
+        <div class="empty-state error" style="grid-column:1/-1;">
             <span class="empty-icon">❌</span>
             <div class="empty-title">خطا در دریافت شاخص‌ها</div>
-            <div class="empty-message">${escapeHtml(message)}</div>
+            <div class="empty-message">${escapeIndicatorsHtml(message)}</div>
             <button class="empty-action" onclick="loadIndicators()">
                 <i class="fas fa-sync-alt"></i>
                 تلاش مجدد
@@ -451,35 +648,38 @@ function showErrorState(grid, message) {
     `;
 }
 
-// ============================================================
-// ۷. STATUS BADGE
-// ============================================================
-
-function updateStatusBadge(status, text) {
+function updateIndicatorsStatus(status, text) {
     const badge = document.getElementById('indicatorsStatus');
     if (!badge) return;
-    
-    badge.className = 'analyzer-status-badge ' + status;
+
+    const statusColors = {
+        online: 'var(--color-green)',
+        warning: 'var(--color-orange)',
+        offline: 'var(--color-red)',
+        unknown: 'var(--text-muted)',
+    };
+
+    const indicator = badge.querySelector('.status-indicator');
     const textEl = badge.querySelector('.status-text');
+
+    if (indicator) indicator.style.background = statusColors[status] || statusColors.unknown;
     if (textEl) textEl.textContent = text;
 }
 
 // ============================================================
-// ۸. REFRESH
+// Refresh
 // ============================================================
 
 function refreshIndicators() {
-    if (typeof showToast === 'function') {
-        showToast('🔄 بروزرسانی شاخص‌ها...', 'info');
-    }
+    if (typeof showToast === 'function') showToast('🔄 بروزرسانی شاخص‌ها...', 'info', 1500);
     loadIndicators();
 }
 
 // ============================================================
-// ۹. UTILS
+// Helpers
 // ============================================================
 
-function escapeHtml(str) {
+function escapeIndicatorsHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -489,5 +689,8 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-console.log('✅ Indicators tab v2.0 loaded');
+function escapeIndicatorsAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 </script>
