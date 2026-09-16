@@ -1,6 +1,6 @@
 <!-- ============================================================
-     settings_tabs/dashboard.html - تب داشبورد
-     نسخه ۱.۰ - تنظیمات نمایش داشبورد
+     settings_tabs/dashboard.html — تب داشبورد
+     نسخه ۲.۰ — با init/cleanup استاندارد
      ============================================================ -->
 
 <div class="settings-tab-content">
@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <!-- ===== گروه ۲: تب پیش‌فرض ===== -->
+    <!-- ===== گروه ۲: تنظیمات ورودی ===== -->
     <div class="settings-group">
         <div class="group-title">
             <i class="fas fa-home"></i>
@@ -80,7 +80,7 @@
                 <i class="fas fa-star"></i>
                 <span>تب پیش‌فرض</span>
             </span>
-            <select id="dash_defaultTab">
+            <select id="dash_defaultTab" class="form-select">
                 <option value="dashboard">داشبورد</option>
                 <option value="chart">نمودار</option>
                 <option value="analyzer">تحلیلگر</option>
@@ -93,7 +93,7 @@
                 <i class="fas fa-th"></i>
                 <span>چیدمان کارت‌ها</span>
             </span>
-            <select id="dash_layout">
+            <select id="dash_layout" class="form-select">
                 <option value="grid">Grid (شبکه‌ای)</option>
                 <option value="compact">Compact (فشرده)</option>
                 <option value="comfortable">Comfortable (راحت)</option>
@@ -132,13 +132,13 @@
 
     <!-- ===== Actions ===== -->
     <div class="settings-actions">
-        <button class="settings-btn settings-btn-primary" onclick="saveDashboardSettings()">
+        <button class="btn btn-primary btn-sm" onclick="saveDashboardSettings()">
             <i class="fas fa-save"></i>
-            ذخیره
+            <span>ذخیره</span>
         </button>
-        <button class="settings-btn settings-btn-secondary" onclick="resetDashboardSettings()">
+        <button class="btn btn-outline btn-sm" onclick="resetDashboardSettings()">
             <i class="fas fa-undo"></i>
-            بازنشانی
+            <span>بازنشانی</span>
         </button>
     </div>
 
@@ -146,26 +146,17 @@
 
 <script>
 // ============================================================
-// DASHBOARD TAB CONTROLLER
+// SETTINGS DASHBOARD TAB
 // ============================================================
 
-function init_settings_dashboard() {
-    console.log('📊 Initializing dashboard tab...');
-    loadDashboardSettings();
-}
-
-function cleanup_settings_dashboard() {
-    console.log('🧹 Cleaning up dashboard tab...');
-}
-
 // ============================================================
-// LOAD
+// Load
 // ============================================================
 
 function loadDashboardSettings() {
     try {
-        const settings = appSettings.get('dashboard') || {};
-        
+        const settings = window.appSettings?.get('dashboard') || {};
+
         const checkboxes = {
             dash_showMetrics: settings.showMetrics,
             dash_showPrices: settings.showPrices,
@@ -174,26 +165,26 @@ function loadDashboardSettings() {
             dash_showQuota: settings.showQuota,
             dash_compactMode: settings.compactMode,
         };
-        
+
         Object.entries(checkboxes).forEach(([id, value]) => {
             const el = document.getElementById(id);
             if (el) el.checked = value === true;
         });
-        
+
         const defaultTabEl = document.getElementById('dash_defaultTab');
         if (defaultTabEl) defaultTabEl.value = settings.defaultTab || 'dashboard';
-        
+
         const layoutEl = document.getElementById('dash_layout');
         if (layoutEl) layoutEl.value = settings.layout || 'grid';
-        
+
         console.log('✅ Dashboard settings loaded');
     } catch (err) {
-        console.error('❌ Failed to load dashboard settings:', err);
+        console.error('❌ Load dashboard settings error:', err);
     }
 }
 
 // ============================================================
-// SAVE
+// Save
 // ============================================================
 
 async function saveDashboardSettings() {
@@ -208,41 +199,69 @@ async function saveDashboardSettings() {
             defaultTab: document.getElementById('dash_defaultTab')?.value || 'dashboard',
             layout: document.getElementById('dash_layout')?.value || 'grid',
         };
-        
-        await appSettings.save('dashboard', newSettings);
-        
-        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
-        console.log('✅ Dashboard settings saved:', newSettings);
+
+        await window.appSettings.save('dashboard', newSettings);
+
+        if (typeof showToast === 'function') {
+            showToast('✅ تنظیمات ذخیره شد', 'success');
+        }
     } catch (err) {
-        console.error('❌ Failed to save dashboard settings:', err);
-        window.showToast?.('❌ خطا در ذخیره', 'error');
+        console.error('❌ Save dashboard error:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در ذخیره', 'error');
+        }
     }
 }
 
 // ============================================================
-// RESET
+// Reset
 // ============================================================
 
 async function resetDashboardSettings() {
-    if (!window.confirm) return;
-    
-    const confirmed = await window.confirm(
+    const confirmed = await confirmDialog(
         'بازنشانی تنظیمات',
-        'آیا مطمئن هستید؟',
-        'بله',
-        'انصراف'
+        'آیا مطمئن هستید؟'
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
-        appSettings.reset('dashboard');
+        await window.appSettings.reset('dashboard');
         loadDashboardSettings();
-        window.showToast?.('✅ بازنشانی شد', 'success');
+
+        if (typeof showToast === 'function') {
+            showToast('✅ بازنشانی شد', 'success');
+        }
     } catch (err) {
-        console.error('❌ Failed to reset:', err);
+        console.error('❌ Reset dashboard error:', err);
     }
 }
 
-console.log('✅ Dashboard tab script loaded');
+// ============================================================
+// Helpers
+// ============================================================
+
+async function confirmDialog(title, text) {
+    if (typeof window.confirm === 'function') {
+        try {
+            return await window.confirm(title, text, 'بله', 'انصراف');
+        } catch (e) {
+            return window.confirm(`${title}\n${text}`);
+        }
+    }
+    return window.confirm(`${title}\n${text}`);
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
+window.init_settings_dashboard = function() {
+    console.log('📊 Settings dashboard tab initializing...');
+    loadDashboardSettings();
+};
+
+window.cleanup_settings_dashboard = function() {
+    console.log('🧹 Settings dashboard tab cleaning up...');
+};
 </script>
