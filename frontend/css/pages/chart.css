@@ -1,489 +1,216 @@
 /* ============================================================
-   chart.css — Chart Page
-   نسخه ۱.۰ — سیستم تحلیلگر
+   chart.css — Chart Page (TradingView)
+   نسخه ۲.۰ — سیستم تحلیلگر
    ============================================================ */
 
 /* ============================================================
-   ۱. Page
+   ۱. Full-Screen Layout
    ============================================================ */
 
-.chart-page {
-    min-height: 100vh;
-    position: relative;
-    background: radial-gradient(
-        ellipse at 20% 10%,
-        var(--bg-secondary) 0%,
-        var(--bg-primary) 60%
-    );
-    padding-bottom: var(--space-8);
-}
-
-.chart-page::before {
-    content: '';
-    position: fixed;
-    top: -30%;
-    right: -10%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(
-        circle,
-        rgba(0, 212, 255, 0.05) 0%,
-        transparent 60%
-    );
-    pointer-events: none;
-    z-index: 0;
-    animation: breathe 10s ease-in-out infinite;
-}
-
-.chart-page .container {
-    position: relative;
-    z-index: 1;
-}
-
-/* ============================================================
-   ۲. Header
-   ============================================================ */
-
-.chart-page .page-header h1 .page-icon {
-    background: linear-gradient(135deg, var(--color-cyan), var(--color-purple));
-    box-shadow: 0 4px 16px rgba(0, 212, 255, 0.35);
-}
-
-.chart-page .page-header h1 span {
-    background: linear-gradient(
-        135deg,
-        var(--text-primary) 0%,
-        var(--color-cyan) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: var(--fw-extrabold);
-    letter-spacing: -0.5px;
-}
-
-[data-theme="light"] .chart-page .page-header h1 span {
-    background: linear-gradient(
-        135deg,
-        #0f172a 0%,
-        var(--color-cyan-dark) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-/* ============================================================
-   ۳. Chart Toolbar
-   ============================================================ */
-
-.chart-toolbar {
-    display: flex;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    align-items: center;
-    padding: var(--space-4) var(--space-5);
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    margin-bottom: var(--space-5);
-    animation: slideUp 0.4s var(--ease-out);
-}
-
-.chart-toolbar .toolbar-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-}
-
-.chart-toolbar .toolbar-label {
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: var(--fw-semibold);
-    white-space: nowrap;
-}
-
-.chart-toolbar select {
-    min-width: 130px;
-}
-
-/* ============================================================
-   ۴. Price Card
-   ============================================================ */
-
-.chart-price-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-5) var(--space-6);
-    background: linear-gradient(135deg,
-        rgba(0, 212, 255, 0.06),
-        rgba(139, 92, 246, 0.04),
-        var(--bg-card)
-    );
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    margin-bottom: var(--space-5);
-    animation: slideUp 0.5s var(--ease-out);
-    position: relative;
+html.chart-body,
+body.chart-body {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
-    flex-wrap: wrap;
+    background: var(--bg-primary);
 }
 
-.chart-price-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(
-        circle at 70% 30%,
-        rgba(0, 212, 255, 0.08),
-        transparent 60%
-    );
-    pointer-events: none;
-    animation: breathe 8s ease-in-out infinite;
-}
-
-.chart-price-left {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    position: relative;
-    z-index: 1;
-}
-
-.chart-price-symbol {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    font-size: var(--fs-md);
-    font-weight: var(--fw-semibold);
-    color: var(--text-secondary);
-}
-
-.chart-price-symbol img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: contain;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.chart-price-symbol .symbol-badge {
-    font-family: var(--font-mono);
-    font-weight: var(--fw-bold);
-    color: var(--color-cyan);
-    background: rgba(0, 212, 255, 0.1);
-    padding: 3px 10px;
-    border-radius: var(--radius-full);
-    font-size: var(--fs-xs);
-    border: 1px solid rgba(0, 212, 255, 0.25);
-}
-
-.chart-price-value {
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
-    font-weight: var(--fw-extrabold);
-    font-family: var(--font-mono);
-    color: var(--text-primary);
-    line-height: 1;
-    letter-spacing: -1px;
-    transition: var(--transition);
-}
-
-.chart-price-value.up {
-    color: var(--color-green);
-    animation: priceFlashUp 0.8s ease;
-}
-
-.chart-price-value.down {
-    color: var(--color-red);
-    animation: priceFlashDown 0.8s ease;
-}
-
-.chart-price-right {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    align-items: flex-end;
-    position: relative;
-    z-index: 1;
-}
-
-.chart-price-change {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-full);
-    font-size: var(--fs-base);
-    font-weight: var(--fw-bold);
-    font-family: var(--font-mono);
-}
-
-.chart-price-change.up {
-    background: rgba(34, 211, 238, 0.12);
-    color: var(--color-green);
-    border: 1px solid rgba(34, 211, 238, 0.3);
-}
-
-.chart-price-change.down {
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--color-red);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.chart-price-change.neutral {
-    background: var(--bg-input);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-}
-
-.chart-price-stats {
-    display: flex;
-    gap: var(--space-4);
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    flex-wrap: wrap;
-}
-
-.chart-price-stats .stat-item {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-}
-
-.chart-price-stats .stat-item i {
-    color: var(--color-cyan);
+body.chart-body {
+    margin: 0;
+    padding: 0;
 }
 
 /* ============================================================
-   ۵. Chart Container
+   ۲. Chart Container
    ============================================================ */
 
 .chart-container {
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    padding: var(--space-5);
-    margin-bottom: var(--space-5);
-    animation: slideUp 0.6s var(--ease-out);
-    position: relative;
-    overflow: hidden;
-    min-height: 400px;
-}
-
-.chart-container .chart-wrapper {
-    position: relative;
-    height: 400px;
     width: 100%;
-}
-
-.chart-container .chart-wrapper canvas {
-    max-height: 100%;
-}
-
-/* Chart type badge */
-.chart-type-badge {
-    position: absolute;
-    top: var(--space-4);
-    left: var(--space-4);
-    padding: 4px 12px;
-    border-radius: var(--radius-full);
-    background: rgba(0, 212, 255, 0.1);
-    color: var(--color-cyan);
-    border: 1px solid rgba(0, 212, 255, 0.25);
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-bold);
-    font-family: var(--font-mono);
+    height: calc(100vh - var(--nav-height));
+    padding: var(--space-3);
     display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    z-index: 2;
+    flex-direction: column;
+    background: var(--bg-primary);
+    transition: height 0.2s var(--ease-out);
 }
 
-/* Live indicator */
-.chart-live-badge {
+/* ============================================================
+   ۳. Chart Wrapper
+   ============================================================ */
+
+.chart-wrapper {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    background: var(--bg-primary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
+
+.chart-wrapper:hover {
+    border-color: var(--border-hover);
+}
+
+/* ============================================================
+   ۴. TradingView Widget
+   ============================================================ */
+
+.chart-wrapper .tradingview-widget-container {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-wrapper .tradingview-widget-container__widget {
+    width: 100% !important;
+    height: calc(100% - 32px) !important;
+}
+
+/* مخفی کردن copyright */
+.chart-wrapper .tradingview-widget-copyright {
+    display: none !important;
+}
+
+/* ============================================================
+   ۵. Loading State
+   ============================================================ */
+
+.chart-loading {
     position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
-    padding: 4px 12px;
-    border-radius: var(--radius-full);
-    background: rgba(34, 211, 238, 0.1);
-    color: var(--color-green);
-    border: 1px solid rgba(34, 211, 238, 0.25);
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-bold);
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    background: var(--bg-primary);
+    z-index: 5;
+    transition: opacity 0.5s var(--ease-out);
+}
+
+.chart-loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.chart-loading .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.chart-loading .loading-text {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+}
+
+/* ============================================================
+   ۶. Info Banner (بالای چارت)
+   ============================================================ */
+
+.chart-info-banner {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    z-index: 2;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    z-index: 10;
+    pointer-events: none;
+    animation: fadeIn 0.5s var(--ease-out);
 }
 
-.chart-live-badge::before {
-    content: '';
+.chart-info-banner .live-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: currentColor;
+    background: var(--color-green);
     animation: pulseDot 2s ease-in-out infinite;
 }
 
-/* ============================================================
-   ۶. Stats Row
-   ============================================================ */
-
-.chart-stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-3);
-    margin-bottom: var(--space-5);
-}
-
-.chart-stat-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: var(--space-4);
-    text-align: center;
-    transition: var(--transition);
-    animation: slideUp 0.5s var(--ease-out) backwards;
-    position: relative;
-    overflow: hidden;
-}
-
-.chart-stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        var(--stat-color, var(--color-cyan)),
-        transparent
-    );
-    opacity: 0;
-    transition: opacity 0.4s var(--ease-out);
-}
-
-.chart-stat-card:hover::before {
-    opacity: 1;
-}
-
-.chart-stat-card:hover {
-    border-color: var(--stat-color, var(--color-cyan));
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.chart-stat-card .csc-icon {
-    display: block;
-    font-size: 1.2rem;
-    margin-bottom: var(--space-2);
-    color: var(--stat-color, var(--color-cyan));
-    animation: floatIcon 4s ease-in-out infinite;
-}
-
-.chart-stat-card .csc-value {
-    display: block;
-    font-size: var(--fs-md);
-    font-weight: var(--fw-extrabold);
+.chart-info-banner strong {
+    color: var(--color-cyan);
     font-family: var(--font-mono);
-    color: var(--stat-color, var(--color-cyan));
-    margin: var(--space-1) 0;
-}
-
-.chart-stat-card .csc-label {
-    display: block;
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: var(--fw-semibold);
-}
-
-.chart-stat-card:nth-child(1) { animation-delay: 0.05s; }
-.chart-stat-card:nth-child(2) { animation-delay: 0.10s; }
-.chart-stat-card:nth-child(3) { animation-delay: 0.15s; }
-.chart-stat-card:nth-child(4) { animation-delay: 0.20s; }
-
-/* ============================================================
-   ۷. Loading Skeleton
-   ============================================================ */
-
-.chart-skeleton {
-    height: 400px;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.03) 0%,
-        rgba(255, 255, 255, 0.08) 50%,
-        rgba(255, 255, 255, 0.03) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s linear infinite;
 }
 
 /* ============================================================
-   ۸. Responsive
+   ۷. Responsive
    ============================================================ */
 
-@media (max-width: 768px) {
-    .chart-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .chart-toolbar .toolbar-group {
-        justify-content: space-between;
-    }
-
-    .chart-price-card {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .chart-price-right {
-        align-items: flex-start;
-        width: 100%;
-    }
-
-    .chart-container .chart-wrapper {
-        height: 300px;
-    }
-
+/* تبلت */
+@media (max-width: 1024px) {
     .chart-container {
-        min-height: 320px;
+        padding: var(--space-2);
     }
 }
 
+/* موبایل */
+@media (max-width: 768px) {
+    .chart-container {
+        height: calc(100vh - var(--nav-height-mobile));
+        padding: var(--space-1);
+    }
+
+    .chart-wrapper {
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* موبایل کوچک */
 @media (max-width: 480px) {
-    .chart-container .chart-wrapper {
-        height: 240px;
+    .chart-container {
+        height: calc(100vh - 50px);
+        padding: 2px;
     }
 
-    .chart-price-value {
-        font-size: 1.5rem;
-    }
-
-    .chart-type-badge,
-    .chart-live-badge {
+    .chart-info-banner {
         font-size: 0.6rem;
-        padding: 3px 8px;
+        padding: 4px 8px;
+        top: 6px;
+        right: 6px;
+    }
+}
+
+/* Landscape موبایل */
+@media (max-width: 900px) and (orientation: landscape) {
+    .chart-container {
+        height: calc(100vh - 48px);
+        padding: 4px 8px;
+    }
+
+    .chart-info-banner {
+        display: none;
+    }
+}
+
+/* دسکتاپ بزرگ */
+@media (min-width: 1400px) {
+    .chart-container {
+        padding: var(--space-4) var(--space-6);
+    }
+}
+
+/* ============================================================
+   ۸. Reduced Motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .chart-info-banner .live-dot,
+    .chart-loading .loading-spinner {
+        animation: none !important;
     }
 }
