@@ -1,0 +1,758 @@
+/* ============================================================
+   alerts.css — Alerts Page
+   نسخه ۱.۰ — سیستم تحلیلگر
+   ============================================================ */
+
+/* ============================================================
+   ۱. Page
+   ============================================================ */
+
+.alerts-page {
+    min-height: 100vh;
+    position: relative;
+    background: radial-gradient(
+        ellipse at 20% 10%,
+        var(--bg-secondary) 0%,
+        var(--bg-primary) 60%
+    );
+    padding-bottom: var(--space-8);
+}
+
+.alerts-page::before {
+    content: '';
+    position: fixed;
+    top: -30%;
+    right: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(
+        circle,
+        rgba(239, 68, 68, 0.05) 0%,
+        transparent 60%
+    );
+    pointer-events: none;
+    z-index: 0;
+    animation: breathe 10s ease-in-out infinite;
+}
+
+.alerts-page .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ============================================================
+   ۲. Header
+   ============================================================ */
+
+.alerts-page .page-header h1 .page-icon {
+    background: linear-gradient(135deg, var(--color-red), var(--color-orange));
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+}
+
+.alerts-page .page-header h1 span {
+    background: linear-gradient(
+        135deg,
+        var(--text-primary) 0%,
+        var(--color-red) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: var(--fw-extrabold);
+    letter-spacing: -0.5px;
+}
+
+[data-theme="light"] .alerts-page .page-header h1 span {
+    background: linear-gradient(
+        135deg,
+        #0f172a 0%,
+        var(--color-red-dark) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ============================================================
+   ۳. Stats Grid
+   ============================================================ */
+
+.alerts-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.alerts-stat-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4) var(--space-5);
+    text-align: center;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.5s var(--ease-out) backwards;
+}
+
+.alerts-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--stat-color, var(--color-cyan)),
+        transparent
+    );
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-out);
+}
+
+.alerts-stat-card:hover::before {
+    opacity: 1;
+}
+
+.alerts-stat-card:hover {
+    border-color: var(--stat-color, var(--color-cyan));
+    transform: translateY(-3px);
+    box-shadow: var(--shadow), 0 0 30px var(--stat-glow, rgba(0, 212, 255, 0.15));
+}
+
+.alerts-stat-card .asc-icon {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-2);
+    animation: floatIcon 4s ease-in-out infinite;
+}
+
+.alerts-stat-card .asc-value {
+    display: block;
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-extrabold);
+    font-family: var(--font-mono);
+    color: var(--stat-color, var(--color-cyan));
+    margin: var(--space-1) 0;
+    transition: var(--transition);
+}
+
+.alerts-stat-card .asc-label {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--fw-semibold);
+}
+
+/* Stat variants */
+.alerts-stat-card.critical {
+    --stat-color: var(--color-red);
+    --stat-glow: rgba(239, 68, 68, 0.15);
+}
+
+.alerts-stat-card.warning {
+    --stat-color: var(--color-orange);
+    --stat-glow: rgba(245, 158, 11, 0.15);
+}
+
+.alerts-stat-card.info {
+    --stat-color: var(--color-cyan);
+    --stat-glow: rgba(0, 212, 255, 0.15);
+}
+
+.alerts-stat-card.total {
+    --stat-color: var(--color-purple);
+    --stat-glow: rgba(139, 92, 246, 0.15);
+}
+
+.alerts-stat-card:nth-child(1) { animation-delay: 0.05s; }
+.alerts-stat-card:nth-child(2) { animation-delay: 0.10s; }
+.alerts-stat-card:nth-child(3) { animation-delay: 0.15s; }
+.alerts-stat-card:nth-child(4) { animation-delay: 0.20s; }
+
+/* ============================================================
+   ۴. Toolbar
+   ============================================================ */
+
+.alerts-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.alerts-search {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
+}
+
+.alerts-search .form-input {
+    padding-right: 36px;
+}
+
+.alerts-search .search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+
+.alerts-counters {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-right: auto;
+}
+
+.alerts-counter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   ۵. Alerts List
+   ============================================================ */
+
+.alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+/* ============================================================
+   ۶. Alert Card
+   ============================================================ */
+
+.alert-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-right: 4px solid var(--alert-color, var(--color-cyan));
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.4s var(--ease-out) backwards;
+}
+
+.alert-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--alert-glow, rgba(0, 212, 255, 0.05)),
+        transparent
+    );
+    transition: left 0.8s var(--ease-out);
+    pointer-events: none;
+}
+
+.alert-card:hover::before {
+    left: 100%;
+}
+
+.alert-card:hover {
+    transform: translateX(-4px);
+    border-color: var(--alert-color, var(--color-cyan));
+    box-shadow: var(--shadow), 0 0 30px var(--alert-glow, rgba(0, 212, 255, 0.15));
+}
+
+.alert-card.resolved {
+    opacity: 0.55;
+    border-right-color: var(--text-muted);
+}
+
+.alert-card.resolved:hover {
+    opacity: 0.8;
+}
+
+/* Variants */
+.alert-card.critical {
+    --alert-color: var(--color-red);
+    --alert-glow: rgba(239, 68, 68, 0.08);
+}
+
+.alert-card.warning {
+    --alert-color: var(--color-orange);
+    --alert-glow: rgba(245, 158, 11, 0.08);
+}
+
+.alert-card.info {
+    --alert-color: var(--color-cyan);
+    --alert-glow: rgba(0, 212, 255, 0.08);
+}
+
+/* ============================================================
+   ۷. Alert Icon
+   ============================================================ */
+
+.alert-card .ac-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    background: var(--alert-glow, rgba(0, 212, 255, 0.15));
+    color: var(--alert-color, var(--color-cyan));
+    position: relative;
+    transition: var(--transition-spring);
+}
+
+.alert-card:hover .ac-icon {
+    transform: scale(1.1);
+}
+
+/* Pulse for critical */
+.alert-card.critical:not(.resolved) .ac-icon::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid var(--color-red);
+    opacity: 0;
+    animation: errorPulseRing 2s ease-out infinite;
+}
+
+@keyframes errorPulseRing {
+    0% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.5);
+    }
+}
+
+/* ============================================================
+   ۸. Alert Body
+   ============================================================ */
+
+.alert-card .ac-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.alert-card .ac-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.alert-card .ac-title {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.alert-card .ac-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    background: var(--alert-glow, rgba(0, 212, 255, 0.15));
+    color: var(--alert-color, var(--color-cyan));
+    border: 1px solid var(--alert-color, var(--color-cyan));
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.alert-card .ac-description {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    line-height: var(--lh-relaxed);
+    margin-bottom: var(--space-3);
+    word-break: break-word;
+}
+
+.alert-card .ac-meta {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    align-items: center;
+}
+
+.alert-card .ac-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.alert-card .ac-meta-item i {
+    color: var(--alert-color, var(--color-cyan));
+    font-size: 0.9em;
+}
+
+/* ============================================================
+   ۹. Alert Actions
+   ============================================================ */
+
+.alert-card .ac-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.alert-card .ac-action-btn {
+    padding: 6px 12px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.alert-card .ac-action-btn:hover {
+    border-color: var(--alert-color, var(--color-cyan));
+    color: var(--alert-color, var(--color-cyan));
+    background: var(--alert-glow, rgba(0, 212, 255, 0.08));
+    transform: translateY(-1px);
+}
+
+.alert-card .ac-action-btn.resolve:hover {
+    border-color: rgba(34, 211, 238, 0.4);
+    color: var(--color-green);
+    background: rgba(34, 211, 238, 0.08);
+}
+
+.alert-card .ac-action-btn.danger:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--color-red);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.alert-card .ac-action-btn i {
+    font-size: 0.85em;
+}
+
+/* ============================================================
+   ۱۰. Filter Tabs
+   ============================================================ */
+
+.alerts-tabs {
+    display: flex;
+    gap: var(--space-1);
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 5px;
+    overflow-x: auto;
+    margin-bottom: var(--space-4);
+    scrollbar-width: none;
+}
+
+.alerts-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.alerts-tab-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: var(--fs-sm);
+    font-family: inherit;
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.alerts-tab-btn i {
+    font-size: 0.85rem;
+    transition: transform 0.3s var(--ease-spring);
+}
+
+.alerts-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.alerts-tab-btn:hover i {
+    transform: scale(1.15);
+}
+
+.alerts-tab-btn.active {
+    background: linear-gradient(
+        135deg,
+        rgba(239, 68, 68, 0.18),
+        rgba(245, 158, 11, 0.12)
+    );
+    color: var(--color-red);
+    font-weight: var(--fw-semibold);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+}
+
+.alerts-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 25%;
+    right: 25%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-red), var(--color-orange));
+    border-radius: var(--radius-full);
+    animation: tabIndicator 0.4s var(--ease-spring);
+}
+
+.alerts-tab-btn.active i {
+    color: var(--color-red);
+    transform: scale(1.1);
+}
+
+.alerts-tab-btn .tab-count {
+    font-size: 0.6rem;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-weight: var(--fw-bold);
+    min-width: 18px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.alerts-tab-btn.active .tab-count {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--color-red);
+}
+
+/* ============================================================
+   ۱۱. Bulk Actions
+   ============================================================ */
+
+.alerts-bulk-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    background: linear-gradient(135deg,
+        rgba(239, 68, 68, 0.06),
+        rgba(245, 158, 11, 0.04)
+    );
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-4);
+    align-items: center;
+}
+
+.alerts-bulk-actions .bulk-label {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    font-weight: var(--fw-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+}
+
+.alerts-bulk-actions .bulk-label i {
+    color: var(--color-red);
+}
+
+/* ============================================================
+   ۱۲. Empty State
+   ============================================================ */
+
+.alerts-empty {
+    text-align: center;
+    padding: var(--space-10) var(--space-5);
+    animation: fadeIn 0.5s var(--ease-out);
+}
+
+.alerts-empty .empty-icon {
+    display: block;
+    font-size: 4rem;
+    margin-bottom: var(--space-3);
+    opacity: 0.5;
+    animation: floatIcon 3s ease-in-out infinite;
+}
+
+.alerts-empty .empty-title {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.alerts-empty .empty-message {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+}
+
+/* ============================================================
+   ۱۳. Skeleton
+   ============================================================ */
+
+.alert-skeleton {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border-right: 4px solid var(--border-color);
+    margin-bottom: var(--space-3);
+}
+
+.alert-skeleton .sk-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    flex-shrink: 0;
+}
+
+.alert-skeleton .sk-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.alert-skeleton .sk-line {
+    height: 12px;
+    border-radius: var(--radius-xs);
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+.alert-skeleton .sk-line.long { width: 80%; }
+.alert-skeleton .sk-line.medium { width: 55%; }
+.alert-skeleton .sk-line.short { width: 35%; }
+
+/* ============================================================
+   ۱۴. Responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .alerts-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .alerts-search {
+        width: 100%;
+    }
+
+    .alert-card {
+        flex-direction: column;
+    }
+
+    .alert-card .ac-actions {
+        width: 100%;
+    }
+
+    .alert-card .ac-actions .ac-action-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .alerts-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .alerts-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .alerts-stat-card {
+        padding: var(--space-3);
+    }
+
+    .alert-card {
+        padding: var(--space-3);
+    }
+
+    .alert-card .ac-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+}
