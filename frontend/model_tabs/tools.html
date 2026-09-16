@@ -1,13 +1,13 @@
 <!-- ============================================================
-     tools.html - تب ابزارهای مدیریت مدل
-     نسخه ۳.۰ - طراحی جدید + Cards بهتر + Confirmation
+     model_tabs/tools.html — تب ابزارهای مدیریت مدل
+     نسخه ۳.۰ — با init/cleanup استاندارد + api.js هماهنگ
      ============================================================ -->
 
 <!-- ============================================================
      HERO SECTION
      ============================================================ -->
 <div class="hero-card" id="toolsHero">
-    
+
     <div class="health-circle-wrapper">
         <svg class="health-circle" viewBox="0 0 140 140">
             <circle class="circle-bg" cx="70" cy="70" r="65"/>
@@ -21,7 +21,7 @@
 
     <div class="hero-info">
         <h2 class="hero-title">
-            <i class="fas fa-tools" style="color:var(--green-primary);"></i>
+            <i class="fas fa-tools" style="color:var(--color-green);"></i>
             <span>ابزارهای مدیریت مدل</span>
             <span class="badge-version" id="activeVersionBadge">—</span>
         </h2>
@@ -49,31 +49,31 @@
      TOOLS GRID
      ============================================================ -->
 <div class="tools-grid-model">
-    
+
     <!-- ===== ۱. خروجی مدل ===== -->
     <div class="tool-card-model" style="animation-delay:0.05s;">
         <div class="tool-card-header">
             <div class="tool-card-icon" style="background:rgba(16,185,129,0.12);">📥</div>
             <div class="tool-card-badge">
                 <i class="fas fa-download"></i>
-                Export
+                <span>Export</span>
             </div>
         </div>
         <div class="tool-card-title">خروجی مدل</div>
         <div class="tool-card-desc">
             دانلود فایل مدل به صورت .xgb برای استفاده در سایر سیستم‌ها
         </div>
-        
+
         <div class="tool-card-body">
-            <button class="btn-model btn-primary btn-shine" onclick="exportCurrentModel()" style="width:100%;margin-bottom:8px;">
+            <button class="btn btn-primary btn-sm btn-block" onclick="exportCurrentModel()" style="margin-bottom:var(--space-2);">
                 <i class="fas fa-download"></i>
-                دانلود نسخه فعال
+                <span>دانلود نسخه فعال</span>
             </button>
-            
+
             <div class="tool-input-group">
-                <input type="text" id="exportVersionInput" placeholder="نسخه (مثلاً v1.0)" 
-                       class="tool-input">
-                <button class="btn-model btn-outline btn-sm" onclick="exportSpecificModel()">
+                <input type="text" id="exportVersionInput" class="form-input"
+                       placeholder="نسخه (مثلاً v1.0)">
+                <button class="btn btn-outline btn-sm" onclick="exportSpecificModel()" title="دانلود">
                     <i class="fas fa-download"></i>
                 </button>
             </div>
@@ -86,34 +86,35 @@
             <div class="tool-card-icon" style="background:rgba(34,211,238,0.12);">📤</div>
             <div class="tool-card-badge cyan">
                 <i class="fas fa-upload"></i>
-                Import
+                <span>Import</span>
             </div>
         </div>
         <div class="tool-card-title">واردات مدل</div>
         <div class="tool-card-desc">
             آپلود فایل .xgb و ذخیره در دیتابیس با نسخه‌سازی خودکار
         </div>
-        
+
         <div class="tool-card-body">
             <input type="file" id="importFileInput" accept=".xgb" style="display:none;" onchange="handleImport()">
-            <button class="btn-model btn-cyan btn-shine" onclick="document.getElementById('importFileInput').click()" style="width:100%;margin-bottom:8px;">
+            <button class="btn btn-cyan btn-sm btn-block" onclick="document.getElementById('importFileInput').click()" style="margin-bottom:var(--space-2);">
                 <i class="fas fa-upload"></i>
-                انتخاب فایل
+                <span>انتخاب فایل</span>
             </button>
-            
+
             <div class="tool-file-info" id="importFileName">
                 <i class="fas fa-file"></i>
                 <span>هیچ فایلی انتخاب نشده</span>
             </div>
-            
+
             <div class="tool-input-row">
                 <div class="tool-input-item">
                     <label>دقت</label>
-                    <input type="number" id="importAccuracy" value="0.5" step="0.01" min="0" max="1" class="tool-input">
+                    <input type="number" id="importAccuracy" class="form-input"
+                           value="0.5" step="0.01" min="0" max="1">
                 </div>
                 <div class="tool-input-item">
                     <label>بازه</label>
-                    <select id="importPeriod" class="tool-input">
+                    <select id="importPeriod" class="form-select">
                         <option value="24h">۲۴h</option>
                         <option value="1w">۱w</option>
                         <option value="1m" selected>۱m</option>
@@ -130,22 +131,22 @@
             <div class="tool-card-icon" style="background:rgba(139,92,246,0.12);">✅</div>
             <div class="tool-card-badge purple">
                 <i class="fas fa-check"></i>
-                Activate
+                <span>Activate</span>
             </div>
         </div>
         <div class="tool-card-title">فعال‌سازی نسخه</div>
         <div class="tool-card-desc">
             انتخاب و فعال‌سازی یک نسخه از لیست مدل‌های موجود
         </div>
-        
+
         <div class="tool-card-body">
-            <select id="activateVersionSelect" class="tool-input" style="margin-bottom:8px;">
+            <select id="activateVersionSelect" class="form-select" style="margin-bottom:var(--space-2);">
                 <option value="">— انتخاب نسخه —</option>
             </select>
-            
-            <button class="btn-model btn-purple btn-shine" onclick="activateSelectedVersion()" style="width:100%;">
+
+            <button class="btn btn-purple btn-sm btn-block" onclick="activateSelectedVersion()">
                 <i class="fas fa-check-circle"></i>
-                فعال‌سازی نسخه
+                <span>فعال‌سازی نسخه</span>
             </button>
         </div>
     </div>
@@ -156,19 +157,19 @@
             <div class="tool-card-icon" style="background:rgba(245,158,11,0.12);">🧪</div>
             <div class="tool-card-badge orange">
                 <i class="fas fa-flask"></i>
-                Test
+                <span>Test</span>
             </div>
         </div>
         <div class="tool-card-title">تست مدل</div>
         <div class="tool-card-desc">
             اجرای تست سریع روی یک ارز برای بررسی عملکرد مدل
         </div>
-        
+
         <div class="tool-card-body">
-            <div class="tool-input-row" style="margin-bottom:8px;">
+            <div class="tool-input-row" style="margin-bottom:var(--space-2);">
                 <div class="tool-input-item">
                     <label>ارز</label>
-                    <select id="testCoin" class="tool-input">
+                    <select id="testCoin" class="form-select">
                         <option value="bitcoin">₿ BTC</option>
                         <option value="ethereum">⟠ ETH</option>
                         <option value="solana">◎ SOL</option>
@@ -177,19 +178,19 @@
                 </div>
                 <div class="tool-input-item">
                     <label>بازه</label>
-                    <select id="testPeriod" class="tool-input">
+                    <select id="testPeriod" class="form-select">
                         <option value="24h">۲۴h</option>
                         <option value="1w">۱w</option>
                         <option value="1m" selected>۱m</option>
                     </select>
                 </div>
             </div>
-            
-            <button class="btn-model btn-warning btn-shine" onclick="testModel()" style="width:100%;margin-bottom:8px;">
+
+            <button class="btn btn-warning btn-sm btn-block" onclick="testModel()" style="margin-bottom:var(--space-2);">
                 <i class="fas fa-flask"></i>
-                اجرای تست
+                <span>اجرای تست</span>
             </button>
-            
+
             <div id="testResult" class="tool-test-result" style="display:none;">
                 <div id="testResultContent"></div>
             </div>
@@ -202,23 +203,23 @@
             <div class="tool-card-icon" style="background:rgba(239,68,68,0.12);">🧹</div>
             <div class="tool-card-badge red">
                 <i class="fas fa-broom"></i>
-                Cache
+                <span>Cache</span>
             </div>
         </div>
         <div class="tool-card-title">پاکسازی کش</div>
         <div class="tool-card-desc">
             پاکسازی کش Redis برای آزادسازی حافظه و بروزرسانی
         </div>
-        
+
         <div class="tool-card-body">
-            <button class="btn-model btn-danger btn-shine" onclick="clearModelCache()" style="width:100%;margin-bottom:8px;">
+            <button class="btn btn-danger btn-sm btn-block" onclick="clearModelCache()" style="margin-bottom:var(--space-2);">
                 <i class="fas fa-broom"></i>
-                پاکسازی کش
+                <span>پاکسازی کش</span>
             </button>
-            
+
             <div id="cacheClearStatus" class="tool-status-text">
                 <i class="fas fa-circle" style="color:var(--text-muted);font-size:0.5rem;"></i>
-                آماده
+                <span>آماده</span>
             </div>
         </div>
     </div>
@@ -229,27 +230,27 @@
             <div class="tool-card-icon" style="background:rgba(236,72,153,0.12);">📊</div>
             <div class="tool-card-badge pink">
                 <i class="fas fa-file-alt"></i>
-                Report
+                <span>Report</span>
             </div>
         </div>
         <div class="tool-card-title">گزارش HTML</div>
         <div class="tool-card-desc">
             تولید گزارش کامل از مدل با نمودارها و آمار دقیق
         </div>
-        
+
         <div class="tool-card-body">
-            <select id="reportVersionSelect" class="tool-input" style="margin-bottom:8px;">
+            <select id="reportVersionSelect" class="form-select" style="margin-bottom:var(--space-2);">
                 <option value="latest">— آخرین نسخه —</option>
             </select>
-            
-            <button class="btn-model btn-primary btn-shine" onclick="generateReport()" style="width:100%;margin-bottom:8px;">
+
+            <button class="btn btn-primary btn-sm btn-block" onclick="generateReport()" style="margin-bottom:var(--space-2);">
                 <i class="fas fa-file-alt"></i>
-                مشاهده گزارش
+                <span>مشاهده گزارش</span>
             </button>
-            
+
             <div id="reportStatus" class="tool-status-text">
-                <i class="fas fa-circle" style="color:var(--green-primary);font-size:0.5rem;"></i>
-                آماده
+                <i class="fas fa-circle" style="color:var(--color-green);font-size:0.5rem;"></i>
+                <span>آماده</span>
             </div>
         </div>
     </div>
@@ -268,7 +269,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="danger-zone-body">
         <div class="danger-zone-item">
             <div class="danger-zone-item-info">
@@ -277,9 +278,9 @@
                     بازگشت به حالت DEMO و حذف مدل فعال. تمام نسخه‌ها حفظ می‌شوند.
                 </div>
             </div>
-            <button class="btn-model btn-danger btn-neon neon-red" onclick="openResetModal()">
+            <button class="btn btn-danger btn-sm" onclick="openResetModal()">
                 <i class="fas fa-undo"></i>
-                بازنشانی
+                <span>بازنشانی</span>
             </button>
         </div>
     </div>
@@ -288,11 +289,11 @@
 <!-- ============================================================
      RESET CONFIRMATION MODAL
      ============================================================ -->
-<div id="resetModal" class="model-modal-overlay" onclick="if(event.target===this) closeResetModal()">
-    <div class="model-modal" style="max-width:480px;">
-        
-        <div class="modal-header" style="border-color:rgba(239,68,68,0.3);">
-            <div class="modal-title" style="color:var(--accent-red);">
+<div id="resetModal" class="modal-overlay" onclick="if(event.target===this) closeResetModal()">
+    <div class="modal" style="max-width:480px;">
+
+        <div class="modal-header">
+            <div class="modal-title" style="color:var(--color-red);">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>تأیید بازنشانی</span>
             </div>
@@ -300,7 +301,7 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
+
         <div class="modal-body">
             <div class="reset-warning">
                 <div class="reset-warning-icon">⚠️</div>
@@ -310,476 +311,466 @@
                     مدل فعال حذف می‌شود و تا آموزش جدید، پیش‌بینی‌ها با دقت پایین انجام می‌شوند.
                 </div>
             </div>
-            
+
             <div class="reset-confirm-input">
                 <label>
-                    برای تأیید، عبارت <strong style="color:var(--accent-red);">RESET</strong> را وارد کنید:
+                    برای تأیید، عبارت <strong style="color:var(--color-red);">RESET</strong> را وارد کنید:
                 </label>
-                <input type="text" id="resetConfirmInput" 
-                       placeholder="RESET" 
-                       class="tool-input" 
+                <input type="text" id="resetConfirmInput"
+                       class="form-input"
+                       placeholder="RESET"
                        style="text-align:center;font-family:var(--font-mono);letter-spacing:2px;"
                        oninput="checkResetInput()">
             </div>
         </div>
-        
-        <div class="modal-actions">
-            <button class="btn-model btn-ghost btn-sm" onclick="closeResetModal()" style="flex:1;">
-                انصراف
+
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" onclick="closeResetModal()" style="flex:1;">
+                <span>انصراف</span>
             </button>
-            <button class="btn-model btn-danger btn-sm" onclick="resetModel()" 
+            <button class="btn btn-danger btn-sm" onclick="resetModel()"
                     id="resetConfirmBtn" disabled style="flex:1;">
                 <i class="fas fa-undo"></i>
-                بازنشانی کن
+                <span>بازنشانی کن</span>
             </button>
         </div>
     </div>
 </div>
 
 <style>
-    /* ============================================================
-       استایل اختصاصی tools
-       ============================================================ */
-    
-    /* ===== Tools Grid ===== */
+/* ============================================================
+   Tools Tab Styles
+   ============================================================ */
+
+/* Tools Grid */
+.tools-grid-model {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+/* Tool Card */
+.tool-card-model {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: var(--space-5);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    animation: dramaticIn 0.7s var(--ease-out) backwards;
+    display: flex;
+    flex-direction: column;
+}
+
+.tool-card-model::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(16, 185, 129, 0.06), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-out);
+    pointer-events: none;
+}
+
+.tool-card-model:hover::before {
+    opacity: 1;
+}
+
+.tool-card-model:hover {
+    border-color: rgba(16, 185, 129, 0.25);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md), var(--glow-green);
+}
+
+.tool-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+    position: relative;
+    z-index: 1;
+}
+
+.tool-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    animation: floatIcon 4s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.tool-card-badge {
+    font-size: var(--fs-xs);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-green);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    font-weight: var(--fw-bold);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tool-card-badge.cyan {
+    background: rgba(34, 211, 238, 0.12);
+    color: var(--color-cyan);
+    border-color: rgba(34, 211, 238, 0.25);
+}
+
+.tool-card-badge.purple {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--color-purple);
+    border-color: rgba(139, 92, 246, 0.25);
+}
+
+.tool-card-badge.orange {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--color-orange);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+.tool-card-badge.red {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-red);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.tool-card-badge.pink {
+    background: rgba(236, 72, 153, 0.12);
+    color: var(--color-pink);
+    border-color: rgba(236, 72, 153, 0.25);
+}
+
+.tool-card-title {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+    position: relative;
+    z-index: 1;
+}
+
+.tool-card-desc {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    line-height: var(--lh-relaxed);
+    margin-bottom: var(--space-4);
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.tool-card-body {
+    position: relative;
+    z-index: 1;
+}
+
+/* Tool Input */
+.tool-input-group {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.tool-input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+}
+
+.tool-input-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.tool-input-item label {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.5px;
+}
+
+/* File Info */
+.tool-file-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+    transition: var(--transition);
+}
+
+.tool-file-info.active {
+    color: var(--color-green);
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.tool-file-info i {
+    font-size: 0.85rem;
+}
+
+/* Test Result */
+.tool-test-result {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    animation: dramaticIn 0.4s var(--ease-out);
+}
+
+/* Status Text */
+.tool-status-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    padding: var(--space-2) 0;
+    text-align: center;
+}
+
+/* Danger Zone */
+.danger-zone {
+    background: linear-gradient(135deg,
+        rgba(239, 68, 68, 0.06),
+        rgba(220, 38, 38, 0.03)
+    );
+    border: 1.5px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius);
+    padding: var(--space-5) var(--space-6);
+    animation: dramaticIn 0.8s var(--ease-out) backwards;
+    animation-delay: 0.35s;
+    position: relative;
+    overflow: hidden;
+}
+
+.danger-zone::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 70% 30%, rgba(239, 68, 68, 0.06), transparent 60%);
+    pointer-events: none;
+    animation: breathe 5s ease-in-out infinite;
+}
+
+.danger-zone-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    position: relative;
+    z-index: 1;
+}
+
+.danger-zone-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    animation: floatIcon 3s ease-in-out infinite;
+}
+
+.danger-zone-title {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-extrabold);
+    color: var(--color-red);
+    letter-spacing: 0.5px;
+}
+
+.danger-zone-subtitle {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+}
+
+.danger-zone-body {
+    position: relative;
+    z-index: 1;
+}
+
+.danger-zone-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    flex-wrap: wrap;
+}
+
+.danger-zone-item-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.danger-zone-item-title {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.danger-zone-item-desc {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Reset Warning */
+.reset-warning {
+    text-align: center;
+    padding: var(--space-5);
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-4);
+}
+
+.reset-warning-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-2);
+    animation: float 2s ease-in-out infinite;
+}
+
+.reset-warning-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-extrabold);
+    color: var(--color-red);
+    margin-bottom: var(--space-2);
+}
+
+.reset-warning-text {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    line-height: var(--lh-relaxed);
+}
+
+.reset-confirm-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.reset-confirm-input label {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
     .tools-grid-model {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
+        grid-template-columns: 1fr;
     }
-    
-    /* ===== Tool Card ===== */
-    .tool-card-model {
-        background: var(--bg-card);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius);
-        padding: 20px;
-        transition: var(--transition);
-        position: relative;
-        overflow: hidden;
-        animation: dramaticIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .tool-card-model::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle at center, rgba(16, 185, 129, 0.06), transparent 70%);
-        opacity: 0;
-        transition: opacity 0.5s ease;
-        pointer-events: none;
-    }
-    
-    .tool-card-model:hover::before {
-        opacity: 1;
-    }
-    
-    .tool-card-model:hover {
-        border-color: rgba(16, 185, 129, 0.25);
-        transform: translateY(-4px);
-        box-shadow: var(--shadow), var(--glow-green);
-    }
-    
-    .tool-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 14px;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .tool-card-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        animation: floating 4s ease-in-out infinite;
-        flex-shrink: 0;
-    }
-    
-    .tool-card-badge {
-        font-size: 0.55rem;
-        padding: 4px 10px;
-        border-radius: var(--radius-full);
-        background: rgba(16, 185, 129, 0.12);
-        color: var(--green-primary);
-        border: 1px solid rgba(16, 185, 129, 0.25);
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .tool-card-badge.cyan {
-        background: rgba(34, 211, 238, 0.12);
-        color: var(--cyan-primary);
-        border-color: rgba(34, 211, 238, 0.25);
-    }
-    
-    .tool-card-badge.purple {
-        background: rgba(139, 92, 246, 0.12);
-        color: var(--accent-purple);
-        border-color: rgba(139, 92, 246, 0.25);
-    }
-    
-    .tool-card-badge.orange {
-        background: rgba(245, 158, 11, 0.12);
-        color: var(--accent-orange);
-        border-color: rgba(245, 158, 11, 0.25);
-    }
-    
-    .tool-card-badge.red {
-        background: rgba(239, 68, 68, 0.12);
-        color: var(--accent-red);
-        border-color: rgba(239, 68, 68, 0.25);
-    }
-    
-    .tool-card-badge.pink {
-        background: rgba(236, 72, 153, 0.12);
-        color: var(--accent-pink);
-        border-color: rgba(236, 72, 153, 0.25);
-    }
-    
-    .tool-card-title {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 6px;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .tool-card-desc {
-        font-size: 0.7rem;
-        color: var(--text-secondary);
-        line-height: 1.6;
-        margin-bottom: 14px;
-        position: relative;
-        z-index: 1;
-        flex: 1;
-    }
-    
-    .tool-card-body {
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* ===== Tool Inputs ===== */
-    .tool-input {
-        width: 100%;
-        padding: 8px 12px;
-        background: var(--bg-input);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.75rem;
-        font-family: inherit;
-        transition: var(--transition);
-    }
-    
-    .tool-input:focus {
-        outline: none;
-        border-color: var(--green-primary);
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-    }
-    
-    .tool-input-group {
-        display: flex;
-        gap: 6px;
-    }
-    
-    .tool-input-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-    
-    .tool-input-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    
-    .tool-input-item label {
-        font-size: 0.6rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-    
-    /* ===== File Info ===== */
-    .tool-file-info {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: var(--bg-input);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-        transition: var(--transition);
-    }
-    
-    .tool-file-info.active {
-        color: var(--green-primary);
-        border-color: rgba(16, 185, 129, 0.3);
-        background: rgba(16, 185, 129, 0.06);
-    }
-    
-    .tool-file-info i {
-        font-size: 0.75rem;
-    }
-    
-    /* ===== Test Result ===== */
-    .tool-test-result {
-        margin-top: 10px;
-        padding: 12px;
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        font-size: 0.7rem;
-        animation: dramaticIn 0.4s ease;
-    }
-    
-    /* ===== Status Text ===== */
-    .tool-status-text {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.65rem;
-        color: var(--text-muted);
-        padding: 6px 0;
-        text-align: center;
-        justify-content: center;
-    }
-    
-    /* ===== Danger Zone ===== */
-    .danger-zone {
-        background: linear-gradient(135deg,
-            rgba(239, 68, 68, 0.06),
-            rgba(220, 38, 38, 0.03)
-        );
-        border: 1.5px solid rgba(239, 68, 68, 0.25);
-        border-radius: var(--radius);
-        padding: 20px 24px;
-        animation: dramaticIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-        animation-delay: 0.35s;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .danger-zone::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle at 70% 30%, rgba(239, 68, 68, 0.06), transparent 60%);
-        pointer-events: none;
-        animation: breathe 5s ease-in-out infinite;
-    }
-    
-    .danger-zone-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 16px;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .danger-zone-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: rgba(239, 68, 68, 0.15);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        flex-shrink: 0;
-        animation: floating 3s ease-in-out infinite;
-    }
-    
-    .danger-zone-title {
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--accent-red);
-        letter-spacing: 0.5px;
-    }
-    
-    .danger-zone-subtitle {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        margin-top: 2px;
-    }
-    
-    .danger-zone-body {
-        position: relative;
-        z-index: 1;
-    }
-    
+
     .danger-zone-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 14px 16px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: var(--radius-sm);
-        border: 1px solid rgba(239, 68, 68, 0.15);
-        flex-wrap: wrap;
-    }
-    
-    .danger-zone-item-info {
-        flex: 1;
-        min-width: 200px;
-    }
-    
-    .danger-zone-item-title {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-    }
-    
-    .danger-zone-item-desc {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        line-height: 1.5;
-    }
-    
-    /* ===== Reset Modal ===== */
-    .reset-warning {
-        text-align: center;
-        padding: 20px;
-        background: rgba(239, 68, 68, 0.06);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        border-radius: var(--radius);
-        margin-bottom: 16px;
-    }
-    
-    .reset-warning-icon {
-        font-size: 3rem;
-        margin-bottom: 8px;
-        animation: floating 2s ease-in-out infinite;
-    }
-    
-    .reset-warning-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--accent-red);
-        margin-bottom: 8px;
-    }
-    
-    .reset-warning-text {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        line-height: 1.7;
-    }
-    
-    .reset-confirm-input {
-        display: flex;
         flex-direction: column;
-        gap: 8px;
+        align-items: stretch;
     }
-    
-    .reset-confirm-input label {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
+
+    .danger-zone-item .btn {
+        width: 100%;
     }
-    
-    /* ===== Responsive ===== */
-    @media (max-width: 768px) {
-        .tools-grid-model {
-            grid-template-columns: 1fr;
-        }
-        
-        .danger-zone-item {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        
-        .danger-zone-item .btn-model {
-            width: 100%;
-        }
-    }
+}
 </style>
 
 <script>
 // ============================================================
-// TOOLS TAB v3.0
+// MODEL TOOLS TAB v3.0
 // ============================================================
 
-let isToolsLoaded = false;
+let _toolsInitialized = false;
+let _toolsCurrentActiveVersion = null;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// Init
 // ============================================================
 
 window.init_tools = function() {
-    console.log('🔧 Tools tab initializing...');
-    if (isToolsLoaded) return;
-    isToolsLoaded = true;
-    
+    console.log('🔧 Model tools tab initializing...');
+
+    if (_toolsInitialized) return;
+    _toolsInitialized = true;
+
     loadActiveVersion();
     loadVersionSelect();
 };
 
+// ============================================================
+// Cleanup
+// ============================================================
+
 window.cleanup_tools = function() {
-    console.log('🧹 Tools tab cleaning up...');
-    isToolsLoaded = false;
+    console.log('🧹 Model tools tab cleaning up...');
+
+    _toolsInitialized = false;
+    _toolsCurrentActiveVersion = null;
 };
 
 // ============================================================
-// ۲. LOAD ACTIVE VERSION
+// Load Active Version
 // ============================================================
 
 async function loadActiveVersion() {
     try {
         const [statusRes, historyRes] = await Promise.allSettled([
-            api.getModelStatus(),
-            api.getModelHistory(50)
+            window.api?.getModelStatus?.(),
+            window.api?.getModelHistory?.(50),
         ]);
-        
+
         if (statusRes.status === 'fulfilled' && statusRes.value?.success) {
             const data = statusRes.value.data;
             const version = data.version || '—';
             const loaded = data.loaded || false;
-            
+
+            _toolsCurrentActiveVersion = version;
+
             setText('toolsActiveVersion', version);
             setText('activeVersionBadge', version);
             setText('toolsStatus', loaded ? 'فعال' : 'دمو');
-            
-            // دایره - بر اساس وضعیت
-            updateCircle(loaded ? 100 : 30);
-            
-            // Icon
+
+            updateToolsCircle(loaded ? 100 : 30);
+
             const icon = document.getElementById('toolsIcon');
             if (icon) icon.textContent = loaded ? '🚀' : '📦';
-            
+
             const label = document.getElementById('toolsLabel');
             if (label) label.textContent = loaded ? 'فعال' : 'دمو';
         }
-        
+
         if (historyRes.status === 'fulfilled' && historyRes.value?.success) {
             const total = historyRes.value.data?.length || 0;
             setText('toolsTotalVersions', total);
@@ -789,46 +780,46 @@ async function loadActiveVersion() {
     }
 }
 
-function updateCircle(percent) {
+function updateToolsCircle(percent) {
     const circle = document.getElementById('toolsCircle');
     if (!circle) return;
-    
+
     const circumference = 2 * Math.PI * 65;
     const offset = circumference - (percent / 100) * circumference;
-    
+
     circle.style.strokeDasharray = circumference;
     circle.style.strokeDashoffset = circumference;
     circle.style.transition = 'none';
-    
+
     void circle.offsetWidth;
-    
-    circle.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.22, 1, 0.36, 1)';
+
+    circle.style.transition = 'stroke-dashoffset 1.5s var(--ease-out)';
     circle.style.strokeDashoffset = offset;
 }
 
 // ============================================================
-// ۳. LOAD VERSION SELECT
+// Load Version Select
 // ============================================================
 
 async function loadVersionSelect() {
     try {
-        const data = await api.getModelHistory(50);
+        const data = await window.api?.getModelHistory?.(50);
         const select = document.getElementById('activateVersionSelect');
         const reportSelect = document.getElementById('reportVersionSelect');
-        
+
         if (!select || !reportSelect) return;
-        
+
         select.innerHTML = '<option value="">— انتخاب نسخه —</option>';
         reportSelect.innerHTML = '<option value="latest">— آخرین نسخه —</option>';
-        
-        if (data && data.success && data.data) {
+
+        if (data?.success && data.data) {
             data.data.forEach(item => {
                 const accuracy = ((item.accuracy || 0) * 100).toFixed(1);
                 const isActive = item.is_active ? ' ✅' : '';
                 const label = `${item.version} (${accuracy}%)${isActive}`;
-                
-                select.innerHTML += `<option value="${escapeAttr(item.version)}" ${item.is_active ? 'selected' : ''}>${escapeHtml(label)}</option>`;
-                reportSelect.innerHTML += `<option value="${escapeAttr(item.version)}">${escapeHtml(item.version)} (${accuracy}%)</option>`;
+
+                select.innerHTML += `<option value="${escapeToolsAttr(item.version)}" ${item.is_active ? 'selected' : ''}>${escapeToolsHtml(label)}</option>`;
+                reportSelect.innerHTML += `<option value="${escapeToolsAttr(item.version)}">${escapeToolsHtml(item.version)} (${accuracy}%)</option>`;
             });
         }
     } catch (error) {
@@ -837,11 +828,13 @@ async function loadVersionSelect() {
 }
 
 // ============================================================
-// ۴. EXPORT MODEL
+// Export Model
 // ============================================================
 
 function exportCurrentModel() {
-    api.exportModel();
+    // ✅ api.exportModel() (موجود در api.js)
+    window.api?.exportModel?.();
+
     if (typeof showToast === 'function') {
         showToast('📥 دانلود مدل فعلی شروع شد', 'success');
     }
@@ -849,36 +842,37 @@ function exportCurrentModel() {
 
 function exportSpecificModel() {
     const version = document.getElementById('exportVersionInput')?.value.trim();
-    
+
     if (!version) {
         if (typeof showToast === 'function') showToast('⚠️ نسخه را وارد کنید', 'warning');
         return;
     }
-    
-    api.exportModel(version);
+
+    window.api?.exportModel?.(version);
+
     if (typeof showToast === 'function') {
         showToast(`📥 دانلود نسخه ${version} شروع شد`, 'success');
     }
 }
 
 // ============================================================
-// ۵. IMPORT MODEL
+// Import Model
 // ============================================================
 
 async function handleImport() {
     const input = document.getElementById('importFileInput');
     const file = input.files[0];
     if (!file) return;
-    
+
     const fileInfo = document.getElementById('importFileName');
     if (fileInfo) {
         fileInfo.classList.add('active');
-        fileInfo.innerHTML = `<i class="fas fa-file-check"></i><span>${escapeHtml(file.name)}</span>`;
+        fileInfo.innerHTML = `<i class="fas fa-file-check"></i><span>${escapeToolsHtml(file.name)}</span>`;
     }
-    
+
     const accuracy = parseFloat(document.getElementById('importAccuracy')?.value || 0.5);
     const period = document.getElementById('importPeriod')?.value || '1m';
-    
+
     if (!confirm(`واردات مدل "${file.name}"؟`)) {
         input.value = '';
         if (fileInfo) {
@@ -887,12 +881,12 @@ async function handleImport() {
         }
         return;
     }
-    
-    if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+
+    if (window.loadingSystem?.show) {
         window.loadingSystem.show({
             messages: [
                 'در حال آپلود مدل...',
-                'ذخیره‌سازی در دیتابیس...'
+                'ذخیره‌سازی در دیتابیس...',
             ],
             duration: 5000,
             onComplete: function() {
@@ -901,61 +895,61 @@ async function handleImport() {
                 if (typeof showToast === 'function') {
                     showToast('✅ مدل وارد شد', 'success');
                 }
-            }
+            },
         });
     }
-    
+
     try {
-        const result = await api.importModel(file, accuracy, period);
-        
-        if (!result || !result.success) {
-            if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-                window.loadingSystem.hide();
-            }
+        // ✅ api.importModel() (موجود در api.js)
+        const result = await window.api?.importModel?.(file, accuracy, period);
+
+        if (!result?.success) {
+            if (window.loadingSystem?.hide) window.loadingSystem.hide();
             if (typeof showToast === 'function') {
                 showToast('❌ ' + (result?.message || 'خطا'), 'error');
             }
             return;
         }
-        
+
         input.value = '';
+
         if (fileInfo) {
             fileInfo.classList.remove('active');
             fileInfo.innerHTML = '<i class="fas fa-file"></i><span>هیچ فایلی انتخاب نشده</span>';
         }
     } catch (error) {
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
+        if (window.loadingSystem?.hide) window.loadingSystem.hide();
         if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۶. ACTIVATE VERSION
+// Activate Version
 // ============================================================
 
 async function activateSelectedVersion() {
     const version = document.getElementById('activateVersionSelect')?.value;
-    
+
     if (!version) {
         if (typeof showToast === 'function') showToast('⚠️ نسخه انتخاب کنید', 'warning');
         return;
     }
-    
+
     if (!confirm(`فعال‌سازی نسخه "${version}"؟`)) return;
-    
+
     try {
-        const result = await api.activateModel(version);
-        
-        if (!result || !result.success) {
+        // ✅ api.activateModel() (موجود در api.js)
+        const result = await window.api?.activateModel?.(version);
+
+        if (!result?.success) {
             if (typeof showToast === 'function') {
                 showToast('❌ ' + (result?.message || 'خطا'), 'error');
             }
             return;
         }
-        
+
         if (typeof showToast === 'function') showToast('✅ نسخه فعال شد', 'success');
+
         loadActiveVersion();
         loadVersionSelect();
     } catch (error) {
@@ -964,39 +958,40 @@ async function activateSelectedVersion() {
 }
 
 // ============================================================
-// ۷. TEST MODEL
+// Test Model
 // ============================================================
 
 async function testModel() {
     const coin = document.getElementById('testCoin')?.value || 'bitcoin';
     const period = document.getElementById('testPeriod')?.value || '1m';
-    
+
     const resultEl = document.getElementById('testResult');
     const contentEl = document.getElementById('testResultContent');
-    
+
     if (resultEl) resultEl.style.display = 'block';
     if (contentEl) {
         contentEl.innerHTML = '<span style="color:var(--text-muted);">⏳ در حال تست...</span>';
     }
-    
+
     try {
-        const data = await api.predictSingle(coin, period);
-        
-        if (data && data.success && data.data) {
+        // ✅ api.predictSingle() (موجود در api.js)
+        const data = await window.api?.predictSingle?.(coin, period);
+
+        if (data?.success && data.data) {
             const d = data.data;
             const signal = d.signal_type || 'NEUTRAL';
             const emojis = { BUY: '🟢', SELL: '🔴', NEUTRAL: '🟡' };
             const labels = { BUY: 'خرید', SELL: 'فروش', NEUTRAL: 'خنثی' };
             const colors = {
-                BUY: 'var(--green-primary)',
-                SELL: 'var(--accent-red)',
-                NEUTRAL: 'var(--accent-orange)'
+                BUY: 'var(--color-green)',
+                SELL: 'var(--color-red)',
+                NEUTRAL: 'var(--color-orange)',
             };
-            
+
             if (contentEl) {
                 contentEl.innerHTML = `
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                        <div><span style="color:var(--text-muted);">ارز:</span> <strong>${escapeHtml(d.coin_name || d.coin || coin)}</strong></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);">
+                        <div><span style="color:var(--text-muted);">ارز:</span> <strong>${escapeToolsHtml(d.coin_name || d.coin || coin)}</strong></div>
                         <div><span style="color:var(--text-muted);">سیگنال:</span> <strong style="color:${colors[signal]};">${emojis[signal]} ${labels[signal]}</strong></div>
                         <div><span style="color:var(--text-muted);">اطمینان:</span> <strong>${d.confidence || '—'}</strong></div>
                         <div><span style="color:var(--text-muted);">قیمت:</span> <strong>${formatCurrency(d.current_price)}</strong></div>
@@ -1005,92 +1000,93 @@ async function testModel() {
             }
         } else {
             if (contentEl) {
-                contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${escapeHtml(data?.error || 'خطا')}</span>`;
+                contentEl.innerHTML = `<span style="color:var(--color-red);">❌ ${escapeToolsHtml(data?.error || 'خطا')}</span>`;
             }
         }
     } catch (error) {
         if (contentEl) {
-            contentEl.innerHTML = `<span style="color:var(--accent-red);">❌ ${escapeHtml(error.message)}</span>`;
+            contentEl.innerHTML = `<span style="color:var(--color-red);">❌ ${escapeToolsHtml(error.message)}</span>`;
         }
     }
 }
 
 // ============================================================
-// ۸. CLEAR CACHE
+// Clear Cache
 // ============================================================
 
 async function clearModelCache() {
     if (!confirm('پاکسازی کل کش Redis؟\nاین عمل ممکن است موقتاً سیستم را کند کند.')) return;
-    
+
     const statusEl = document.getElementById('cacheClearStatus');
     if (statusEl) {
-        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent-orange);font-size:0.6rem;"></i> در حال پاکسازی...';
+        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--color-orange);font-size:0.6rem;"></i><span>در حال پاکسازی...</span>';
     }
-    
+
     try {
-        const result = await api.clearRedis(true);
-        
-        if (result && result.success) {
+        // ✅ api.clearRedis() (موجود در api.js)
+        const result = await window.api?.clearRedis?.(true);
+
+        if (result?.success) {
             if (statusEl) {
-                statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green-primary);font-size:0.6rem;"></i> کش پاک شد';
+                statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--color-green);font-size:0.6rem;"></i><span>کش پاک شد</span>';
             }
             if (typeof showToast === 'function') showToast('🧹 کش پاکسازی شد', 'success');
         } else {
             if (statusEl) {
-                statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--accent-red);font-size:0.6rem;"></i> خطا';
+                statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--color-red);font-size:0.6rem;"></i><span>خطا</span>';
             }
             if (typeof showToast === 'function') showToast('❌ ' + (result?.error || 'خطا'), 'error');
         }
     } catch (error) {
         if (statusEl) {
-            statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--accent-red);font-size:0.6rem;"></i> خطا';
+            statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:var(--color-red);font-size:0.6rem;"></i><span>خطا</span>';
         }
         if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۹. GENERATE REPORT
+// Generate Report
 // ============================================================
 
 function generateReport() {
     const version = document.getElementById('reportVersionSelect')?.value || 'latest';
     const statusEl = document.getElementById('reportStatus');
-    
+
     if (statusEl) {
-        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent-orange);font-size:0.6rem;"></i> در حال تولید...';
+        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--color-orange);font-size:0.6rem;"></i><span>در حال تولید...</span>';
     }
-    
+
     let url = '/report_template.html';
     if (version && version !== 'latest') {
         url += `?version=${encodeURIComponent(version)}`;
     }
-    
+
     const w = window.open(url, '_blank');
-    
+
     if (!w) {
         if (typeof showToast === 'function') showToast('⚠️ پنجره جدید را مجاز کنید', 'warning');
         if (statusEl) {
-            statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--accent-orange);font-size:0.6rem;"></i> نیاز به تأیید';
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--color-orange);font-size:0.6rem;"></i><span>نیاز به تأیید</span>';
         }
         return;
     }
-    
+
     if (statusEl) {
-        statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green-primary);font-size:0.6rem;"></i> گزارش باز شد';
+        statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--color-green);font-size:0.6rem;"></i><span>گزارش باز شد</span>';
     }
     if (typeof showToast === 'function') showToast('📊 گزارش باز شد', 'success');
 }
 
 // ============================================================
-// ۱۰. RESET MODEL
+// Reset Model
 // ============================================================
 
 function openResetModal() {
     const modal = document.getElementById('resetModal');
     const input = document.getElementById('resetConfirmInput');
     const btn = document.getElementById('resetConfirmBtn');
-    
+
     if (modal) modal.classList.add('active');
     if (input) input.value = '';
     if (btn) btn.disabled = true;
@@ -1104,6 +1100,7 @@ function closeResetModal() {
 function checkResetInput() {
     const input = document.getElementById('resetConfirmInput');
     const btn = document.getElementById('resetConfirmBtn');
+
     if (btn && input) {
         btn.disabled = input.value.trim().toUpperCase() !== 'RESET';
     }
@@ -1112,10 +1109,10 @@ function checkResetInput() {
 async function resetModel() {
     const input = document.getElementById('resetConfirmInput');
     if (input?.value.trim().toUpperCase() !== 'RESET') return;
-    
+
     closeResetModal();
-    
-    if (window.loadingSystem && typeof window.loadingSystem.show === 'function') {
+
+    if (window.loadingSystem?.show) {
         window.loadingSystem.show({
             messages: ['در حال بازنشانی مدل...'],
             duration: 3000,
@@ -1125,26 +1122,25 @@ async function resetModel() {
                 if (typeof showToast === 'function') {
                     showToast('🔄 مدل بازنشانی شد', 'warning');
                 }
-            }
+            },
         });
     }
-    
+
     try {
-        const status = await api.getModelStatus();
-        
-        if (status && status.success && status.data?.version) {
-            await api.deleteModel(status.data.version);
+        const status = await window.api?.getModelStatus?.();
+
+        if (status?.success && status.data?.version) {
+            // ✅ api.deleteModel() (موجود در api.js)
+            await window.api?.deleteModel?.(status.data.version);
         }
     } catch (error) {
-        if (window.loadingSystem && typeof window.loadingSystem.hide === 'function') {
-            window.loadingSystem.hide();
-        }
+        if (window.loadingSystem?.hide) window.loadingSystem.hide();
         if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// ۱۱. UTILS
+// Helpers
 // ============================================================
 
 function setText(id, value) {
@@ -1152,7 +1148,7 @@ function setText(id, value) {
     if (el) el.textContent = value ?? '—';
 }
 
-function escapeHtml(str) {
+function escapeToolsHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -1162,10 +1158,8 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-function escapeAttr(str) {
+function escapeToolsAttr(str) {
     if (!str) return '';
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
-
-console.log('✅ Tools tab v3.0 loaded');
 </script>
