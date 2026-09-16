@@ -1,11 +1,11 @@
 <!-- ============================================================
-     settings_tabs/cache.html - تب کش
-     نسخه ۱.۰ - تنظیمات Cache
+     settings_tabs/cache.html — تب کش
+     نسخه ۲.۰ — با init/cleanup استاندارد
      ============================================================ -->
 
 <div class="settings-tab-content">
 
-    <!-- ===== گروه ۱: TTL ها ===== -->
+    <!-- ===== گروه ۱: TTL ===== -->
     <div class="settings-group">
         <div class="group-title">
             <i class="fas fa-clock"></i>
@@ -21,7 +21,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_prices" min="1" max="3600" step="1" value="60" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('prices')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('prices')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -36,7 +36,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_coinsList" min="60" max="86400" step="60" value="86400" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('coinsList')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('coinsList')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -51,7 +51,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_fearGreed" min="30" max="3600" step="10" value="300" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('fearGreed')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('fearGreed')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -66,7 +66,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_btcDominance" min="30" max="3600" step="10" value="300" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('btcDominance')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('btcDominance')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -81,7 +81,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_modelStatus" min="1" max="600" step="1" value="10" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('modelStatus')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('modelStatus')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -96,7 +96,7 @@
             <div class="toggle-wrapper">
                 <input type="number" id="cache_chart" min="60" max="86400" step="60" value="3600" style="width: 80px;">
                 <span class="toggle-label">ثانیه</span>
-                <button class="settings-btn settings-btn-secondary" onclick="clearCacheKey('chart')" style="padding: 6px 12px;">
+                <button class="btn btn-outline btn-xs" onclick="clearCacheKey('chart')" title="پاک کردن">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -104,17 +104,17 @@
 
         <!-- Actions -->
         <div class="settings-actions">
-            <button class="settings-btn settings-btn-primary" onclick="saveCacheSettings()">
+            <button class="btn btn-primary btn-sm" onclick="saveCacheSettings()">
                 <i class="fas fa-save"></i>
-                ذخیره
+                <span>ذخیره</span>
             </button>
-            <button class="settings-btn settings-btn-danger" onclick="clearAllCaches()">
+            <button class="btn btn-danger btn-sm" onclick="clearAllCaches()">
                 <i class="fas fa-trash"></i>
-                پاک کردن همه
+                <span>پاک کردن همه</span>
             </button>
-            <button class="settings-btn settings-btn-secondary" onclick="resetCacheSettings()">
+            <button class="btn btn-outline btn-sm" onclick="resetCacheSettings()">
                 <i class="fas fa-undo"></i>
-                بازنشانی
+                <span>بازنشانی</span>
             </button>
         </div>
     </div>
@@ -142,9 +142,9 @@
         </div>
 
         <div class="settings-actions">
-            <button class="settings-btn settings-btn-secondary" onclick="refreshCacheStats()">
+            <button class="btn btn-outline btn-sm" onclick="refreshCacheStats()">
                 <i class="fas fa-sync-alt"></i>
-                بروزرسانی آمار
+                <span>بروزرسانی آمار</span>
             </button>
         </div>
     </div>
@@ -153,215 +153,227 @@
 
 <script>
 // ============================================================
-// CACHE TAB CONTROLLER
+// SETTINGS CACHE TAB
 // ============================================================
 
-function init_settings_cache() {
-    console.log('💾 Initializing cache tab...');
-    loadCacheSettings();
-    refreshCacheStats();
-    
-    // شروع بروزرسانی خودکار آمار
-    if (window._cacheStatsInterval) {
-        clearInterval(window._cacheStatsInterval);
-    }
-    window._cacheStatsInterval = setInterval(refreshCacheStats, 10000);
-}
-
-function cleanup_settings_cache() {
-    console.log('🧹 Cleaning up cache tab...');
-    
-    if (window._cacheStatsInterval) {
-        clearInterval(window._cacheStatsInterval);
-        window._cacheStatsInterval = null;
-    }
-}
+const _CACHE_KEYS = ['prices', 'coinsList', 'fearGreed', 'btcDominance', 'modelStatus', 'chart'];
+let _cacheStatsInterval = null;
 
 // ============================================================
-// LOAD
+// Load
 // ============================================================
 
 function loadCacheSettings() {
     try {
-        const settings = appSettings.get('cache') || {};
-        
-        const keys = ['prices', 'coinsList', 'fearGreed', 'btcDominance', 'modelStatus', 'chart'];
-        
-        keys.forEach(key => {
+        const settings = window.appSettings?.get('cache') || {};
+
+        _CACHE_KEYS.forEach(key => {
             const el = document.getElementById(`cache_${key}`);
             if (el) el.value = settings[key] || 60;
         });
-        
+
         console.log('✅ Cache settings loaded');
     } catch (err) {
-        console.error('❌ Failed to load cache settings:', err);
+        console.error('❌ Load cache settings error:', err);
     }
 }
 
 // ============================================================
-// SAVE
+// Save
 // ============================================================
 
 async function saveCacheSettings() {
     try {
-        const keys = ['prices', 'coinsList', 'fearGreed', 'btcDominance', 'modelStatus', 'chart'];
         const newSettings = {};
-        
-        keys.forEach(key => {
+
+        _CACHE_KEYS.forEach(key => {
             const el = document.getElementById(`cache_${key}`);
             newSettings[key] = parseInt(el?.value) || 60;
         });
-        
-        await appSettings.save('cache', newSettings);
-        
-        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
-        console.log('✅ Cache settings saved:', newSettings);
+
+        await window.appSettings.save('cache', newSettings);
+
+        if (typeof showToast === 'function') {
+            showToast('✅ تنظیمات ذخیره شد', 'success');
+        }
     } catch (err) {
-        console.error('❌ Failed to save cache settings:', err);
-        window.showToast?.('❌ خطا در ذخیره', 'error');
+        console.error('❌ Save cache error:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در ذخیره', 'error');
+        }
     }
 }
 
 // ============================================================
-// CLEAR SINGLE
+// Clear single
 // ============================================================
 
 async function clearCacheKey(key) {
-    if (!window.confirm) return;
-    
-    const confirmed = await window.confirm(
+    const confirmed = await confirmDialog(
         'پاک کردن کش',
-        `آیا مطمئن هستید که می‌خواهید کش "${key}" را پاک کنید؟`,
-        'بله',
-        'انصراف'
+        `آیا مطمئن هستید که می‌خواهید کش "${key}" را پاک کنید؟`
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
-        // پاک کردن از app cache
-        if (window.appCache?.invalidate) {
-            window.appCache.invalidate(key);
+        // ✅ appCache.invalidate() → app.cacheInvalidate()
+        window.appCache?.invalidate?.(key);
+
+        // ✅ api.clearRedisNamespace() که تو api.js هست
+        await window.api?.clearRedisNamespace?.(key);
+
+        if (typeof showToast === 'function') {
+            showToast(`✅ کش "${key}" پاک شد`, 'success');
         }
-        
-        // پاک کردن از Redis
-        if (window.api?.clearRedisNamespace) {
-            await window.api.clearRedisNamespace(key);
-        }
-        
-        window.showToast?.(`✅ کش "${key}" پاک شد`, 'success');
         refreshCacheStats();
     } catch (err) {
-        console.error(`❌ Failed to clear cache "${key}":`, err);
-        window.showToast?.('❌ خطا در پاک کردن', 'error');
+        console.error(`❌ Clear cache "${key}" error:`, err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در پاک کردن', 'error');
+        }
     }
 }
 
 // ============================================================
-// CLEAR ALL
+// Clear all
 // ============================================================
 
 async function clearAllCaches() {
-    if (!window.confirm) return;
-    
-    const confirmed = await window.confirm(
+    const confirmed = await confirmDialog(
         'پاک کردن همه کش',
-        'آیا مطمئن هستید؟ همه کش‌ها پاک می‌شوند. این کار ممکن است سرعت برنامه را موقتاً کاهش دهد.',
-        'بله، پاک کن',
-        'انصراف'
+        'آیا مطمئن هستید؟ همه کش‌ها پاک می‌شوند.'
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
-        // پاک کردن از app
-        if (window.appCache?.clear) {
-            window.appCache.clear();
-        }
-        
-        // پاک کردن Redis
-        if (window.api?.clearRedis) {
-            await window.api.clearRedis(true);
-        }
-        
+        // ✅ appCache.clear() → app.cacheClear()
+        window.appCache?.clear?.();
+
+        // ✅ api.clearRedis(true) که تو api.js هست
+        await window.api?.clearRedis?.(true);
+
         // ذخیره زمان
         localStorage.setItem('cache_last_clear', new Date().toISOString());
-        
-        window.showToast?.('✅ همه کش‌ها پاک شدند', 'success');
+
+        if (typeof showToast === 'function') {
+            showToast('✅ همه کش‌ها پاک شدند', 'success');
+        }
         refreshCacheStats();
     } catch (err) {
-        console.error('❌ Failed to clear all caches:', err);
-        window.showToast?.('❌ خطا در پاک کردن', 'error');
+        console.error('❌ Clear all caches error:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در پاک کردن', 'error');
+        }
     }
 }
 
 // ============================================================
-// RESET
+// Reset
 // ============================================================
 
 async function resetCacheSettings() {
-    if (!window.confirm) return;
-    
-    const confirmed = await window.confirm(
+    const confirmed = await confirmDialog(
         'بازنشانی تنظیمات',
-        'آیا مطمئن هستید؟',
-        'بله',
-        'انصراف'
+        'آیا مطمئن هستید؟'
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
-        appSettings.reset('cache');
+        await window.appSettings.reset('cache');
         loadCacheSettings();
-        window.showToast?.('✅ بازنشانی شد', 'success');
+
+        if (typeof showToast === 'function') {
+            showToast('✅ بازنشانی شد', 'success');
+        }
     } catch (err) {
-        console.error('❌ Failed to reset cache settings:', err);
+        console.error('❌ Reset cache error:', err);
     }
 }
 
 // ============================================================
-// STATS
+// Stats
 // ============================================================
 
 async function refreshCacheStats() {
     try {
-        // از app cache
         const stats = window.appCache?.stats?.() || { size: 0, keys: [] };
-        
+
         const keysEl = document.getElementById('cache_total_keys');
         const memEl = document.getElementById('cache_memory_usage');
         const lastClearEl = document.getElementById('cache_last_clear');
-        
+
         if (keysEl) keysEl.textContent = stats.size || 0;
-        
+
         if (memEl) {
-            // تخمین حجم
-            const estimated = (stats.size || 0) * 1024; // ~1KB per key
-            memEl.textContent = window.formatFileSize?.(estimated) || '0 B';
+            const estimated = (stats.size || 0) * 1024;
+            memEl.textContent = (typeof formatFileSize === 'function')
+                ? formatFileSize(estimated)
+                : '0 B';
         }
-        
+
         if (lastClearEl) {
             const lastClear = localStorage.getItem('cache_last_clear');
-            lastClearEl.textContent = lastClear 
-                ? (window.formatTimeAgo?.(lastClear) || '—')
+            lastClearEl.textContent = lastClear
+                ? ((typeof formatTimeAgo === 'function') ? formatTimeAgo(lastClear) : '—')
                 : '—';
         }
-        
-        // از Redis
+
+        // ✅ api.getRedisStats() که تو api.js هست
         try {
             const redisStats = await window.api?.getRedisStats?.();
             if (redisStats?.success && redisStats.data) {
                 const redisKeys = redisStats.data.keys?.total || 0;
-                if (keysEl) keysEl.textContent = `${stats.size || 0} + Redis: ${redisKeys}`;
+                if (keysEl) {
+                    keysEl.textContent = `${stats.size || 0} + Redis: ${redisKeys}`;
+                }
             }
-        } catch (e) {
-            // بی‌خطر
-        }
+        } catch (e) { /* silent */ }
     } catch (err) {
-        console.error('❌ Failed to refresh cache stats:', err);
+        console.error('❌ Refresh cache stats error:', err);
     }
 }
 
-console.log('✅ Cache tab script loaded');
+// ============================================================
+// Helpers
+// ============================================================
+
+async function confirmDialog(title, text) {
+    if (typeof window.confirm === 'function') {
+        try {
+            return await window.confirm(title, text, 'بله', 'انصراف');
+        } catch (e) {
+            return window.confirm(`${title}\n${text}`);
+        }
+    }
+    return window.confirm(`${title}\n${text}`);
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
+window.init_settings_cache = function() {
+    console.log('💾 Settings cache tab initializing...');
+    loadCacheSettings();
+    refreshCacheStats();
+
+    if (_cacheStatsInterval) clearInterval(_cacheStatsInterval);
+    _cacheStatsInterval = setInterval(() => {
+        const activeTab = document.querySelector('#settingsTabs .settings-tab-btn.active');
+        if (activeTab?.dataset.tab === 'cache') {
+            refreshCacheStats();
+        }
+    }, 10000);
+};
+
+window.cleanup_settings_cache = function() {
+    console.log('🧹 Settings cache tab cleaning up...');
+    if (_cacheStatsInterval) {
+        clearInterval(_cacheStatsInterval);
+        _cacheStatsInterval = null;
+    }
+};
 </script>
