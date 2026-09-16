@@ -1,119 +1,307 @@
+<!-- ============================================================
+     debug_tabs/logs.html — تب لاگ‌ها
+     نسخه ۲.۰ — با init/cleanup استاندارد
+     ============================================================ -->
+
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-list"></i> لاگ‌های سیستم
-        <div style="display:flex;gap:6px;margin-right:auto;">
-            <select id="logLevelSelect" onchange="setLogLevel(this.value)" style="padding:2px 8px;font-size:0.65rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-list"></i>
+            <span>لاگ‌های سیستم</span>
+        </div>
+        <div class="header-actions">
+            <select id="logLevelSelect" class="form-select form-select-sm" onchange="setDebugLogLevel(this.value)">
                 <option value="DEBUG">DEBUG</option>
                 <option value="INFO" selected>INFO</option>
                 <option value="WARNING">WARNING</option>
                 <option value="ERROR">ERROR</option>
             </select>
-            <button class="btn btn-xs btn-outline" onclick="refreshLogs()"><i class="fas fa-sync-alt"></i></button>
-            <button class="btn btn-xs btn-danger" onclick="clearLogs()"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-xs btn-outline" onclick="refreshDebugLogs()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="btn btn-xs btn-danger" onclick="clearDebugLogsAll()">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     </div>
-    <div class="console-output" id="logsOutput" style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:14px 16px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);max-height:400px;overflow-y:auto;border:1px solid var(--border-color);">
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">⏳</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">در حال بارگذاری لاگ‌ها...</span>
+
+    <div class="console-output" id="logsOutput">
+        <div class="log-line">
+            <span class="log-time">⏳</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">در حال بارگذاری لاگ‌ها...</span>
         </div>
     </div>
 </div>
 
 <script>
-async function refreshLogs() {
+// ============================================================
+// DEBUG LOGS TAB
+// ============================================================
+
+let _logsInterval = null;
+
+async function refreshDebugLogs() {
     const output = document.getElementById('logsOutput');
+    if (!output) return;
+
     output.innerHTML = `
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">⏳</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">در حال بارگذاری...</span>
+        <div class="log-line">
+            <span class="log-time">⏳</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">در حال بارگذاری...</span>
         </div>
     `;
-    
+
     try {
-        const data = await api.getDebugLogs({ limit: 50 });
-        if (data.success && data.data) {
-            const logs = data.data;
-            if (logs.length === 0) {
-                output.innerHTML = `
-                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">📭</span>
-                        <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
-                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">هیچ لاگی ثبت نشده است</span>
-                    </div>
-                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">💡</span>
-                        <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-cyan);">INFO</span>
-                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">برای فعال‌سازی لاگ‌ها، سطح لاگ را به INFO یا DEBUG تنظیم کنید.</span>
-                    </div>
-                `;
-                return;
-            }
-            let html = '';
-            logs.slice().reverse().forEach(line => {
-                let time = '--:--', level = 'info', msg = line;
-                const timeMatch = line.match(/\[([^\]]+)\]/);
-                if (timeMatch) { time = timeMatch[1]; msg = line.replace(timeMatch[0], '').trim(); }
-                if (msg.includes('✅')) level = 'success';
-                else if (msg.includes('❌')) level = 'error';
-                else if (msg.includes('⚠️')) level = 'warning';
-                else if (msg.includes('INFO')) level = 'info';
-                else if (msg.includes('ERROR')) level = 'error';
-                else if (msg.includes('WARNING')) level = 'warning';
-                html += `
-                    <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                        <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">${time}</span>
-                        <span class="log-level ${level}" style="min-width:60px;font-weight:600;font-size:0.65rem;color:${level === 'success' ? 'var(--accent-green)' : level === 'error' ? 'var(--accent-red)' : level === 'warning' ? 'var(--accent-orange)' : 'var(--accent-cyan)'};">${level.toUpperCase()}</span>
-                        <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">${msg}</span>
-                    </div>
-                `;
-            });
-            output.innerHTML = html;
+        const data = await api.getDebugLogs({ limit: 100 });
+
+        if (!data?.success || !data.data) {
+            throw new Error(data?.error || 'خطا در دریافت لاگ‌ها');
         }
+
+        const logs = data.data;
+
+        if (logs.length === 0) {
+            output.innerHTML = `
+                <div class="log-line">
+                    <span class="log-time">📭</span>
+                    <span class="log-level info">INFO</span>
+                    <span class="log-msg">هیچ لاگی ثبت نشده است</span>
+                </div>
+                <div class="log-line">
+                    <span class="log-time">💡</span>
+                    <span class="log-level info">INFO</span>
+                    <span class="log-msg">برای فعال‌سازی، سطح لاگ را به INFO یا DEBUG تغییر دهید.</span>
+                </div>
+            `;
+            return;
+        }
+
+        const html = logs.slice().reverse().map(line => {
+            let time = '--:--';
+            let level = 'info';
+            let msg = line;
+
+            const timeMatch = line.match(/\[([^\]]+)\]/);
+            if (timeMatch) {
+                time = timeMatch[1];
+                msg = line.replace(timeMatch[0], '').trim();
+            }
+
+            if (msg.includes('❌') || msg.includes('ERROR')) level = 'error';
+            else if (msg.includes('⚠️') || msg.includes('WARNING')) level = 'warning';
+            else if (msg.includes('✅')) level = 'success';
+            else if (msg.includes('INFO')) level = 'info';
+
+            const icons = {
+                error: '❌',
+                warning: '⚠️',
+                success: '✅',
+                info: 'ℹ️',
+            };
+
+            return `
+                <div class="log-line ${level}">
+                    <span class="log-time">${escapeHtml(time)}</span>
+                    <span class="log-level ${level}">${level.toUpperCase()}</span>
+                    <span class="log-msg">${escapeHtml(msg)}</span>
+                    <button class="log-copy-btn" onclick="copyLogLine(this)" title="کپی">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        output.innerHTML = html;
+
     } catch (err) {
+        console.error('Logs error:', err);
         output.innerHTML = `
-            <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.65rem;">❌</span>
-                <span class="log-level error" style="min-width:60px;font-weight:600;font-size:0.65rem;color:var(--accent-red);">ERROR</span>
-                <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">خطا در دریافت لاگ‌ها</span>
+            <div class="log-line error">
+                <span class="log-time">❌</span>
+                <span class="log-level error">ERROR</span>
+                <span class="log-msg">${escapeHtml(err.message)}</span>
             </div>
         `;
     }
 }
 
-async function setLogLevel(level) {
+async function setDebugLogLevel(level) {
     try {
         const data = await api.setDebugLogLevel(level);
-        if (data.success) {
-            showToast('✅ سطح لاگ به ' + level + ' تغییر کرد', 'success');
-            refreshLogs();
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast(`✅ سطح لاگ به ${level} تغییر کرد`, 'success');
+            }
+            refreshDebugLogs();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
 
-async function clearLogs() {
+async function clearDebugLogsAll() {
     if (!confirm('آیا از پاک کردن همه لاگ‌ها اطمینان دارید؟')) return;
+
     try {
         const data = await api.clearDebugLogs(true);
-        if (data.success) {
-            showToast('🗑️ لاگ‌ها پاک شدند', 'success');
-            refreshLogs();
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast('🗑️ لاگ‌ها پاک شدند', 'success');
+            }
+            refreshDebugLogs();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
 
+function copyLogLine(btn) {
+    const line = btn.closest('.log-line');
+    if (!line) return;
+
+    const time = line.querySelector('.log-time')?.textContent || '';
+    const level = line.querySelector('.log-level')?.textContent || '';
+    const msg = line.querySelector('.log-msg')?.textContent || '';
+
+    const text = `[${time}] ${level}: ${msg}`;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (typeof showToast === 'function') showToast('📋 کپی شد', 'success');
+        });
+    }
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
 window.init_logs = function() {
-    refreshLogs();
-    setInterval(refreshLogs, 30000);
+    console.log('📋 Debug logs tab initializing...');
+    refreshDebugLogs();
+
+    if (_logsInterval) clearInterval(_logsInterval);
+    _logsInterval = setInterval(() => {
+        const activeTab = document.querySelector('#debugTabs .tab-btn.active');
+        if (activeTab?.dataset.tab === 'logs') {
+            refreshDebugLogs();
+        }
+    }, 30000);
 };
+
+window.cleanup_logs = function() {
+    console.log('🧹 Debug logs tab cleaning up...');
+    if (_logsInterval) {
+        clearInterval(_logsInterval);
+        _logsInterval = null;
+    }
+};
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 </script>
+
+<style>
+.console-output {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+}
+
+.log-line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    animation: slideUp 0.3s var(--ease-out) backwards;
+}
+
+.log-line:last-child {
+    border-bottom: none;
+}
+
+.log-line:hover {
+    background: rgba(0, 212, 255, 0.03);
+}
+
+.log-time {
+    color: var(--text-muted);
+    min-width: 80px;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.log-level {
+    min-width: 60px;
+    font-weight: var(--fw-bold);
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.log-level.info { color: var(--color-cyan); }
+.log-level.success { color: var(--color-green); }
+.log-level.warning { color: var(--color-orange); }
+.log-level.error { color: var(--color-red); }
+
+.log-msg {
+    flex: 1;
+    word-break: break-word;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.log-line.error .log-msg { color: var(--color-red); }
+.log-line.warning .log-msg { color: var(--color-orange); }
+.log-line.success .log-msg { color: var(--color-green); }
+
+.log-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    transition: var(--transition);
+    flex-shrink: 0;
+    opacity: 0;
+}
+
+.log-line:hover .log-copy-btn {
+    opacity: 1;
+}
+
+.log-copy-btn:hover {
+    color: var(--color-cyan);
+    background: rgba(0, 212, 255, 0.1);
+}
+</style>
