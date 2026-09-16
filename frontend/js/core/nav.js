@@ -1,7 +1,7 @@
 // ============================================================
-// nav.js — Navigation Manager
-// نسخه ۱.۰ — سیستم تحلیلگر
-// مدیریت مشترک نویگیشن بار در همه صفحات
+// nav.js — Navigation Manager v2.0
+// نسخه ۲.۰ — سیستم تحلیلگر
+// مدیریت مشترک نویگیشن + auto-load loading-overlay
 // ============================================================
 
 (function() {
@@ -16,17 +16,22 @@
          * @param {Object} [config]
          * @param {string} [config.containerId]  - id ظرف نویگیشن (پیش‌فرض: 'navContainer')
          * @param {string} [config.navUrl]       - مسیر nav.html (پیش‌فرض: '/nav.html')
+         * @param {string} [config.loadingOverlayUrl] - مسیر loading-overlay.html
          * @param {boolean} [config.autoLoad]    - لود خودکار (پیش‌فرض: true)
+         * @param {boolean} [config.autoLoadOverlay] - لود خودکار loading-overlay (پیش‌فرض: true)
          */
         constructor(config = {}) {
             this.config = {
                 containerId: config.containerId || 'navContainer',
                 navUrl: config.navUrl || '/nav.html',
+                loadingOverlayUrl: config.loadingOverlayUrl || '/components/loading-overlay.html',
                 autoLoad: config.autoLoad !== false,
+                autoLoadOverlay: config.autoLoadOverlay !== false,
             };
 
             // State
             this.isLoaded = false;
+            this.isLoadingOverlayLoaded = false;
             this.container = null;
             this.user = null;
             this.statusInterval = null;
@@ -58,6 +63,12 @@
                 return;
             }
 
+            // ۱. لود loading-overlay (اگه فعاله)
+            if (this.config.autoLoadOverlay) {
+                await this._loadLoadingOverlay();
+            }
+
+            // ۲. لود nav.html
             try {
                 const res = await fetch(this.config.navUrl);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -84,7 +95,7 @@
                 console.log('✅ NavManager: loaded');
 
             } catch (err) {
-                console.error('❌ NavManager: failed to load', err);
+                console.error('❌ NavManager: failed to load nav', err);
                 this.container.innerHTML = `
                     <div class="loading-container">
                         <p class="loading-text" style="color:var(--color-red);">
@@ -92,6 +103,59 @@
                         </p>
                     </div>
                 `;
+            }
+        }
+
+        // ========================================================
+        // لود loading-overlay
+        // ========================================================
+
+        async _loadLoadingOverlay() {
+            // اگه قبلاً لود شده، skip
+            if (document.getElementById('loadingOverlay')) {
+                this.isLoadingOverlayLoaded = true;
+                return;
+            }
+
+            // اگه window.loadingSystem قبلاً هست
+            if (window.loadingSystem) {
+                this.isLoadingOverlayLoaded = true;
+                return;
+            }
+
+            try {
+                const res = await fetch(this.config.loadingOverlayUrl);
+                if (!res.ok) {
+                    console.warn('⚠️ Loading overlay not found:', res.status);
+                    return;
+                }
+
+                const html = await res.text();
+
+                // اضافه به DOM
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = html;
+                document.body.appendChild(wrapper);
+
+                // اجرای اسکریپت‌ها
+                wrapper.querySelectorAll('script').forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+
+                // صبر کوتاه برای اجرا
+                await new Promise(r => setTimeout(r, 50));
+
+                this.isLoadingOverlayLoaded = true;
+                console.log('✅ NavManager: loading-overlay auto-loaded');
+
+            } catch (err) {
+                console.warn('⚠️ NavManager: failed to load loading-overlay', err.message);
             }
         }
 
@@ -291,7 +355,6 @@
                 'user': '👤 کاربر',
             };
 
-            const roleLabel = roleMap[user?.role] || 'کاربر';
             const username = user?.username || 'کاربر';
 
             display.innerHTML = `
@@ -430,5 +493,5 @@
 
     window.NavManager = NavManager;
 
-    console.log('✅ NavManager v1.0 loaded');
+    console.log('✅ NavManager v2.0 loaded (with auto-load loading-overlay)');
 })();
