@@ -1,522 +1,826 @@
 <!-- ============================================================
-     loading-overlay.html - لودینگ پیشرفته برای پروسه‌های داخلی
-     نسخه ۲.۰ - کاملاً مستقل و با نام‌های ثابت
+     components/loading-overlay.html — Loading Overlay v3.0
+     نسخه ۳.۰ — با توکن‌ها + انیمیشن‌های پیشرفته + تم روشن/تیره
      ============================================================ -->
 
-<style>
-    /* ===== OVERLAY ===== */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        z-index: 99999;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        animation: overlayFadeIn 0.3s ease;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Vazir', system-ui, sans-serif;
-        direction: rtl;
-    }
-    
-    .loading-overlay.active {
-        display: flex;
-    }
-
-    @keyframes overlayFadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    /* ===== CARD ===== */
-    .loading-card {
-        background: rgba(17, 24, 39, 0.9);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 16px;
-        padding: 40px 48px;
-        min-width: 280px;
-        max-width: 400px;
-        width: 90%;
-        text-align: center;
-        box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
-        animation: cardSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    [data-theme="light"] .loading-card {
-        background: rgba(255, 255, 255, 0.9);
-        border-color: rgba(0, 0, 0, 0.06);
-    }
-
-    .loading-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle at center, rgba(0, 212, 255, 0.03), transparent 70%);
-        pointer-events: none;
-        animation: cardGlow 3s ease-in-out infinite;
-    }
-
-    @keyframes cardSlideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    @keyframes cardGlow {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.1) rotate(3deg); }
-    }
-
-    /* ===== SPINNER ===== */
-    .loading-spinner-wrapper {
-        position: relative;
-        width: 72px;
-        height: 72px;
-        margin: 0 auto 20px;
-    }
-
-    .loading-spinner-wrapper svg {
-        width: 100%;
-        height: 100%;
-        animation: spinnerRotate 1.2s linear infinite;
-    }
-
-    @keyframes spinnerRotate {
-        to { transform: rotate(360deg); }
-    }
-
-    .loading-spinner-wrapper .spinner-circle-bg {
-        fill: none;
-        stroke-width: 3;
-        stroke: rgba(255, 255, 255, 0.06);
-    }
-
-    [data-theme="light"] .loading-spinner-wrapper .spinner-circle-bg {
-        stroke: rgba(0, 0, 0, 0.06);
-    }
-
-    .loading-spinner-wrapper .spinner-circle-fg {
-        fill: none;
-        stroke-width: 3;
-        stroke: #00d4ff;
-        stroke-linecap: round;
-        stroke-dasharray: 180;
-        stroke-dashoffset: 0;
-        animation: spinnerDash 1.2s ease-in-out infinite;
-    }
-
-    @keyframes spinnerDash {
-        0% { stroke-dashoffset: 180; }
-        50% { stroke-dashoffset: 40; }
-        100% { stroke-dashoffset: 180; }
-    }
-
-    /* ===== THREE DOTS ===== */
-    .loading-dots {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        margin: 8px 0 16px;
-    }
-
-    .loading-dots .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        opacity: 0.3;
-        transition: all 0.3s ease;
-    }
-
-    [data-theme="light"] .loading-dots .dot {
-        background: rgba(0, 0, 0, 0.2);
-    }
-
-    .loading-dots .dot.active {
-        opacity: 1;
-        background: #00d4ff;
-        transform: scale(1.2);
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-    }
-
-    .loading-dots .dot:nth-child(1).active {
-        animation: dotPulse 1.2s ease-in-out infinite 0s;
-    }
-    .loading-dots .dot:nth-child(2).active {
-        animation: dotPulse 1.2s ease-in-out infinite 0.2s;
-    }
-    .loading-dots .dot:nth-child(3).active {
-        animation: dotPulse 1.2s ease-in-out infinite 0.4s;
-    }
-
-    @keyframes dotPulse {
-        0%, 100% {
-            opacity: 0.3;
-            transform: scale(1);
-        }
-        50% {
-            opacity: 1;
-            transform: scale(1.3);
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-        }
-    }
-
-    /* ===== MESSAGES ===== */
-    .loading-message {
-        font-size: 0.95rem;
-        font-weight: 500;
-        color: #f1f5f9;
-        margin-top: 4px;
-        min-height: 28px;
-        transition: all 0.3s ease;
-    }
-
-    [data-theme="light"] .loading-message {
-        color: #0f172a;
-    }
-
-    .loading-submessage {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        margin-top: 4px;
-        min-height: 20px;
-        transition: all 0.3s ease;
-    }
-
-    [data-theme="light"] .loading-submessage {
-        color: #475569;
-    }
-
-    /* ===== PROGRESS BAR ===== */
-    .loading-progress {
-        width: 100%;
-        height: 3px;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        margin-top: 16px;
-        overflow: hidden;
-        position: relative;
-    }
-
-    [data-theme="light"] .loading-progress {
-        background: rgba(0, 0, 0, 0.05);
-    }
-
-    .loading-progress .progress-fill {
-        height: 100%;
-        border-radius: 10px;
-        background: linear-gradient(90deg, #00d4ff, #8b5cf6);
-        width: 0%;
-        transition: width 0.5s ease;
-    }
-
-    .loading-progress .progress-fill.indeterminate {
-        width: 30%;
-        animation: progressIndeterminate 1.5s ease-in-out infinite;
-    }
-
-    @keyframes progressIndeterminate {
-        0% { transform: translateX(0%); width: 30%; }
-        50% { width: 60%; }
-        100% { transform: translateX(300%); width: 30%; }
-    }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 480px) {
-        .loading-card {
-            padding: 28px 20px;
-            min-width: unset;
-        }
-        .loading-spinner-wrapper {
-            width: 56px;
-            height: 56px;
-        }
-        .loading-message {
-            font-size: 0.85rem;
-        }
-        .loading-dots .dot {
-            width: 8px;
-            height: 8px;
-        }
-    }
-</style>
-
-<!-- ===== LOADING OVERLAY ===== -->
-<div class="loading-overlay" id="loadingOverlay">
+<!-- ============================================================
+     OVERLAY CONTAINER
+     ============================================================ -->
+<div class="loading-overlay" id="loadingOverlay" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="loading-card">
-        <!-- Spinner -->
-        <div class="loading-spinner-wrapper">
-            <svg viewBox="0 0 72 72">
-                <circle class="spinner-circle-bg" cx="36" cy="36" r="28"/>
-                <circle class="spinner-circle-fg" cx="36" cy="36" r="28"/>
-            </svg>
+
+        <!-- ====================================================
+             Background decoration
+             ==================================================== -->
+        <div class="loading-bg">
+            <div class="loading-orb orb-1"></div>
+            <div class="loading-orb orb-2"></div>
         </div>
 
-        <!-- Three Dots -->
+        <!-- ====================================================
+             Spinner (dual ring)
+             ==================================================== -->
+        <div class="loading-spinner-wrapper">
+            <svg class="loading-spinner-svg" viewBox="0 0 72 72">
+                <!-- Outer ring -->
+                <circle class="spinner-ring outer" cx="36" cy="36" r="30"/>
+                <!-- Middle ring (reverse) -->
+                <circle class="spinner-ring middle" cx="36" cy="36" r="22"/>
+                <!-- Inner ring (fast) -->
+                <circle class="spinner-ring inner" cx="36" cy="36" r="14"/>
+            </svg>
+
+            <!-- Center icon -->
+            <div class="loading-center-icon" id="loadingCenterIcon">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             Three Dots
+             ==================================================== -->
         <div class="loading-dots" id="loadingDots">
             <span class="dot"></span>
             <span class="dot"></span>
             <span class="dot"></span>
         </div>
 
-        <!-- Messages -->
+        <!-- ====================================================
+             Messages
+             ==================================================== -->
         <div class="loading-message" id="loadingMessage">در حال انجام...</div>
         <div class="loading-submessage" id="loadingSubMessage">لطفاً صبر کنید</div>
 
-        <!-- Progress Bar -->
-        <div class="loading-progress">
+        <!-- ====================================================
+             Progress Bar
+             ==================================================== -->
+        <div class="loading-progress" id="loadingProgressWrapper">
             <div class="progress-fill indeterminate" id="loadingProgress"></div>
         </div>
+
+        <!-- ====================================================
+             Progress Percent (نمایش عددی)
+             ==================================================== -->
+        <div class="loading-percent" id="loadingPercent" style="display:none;">
+            <span class="percent-value" id="loadingPercentValue">۰</span>
+            <span class="percent-symbol">%</span>
+        </div>
+
+        <!-- ====================================================
+             Cancel button (اختیاری)
+             ==================================================== -->
+        <button class="loading-cancel-btn" id="loadingCancelBtn" style="display:none;">
+            <i class="fas fa-times"></i>
+            <span>لغو</span>
+        </button>
+
     </div>
 </div>
 
-<script>
-// ============================================================
-// LOADING SYSTEM - کلاس مدیریت لودینگ داخلی
-// نام کلاس: LoadingSystem (ثابت)
-// دسترسی: window.loadingSystem
-// ============================================================
+<style>
+/* ============================================================
+   LOADING OVERLAY STYLES v3.0
+   ============================================================ */
 
-class LoadingSystem {
-    constructor() {
-        this.overlay = document.getElementById('loadingOverlay');
-        this.messageEl = document.getElementById('loadingMessage');
-        this.subMessageEl = document.getElementById('loadingSubMessage');
-        this.dots = document.querySelectorAll('#loadingDots .dot');
-        this.progress = document.getElementById('loadingProgress');
-        this.isActive = false;
-        this.dotsInterval = null;
-        this.progressTimer = null;
-        this.onCompleteCallback = null;
-        this.isCompleting = false;
+/* ============================================================
+   ۱. Overlay Container
+   ============================================================ */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: var(--z-modal);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: var(--space-5);
+    animation: fadeIn 0.3s var(--ease-out);
+    font-family: var(--font-main);
+    direction: rtl;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+[data-theme="light"] .loading-overlay {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================
+   ۲. Card
+   ============================================================ */
+
+.loading-card {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8) var(--space-10);
+    min-width: 300px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow:
+        var(--shadow-xl),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    animation: scaleIn 0.4s var(--ease-spring);
+    overflow: hidden;
+}
+
+[data-theme="light"] .loading-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================================
+   ۳. Background Orbs
+   ============================================================ */
+
+.loading-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+}
+
+.loading-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.25;
+}
+
+.loading-orb.orb-1 {
+    width: 180px;
+    height: 180px;
+    background: var(--color-cyan);
+    top: -80px;
+    right: -80px;
+    animation: orbFloat 8s ease-in-out infinite;
+}
+
+.loading-orb.orb-2 {
+    width: 140px;
+    height: 140px;
+    background: var(--color-purple);
+    bottom: -60px;
+    left: -60px;
+    animation: orbFloat 8s ease-in-out infinite 2s;
+}
+
+/* ============================================================
+   ۴. Spinner (Dual Ring)
+   ============================================================ */
+
+.loading-spinner-wrapper {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    margin: 0 auto var(--space-5);
+    z-index: 1;
+}
+
+.loading-spinner-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.3));
+}
+
+.spinner-ring {
+    fill: none;
+    stroke-linecap: round;
+    transform-origin: center;
+}
+
+.spinner-ring.outer {
+    stroke: var(--color-cyan);
+    stroke-width: 3;
+    stroke-dasharray: 30 200;
+    animation: spinnerRotate 2s linear infinite;
+}
+
+.spinner-ring.middle {
+    stroke: var(--color-purple);
+    stroke-width: 2.5;
+    stroke-dasharray: 20 140;
+    animation: spinnerRotateReverse 1.5s linear infinite;
+}
+
+.spinner-ring.inner {
+    stroke: var(--color-green);
+    stroke-width: 2;
+    stroke-dasharray: 10 80;
+    animation: spinnerRotate 1s linear infinite;
+}
+
+@keyframes spinnerRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes spinnerRotateReverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+/* Center icon */
+.loading-center-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    color: var(--color-cyan);
+    animation: breathe 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
+}
+
+/* ============================================================
+   ۵. Three Dots
+   ============================================================ */
+
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    z-index: 1;
+    position: relative;
+}
+
+.loading-dots .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-cyan);
+    opacity: 0.3;
+    transition: all 0.3s var(--ease-out);
+}
+
+.loading-dots .dot.active {
+    opacity: 1;
+    transform: scale(1.3);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+}
+
+.loading-dots .dot:nth-child(1).active {
+    animation: dotPulse 1.2s ease-in-out infinite 0s;
+    background: var(--color-cyan);
+}
+
+.loading-dots .dot:nth-child(2).active {
+    animation: dotPulse 1.2s ease-in-out infinite 0.2s;
+    background: var(--color-purple);
+}
+
+.loading-dots .dot:nth-child(3).active {
+    animation: dotPulse 1.2s ease-in-out infinite 0.4s;
+    background: var(--color-green);
+}
+
+@keyframes dotPulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(0, 212, 255, 0);
     }
-
-    // ===== نمایش لودینگ =====
-    show(options = {}) {
-        const {
-            messages = ['در حال انجام...'],
-            subMessages = ['لطفاً صبر کنید'],
-            duration = null,
-            onComplete = null,
-            showProgress = true
-        } = options;
-
-        if (this.isActive) return;
-
-        this.isActive = true;
-        this.isCompleting = false;
-        this.onCompleteCallback = onComplete || null;
-
-        // تنظیم پیام‌ها
-        const mainMsg = Array.isArray(messages) ? messages[0] : messages;
-        const subMsg = Array.isArray(subMessages) ? subMessages[0] : subMessages;
-
-        this.messageEl.textContent = mainMsg || 'در حال انجام...';
-        this.subMessageEl.textContent = subMsg || 'لطفاً صبر کنید';
-
-        // مدیریت دات‌ها
-        this.startDotsAnimation();
-
-        // مدیریت نوار پیشرفت
-        if (showProgress) {
-            this.progress.classList.remove('indeterminate');
-            this.progress.style.width = '0%';
-        } else {
-            this.progress.classList.add('indeterminate');
-        }
-
-        // نمایش overlay
-        this.overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-
-        // اگر مدت زمان مشخص شده
-        if (duration) {
-            this.startProgressAnimation(duration);
-        }
-
-        // ذخیره پیام‌ها برای استفاده بعدی
-        this._messages = Array.isArray(messages) ? messages : [messages];
-        this._subMessages = Array.isArray(subMessages) ? subMessages : [subMessages];
-        this._currentIndex = 0;
-        this._duration = duration;
-
-        console.log('🔄 Loading overlay shown:', mainMsg);
-    }
-
-    // ===== بروزرسانی پیام =====
-    updateMessage(index) {
-        if (!this._messages || index >= this._messages.length) return;
-
-        const mainMsg = this._messages[index] || this._messages[this._messages.length - 1];
-        const subMsg = this._subMessages[index] || this._subMessages[index] || '';
-
-        // اگر پیام شامل | باشد، جدا کن
-        const parts = mainMsg.split('|');
-        this.messageEl.textContent = parts[0] || mainMsg;
-        this.subMessageEl.textContent = parts[1] || subMsg || '';
-
-        this._currentIndex = index;
-    }
-
-    // ===== بروزرسانی پیشرفت =====
-    updateProgress(percent) {
-        if (this.progress) {
-            this.progress.classList.remove('indeterminate');
-            this.progress.style.width = Math.min(Math.max(percent, 0), 100) + '%';
-        }
-    }
-
-    // ===== شروع انیمیشن دات‌ها =====
-    startDotsAnimation() {
-        this.stopDotsAnimation();
-        let activeIndex = 0;
-
-        this.dots.forEach(d => d.classList.remove('active'));
-
-        this.dotsInterval = setInterval(() => {
-            this.dots.forEach(d => d.classList.remove('active'));
-            if (this.dots.length > 0) {
-                this.dots[activeIndex % this.dots.length].classList.add('active');
-                activeIndex = (activeIndex + 1) % this.dots.length;
-            }
-        }, 400);
-    }
-
-    // ===== توقف انیمیشن دات‌ها =====
-    stopDotsAnimation() {
-        if (this.dotsInterval) {
-            clearInterval(this.dotsInterval);
-            this.dotsInterval = null;
-        }
-        this.dots.forEach(d => d.classList.remove('active'));
-    }
-
-    // ===== شروع انیمیشن پیشرفت =====
-    startProgressAnimation(duration) {
-        if (this.progressTimer) {
-            clearTimeout(this.progressTimer);
-            this.progressTimer = null;
-        }
-
-        this.progress.classList.remove('indeterminate');
-        const startTime = Date.now();
-
-        const updateProgress = () => {
-            if (!this.isActive || this.isCompleting) return;
-            
-            const elapsed = Date.now() - startTime;
-            const percent = Math.min((elapsed / duration) * 100, 100);
-            this.progress.style.width = percent + '%';
-
-            // بروزرسانی پیام‌ها بر اساس پیشرفت
-            if (this._messages && this._messages.length > 1) {
-                const ratio = elapsed / duration;
-                const totalMessages = this._messages.length;
-                const newIndex = Math.min(Math.floor(ratio * totalMessages), totalMessages - 1);
-                if (newIndex !== this._currentIndex) {
-                    this.updateMessage(newIndex);
-                }
-            }
-
-            if (percent < 100) {
-                this.progressTimer = setTimeout(updateProgress, 50);
-            } else {
-                this.progress.style.width = '100%';
-            }
-        };
-
-        updateProgress();
-    }
-
-    // ===== تکمیل لودینگ =====
-    complete() {
-        if (!this.isActive || this.isCompleting) return;
-
-        this.isCompleting = true;
-
-        // نمایش پیام پایان
-        this.messageEl.textContent = '✅ انجام شد';
-        this.subMessageEl.textContent = 'عملیات با موفقیت کامل شد';
-        this.progress.style.width = '100%';
-        this.stopDotsAnimation();
-
-        // مخفی کردن بعد از ۸۰۰ms
-        setTimeout(() => {
-            this.hide();
-            if (this.onCompleteCallback) {
-                this.onCompleteCallback();
-            }
-        }, 800);
-    }
-
-    // ===== مخفی کردن لودینگ =====
-    hide() {
-        if (!this.isActive) return;
-
-        this.isActive = false;
-        this.isCompleting = false;
-        this.overlay.classList.remove('active');
-        document.body.style.overflow = '';
-        this.stopDotsAnimation();
-
-        if (this.progressTimer) {
-            clearTimeout(this.progressTimer);
-            this.progressTimer = null;
-        }
-
-        this.progress.classList.add('indeterminate');
-        this.progress.style.width = '0%';
-        this.dots.forEach(d => d.classList.remove('active'));
-
-        console.log('✅ Loading overlay hidden');
-    }
-
-    // ===== متدهای کمکی =====
-    setMessage(message) {
-        this.messageEl.textContent = message;
-    }
-
-    setSubMessage(message) {
-        this.subMessageEl.textContent = message;
-    }
-
-    setProgress(percent) {
-        this.updateProgress(percent);
-    }
-
-    // ===== بررسی وضعیت =====
-    getStatus() {
-        return {
-            isActive: this.isActive,
-            isCompleting: this.isCompleting,
-            currentMessage: this.messageEl?.textContent || '',
-            currentSubMessage: this.subMessageEl?.textContent || '',
-            progress: this.progress?.style?.width || '0%'
-        };
+    50% {
+        opacity: 1;
+        transform: scale(1.3);
+        box-shadow: 0 0 15px currentColor;
     }
 }
 
-// ===== نمونه Singleton با نام ثابت =====
-const loadingSystem = new LoadingSystem();
+/* ============================================================
+   ۶. Messages
+   ============================================================ */
 
-// ===== ذخیره در window با نام ثابت =====
-window.loadingSystem = loadingSystem;
+.loading-message {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+    min-height: 24px;
+    transition: var(--transition);
+    position: relative;
+    z-index: 1;
+}
 
-console.log('✅ LoadingSystem v2.0 loaded (window.loadingSystem)');
+.loading-submessage {
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    min-height: 20px;
+    transition: var(--transition);
+    position: relative;
+    z-index: 1;
+    margin-bottom: var(--space-5);
+}
+
+/* ============================================================
+   ۷. Progress Bar
+   ============================================================ */
+
+.loading-progress {
+    width: 100%;
+    height: 5px;
+    background: var(--bg-input);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: var(--space-2);
+    position: relative;
+    z-index: 1;
+}
+
+.loading-progress .progress-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(
+        90deg,
+        var(--color-cyan) 0%,
+        var(--color-purple) 50%,
+        var(--color-cyan) 100%
+    );
+    background-size: 200% auto;
+    width: 0%;
+    transition: width 0.4s var(--ease-out);
+    animation: gradientFlow 3s ease infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-progress .progress-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+.loading-progress .progress-fill.indeterminate {
+    width: 30%;
+    animation: progressIndeterminate 1.5s ease-in-out infinite;
+}
+
+/* ============================================================
+   ۸. Progress Percent
+   ============================================================ */
+
+.loading-percent {
+    margin-top: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--color-cyan);
+    font-weight: var(--fw-bold);
+    position: relative;
+    z-index: 1;
+}
+
+.loading-percent .percent-value {
+    font-size: var(--fs-lg);
+}
+
+.loading-percent .percent-symbol {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+/* ============================================================
+   ۹. Cancel Button
+   ============================================================ */
+
+.loading-cancel-btn {
+    margin-top: var(--space-5);
+    padding: var(--space-2) var(--space-5);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    position: relative;
+    z-index: 1;
+}
+
+.loading-cancel-btn:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--color-red);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.loading-cancel-btn i {
+    font-size: 0.8em;
+}
+
+/* ============================================================
+   ۱۰. Responsive
+   ============================================================ */
+
+@media (max-width: 480px) {
+    .loading-card {
+        padding: var(--space-6) var(--space-5);
+        min-width: unset;
+    }
+
+    .loading-spinner-wrapper {
+        width: 72px;
+        height: 72px;
+    }
+
+    .loading-center-icon {
+        font-size: 1.2rem;
+    }
+
+    .loading-message {
+        font-size: var(--fs-base);
+    }
+
+    .loading-submessage {
+        font-size: var(--fs-xs);
+    }
+}
+
+/* ============================================================
+   ۱۱. Reduced Motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner-ring,
+    .loading-orb,
+    .loading-center-icon,
+    .loading-dots .dot {
+        animation: none !important;
+    }
+}
+</style>
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script>
+// ============================================================
+// LoadingSystem v3.0 — مدیریت لودینگ داخلی
+// ============================================================
+
+(function() {
+    'use strict';
+
+    class LoadingSystem {
+        constructor() {
+            // DOM
+            this.overlay = document.getElementById('loadingOverlay');
+            this.messageEl = document.getElementById('loadingMessage');
+            this.subMessageEl = document.getElementById('loadingSubMessage');
+            this.dots = document.querySelectorAll('#loadingDots .dot');
+            this.progress = document.getElementById('loadingProgress');
+            this.progressWrapper = document.getElementById('loadingProgressWrapper');
+            this.percentWrapper = document.getElementById('loadingPercent');
+            this.percentValue = document.getElementById('loadingPercentValue');
+            this.centerIcon = document.getElementById('loadingCenterIcon');
+            this.cancelBtn = document.getElementById('loadingCancelBtn');
+
+            // State
+            this.isActive = false;
+            this.isCompleting = false;
+            this.dotsInterval = null;
+            this.progressTimer = null;
+            this.messageRotateTimer = null;
+
+            this._messages = [];
+            this._subMessages = [];
+            this._currentIndex = 0;
+            this._duration = null;
+            this._startTime = 0;
+            this._onCompleteCallback = null;
+            this._onCancelCallback = null;
+        }
+
+        // ========================================================
+        // Show
+        // ========================================================
+
+        show(options = {}) {
+            const {
+                messages = ['در حال انجام...'],
+                subMessages = ['لطفاً صبر کنید'],
+                duration = null,
+                showProgress = true,
+                showPercent = false,
+                icon = 'chart-pie',
+                cancellable = false,
+                onComplete = null,
+                onCancel = null,
+            } = options;
+
+            if (this.isActive) return;
+
+            this.isActive = true;
+            this.isCompleting = false;
+            this._onCompleteCallback = onComplete || null;
+            this._onCancelCallback = onCancel || null;
+
+            // normalize messages
+            this._messages = Array.isArray(messages) ? messages : [messages];
+            this._subMessages = Array.isArray(subMessages) ? subMessages : [subMessages];
+            this._currentIndex = 0;
+            this._duration = duration;
+            this._startTime = Date.now();
+
+            // set initial message
+            const firstMsg = this._messages[0] || 'در حال انجام...';
+            const firstSub = this._subMessages[0] || 'لطفاً صبر کنید';
+
+            this.messageEl.textContent = firstMsg;
+            this.subMessageEl.textContent = firstSub;
+
+            // icon
+            if (this.centerIcon) {
+                this.centerIcon.innerHTML = `<i class="fas fa-${icon}"></i>`;
+            }
+
+            // dots
+            this.startDotsAnimation();
+
+            // progress
+            if (this.progressWrapper) {
+                this.progressWrapper.style.display = showProgress ? 'block' : 'none';
+            }
+
+            if (showProgress) {
+                if (this.progress) {
+                    this.progress.classList.remove('indeterminate');
+                    this.progress.style.width = '0%';
+                }
+            }
+
+            // percent
+            if (this.percentWrapper) {
+                this.percentWrapper.style.display = showPercent ? 'block' : 'none';
+            }
+
+            if (showPercent && this.percentValue) {
+                this.percentValue.textContent = '۰';
+            }
+
+            // cancel
+            if (this.cancelBtn) {
+                this.cancelBtn.style.display = cancellable ? 'inline-flex' : 'none';
+                this.cancelBtn.onclick = () => this.cancel();
+            }
+
+            // show overlay
+            this.overlay.classList.add('active');
+            this.overlay.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+
+            // start auto progress
+            if (duration) {
+                this.startProgressAnimation(duration, showPercent);
+            }
+
+            console.log('🔄 Loading overlay shown:', firstMsg);
+        }
+
+        // ========================================================
+        // Update Message
+        // ========================================================
+
+        updateMessage(index) {
+            if (!this._messages || index >= this._messages.length) return;
+
+            const mainMsg = this._messages[index] || this._messages[this._messages.length - 1];
+            const subMsg = this._subMessages[index] || this._subMessages[this._subMessages.length - 1] || '';
+
+            const parts = mainMsg.split('|');
+            this.messageEl.textContent = parts[0] || mainMsg;
+            this.subMessageEl.textContent = parts[1] || subMsg || '';
+
+            this._currentIndex = index;
+        }
+
+        // ========================================================
+        // Update Progress
+        // ========================================================
+
+        updateProgress(percent) {
+            if (!this.progress) return;
+
+            this.progress.classList.remove('indeterminate');
+            const clamped = Math.min(Math.max(percent, 0), 100);
+            this.progress.style.width = clamped + '%';
+
+            if (this.percentValue) {
+                const persianNum = this.toPersian(Math.round(clamped));
+                this.percentValue.textContent = persianNum;
+            }
+        }
+
+        // ========================================================
+        // Dots Animation
+        // ========================================================
+
+        startDotsAnimation() {
+            this.stopDotsAnimation();
+            let activeIndex = 0;
+
+            this.dots.forEach(d => d.classList.remove('active'));
+
+            this.dotsInterval = setInterval(() => {
+                this.dots.forEach(d => d.classList.remove('active'));
+                if (this.dots.length > 0) {
+                    this.dots[activeIndex % this.dots.length].classList.add('active');
+                    activeIndex = (activeIndex + 1) % this.dots.length;
+                }
+            }, 400);
+        }
+
+        stopDotsAnimation() {
+            if (this.dotsInterval) {
+                clearInterval(this.dotsInterval);
+                this.dotsInterval = null;
+            }
+            this.dots.forEach(d => d.classList.remove('active'));
+        }
+
+        // ========================================================
+        // Progress Animation
+        // ========================================================
+
+        startProgressAnimation(duration, showPercent) {
+            if (this.progressTimer) {
+                clearTimeout(this.progressTimer);
+                this.progressTimer = null;
+            }
+
+            const startTime = Date.now();
+
+            const update = () => {
+                if (!this.isActive || this.isCompleting) return;
+
+                const elapsed = Date.now() - startTime;
+                const percent = Math.min((elapsed / duration) * 100, 100);
+
+                this.updateProgress(percent);
+
+                // rotate messages
+                if (this._messages.length > 1) {
+                    const ratio = elapsed / duration;
+                    const total = this._messages.length;
+                    const newIndex = Math.min(Math.floor(ratio * total), total - 1);
+
+                    if (newIndex !== this._currentIndex) {
+                        this.updateMessage(newIndex);
+                    }
+                }
+
+                if (percent < 100) {
+                    this.progressTimer = setTimeout(update, 50);
+                }
+            };
+
+            update();
+        }
+
+        // ========================================================
+        // Complete
+        // ========================================================
+
+        complete() {
+            if (!this.isActive || this.isCompleting) return;
+            this.isCompleting = true;
+
+            // success state
+            this.messageEl.textContent = '✅ انجام شد';
+            this.subMessageEl.textContent = 'عملیات با موفقیت کامل شد';
+
+            if (this.progress) {
+                this.progress.classList.remove('indeterminate');
+                this.progress.style.width = '100%';
+            }
+
+            if (this.percentValue) {
+                this.percentValue.textContent = this.toPersian(100);
+            }
+
+            if (this.centerIcon) {
+                this.centerIcon.innerHTML = '<i class="fas fa-check"></i>';
+                this.centerIcon.style.color = 'var(--color-green)';
+                this.centerIcon.style.animation = 'successPulse 0.6s ease';
+            }
+
+            this.stopDotsAnimation();
+
+            setTimeout(() => {
+                this.hide();
+                if (this._onCompleteCallback) {
+                    try { this._onCompleteCallback(); } catch (e) { console.error(e); }
+                }
+            }, 800);
+        }
+
+        // ========================================================
+        // Hide
+        // ========================================================
+
+        hide() {
+            if (!this.isActive) return;
+
+            this.isActive = false;
+            this.isCompleting = false;
+
+            this.overlay.classList.remove('active');
+            this.overlay.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+
+            this.stopDotsAnimation();
+
+            if (this.progressTimer) {
+                clearTimeout(this.progressTimer);
+                this.progressTimer = null;
+            }
+
+            // reset
+            if (this.progress) {
+                this.progress.classList.add('indeterminate');
+                this.progress.style.width = '0%';
+            }
+
+            if (this.centerIcon) {
+                this.centerIcon.style.color = 'var(--color-cyan)';
+                this.centerIcon.style.animation = '';
+            }
+
+            console.log('✅ Loading overlay hidden');
+        }
+
+        // ========================================================
+        // Cancel
+        // ========================================================
+
+        cancel() {
+            if (!this.isActive) return;
+
+            if (this._onCancelCallback) {
+                try { this._onCancelCallback(); } catch (e) { console.error(e); }
+            } else {
+                this.hide();
+            }
+        }
+
+        // ========================================================
+        // Helpers
+        // ========================================================
+
+        setMessage(message) {
+            this.messageEl.textContent = message;
+        }
+
+        setSubMessage(message) {
+            this.subMessageEl.textContent = message;
+        }
+
+        setProgress(percent) {
+            this.updateProgress(percent);
+        }
+
+        getStatus() {
+            return {
+                isActive: this.isActive,
+                isCompleting: this.isCompleting,
+                currentMessage: this.messageEl?.textContent || '',
+                currentSubMessage: this.subMessageEl?.textContent || '',
+                progress: this.progress?.style?.width || '0%',
+            };
+        }
+
+        toPersian(num) {
+            return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+        }
+    }
+
+    // ============================================================
+    // Singleton
+    // ============================================================
+
+    const loadingSystem = new LoadingSystem();
+    window.loadingSystem = loadingSystem;
+
+    console.log('✅ LoadingSystem v3.0 loaded');
+})();
 </script>
