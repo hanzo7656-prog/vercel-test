@@ -3,225 +3,726 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>هشدارها</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="theme-color" content="#0a0e1a">
+    <title>هشدارها | سیستم تحلیلگر</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        .alert-filters {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 12px 16px;
-            align-items: center;
-        }
-        .alert-filters .filter-btn {
-            padding: 5px 16px;
-            border-radius: var(--radius-full);
-            border: 1px solid var(--border-color);
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 0.75rem;
-            transition: var(--transition);
-            font-family: inherit;
-        }
-        .alert-filters .filter-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
-        .alert-filters .filter-btn.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0, 212, 255, 0.05); }
-        .alert-filters .refresh-btn { margin-right: auto; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; padding: 4px 8px; border-radius: var(--radius-sm); transition: var(--transition); }
-        .alert-filters .refresh-btn:hover { color: var(--accent-cyan); background: rgba(0, 212, 255, 0.05); }
-        .alert-filters .resolve-all-btn { padding: 4px 14px; border-radius: var(--radius-full); border: 1px solid var(--accent-red); background: transparent; color: var(--accent-red); cursor: pointer; font-size: 0.7rem; transition: var(--transition); font-family: inherit; }
-        .alert-filters .resolve-all-btn:hover { background: rgba(239, 68, 68, 0.05); border-color: var(--accent-rose); }
 
-        .alert-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 18px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            margin-bottom: 8px;
-            transition: var(--transition);
-            border-right: 4px solid transparent;
-        }
-        .alert-item:hover { border-color: var(--border-hover); background: var(--bg-hover); }
-        .alert-item.critical { border-right-color: var(--accent-red); }
-        .alert-item.warning { border-right-color: var(--accent-orange); }
-        .alert-item.info { border-right-color: var(--accent-cyan); }
-        .alert-item.resolved { border-right-color: var(--accent-green); opacity: 0.6; }
-        .alert-item .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
-        .alert-item .alert-content { flex: 1; min-width: 0; }
-        .alert-item .alert-title { font-size: 0.85rem; color: var(--text-primary); }
-        .alert-item .alert-meta { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
-        .alert-item .alert-meta .source { color: var(--text-secondary); }
-        .alert-item .alert-time { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; font-family: var(--font-mono); }
-        .alert-item .alert-action { background: none; border: none; color: var(--accent-cyan); cursor: pointer; font-size: 0.9rem; padding: 4px 10px; border-radius: var(--radius-sm); transition: var(--transition); flex-shrink: 0; }
-        .alert-item .alert-action:hover { background: rgba(0, 212, 255, 0.05); color: var(--accent-green); }
-        .alert-item .alert-resolved-badge { font-size: 0.6rem; padding: 2px 12px; border-radius: var(--radius-full); background: rgba(34, 211, 238, 0.08); color: var(--accent-green); border: 1px solid rgba(34, 211, 238, 0.12); flex-shrink: 0; }
+    <!-- Base CSS -->
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/themes.css">
 
-        .no-alerts { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-        .no-alerts .icon { font-size: 3rem; display: block; margin-bottom: 12px; }
+    <!-- Shared -->
+    <link rel="stylesheet" href="/css/nav.css">
 
-        @media (max-width: 768px) {
-            .alert-filters { flex-wrap: nowrap; overflow-x: auto; padding: 10px 12px; }
-            .alert-filters .filter-btn { font-size: 0.65rem; padding: 4px 12px; white-space: nowrap; }
-            .alert-filters .refresh-btn { margin-right: 0; }
-            .alert-item { flex-wrap: wrap; padding: 10px 14px; gap: 8px; }
-            .alert-item .alert-time { width: 100%; text-align: left; font-size: 0.6rem; }
-            .alert-item .alert-action { align-self: flex-start; }
-        }
-        @media (max-width: 480px) { .alert-item .alert-meta { flex-direction: column; gap: 2px; } }
-    </style>
+    <!-- Page-specific -->
+    <link rel="stylesheet" href="/css/pages/alerts.css">
 </head>
 <body>
 
+    <!-- Navigation -->
     <div id="navContainer"></div>
 
-    <div class="container">
+    <!-- Main -->
+    <div class="alerts-page">
 
-        <div class="page-header">
-            <div><h1><i class="fas fa-bell" style="color:var(--accent-pink);"></i> هشدارها</h1><span class="subtitle">مدیریت هشدارهای سیستم</span></div>
-            <span class="badge-count" id="alertTotal" style="font-size:0.8rem;color:var(--text-muted);">۰</span>
+        <div class="container">
+
+            <!-- ====================================================
+                 Page Header
+                 ==================================================== -->
+            <div class="page-header">
+                <div>
+                    <h1>
+                        <span class="page-icon">
+                            <i class="fas fa-bell"></i>
+                        </span>
+                        <span>هشدارها</span>
+                    </h1>
+                    <span class="subtitle">مدیریت و پیگیری هشدارهای سیستم</span>
+                </div>
+                <div class="header-actions">
+                    <span class="timestamp" id="pageTimestamp">—</span>
+                    <button class="btn btn-xs btn-outline" onclick="refreshAlerts()" title="بروزرسانی">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 Stats Grid
+                 ==================================================== -->
+            <div class="alerts-stats-grid">
+                <div class="alerts-stat-card total">
+                    <span class="asc-icon">📊</span>
+                    <div class="asc-value" id="statTotal">—</div>
+                    <div class="asc-label">کل هشدارها</div>
+                </div>
+                <div class="alerts-stat-card critical">
+                    <span class="asc-icon">🚨</span>
+                    <div class="asc-value" id="statCritical">—</div>
+                    <div class="asc-label">بحرانی</div>
+                </div>
+                <div class="alerts-stat-card warning">
+                    <span class="asc-icon">⚠️</span>
+                    <div class="asc-value" id="statWarning">—</div>
+                    <div class="asc-label">هشدار</div>
+                </div>
+                <div class="alerts-stat-card info">
+                    <span class="asc-icon">ℹ️</span>
+                    <div class="asc-value" id="statInfo">—</div>
+                    <div class="asc-label">اطلاعات</div>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 Filter Tabs
+                 ==================================================== -->
+            <div class="alerts-tabs" id="alertsTabs">
+                <button class="alerts-tab-btn active" data-filter="unresolved">
+                    <i class="fas fa-circle-exclamation"></i>
+                    <span>فعال</span>
+                    <span class="tab-count" id="tabCountUnresolved">۰</span>
+                </button>
+                <button class="alerts-tab-btn" data-filter="all">
+                    <i class="fas fa-list"></i>
+                    <span>همه</span>
+                    <span class="tab-count" id="tabCountAll">۰</span>
+                </button>
+                <button class="alerts-tab-btn" data-filter="critical">
+                    <i class="fas fa-fire"></i>
+                    <span>بحرانی</span>
+                    <span class="tab-count" id="tabCountCritical">۰</span>
+                </button>
+                <button class="alerts-tab-btn" data-filter="warning">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span>هشدار</span>
+                    <span class="tab-count" id="tabCountWarning">۰</span>
+                </button>
+                <button class="alerts-tab-btn" data-filter="info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>اطلاعات</span>
+                    <span class="tab-count" id="tabCountInfo">۰</span>
+                </button>
+                <button class="alerts-tab-btn" data-filter="resolved">
+                    <i class="fas fa-check-circle"></i>
+                    <span>حل شده</span>
+                    <span class="tab-count" id="tabCountResolved">۰</span>
+                </button>
+            </div>
+
+            <!-- ====================================================
+                 Toolbar
+                 ==================================================== -->
+            <div class="alerts-toolbar">
+                <div class="alerts-search">
+                    <input type="text" id="alertsSearch"
+                           class="form-input"
+                           placeholder="جستجو در هشدارها..."
+                           oninput="debouncedFilterAlerts()">
+                    <span class="search-icon">🔍</span>
+                </div>
+
+                <select id="alertsLimitSelect" class="form-select" onchange="loadAlerts()">
+                    <option value="20">۲۰ مورد</option>
+                    <option value="50" selected>۵۰ مورد</option>
+                    <option value="100">۱۰۰ مورد</option>
+                    <option value="200">۲۰۰ مورد</option>
+                </select>
+
+                <div class="alerts-counters">
+                    <span class="alerts-counter-badge" id="filteredCounter">
+                        <i class="fas fa-filter"></i>
+                        <span>۰ نمایش</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 Bulk Actions
+                 ==================================================== -->
+            <div class="alerts-bulk-actions" id="bulkActions" style="display:none;">
+                <span class="bulk-label">
+                    <i class="fas fa-bolt"></i>
+                    <span>عملیات گروهی:</span>
+                </span>
+                <button class="btn btn-success btn-xs" onclick="resolveAllAlerts('CRITICAL')">
+                    <i class="fas fa-check"></i>
+                    <span>حل همه بحرانی</span>
+                </button>
+                <button class="btn btn-warning btn-xs" onclick="resolveAllAlerts('WARNING')">
+                    <i class="fas fa-check"></i>
+                    <span>حل همه هشدار</span>
+                </button>
+                <button class="btn btn-primary btn-xs" onclick="resolveAllAlerts(null)">
+                    <i class="fas fa-check-double"></i>
+                    <span>حل همه</span>
+                </button>
+            </div>
+
+            <!-- ====================================================
+                 Alerts List
+                 ==================================================== -->
+            <div class="alerts-list" id="alertsList">
+                <!-- Skeleton -->
+                <div class="alert-skeleton">
+                    <div class="sk-icon"></div>
+                    <div class="sk-body">
+                        <div class="sk-line long"></div>
+                        <div class="sk-line medium"></div>
+                        <div class="sk-line short"></div>
+                    </div>
+                </div>
+                <div class="alert-skeleton">
+                    <div class="sk-icon"></div>
+                    <div class="sk-body">
+                        <div class="sk-line long"></div>
+                        <div class="sk-line medium"></div>
+                        <div class="sk-line short"></div>
+                    </div>
+                </div>
+                <div class="alert-skeleton">
+                    <div class="sk-icon"></div>
+                    <div class="sk-body">
+                        <div class="sk-line long"></div>
+                        <div class="sk-line medium"></div>
+                        <div class="sk-line short"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
-
-        <div class="alert-filters" id="filterContainer">
-            <button class="filter-btn active" data-filter="all">همه</button>
-            <button class="filter-btn" data-filter="critical">🚨 بحرانی</button>
-            <button class="filter-btn" data-filter="warning">⚠️ هشدار</button>
-            <button class="filter-btn" data-filter="info">ℹ️ اطلاع</button>
-            <button class="filter-btn" data-filter="resolved">✅ حل شده</button>
-            <button class="filter-btn" data-filter="unresolved">⏳ حل نشده</button>
-            <button class="refresh-btn" onclick="loadAlerts()" title="بروزرسانی"><i class="fas fa-sync-alt"></i></button>
-            <button class="resolve-all-btn" onclick="resolveAllAlerts()"><i class="fas fa-check-double"></i> حل همه</button>
-        </div>
-
-        <div id="alertsList">
-            <div class="loading-container"><div class="loading-spinner"></div><p class="loading-text">در حال بارگذاری...</p></div>
-        </div>
-
     </div>
 
-    <div class="toast-container" id="toastContainer"></div>
+    <!-- ============================================================
+         SCRIPTS
+         ============================================================ -->
 
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jalaliday@1/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mitt@3/dist/mitt.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/radash@12/dist/radash.umd.js"></script>
+
+    <!-- App Base -->
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
+
+    <!-- Core -->
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/tabs.js"></script>
+    <script src="/js/core/nav.js"></script>
+    <script src="/js/core/index.js"></script>
+
+    <!-- Page Script -->
     <script>
-        class AlertsController {
-            constructor() {
-                this.currentFilter = 'all';
-                this.updateInterval = null;
-                this.init();
+    // ============================================================
+    // ALERTS PAGE v1.0
+    // ============================================================
+
+    (function() {
+        'use strict';
+
+        // State
+        let _alertsAll = [];
+        let _alertsFiltered = [];
+        let _alertsCurrentFilter = 'unresolved';
+        let _alertsDebounceTimer = null;
+        let _alertsClockInterval = null;
+        let _alertsRefreshInterval = null;
+
+        // ========================================================
+        // Clock
+        // ========================================================
+
+        function updateClock() {
+            const el = document.getElementById('pageTimestamp');
+            if (!el) return;
+            const now = new Date();
+            el.textContent = now.toLocaleTimeString('fa-IR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        function startClock() {
+            if (_alertsClockInterval) clearInterval(_alertsClockInterval);
+            updateClock();
+            _alertsClockInterval = setInterval(updateClock, 1000);
+        }
+
+        // ========================================================
+        // Load Alerts
+        // ========================================================
+
+        async function loadAlerts() {
+            const listEl = document.getElementById('alertsList');
+            if (!listEl) return;
+
+            showAlertsSkeleton();
+
+            try {
+                const limit = parseInt(document.getElementById('alertsLimitSelect')?.value || 50);
+
+                // ✅ api.getAlerts() (موجود در api.js)
+                const data = await window.api?.getAlerts?.({ limit, resolved: null });
+
+                if (!data?.success) {
+                    throw new Error(data?.error || 'خطا در دریافت هشدارها');
+                }
+
+                _alertsAll = data.data || [];
+
+                updateAlertsStats();
+                updateAlertsTabCounts();
+                applyAlertsFilter();
+
+                // نمایش bulk actions اگه هشدار فعال هست
+                const bulk = document.getElementById('bulkActions');
+                if (bulk) {
+                    const hasUnresolved = _alertsAll.some(a => !a.resolved);
+                    bulk.style.display = hasUnresolved ? 'flex' : 'none';
+                }
+            } catch (error) {
+                console.error('❌ Alerts load error:', error);
+                showAlertsError(error.message);
             }
-            async init() {
-                console.log('🚀 Alerts initializing...');
-                await this.loadNav();
-                this.setupFilters();
-                await this.loadAlerts();
-                this.updateInterval = setInterval(() => this.loadAlerts(), 30000);
-                console.log('🚀 Alerts ready');
+        }
+
+        function showAlertsSkeleton() {
+            const listEl = document.getElementById('alertsList');
+            if (!listEl) return;
+
+            listEl.innerHTML = Array(3).fill('').map(() => `
+                <div class="alert-skeleton">
+                    <div class="sk-icon"></div>
+                    <div class="sk-body">
+                        <div class="sk-line long"></div>
+                        <div class="sk-line medium"></div>
+                        <div class="sk-line short"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========================================================
+        // Stats
+        // ========================================================
+
+        function updateAlertsStats() {
+            const total = _alertsAll.length;
+            const critical = _alertsAll.filter(a => a.level === 'CRITICAL' && !a.resolved).length;
+            const warning = _alertsAll.filter(a => a.level === 'WARNING' && !a.resolved).length;
+            const info = _alertsAll.filter(a => a.level === 'INFO' && !a.resolved).length;
+
+            animateAlertNumber('statTotal', total);
+            animateAlertNumber('statCritical', critical);
+            animateAlertNumber('statWarning', warning);
+            animateAlertNumber('statInfo', info);
+        }
+
+        function animateAlertNumber(id, target) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            if (!target) {
+                el.textContent = '۰';
+                return;
             }
-            async loadNav() {
-                const container = document.getElementById('navContainer');
-                if (!container) return;
-                try {
-                    const res = await fetch('/nav.html');
-                    if (!res.ok) throw new Error('nav.html not found');
-                    const html = await res.text();
-                    container.innerHTML = html;
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach(old => {
-                        const ns = document.createElement('script');
-                        ns.textContent = old.textContent;
-                        old.parentNode.replaceChild(ns, old);
-                    });
-                } catch (err) { console.error('❌ Nav error:', err); }
+
+            const duration = 800;
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 4);
+                const current = Math.round(target * eased);
+
+                el.textContent = toPersian(current);
+
+                if (progress < 1) requestAnimationFrame(update);
             }
-            setupFilters() {
-                document.querySelectorAll('#filterContainer .filter-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        document.querySelectorAll('#filterContainer .filter-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.currentFilter = btn.dataset.filter;
-                        this.loadAlerts();
-                    });
+
+            requestAnimationFrame(update);
+        }
+
+        // ========================================================
+        // Tab Counts
+        // ========================================================
+
+        function updateAlertsTabCounts() {
+            setTabCount('tabCountAll', _alertsAll.length);
+            setTabCount('tabCountUnresolved', _alertsAll.filter(a => !a.resolved).length);
+            setTabCount('tabCountCritical', _alertsAll.filter(a => a.level === 'CRITICAL').length);
+            setTabCount('tabCountWarning', _alertsAll.filter(a => a.level === 'WARNING').length);
+            setTabCount('tabCountInfo', _alertsAll.filter(a => a.level === 'INFO').length);
+            setTabCount('tabCountResolved', _alertsAll.filter(a => a.resolved).length);
+        }
+
+        function setTabCount(id, count) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = toPersian(count);
+        }
+
+        // ========================================================
+        // Filter
+        // ========================================================
+
+        function applyAlertsFilter() {
+            const search = (document.getElementById('alertsSearch')?.value || '').toLowerCase().trim();
+            const filter = _alertsCurrentFilter;
+
+            _alertsFiltered = _alertsAll.filter(alert => {
+                // فیلتر بر اساس tab
+                if (filter === 'unresolved' && alert.resolved) return false;
+                if (filter === 'resolved' && !alert.resolved) return false;
+                if (filter === 'critical' && alert.level !== 'CRITICAL') return false;
+                if (filter === 'warning' && alert.level !== 'WARNING') return false;
+                if (filter === 'info' && alert.level !== 'INFO') return false;
+
+                // جستجو
+                if (search) {
+                    const msg = (alert.message || '').toLowerCase();
+                    const source = (alert.source || '').toLowerCase();
+                    if (!msg.includes(search) && !source.includes(search)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // مرتب‌سازی: حل‌نشده اول، جدیدترین اول
+            _alertsFiltered.sort((a, b) => {
+                if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
+                return new Date(b.timestamp) - new Date(a.timestamp);
+            });
+
+            updateFilteredCounter(_alertsFiltered.length);
+            renderAlerts();
+        }
+
+        function updateFilteredCounter(count) {
+            const el = document.getElementById('filteredCounter');
+            if (el) {
+                const span = el.querySelector('span');
+                if (span) span.textContent = `${toPersian(count)} نمایش`;
+            }
+        }
+
+        function debouncedFilterAlerts() {
+            if (_alertsDebounceTimer) clearTimeout(_alertsDebounceTimer);
+            _alertsDebounceTimer = setTimeout(applyAlertsFilter, 250);
+        }
+
+        // ========================================================
+        // Render Alerts
+        // ========================================================
+
+        function renderAlerts() {
+            const listEl = document.getElementById('alertsList');
+            if (!listEl) return;
+
+            if (_alertsFiltered.length === 0) {
+                showAlertsEmpty();
+                return;
+            }
+
+            const levelConfig = {
+                CRITICAL: { icon: '🚨', cls: 'critical', label: 'بحرانی' },
+                WARNING: { icon: '⚠️', cls: 'warning', label: 'هشدار' },
+                INFO: { icon: 'ℹ️', cls: 'info', label: 'اطلاعات' },
+            };
+
+            listEl.innerHTML = _alertsFiltered.map((alert, i) => {
+                const level = alert.level || 'INFO';
+                const cfg = levelConfig[level] || levelConfig.INFO;
+                const resolved = alert.resolved || false;
+
+                return `
+                    <div class="alert-card ${cfg.cls} ${resolved ? 'resolved' : ''}"
+                         style="animation-delay:${Math.min(i * 0.03, 0.4)}s;">
+                        <div class="ac-icon">${cfg.icon}</div>
+
+                        <div class="ac-body">
+                            <div class="ac-header">
+                                <div class="ac-title">${escapeAlertsHtml(alert.message || 'رویداد جدید')}</div>
+                                <span class="ac-level-badge">${cfg.label}</span>
+                            </div>
+
+                            ${alert.description ? `
+                                <div class="ac-description">${escapeAlertsHtml(alert.description)}</div>
+                            ` : ''}
+
+                            <div class="ac-meta">
+                                ${alert.source ? `
+                                    <span class="ac-meta-item">
+                                        <i class="fas fa-cube"></i>
+                                        <span>${escapeAlertsHtml(alert.source)}</span>
+                                    </span>
+                                ` : ''}
+                                <span class="ac-meta-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${formatTimeAgo(alert.timestamp) || '—'}</span>
+                                </span>
+                                ${resolved ? `
+                                    <span class="ac-meta-item">
+                                        <i class="fas fa-check-circle" style="color:var(--color-green);"></i>
+                                        <span>حل شده</span>
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div class="ac-actions">
+                            ${!resolved ? `
+                                <button class="ac-action-btn resolve" onclick="resolveAlertItem('${escapeAlertsAttr(alert.id)}')">
+                                    <i class="fas fa-check"></i>
+                                    <span>حل</span>
+                                </button>
+                            ` : ''}
+                            <button class="ac-action-btn danger" onclick="copyAlertItem('${escapeAlertsAttr(alert.id)}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showAlertsEmpty() {
+            const listEl = document.getElementById('alertsList');
+            if (!listEl) return;
+
+            const isFilterActive = _alertsCurrentFilter !== 'all' || (document.getElementById('alertsSearch')?.value || '').length > 0;
+
+            listEl.innerHTML = `
+                <div class="alerts-empty">
+                    <span class="empty-icon">${isFilterActive ? '🔍' : '✅'}</span>
+                    <div class="empty-title">
+                        ${isFilterActive ? 'هشداری یافت نشد' : 'همه چیز خوبه'}
+                    </div>
+                    <div class="empty-message">
+                        ${isFilterActive ? 'فیلتر یا جستجو را تغییر دهید' : 'هیچ هشدار فعالی وجود ندارد'}
+                    </div>
+                    ${isFilterActive ? `
+                        <button class="btn btn-outline btn-sm" onclick="resetAlertsFilters()">
+                            <i class="fas fa-times"></i>
+                            <span>پاک کردن فیلترها</span>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function showAlertsError(message) {
+            const listEl = document.getElementById('alertsList');
+            if (!listEl) return;
+
+            listEl.innerHTML = `
+                <div class="alerts-empty">
+                    <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
+                    <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
+                    <div class="empty-message">${escapeAlertsHtml(message || '')}</div>
+                    <button class="btn btn-primary btn-sm" onclick="loadAlerts()">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>تلاش مجدد</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        // ========================================================
+        // Actions
+        // ========================================================
+
+        async function resolveAlertItem(id) {
+            if (!id) return;
+            if (!confirm('این هشدار حل شود؟')) return;
+
+            try {
+                // ✅ api.resolveAlert() (موجود در api.js)
+                const result = await window.api?.resolveAlert?.(id);
+
+                if (!result?.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('❌ ' + (result?.error || 'خطا'), 'error');
+                    }
+                    return;
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast('✅ هشدار حل شد', 'success');
+                }
+
+                loadAlerts();
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast('❌ ' + error.message, 'error');
+                }
+            }
+        }
+
+        function copyAlertItem(id) {
+            const alert = _alertsAll.find(a => String(a.id) === String(id));
+            if (!alert) return;
+
+            const text = `[${alert.level}] ${alert.message}\n${alert.description || ''}\nمنبع: ${alert.source || '—'}\nزمان: ${formatDate(alert.timestamp)}`;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    if (typeof showToast === 'function') showToast('📋 کپی شد', 'success');
                 });
             }
-            async loadAlerts() {
-                const container = document.getElementById('alertsList');
-                const totalEl = document.getElementById('alertTotal');
-                try {
-                    let resolved = null;
-                    if (this.currentFilter === 'resolved') resolved = true;
-                    else if (this.currentFilter === 'unresolved') resolved = false;
-                    const data = await api.getAlerts({ limit: 50, resolved });
-                    if (data.success && data.data) {
-                        let alerts = data.data;
-                        if (['critical', 'warning', 'info'].includes(this.currentFilter)) {
-                            alerts = alerts.filter(a => a.level?.toLowerCase() === this.currentFilter);
-                        }
-                        totalEl.textContent = alerts.length;
-                        if (alerts.length === 0) {
-                            container.innerHTML = `<div class="no-alerts"><span class="icon">✅</span><p>هیچ هشداری یافت نشد</p><p style="font-size:0.8rem;margin-top:4px;">همه چیز خوب است!</p></div>`;
-                            return;
-                        }
-                        container.innerHTML = alerts.map(a => {
-                            const level = a.level?.toLowerCase() || 'info';
-                            const isResolved = a.resolved || false;
-                            const levelClass = isResolved ? 'resolved' : level;
-                            const icon = level === 'critical' ? '🚨' : level === 'warning' ? '⚠️' : 'ℹ️';
-                            return `
-                                <div class="alert-item ${levelClass}">
-                                    <span class="alert-icon">${icon}</span>
-                                    <div class="alert-content">
-                                        <div class="alert-title">${a.message || 'بدون پیام'}</div>
-                                        <div class="alert-meta"><span class="source">${a.source || 'system'}</span><span>•</span><span>${level.toUpperCase()}</span>${a.details ? `<span>• ${a.details}</span>` : ''}</div>
-                                    </div>
-                                    <span class="alert-time">${formatTimeAgo(a.timestamp)}</span>
-                                    ${isResolved ? '<span class="alert-resolved-badge">✅ حل شد</span>' : `<button class="alert-action" onclick="resolveAlert(${a.id})"><i class="fas fa-check-circle"></i></button>`}
-                                </div>
-                            `;
-                        }).join('');
+        }
+
+        async function resolveAllAlerts(level) {
+            const label = level === 'CRITICAL' ? 'بحرانی' : level === 'WARNING' ? 'هشدار' : 'همه';
+            if (!confirm(`حل همه هشدارهای ${label}؟`)) return;
+
+            try {
+                // ✅ api.resolveAllAlerts() (موجود در api.js)
+                const result = await window.api?.resolveAllAlerts?.(level);
+
+                if (!result?.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('❌ ' + (result?.error || 'خطا'), 'error');
                     }
-                } catch (err) {
-                    console.error('Alerts error:', err);
-                    container.innerHTML = `<div class="no-alerts"><span class="icon">❌</span><p style="color:var(--accent-red);">خطا در دریافت هشدارها</p></div>`;
+                    return;
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(`✅ همه هشدارهای ${label} حل شدند`, 'success');
+                }
+
+                loadAlerts();
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast('❌ ' + error.message, 'error');
                 }
             }
         }
 
-        async function resolveAlert(id) {
-            try {
-                const data = await api.resolveAlert(id);
-                if (data.success) {
-                    showToast('✅ هشدار بسته شد', 'success');
-                    if (window.alertsController) window.alertsController.loadAlerts();
+        function resetAlertsFilters() {
+            const search = document.getElementById('alertsSearch');
+            if (search) search.value = '';
+
+            // برگرد به تب فعال
+            const tabs = document.querySelectorAll('#alertsTabs .alerts-tab-btn');
+            tabs.forEach(t => t.classList.remove('active'));
+            const firstTab = document.querySelector('#alertsTabs .alerts-tab-btn[data-filter="unresolved"]');
+            if (firstTab) firstTab.classList.add('active');
+
+            _alertsCurrentFilter = 'unresolved';
+            applyAlertsFilter();
+        }
+
+        function refreshAlerts() {
+            if (typeof showToast === 'function') showToast('🔄 بروزرسانی...', 'info', 1500);
+            loadAlerts();
+        }
+
+        // ========================================================
+        // Tabs Setup
+        // ========================================================
+
+        function setupAlertsTabs() {
+            const tabs = document.querySelectorAll('#alertsTabs .alerts-tab-btn');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    _alertsCurrentFilter = tab.dataset.filter || 'unresolved';
+                    applyAlertsFilter();
+                });
+            });
+        }
+
+        // ========================================================
+        // Helpers
+        // ========================================================
+
+        function toPersian(num) {
+            return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+        }
+
+        function escapeAlertsHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeAlertsAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // ========================================================
+        // Expose to window (for onclick)
+        // ========================================================
+
+        window.loadAlerts = loadAlerts;
+        window.refreshAlerts = refreshAlerts;
+        window.resolveAlertItem = resolveAlertItem;
+        window.copyAlertItem = copyAlertItem;
+        window.resolveAllAlerts = resolveAllAlerts;
+        window.resetAlertsFilters = resetAlertsFilters;
+        window.debouncedFilterAlerts = debouncedFilterAlerts;
+
+        // ========================================================
+        // Init
+        // ========================================================
+
+        function init() {
+            console.log('🔔 Alerts page initializing...');
+
+            startClock();
+            setupAlertsTabs();
+            loadAlerts();
+
+            // auto-refresh هر ۳۰ ثانیه
+            if (_alertsRefreshInterval) clearInterval(_alertsRefreshInterval);
+            _alertsRefreshInterval = setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    loadAlerts();
                 }
-            } catch (err) { showToast('❌ خطا در بستن هشدار', 'error'); }
+            }, 30000);
+
+            console.log('✅ Alerts page ready');
         }
 
-        async function resolveAllAlerts() {
-            if (!confirm('⚠️ آیا از حل کردن همه هشدارها اطمینان دارید؟')) return;
-            try {
-                const data = await api.resolveAllAlerts();
-                if (data.success) {
-                    showToast(`✅ ${data.count || 0} هشدار حل شد`, 'success');
-                    if (window.alertsController) window.alertsController.loadAlerts();
-                }
-            } catch (err) { showToast('❌ خطا در حل کردن هشدارها', 'error'); }
-        }
-
-        function loadAlerts() {
-            if (window.alertsController) window.alertsController.loadAlerts();
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            window.alertsController = new AlertsController();
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            if (_alertsClockInterval) clearInterval(_alertsClockInterval);
+            if (_alertsRefreshInterval) clearInterval(_alertsRefreshInterval);
+            if (_alertsDebounceTimer) clearTimeout(_alertsDebounceTimer);
         });
+
+        // Start
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
     </script>
+
 </body>
 </html>
