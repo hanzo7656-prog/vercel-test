@@ -1,68 +1,61 @@
 <!-- ============================================================
-     history.html - تب تاریخچه پیش‌بینی‌ها
-     نسخه ۲.۰ - با CSS مشترک analyzer-animations.css
+     analyzer_tabs/history.html — تب تاریخچه پیش‌بینی‌ها
+     نسخه ۳.۰ — با init/cleanup استاندارد
      ============================================================ -->
 
 <div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-history"></i>
-        <span>تاریخچه پیش‌بینی‌ها</span>
-        <span class="analyzer-counter-badge" id="historyCount" style="margin-right:auto;">
-            <i class="fas fa-database"></i>
-            <span>۰</span>
-        </span>
-        <button class="btn btn-xs btn-outline" onclick="refreshHistory()" 
-                style="padding:3px 10px;font-size:0.65rem;">
-            <i class="fas fa-sync-alt"></i>
-        </button>
-    </div>
-
-    <!-- ============================================================
-         TOOLBAR
-         ============================================================ -->
-    <div class="analyzer-toolbar">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
-            <!-- Search -->
-            <div class="analyzer-search">
-                <input type="text" id="historySearch" 
-                       placeholder="جستجو در ارزها..." 
-                       oninput="debouncedFilterHistory()">
-                <span class="search-icon">🔍</span>
-            </div>
-            
-            <!-- Signal Filter -->
-            <select id="historyFilter" class="analyzer-filter" onchange="filterHistory()">
-                <option value="all">🔄 همه سیگنال‌ها</option>
-                <option value="BUY">🟢 خرید</option>
-                <option value="SELL">🔴 فروش</option>
-                <option value="NEUTRAL">🟡 خنثی</option>
-            </select>
-            
-            <!-- Confidence Filter -->
-            <select id="confidenceFilter" class="analyzer-filter" onchange="filterHistory()">
-                <option value="all">🎯 همه سطوح</option>
-                <option value="high">🔥 اطمینان بالا (+۷۰٪)</option>
-                <option value="medium">⚡ اطمینان متوسط (۴۰-۷۰٪)</option>
-                <option value="low">💤 اطمینان پایین (-۴۰٪)</option>
-            </select>
+    <!-- Header -->
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-history"></i>
+            <span>تاریخچه پیش‌بینی‌ها</span>
         </div>
-        
-        <!-- Export CSV -->
-        <button class="btn btn-xs btn-outline" onclick="exportHistoryCSV()" 
-                style="padding:3px 12px;font-size:0.65rem;">
+        <div class="header-actions">
+            <span class="counter-badge" id="historyCount">
+                <i class="fas fa-database"></i>
+                <span>۰</span>
+            </span>
+            <button class="btn btn-xs btn-outline" onclick="refreshHistory()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="history-toolbar">
+        <div class="history-search">
+            <input
+                type="text"
+                id="historySearch"
+                class="form-input"
+                placeholder="جستجو در ارزها..."
+                oninput="debouncedFilterHistory()">
+            <span class="search-icon">🔍</span>
+        </div>
+
+        <select id="historyFilter" class="form-select" onchange="filterHistory()">
+            <option value="all">🔄 همه سیگنال‌ها</option>
+            <option value="BUY">🟢 خرید</option>
+            <option value="SELL">🔴 فروش</option>
+            <option value="NEUTRAL">🟡 خنثی</option>
+        </select>
+
+        <select id="confidenceFilter" class="form-select" onchange="filterHistory()">
+            <option value="all">🎯 همه سطوح</option>
+            <option value="high">🔥 اطمینان بالا (+۷۰٪)</option>
+            <option value="medium">⚡ اطمینان متوسط (۴۰-۷۰٪)</option>
+            <option value="low">💤 اطمینان پایین (-۴۰٪)</option>
+        </select>
+
+        <button class="btn btn-xs btn-outline" onclick="exportHistoryCSV()">
             <i class="fas fa-file-csv"></i>
-            <span style="margin-right:4px;">CSV</span>
+            <span>CSV</span>
         </button>
     </div>
 
-    <!-- ============================================================
-         TABLE
-         ============================================================ -->
-    <div class="analyzer-table-wrapper">
-        <table class="analyzer-table">
+    <!-- Table -->
+    <div class="table-wrap">
+        <table class="table-modern">
             <thead>
                 <tr>
                     <th>ارز</th>
@@ -74,30 +67,29 @@
                 </tr>
             </thead>
             <tbody id="historyBody">
-                <!-- Skeleton Loading -->
                 <tr class="skeleton-row">
-                    <td><div class="analyzer-skeleton-line" style="width:80%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:60%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:70%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:50%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:40%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:40%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
                 </tr>
                 <tr class="skeleton-row">
-                    <td><div class="analyzer-skeleton-line" style="width:70%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:50%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:60%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:40%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:50%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:40%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
                 </tr>
                 <tr class="skeleton-row">
-                    <td><div class="analyzer-skeleton-line" style="width:75%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:65%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:55%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:45%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:45%;"></div></td>
-                    <td><div class="analyzer-skeleton-line" style="width:75%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:75%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:65%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:55%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:45%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:45%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:75%;"></div></td>
                 </tr>
             </tbody>
         </table>
@@ -105,146 +97,263 @@
 </div>
 
 <style>
-    /* ============================================================
-       استایل اختصاصی جدول (تکمیلی analyzer-animations.css)
-       ============================================================ */
-    .analyzer-table .skeleton-row td {
-        padding: 14px;
-    }
-    
-    .analyzer-table .skeleton-row .analyzer-skeleton-line {
-        height: 10px;
-        border-radius: 4px;
-        background: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.03) 0%,
-            rgba(255, 255, 255, 0.08) 50%,
-            rgba(255, 255, 255, 0.03) 100%
-        );
-        background-size: 200% 100%;
-        animation: skeletonShimmer 1.5s linear infinite;
-    }
-    
-    .analyzer-table .coin-cell {
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .analyzer-table .coin-cell .coin-icon {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        object-fit: contain;
-        background: rgba(255, 255, 255, 0.05);
-    }
-    
-    .analyzer-table .coin-cell .coin-symbol {
-        font-weight: 700;
-        font-family: 'Courier New', monospace;
-        font-size: 0.8rem;
-    }
-    
-    .analyzer-table .coin-cell .coin-name {
-        font-size: 0.65rem;
-        color: var(--text-muted);
-    }
+/* ============================================================
+   History Tab Styles
+   ============================================================ */
+
+.history-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.history-search {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
+}
+
+.history-search .form-input {
+    padding-right: 36px;
+}
+
+.history-search .search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+
+.history-toolbar .counter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+/* Coin Cell */
+.table-modern .coin-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.table-modern .coin-cell .coin-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.table-modern .coin-cell .coin-symbol {
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--text-primary);
+}
+
+.table-modern .coin-cell .coin-name {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    display: block;
+}
+
+/* Signal Cell */
+.table-modern .signal-cell {
+    font-weight: var(--fw-semibold);
+}
+
+.table-modern .signal-cell.buy { color: var(--color-green); }
+.table-modern .signal-cell.sell { color: var(--color-red); }
+.table-modern .signal-cell.neutral { color: var(--color-orange); }
+
+/* Price Cell */
+.table-modern .price-cell {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+}
+
+/* Confidence */
+.confidence-mini {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.confidence-mini .cm-value {
+    font-weight: var(--fw-semibold);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    min-width: 40px;
+}
+
+.confidence-mini .cm-value.high { color: var(--color-green); }
+.confidence-mini .cm-value.medium { color: var(--color-orange); }
+.confidence-mini .cm-value.low { color: var(--color-red); }
+
+.confidence-mini .cm-bar {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.confidence-mini .cm-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+    transition: width 0.5s var(--ease-out);
+}
+
+/* Source Badge */
+.source-badge {
+    font-size: var(--fs-xs);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--color-purple);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    font-family: var(--font-mono);
+    font-weight: var(--fw-medium);
+}
+
+/* Time Cell */
+.table-modern .time-cell {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* Skeleton Row */
+.table-modern .skeleton-row td {
+    padding: var(--space-3) var(--space-4);
+}
+
+.skeleton-sm {
+    height: 12px;
+}
 </style>
 
 <script>
 // ============================================================
-// HISTORY TAB v2.0
+// HISTORY TAB v3.0
 // ============================================================
 
-// ===== State =====
-let historyData = [];
-let filteredHistory = [];
-let historyInterval = null;
-let debounceHistoryTimer = null;
-let isHistoryLoaded = false;
+let _historyData = [];
+let _historyFiltered = [];
+let _historyInterval = null;
+let _historyDebounceTimer = null;
+let _historyInitialized = false;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// Init
 // ============================================================
 
 window.init_history = function() {
     console.log('📋 History tab initializing...');
-    if (isHistoryLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
-    isHistoryLoaded = true;
-    loadHistory();
-    
-    // auto-refresh هر ۶۰ ثانیه
-    if (historyInterval) clearInterval(historyInterval);
-    historyInterval = setInterval(loadHistory, 60000);
-};
 
-window.cleanup_history = function() {
-    console.log('🧹 History tab cleaning up...');
-    isHistoryLoaded = false;
-    
-    if (historyInterval) {
-        clearInterval(historyInterval);
-        historyInterval = null;
-    }
-    if (debounceHistoryTimer) {
-        clearTimeout(debounceHistoryTimer);
-        debounceHistoryTimer = null;
-    }
+    if (_historyInitialized) return;
+    _historyInitialized = true;
+
+    loadHistory();
+
+    if (_historyInterval) clearInterval(_historyInterval);
+    _historyInterval = setInterval(() => {
+        const activeTab = document.querySelector('#analyzerTabs .analyzer-tab-btn.active');
+        if (activeTab?.dataset.tab === 'history') {
+            loadHistory();
+        }
+    }, 60000);
 };
 
 // ============================================================
-// ۲. LOAD HISTORY
+// Cleanup
+// ============================================================
+
+window.cleanup_history = function() {
+    console.log('🧹 History tab cleaning up...');
+
+    if (_historyInterval) {
+        clearInterval(_historyInterval);
+        _historyInterval = null;
+    }
+    if (_historyDebounceTimer) {
+        clearTimeout(_historyDebounceTimer);
+        _historyDebounceTimer = null;
+    }
+
+    _historyInitialized = false;
+};
+
+// ============================================================
+// Load History
 // ============================================================
 
 async function loadHistory() {
     const tbody = document.getElementById('historyBody');
-    
+    if (!tbody) return;
+
     try {
-        const data = await api.getPredictionHistory(100);
-        
-        if (!data || !data.success) {
+        // ✅ api.getPredictionHistory() (موجود در api.js)
+        const data = await window.api?.getPredictionHistory?.(100);
+
+        if (!data?.success) {
             throw new Error(data?.error || 'خطا در دریافت تاریخچه');
         }
-        
+
         if (!data.data || data.data.length === 0) {
-            showEmptyState(tbody);
+            showHistoryEmpty(tbody);
             updateHistoryCount(0);
             return;
         }
-        
-        historyData = data.data;
-        filteredHistory = [...historyData];
-        
-        updateHistoryCount(historyData.length);
+
+        _historyData = data.data;
+        _historyFiltered = [..._historyData];
+
+        updateHistoryCount(_historyData.length);
         renderHistory();
-        
+
     } catch (error) {
         console.error('❌ History error:', error);
-        
+
         let errorMsg = 'خطا در ارتباط با سرور';
         if (error.message) {
             if (error.message.includes('401')) errorMsg = 'لطفاً دوباره وارد شوید';
             else if (error.message.includes('Failed to fetch')) errorMsg = 'اتصال به سرور برقرار نیست';
-            else if (error.message) errorMsg = error.message;
+            else errorMsg = error.message;
         }
-        
-        showErrorState(tbody, errorMsg);
+
+        showHistoryError(tbody, errorMsg);
     }
 }
 
 // ============================================================
-// ۳. EMPTY / ERROR STATE
+// Empty / Error States
 // ============================================================
 
-function showEmptyState(tbody) {
+function showHistoryEmpty(tbody) {
     tbody.innerHTML = `
         <tr>
             <td colspan="6" style="padding:0;">
-                <div class="analyzer-empty" style="padding:40px 20px;">
+                <div class="empty-state" style="padding:var(--space-8) var(--space-5);">
                     <span class="empty-icon">📭</span>
                     <div class="empty-title">هیچ پیش‌بینی ذخیره‌ای نیست</div>
                     <div class="empty-message">با انجام پیش‌بینی، تاریخچه اینجا نمایش داده می‌شود</div>
@@ -254,14 +363,14 @@ function showEmptyState(tbody) {
     `;
 }
 
-function showErrorState(tbody, message) {
+function showHistoryError(tbody, message) {
     tbody.innerHTML = `
         <tr>
             <td colspan="6" style="padding:0;">
-                <div class="analyzer-empty error" style="padding:40px 20px;">
+                <div class="empty-state error" style="padding:var(--space-8) var(--space-5);">
                     <span class="empty-icon">⚠️</span>
                     <div class="empty-title">خطا در بارگذاری</div>
-                    <div class="empty-message">${escapeHtml(message)}</div>
+                    <div class="empty-message">${escapeHistoryHtml(message)}</div>
                     <button class="empty-action" onclick="refreshHistory()">
                         <i class="fas fa-sync-alt"></i>
                         تلاش مجدد
@@ -273,17 +382,18 @@ function showErrorState(tbody, message) {
 }
 
 // ============================================================
-// ۴. RENDER HISTORY
+// Render History
 // ============================================================
 
 function renderHistory() {
     const tbody = document.getElementById('historyBody');
-    
-    if (filteredHistory.length === 0) {
+    if (!tbody) return;
+
+    if (_historyFiltered.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="padding:0;">
-                    <div class="analyzer-empty">
+                    <div class="empty-state" style="padding:var(--space-8) var(--space-5);">
                         <span class="empty-icon">🔍</span>
                         <div class="empty-title">نتیجه‌ای یافت نشد</div>
                         <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
@@ -293,38 +403,37 @@ function renderHistory() {
         `;
         return;
     }
-    
-    tbody.innerHTML = filteredHistory.map((item, i) => {
+
+    tbody.innerHTML = _historyFiltered.map((item, i) => {
         const signal = item.signal_type || 'NEUTRAL';
+
         const signalConfig = {
-            'BUY': { emoji: '🟢', label: 'خرید', cls: 'buy' },
-            'SELL': { emoji: '🔴', label: 'فروش', cls: 'sell' },
-            'NEUTRAL': { emoji: '🟡', label: 'خنثی', cls: 'neutral' }
+            BUY: { emoji: '🟢', label: 'خرید', cls: 'buy' },
+            SELL: { emoji: '🔴', label: 'فروش', cls: 'sell' },
+            NEUTRAL: { emoji: '🟡', label: 'خنثی', cls: 'neutral' },
         };
-        
-        const cfg = signalConfig[signal] || signalConfig['NEUTRAL'];
+
+        const cfg = signalConfig[signal] || signalConfig.NEUTRAL;
         const confidence = parseInt(item.confidence) || 0;
-        const coinName = escapeHtml(item.coin_name || item.coin || '—');
-        const coinSymbol = escapeHtml((item.coin || '').toUpperCase().slice(0, 6) || '—');
+        const coinName = escapeHistoryHtml(item.coin_name || item.coin || '—');
+        const coinSymbol = escapeHistoryHtml((item.coin || '').toUpperCase().slice(0, 6) || '—');
         const coinIcon = item.coin_icon || '';
         const price = item.current_price || 0;
         const modelMode = item.model_mode || 'DEMO';
-        
-        // رنگ confidence
-        let confColor = 'orange';
-        if (confidence >= 70) confColor = 'green';
-        else if (confidence < 40) confColor = 'red';
-        
-        // تأخیر برای stagger
-        const delay = Math.min(i * 0.02, 0.4);
-        
+
+        let confClass = 'low';
+        if (confidence >= 70) confClass = 'high';
+        else if (confidence >= 40) confClass = 'medium';
+
         return `
-            <tr style="animation: analyzeStaggerIn 0.3s ease backwards; animation-delay: ${delay}s;">
-                <td class="coin-cell">
-                    ${coinIcon ? `<img src="${escapeHtml(coinIcon)}" class="coin-icon" onerror="this.style.display='none'">` : ''}
-                    <div>
-                        <div class="coin-symbol">${coinSymbol}</div>
-                        <div class="coin-name">${coinName}</div>
+            <tr style="animation: slideUp 0.3s var(--ease-out) backwards; animation-delay:${Math.min(i * 0.02, 0.4)}s;">
+                <td>
+                    <div class="coin-cell">
+                        ${coinIcon ? `<img src="${escapeHistoryAttr(coinIcon)}" class="coin-icon" onerror="this.style.display='none'" alt="${coinSymbol}">` : ''}
+                        <div>
+                            <div class="coin-symbol">${coinSymbol}</div>
+                            <span class="coin-name">${coinName}</span>
+                        </div>
                     </div>
                 </td>
                 <td class="signal-cell ${cfg.cls}">
@@ -334,15 +443,15 @@ function renderHistory() {
                     ${formatCurrency(price)}
                 </td>
                 <td>
-                    <div class="confidence-mini-bar">
-                        <span style="color: var(--accent-${confColor}); font-weight: 600;">${confidence}%</span>
-                        <span class="mini-fill" style="--fill: ${confidence}%;"></span>
+                    <div class="confidence-mini">
+                        <span class="cm-value ${confClass}">${confidence}%</span>
+                        <span class="cm-bar">
+                            <span class="cm-fill" style="width:${confidence}%"></span>
+                        </span>
                     </div>
                 </td>
                 <td>
-                    <span class="source-badge" style="font-size:0.55rem;">
-                        ${escapeHtml(modelMode)}
-                    </span>
+                    <span class="source-badge">${escapeHistoryHtml(modelMode)}</span>
                 </td>
                 <td class="time-cell">
                     ${formatDate(item.timestamp) || '—'}
@@ -353,43 +462,40 @@ function renderHistory() {
 }
 
 // ============================================================
-// ۵. FILTER
+// Filter
 // ============================================================
 
 function filterHistory() {
-    const search = (document.getElementById('historySearch').value || '').toLowerCase().trim();
-    const signalFilter = document.getElementById('historyFilter').value;
-    const confFilter = document.getElementById('confidenceFilter').value;
-    
-    filteredHistory = historyData.filter(item => {
-        // جستجو
+    const search = (document.getElementById('historySearch')?.value || '').toLowerCase().trim();
+    const signalFilter = document.getElementById('historyFilter')?.value || 'all';
+    const confFilter = document.getElementById('confidenceFilter')?.value || 'all';
+
+    _historyFiltered = _historyData.filter(item => {
         const coin = (item.coin || '').toLowerCase();
         const coinName = (item.coin_name || '').toLowerCase();
         const matchSearch = !search || coin.includes(search) || coinName.includes(search);
-        
-        // فیلتر سیگنال
+
         const matchSignal = signalFilter === 'all' || item.signal_type === signalFilter;
-        
-        // فیلتر اطمینان
+
         const conf = parseInt(item.confidence) || 0;
         let matchConf = true;
         if (confFilter === 'high') matchConf = conf >= 70;
         else if (confFilter === 'medium') matchConf = conf >= 40 && conf < 70;
         else if (confFilter === 'low') matchConf = conf < 40;
-        
+
         return matchSearch && matchSignal && matchConf;
     });
-    
+
     renderHistory();
 }
 
 function debouncedFilterHistory() {
-    if (debounceHistoryTimer) clearTimeout(debounceHistoryTimer);
-    debounceHistoryTimer = setTimeout(filterHistory, 250);
+    if (_historyDebounceTimer) clearTimeout(_historyDebounceTimer);
+    _historyDebounceTimer = setTimeout(filterHistory, 250);
 }
 
 // ============================================================
-// ۶. COUNT
+// Count
 // ============================================================
 
 function updateHistoryCount(count) {
@@ -401,40 +507,37 @@ function updateHistoryCount(count) {
 }
 
 // ============================================================
-// ۷. EXPORT CSV
+// Export CSV
 // ============================================================
 
 function exportHistoryCSV() {
-    if (filteredHistory.length === 0) {
+    if (_historyFiltered.length === 0) {
         if (typeof showToast === 'function') {
             showToast('⚠️ هیچ داده‌ای برای خروجی وجود ندارد', 'warning');
         }
         return;
     }
-    
+
     try {
         const headers = ['ارز', 'نماد', 'سیگنال', 'قیمت', 'اطمینان', 'مدل', 'زمان'];
-        const rows = filteredHistory.map(item => [
+
+        const rows = _historyFiltered.map(item => [
             item.coin_name || item.coin || '',
             (item.coin || '').toUpperCase(),
             item.signal_type || 'NEUTRAL',
             item.current_price || 0,
             (item.confidence || 0) + '%',
             item.model_mode || 'DEMO',
-            formatDate(item.timestamp) || ''
+            formatDate(item.timestamp) || '',
         ]);
-        
-        // ساخت CSV با escape
+
         const csvContent = [
             headers.map(escapeCsv).join(','),
-            ...rows.map(row => row.map(escapeCsv).join(','))
+            ...rows.map(row => row.map(escapeCsv).join(',')),
         ].join('\n');
-        
-        // BOM برای پشتیبانی از فارسی
-        const blob = new Blob(['\ufeff' + csvContent], { 
-            type: 'text/csv;charset=utf-8;' 
-        });
-        
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `predictions_history_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -442,7 +545,7 @@ function exportHistoryCSV() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
-        
+
         if (typeof showToast === 'function') {
             showToast('📥 دانلود CSV شروع شد', 'success');
         }
@@ -463,21 +566,19 @@ function escapeCsv(value) {
 }
 
 // ============================================================
-// ۸. REFRESH
+// Refresh
 // ============================================================
 
 function refreshHistory() {
-    if (typeof showToast === 'function') {
-        showToast('🔄 بروزرسانی...', 'info');
-    }
+    if (typeof showToast === 'function') showToast('🔄 بروزرسانی...', 'info', 1500);
     loadHistory();
 }
 
 // ============================================================
-// ۹. UTILS
+// Helpers
 // ============================================================
 
-function escapeHtml(str) {
+function escapeHistoryHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -487,5 +588,8 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-console.log('✅ History tab v2.0 loaded');
+function escapeHistoryAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 </script>
