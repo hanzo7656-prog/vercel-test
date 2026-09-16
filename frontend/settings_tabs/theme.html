@@ -1,6 +1,6 @@
 <!-- ============================================================
-     settings_tabs/theme.html - تب ظاهر
-     نسخه ۱.۰ - تنظیمات تم
+     settings_tabs/theme.html — تب ظاهر
+     نسخه ۲.۰ — با init/cleanup استاندارد
      ============================================================ -->
 
 <div class="settings-tab-content">
@@ -17,7 +17,7 @@
                 <i class="fas fa-moon"></i>
                 <span>تم اصلی</span>
             </span>
-            <select id="theme_mode_select">
+            <select id="theme_mode_select" class="form-select">
                 <option value="dark">🌙 تیره</option>
                 <option value="light">☀️ روشن</option>
                 <option value="auto">🔄 خودکار (سیستم)</option>
@@ -31,7 +31,6 @@
             </span>
             <div class="color-swatches" id="theme_accent_swatches">
                 <div class="color-swatch" data-color="cyan" style="background: #00d4ff;" title="فیروزه‌ای"></div>
-                <div class="color-swatch" data-color="blue" style="background: #3b82f6;" title="آبی"></div>
                 <div class="color-swatch" data-color="purple" style="background: #8b5cf6;" title="بنفش"></div>
                 <div class="color-swatch" data-color="green" style="background: #22d3ee;" title="سبز"></div>
                 <div class="color-swatch" data-color="orange" style="background: #f59e0b;" title="نارنجی"></div>
@@ -52,7 +51,7 @@
                 <i class="fas fa-font"></i>
                 <span>فونت</span>
             </span>
-            <select id="theme_font_select">
+            <select id="theme_font_select" class="form-select">
                 <option value="Vazir">Vazir</option>
                 <option value="system">System</option>
                 <option value="mono">Monospace</option>
@@ -65,14 +64,13 @@
                 <span>اندازه فونت</span>
             </span>
             <div class="interval-slider-wrapper">
-                <input type="range" 
-                       id="theme_font_size" 
+                <input type="range"
+                       id="theme_font_size"
                        class="interval-slider"
-                       min="12" 
-                       max="20" 
-                       step="1" 
-                       value="16"
-                       oninput="updateFontSizePreview(this.value)">
+                       min="12"
+                       max="20"
+                       step="1"
+                       value="16">
                 <span class="interval-value" id="theme_font_size_value">16px</span>
             </div>
         </div>
@@ -85,38 +83,31 @@
             <span>پیش‌نمایش</span>
         </div>
 
-        <div style="padding: 20px; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-            <h3 style="color: var(--accent-cyan); margin: 0 0 10px 0; font-size: 1.1rem;">
+        <div class="theme-preview">
+            <h3 class="theme-preview-title">
                 <i class="fas fa-rocket"></i>
                 این یک پیش‌نمایش است
             </h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 12px 0;">
+            <p class="theme-preview-text">
                 این متن برای نمایش اندازه فونت و رنگ اصلی استفاده می‌شود.
             </p>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="settings-btn settings-btn-primary">
-                    <i class="fas fa-check"></i>
-                    دکمه اولیه
-                </button>
-                <button class="settings-btn settings-btn-secondary">
-                    دکمه ثانویه
-                </button>
-                <button class="settings-btn settings-btn-danger">
-                    دکمه خطر
-                </button>
+            <div class="theme-preview-actions">
+                <button class="btn btn-primary btn-sm">دکمه اولیه</button>
+                <button class="btn btn-outline btn-sm">دکمه ثانویه</button>
+                <button class="btn btn-danger btn-sm">دکمه خطر</button>
             </div>
         </div>
     </div>
 
     <!-- ===== Actions ===== -->
     <div class="settings-actions">
-        <button class="settings-btn settings-btn-primary" onclick="saveThemeSettings()">
+        <button class="btn btn-primary btn-sm" onclick="saveThemeSettings()">
             <i class="fas fa-save"></i>
-            ذخیره
+            <span>ذخیره</span>
         </button>
-        <button class="settings-btn settings-btn-secondary" onclick="resetThemeSettings()">
+        <button class="btn btn-outline btn-sm" onclick="resetThemeSettings()">
             <i class="fas fa-undo"></i>
-            بازنشانی
+            <span>بازنشانی</span>
         </button>
     </div>
 
@@ -124,126 +115,85 @@
 
 <script>
 // ============================================================
-// THEME TAB CONTROLLER
+// SETTINGS THEME TAB
 // ============================================================
 
-function init_settings_theme() {
-    console.log('🎨 Initializing theme tab...');
-    loadThemeSettings();
-    setupThemeEvents();
-}
-
-function cleanup_settings_theme() {
-    console.log('🧹 Cleaning up theme tab...');
-    // پاک کردن listenerها
-    const swatches = document.querySelectorAll('#theme_accent_swatches .color-swatch');
-    swatches.forEach(s => {
-        s.replaceWith(s.cloneNode(true));
-    });
-}
+let _themeSwatchHandler = null;
 
 // ============================================================
-// LOAD
+// Load
 // ============================================================
 
 function loadThemeSettings() {
     try {
-        const settings = appSettings.get('theme') || {};
-        
+        const settings = window.appSettings?.get('theme') || {};
+
         // Mode
         const modeSelect = document.getElementById('theme_mode_select');
         if (modeSelect) modeSelect.value = settings.mode || 'dark';
-        
+
         // Accent
         const accent = settings.accent || 'cyan';
         document.querySelectorAll('#theme_accent_swatches .color-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.color === accent);
         });
-        
+
         // Font
         const fontSelect = document.getElementById('theme_font_select');
         if (fontSelect) fontSelect.value = settings.font || 'Vazir';
-        
+
         // Font size
         const fontSize = settings.fontSize || 16;
         const sizeInput = document.getElementById('theme_font_size');
         const sizeValue = document.getElementById('theme_font_size_value');
         if (sizeInput) sizeInput.value = fontSize;
         if (sizeValue) sizeValue.textContent = fontSize + 'px';
-        
+
         console.log('✅ Theme settings loaded');
     } catch (err) {
-        console.error('❌ Failed to load theme settings:', err);
+        console.error('❌ Load theme settings error:', err);
     }
 }
 
 // ============================================================
-// EVENTS
+// Events
 // ============================================================
 
 function setupThemeEvents() {
-    // Mode
+    // Mode change
     const modeSelect = document.getElementById('theme_mode_select');
     if (modeSelect) {
         modeSelect.addEventListener('change', (e) => {
             const mode = e.target.value;
-            if (window.app) {
-                window.app.applyTheme(mode);
-            }
+            // ✅ themeManager.setMode() → apply + save در localStorage
+            window.themeManager?.setMode(mode);
         });
     }
-    
+
     // Accent swatches
     const swatches = document.querySelectorAll('#theme_accent_swatches .color-swatch');
-    swatches.forEach(swatch => {
-        swatch.addEventListener('click', () => {
-            swatches.forEach(s => s.classList.remove('active'));
-            swatch.classList.add('active');
-            
-            const color = swatch.dataset.color;
-            applyAccentColor(color);
-        });
-    });
-    
+    _themeSwatchHandler = function() {
+        swatches.forEach(s => s.classList.remove('active'));
+        this.classList.add('active');
+        const color = this.dataset.color;
+        // ✅ themeManager.setAccent()
+        window.themeManager?.setAccent(color);
+    };
+    swatches.forEach(s => s.addEventListener('click', _themeSwatchHandler));
+
     // Font size
     const sizeInput = document.getElementById('theme_font_size');
     if (sizeInput) {
         sizeInput.addEventListener('input', (e) => {
-            updateFontSizePreview(e.target.value);
+            const val = e.target.value;
+            const valueEl = document.getElementById('theme_font_size_value');
+            if (valueEl) valueEl.textContent = val + 'px';
         });
     }
 }
 
 // ============================================================
-// PREVIEW
-// ============================================================
-
-function updateFontSizePreview(value) {
-    const valueEl = document.getElementById('theme_font_size_value');
-    if (valueEl) valueEl.textContent = value + 'px';
-    
-    // پیش‌نمایش live
-    document.documentElement.style.setProperty('--font-size-preview', value + 'px');
-}
-
-function applyAccentColor(color) {
-    const colors = {
-        cyan: '#00d4ff',
-        blue: '#3b82f6',
-        purple: '#8b5cf6',
-        green: '#22d3ee',
-        orange: '#f59e0b',
-        pink: '#ec4899',
-    };
-    
-    const hex = colors[color];
-    if (hex) {
-        document.documentElement.style.setProperty('--accent-cyan', hex);
-    }
-}
-
-// ============================================================
-// SAVE
+// Save
 // ============================================================
 
 async function saveThemeSettings() {
@@ -251,62 +201,122 @@ async function saveThemeSettings() {
         const mode = document.getElementById('theme_mode_select')?.value || 'dark';
         const font = document.getElementById('theme_font_select')?.value || 'Vazir';
         const fontSize = parseInt(document.getElementById('theme_font_size')?.value) || 16;
-        
+
         const activeSwatch = document.querySelector('#theme_accent_swatches .color-swatch.active');
         const accent = activeSwatch ? activeSwatch.dataset.color : 'cyan';
-        
-        const newSettings = {
-            mode,
-            accent,
-            font,
-            fontSize,
-        };
-        
-        await appSettings.save('theme', newSettings);
-        
-        // اعمال
-        if (window.app) {
-            window.app.applyTheme(mode);
+
+        const newSettings = { mode, accent, font, fontSize };
+
+        // ✅ appSettings.save('theme') → api.saveSettingsCategory('theme')
+        await window.appSettings.save('theme', newSettings);
+
+        // Apply
+        window.themeManager?.setMode(mode);
+        window.themeManager?.setAccent(accent);
+
+        if (typeof showToast === 'function') {
+            showToast('✅ تنظیمات ذخیره شد', 'success');
         }
-        
-        window.showToast?.('✅ تنظیمات ذخیره شد', 'success');
-        console.log('✅ Theme settings saved:', newSettings);
     } catch (err) {
-        console.error('❌ Failed to save theme settings:', err);
-        window.showToast?.('❌ خطا در ذخیره', 'error');
+        console.error('❌ Save theme error:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ خطا در ذخیره', 'error');
+        }
     }
 }
 
 // ============================================================
-// RESET
+// Reset
 // ============================================================
 
 async function resetThemeSettings() {
-    if (!window.confirm) return;
-    
-    const confirmed = await window.confirm(
+    const confirmed = await confirmDialog(
         'بازنشانی تنظیمات',
-        'آیا مطمئن هستید؟',
-        'بله، بازنشانی',
-        'انصراف'
+        'آیا مطمئن هستید؟'
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
-        appSettings.reset('theme');
+        // ✅ appSettings.reset('theme') → api.resetSettingsCategory('theme')
+        await window.appSettings.reset('theme');
         loadThemeSettings();
-        
-        // اعمال default
-        if (window.app) {
-            window.app.applyTheme('dark');
+        window.themeManager?.setMode('dark');
+        window.themeManager?.setAccent('cyan');
+
+        if (typeof showToast === 'function') {
+            showToast('✅ بازنشانی شد', 'success');
         }
-        
-        window.showToast?.('✅ بازنشانی شد', 'success');
     } catch (err) {
-        console.error('❌ Failed to reset theme settings:', err);
+        console.error('❌ Reset theme error:', err);
     }
 }
 
-console.log('✅ Theme tab script loaded');
+// ============================================================
+// Helpers
+// ============================================================
+
+async function confirmDialog(title, text) {
+    if (typeof window.confirm === 'function') {
+        try {
+            return await window.confirm(title, text, 'بله', 'انصراف');
+        } catch (e) {
+            return window.confirm(`${title}\n${text}`);
+        }
+    }
+    return window.confirm(`${title}\n${text}`);
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
+window.init_settings_theme = function() {
+    console.log('🎨 Settings theme tab initializing...');
+    loadThemeSettings();
+    setupThemeEvents();
+};
+
+window.cleanup_settings_theme = function() {
+    console.log('🧹 Settings theme tab cleaning up...');
+
+    // حذف event listenerها با شبیه‌سازی
+    const swatches = document.querySelectorAll('#theme_accent_swatches .color-swatch');
+    if (_themeSwatchHandler) {
+        swatches.forEach(s => s.removeEventListener('click', _themeSwatchHandler));
+        _themeSwatchHandler = null;
+    }
+};
 </script>
+
+<style>
+.theme-preview {
+    padding: var(--space-5);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.theme-preview-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    color: var(--accent-cyan, #00d4ff);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.theme-preview-text {
+    font-size: var(--fs-base);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+    line-height: var(--lh-relaxed);
+}
+
+.theme-preview-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+</style>
