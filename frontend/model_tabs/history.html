@@ -1,13 +1,13 @@
 <!-- ============================================================
-     history.html - تب تاریخچه نسخه‌ها
-     نسخه ۳.۰ - طراحی جدید + Chart + Tags + Notes + Restore
+     model_tabs/history.html — تب تاریخچه نسخه‌های مدل
+     نسخه ۲.۰ — با init/cleanup استاندارد + api.js هماهنگ
      ============================================================ -->
 
 <!-- ============================================================
      HERO SECTION
      ============================================================ -->
 <div class="hero-card" id="historyHero">
-    
+
     <div class="health-circle-wrapper">
         <svg class="health-circle" viewBox="0 0 140 140">
             <circle class="circle-bg" cx="70" cy="70" r="65"/>
@@ -21,7 +21,7 @@
 
     <div class="hero-info">
         <h2 class="hero-title">
-            <i class="fas fa-history" style="color:var(--green-primary);"></i>
+            <i class="fas fa-history" style="color:var(--color-green);"></i>
             <span>تاریخچه نسخه‌ها</span>
             <span class="badge-version" id="historyBestVersion">—</span>
         </h2>
@@ -46,9 +46,9 @@
 </div>
 
 <!-- ============================================================
-     CHART SECTION - روند دقت
+     CHART SECTION
      ============================================================ -->
-<div class="card-section" style="margin-bottom:20px;">
+<div class="card-section" style="margin-bottom:var(--space-5);">
     <div class="section-header-model">
         <div class="section-title-model">
             <i class="fas fa-chart-line"></i>
@@ -59,7 +59,7 @@
             نمودار زنده
         </span>
     </div>
-    
+
     <div class="chart-history-wrapper">
         <canvas id="accuracyChart"></canvas>
     </div>
@@ -68,7 +68,7 @@
 <!-- ============================================================
      TOOLBAR
      ============================================================ -->
-<div class="card-section" style="margin-bottom:20px;">
+<div class="card-section" style="margin-bottom:var(--space-5);">
     <div class="section-header-model">
         <div class="section-title-model">
             <i class="fas fa-filter"></i>
@@ -79,37 +79,38 @@
             <span>۰</span>
         </span>
     </div>
-    
+
     <div class="history-toolbar">
         <div class="training-search">
-            <input type="text" id="historySearch" 
-                   placeholder="جستجو در نسخه‌ها..." 
-                   oninput="debouncedFilterHistory()">
+            <input type="text" id="historySearch"
+                   class="form-input"
+                   placeholder="جستجو در نسخه‌ها..."
+                   oninput="debouncedFilterModelHistory()">
             <span class="search-icon">🔍</span>
         </div>
-        
-        <select id="historySort" class="control-select" onchange="filterHistory()">
+
+        <select id="historySort" class="form-select" onchange="filterModelHistory()">
             <option value="date_desc">🕐 جدیدترین</option>
             <option value="date_asc">🕐 قدیمی‌ترین</option>
             <option value="accuracy_desc">🎯 بیشترین دقت</option>
             <option value="accuracy_asc">🎯 کمترین دقت</option>
         </select>
-        
-        <select id="historyLimit" class="control-select" onchange="loadHistory()">
+
+        <select id="historyLimit" class="form-select" onchange="loadModelHistory()">
             <option value="10">۱۰ مورد</option>
             <option value="25" selected>۲۵ مورد</option>
             <option value="50">۵۰ مورد</option>
             <option value="100">۱۰۰ مورد</option>
         </select>
-        
+
         <div class="toolbar-actions">
-            <button class="btn-model btn-ghost btn-xs" onclick="exportHistoryCSV()" title="CSV">
+            <button class="btn btn-xs btn-outline" onclick="exportModelHistoryCSV()" title="CSV">
                 <i class="fas fa-file-csv"></i>
-                CSV
+                <span>CSV</span>
             </button>
-            <button class="btn-model btn-ghost btn-xs" onclick="exportHistoryJSON()" title="JSON">
+            <button class="btn btn-xs btn-outline" onclick="exportModelHistoryJSON()" title="JSON">
                 <i class="fas fa-file-code"></i>
-                JSON
+                <span>JSON</span>
             </button>
         </div>
     </div>
@@ -129,9 +130,9 @@
             <span id="totalVersions">۰</span>
         </span>
     </div>
-    
+
     <div class="model-table-wrapper">
-        <table class="model-table">
+        <table class="table-modern">
             <thead>
                 <tr>
                     <th>نسخه</th>
@@ -145,45 +146,45 @@
             </thead>
             <tbody id="historyBody">
                 <tr class="skeleton-row">
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:40%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:50%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:70%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:40%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
                 </tr>
                 <tr class="skeleton-row">
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:40%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:50%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:70%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:40%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
                 </tr>
                 <tr class="skeleton-row">
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:40%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:50%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:70%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:60%;"></div></td>
-                    <td><div class="skeleton-model skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:40%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:50%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:70%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:60%;"></div></td>
+                    <td><div class="skeleton skeleton-sm" style="width:80%;"></div></td>
                 </tr>
             </tbody>
         </table>
     </div>
-    
+
     <!-- Pagination -->
     <div class="pagination-model">
         <span class="pagination-info" id="paginationInfo">نمایش ۰ از ۰</span>
         <div class="pagination-controls">
-            <button class="btn-model btn-ghost btn-xs" onclick="prevPage()" id="prevBtn" disabled>
+            <button class="btn btn-xs btn-outline" onclick="prevModelHistoryPage()" id="prevBtn" disabled>
                 <i class="fas fa-chevron-right"></i>
             </button>
             <span class="pagination-page" id="pageInfo">صفحه ۱ از ۱</span>
-            <button class="btn-model btn-ghost btn-xs" onclick="nextPage()" id="nextBtn" disabled>
+            <button class="btn btn-xs btn-outline" onclick="nextModelHistoryPage()" id="nextBtn" disabled>
                 <i class="fas fa-chevron-left"></i>
             </button>
         </div>
@@ -193,23 +194,22 @@
 <!-- ============================================================
      DETAIL MODAL
      ============================================================ -->
-<div id="historyDetailModal" class="model-modal-overlay" onclick="if(event.target===this) closeDetailModal()">
-    <div class="model-modal">
-        
+<div id="historyDetailModal" class="modal-overlay" onclick="if(event.target===this) closeModelHistoryDetail()">
+    <div class="modal">
         <!-- Header -->
         <div class="modal-header">
             <div class="modal-title">
                 <i class="fas fa-file-alt"></i>
                 <span>جزئیات نسخه</span>
             </div>
-            <button class="modal-close" onclick="closeDetailModal()">
+            <button class="modal-close" onclick="closeModelHistoryDetail()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
+
         <!-- Body -->
         <div class="modal-body">
-            <!-- نسخه -->
+            <!-- Hero -->
             <div class="modal-hero">
                 <div class="modal-hero-icon" id="detailHeroIcon">📦</div>
                 <div class="modal-hero-info">
@@ -217,8 +217,8 @@
                     <div class="modal-hero-accuracy" id="detailHeroAccuracy">—</div>
                 </div>
             </div>
-            
-            <!-- Stats Grid -->
+
+            <!-- Stats -->
             <div class="modal-stats-grid">
                 <div class="modal-stat">
                     <span class="modal-stat-label">دقت</span>
@@ -237,738 +237,656 @@
                     <span class="modal-stat-value" id="detailPeriod">—</span>
                 </div>
             </div>
-            
-            <!-- Info List -->
+
+            <!-- Info -->
             <div class="modal-info-list">
                 <div class="modal-info-row">
                     <span class="modal-info-label">
                         <i class="fas fa-calendar"></i>
-                        تاریخ ایجاد
+                        <span>تاریخ ایجاد</span>
                     </span>
                     <span class="modal-info-value" id="detailDate">—</span>
                 </div>
                 <div class="modal-info-row">
                     <span class="modal-info-label">
                         <i class="fas fa-circle"></i>
-                        وضعیت
+                        <span>وضعیت</span>
                     </span>
                     <span class="modal-info-value" id="detailStatus">—</span>
                 </div>
-                <div class="modal-info-row" style="align-items:flex-start;">
+                <div class="modal-info-row">
                     <span class="modal-info-label">
                         <i class="fas fa-coins"></i>
-                        ارزها
+                        <span>ارزها</span>
                     </span>
                     <div class="modal-coins" id="detailCoins">—</div>
                 </div>
             </div>
-            
-            <!-- Tags Section -->
+
+            <!-- Tags -->
             <div class="modal-tags-section">
                 <div class="modal-tags-header">
                     <span class="modal-tags-label">
                         <i class="fas fa-tags"></i>
-                        تگ‌ها
+                        <span>تگ‌ها</span>
                     </span>
-                    <button class="btn-model btn-ghost btn-xs" onclick="openTagInput()">
+                    <button class="btn btn-xs btn-outline" onclick="openModelHistoryTagInput()">
                         <i class="fas fa-plus"></i>
-                        افزودن تگ
+                        <span>افزودن تگ</span>
                     </button>
                 </div>
                 <div class="modal-tags-list" id="detailTags">
-                    <span style="font-size:0.7rem;color:var(--text-muted);">هیچ تگی ثبت نشده</span>
+                    <span style="font-size:var(--fs-xs);color:var(--text-muted);">هیچ تگی ثبت نشده</span>
                 </div>
-                <div id="tagInputWrapper" style="display:none;margin-top:8px;">
-                    <div style="display:flex;gap:6px;">
-                        <input type="text" id="tagInput" placeholder="نام تگ..." 
-                               style="flex:1;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;">
-                        <button class="btn-model btn-primary btn-xs" onclick="saveTag()">ذخیره</button>
+                <div id="tagInputWrapper" style="display:none;margin-top:var(--space-2);">
+                    <div style="display:flex;gap:var(--space-2);">
+                        <input type="text" id="tagInput"
+                               class="form-input"
+                               placeholder="نام تگ..."
+                               style="flex:1;">
+                        <button class="btn btn-primary btn-xs" onclick="saveModelHistoryTag()">ذخیره</button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Notes Section -->
+
+            <!-- Notes -->
             <div class="modal-notes-section">
                 <div class="modal-tags-header">
                     <span class="modal-tags-label">
                         <i class="fas fa-sticky-note"></i>
-                        یادداشت
+                        <span>یادداشت</span>
                     </span>
                 </div>
-                <textarea id="detailNotes" 
-                          placeholder="یادداشت روی این نسخه..."
-                          style="width:100%;min-height:80px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;font-family:inherit;resize:vertical;"></textarea>
-                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                    <button class="btn-model btn-cyan btn-xs" onclick="saveNotes()">
+                <textarea id="detailNotes"
+                          class="form-textarea"
+                          placeholder="یادداشت روی این نسخه..."></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:var(--space-2);">
+                    <button class="btn btn-cyan btn-xs" onclick="saveModelHistoryNotes()">
                         <i class="fas fa-save"></i>
-                        ذخیره یادداشت
+                        <span>ذخیره یادداشت</span>
                     </button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Actions -->
-        <div class="modal-actions">
-            <button class="btn-model btn-cyan btn-sm" onclick="exportVersion()">
+        <div class="modal-footer">
+            <button class="btn btn-cyan btn-sm" onclick="exportModelHistoryVersion()">
                 <i class="fas fa-download"></i>
-                دانلود
+                <span>دانلود</span>
             </button>
-            <button class="btn-model btn-primary btn-sm" onclick="activateVersion()" id="modalActivateBtn">
+            <button class="btn btn-primary btn-sm" onclick="activateModelHistoryVersion()" id="modalActivateBtn">
                 <i class="fas fa-check-circle"></i>
-                فعال‌سازی
+                <span>فعال‌سازی</span>
             </button>
-            <button class="btn-model btn-purple btn-sm" onclick="generateVersionReport()" 
-                    style="background:linear-gradient(135deg,var(--accent-purple),#7c3aed);">
+            <button class="btn btn-purple btn-sm" onclick="generateModelHistoryReport()">
                 <i class="fas fa-file-alt"></i>
-                گزارش
+                <span>گزارش</span>
             </button>
-            <button class="btn-model btn-danger btn-sm" onclick="deleteVersion()" id="modalDeleteBtn">
+            <button class="btn btn-danger btn-sm" onclick="deleteModelHistoryVersion()" id="modalDeleteBtn">
                 <i class="fas fa-trash"></i>
-                حذف
+                <span>حذف</span>
             </button>
         </div>
     </div>
 </div>
 
 <style>
-    /* ============================================================
-       استایل اختصاصی history
-       ============================================================ */
-    
-    /* ===== Chart ===== */
-    .chart-history-wrapper {
-        height: 220px;
-        position: relative;
-    }
-    
-    /* ===== Toolbar ===== */
-    .history-toolbar {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    
-    .history-toolbar .training-search {
-        flex: 1;
-        min-width: 150px;
-    }
-    
-    /* ===== Table Badges ===== */
-    .version-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 3px 10px;
-        border-radius: var(--radius-full);
-        font-size: 0.65rem;
-        font-weight: 700;
-        font-family: var(--font-mono);
-    }
-    
-    .version-badge.active {
-        background: rgba(16, 185, 129, 0.12);
-        color: var(--green-primary);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    
-    .version-badge.inactive {
-        background: var(--bg-input);
-        color: var(--text-secondary);
-        border: 1px solid var(--border-color);
-    }
-    
-    .version-badge.ensemble {
-        background: rgba(139, 92, 246, 0.12);
-        color: var(--accent-purple);
-        border: 1px solid rgba(139, 92, 246, 0.3);
-    }
-    
-    .accuracy-cell {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 0.75rem;
-    }
-    
-    .accuracy-cell.high { color: var(--green-primary); }
-    .accuracy-cell.medium { color: var(--cyan-primary); }
-    .accuracy-cell.low { color: var(--accent-orange); }
-    
-    /* ===== Row Actions ===== */
-    .row-actions {
-        display: flex;
-        gap: 4px;
-        flex-wrap: wrap;
-    }
-    
-    .row-action-btn {
-        padding: 4px 8px;
-        background: var(--bg-input);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 0.65rem;
-        transition: var(--transition);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-    }
-    
-    .row-action-btn:hover {
-        border-color: rgba(16, 185, 129, 0.3);
-        color: var(--green-primary);
-        background: rgba(16, 185, 129, 0.08);
-        transform: translateY(-1px);
-    }
-    
-    .row-action-btn.danger:hover {
-        border-color: rgba(239, 68, 68, 0.3);
-        color: var(--accent-red);
-        background: rgba(239, 68, 68, 0.08);
-    }
-    
-    .row-action-btn.purple:hover {
-        border-color: rgba(139, 92, 246, 0.3);
-        color: var(--accent-purple);
-        background: rgba(139, 92, 246, 0.08);
-    }
-    
-    /* ===== Pagination ===== */
-    .pagination-model {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid var(--border-color);
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .pagination-info {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        font-family: var(--font-mono);
-    }
-    
-    .pagination-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .pagination-page {
-        font-size: 0.7rem;
-        color: var(--text-secondary);
-        font-weight: 600;
-        padding: 0 10px;
-    }
-    
-    /* ===== Modal ===== */
-    .model-modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.75);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        z-index: 99999;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .model-modal-overlay.active {
-        display: flex;
-    }
-    
-    .model-modal {
-        background: var(--bg-card);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        width: 100%;
-        max-width: 560px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: var(--shadow-lg);
-        animation: scaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--border-color);
-        position: sticky;
-        top: 0;
-        background: var(--bg-card);
-        z-index: 1;
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    }
-    
-    .modal-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .modal-title i {
-        color: var(--green-primary);
-    }
-    
-    .modal-close {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-input);
-        border: 1px solid var(--border-color);
-        border-radius: 50%;
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 0.9rem;
-        transition: var(--transition);
-    }
-    
-    .modal-close:hover {
-        background: rgba(239, 68, 68, 0.12);
-        border-color: rgba(239, 68, 68, 0.3);
-        color: var(--accent-red);
-        transform: rotate(90deg);
-    }
-    
-    .modal-body {
-        padding: 20px 24px;
-    }
-    
-    /* ===== Modal Hero ===== */
-    .modal-hero {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 16px;
-        background: linear-gradient(135deg,
-            rgba(16, 185, 129, 0.08),
-            rgba(34, 211, 238, 0.05)
-        );
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        border-radius: var(--radius);
-        margin-bottom: 16px;
-    }
-    
-    .modal-hero-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: rgba(16, 185, 129, 0.15);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-    
-    .modal-hero-info {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .modal-hero-version {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        font-family: var(--font-mono);
-        word-break: break-all;
-    }
-    
-    .modal-hero-accuracy {
-        font-size: 0.75rem;
-        color: var(--green-primary);
-        font-weight: 700;
-        font-family: var(--font-mono);
-        margin-top: 4px;
-    }
-    
-    /* ===== Modal Stats Grid ===== */
+/* ============================================================
+   History Tab Styles
+   ============================================================ */
+
+.chart-history-wrapper {
+    height: 240px;
+    position: relative;
+}
+
+.history-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.history-toolbar .training-search {
+    flex: 1;
+    min-width: 180px;
+}
+
+/* Version Badge */
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+}
+
+.version-badge.active {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.version-badge.inactive {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.version-badge.ensemble {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--color-purple);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Accuracy Cell */
+.accuracy-cell {
+    font-family: var(--font-mono);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-sm);
+}
+
+.accuracy-cell.high { color: var(--color-green); }
+.accuracy-cell.medium { color: var(--color-cyan); }
+.accuracy-cell.low { color: var(--color-orange); }
+
+/* Row Actions */
+.row-actions {
+    display: flex;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+}
+
+.row-action-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: var(--fs-xs);
+    transition: var(--transition);
+}
+
+.row-action-btn:hover {
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--color-green);
+    background: rgba(16, 185, 129, 0.08);
+    transform: translateY(-1px);
+}
+
+.row-action-btn.danger:hover {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--color-red);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.row-action-btn.purple:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    color: var(--color-purple);
+    background: rgba(139, 92, 246, 0.08);
+}
+
+/* Pagination */
+.pagination-model {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.pagination-info {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.pagination-page {
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    font-weight: var(--fw-semibold);
+    padding: 0 var(--space-2);
+}
+
+/* Modal Hero */
+.modal-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: linear-gradient(135deg,
+        rgba(16, 185, 129, 0.08),
+        rgba(34, 211, 238, 0.05)
+    );
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-4);
+}
+
+.modal-hero-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.modal-hero-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-hero-version {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-extrabold);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    word-break: break-all;
+}
+
+.modal-hero-accuracy {
+    font-size: var(--fs-sm);
+    color: var(--color-green);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+    margin-top: var(--space-1);
+}
+
+/* Modal Stats Grid */
+.modal-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.modal-stat {
+    padding: var(--space-3);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.modal-stat-label {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-1);
+}
+
+.modal-stat-value {
+    display: block;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.modal-stat-value.green { color: var(--color-green); }
+.modal-stat-value.cyan { color: var(--color-cyan); }
+.modal-stat-value.purple { color: var(--color-purple); }
+
+/* Modal Info List */
+.modal-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.modal-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.modal-info-label {
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.modal-info-label i {
+    color: var(--color-green);
+    font-size: 0.7rem;
+    width: 14px;
+}
+
+.modal-info-value {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    text-align: left;
+    word-break: break-word;
+}
+
+.modal-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+    flex: 1;
+}
+
+.modal-coin-chip {
+    font-size: var(--fs-xs);
+    padding: 3px 8px;
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-green);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-full);
+    font-weight: var(--fw-semibold);
+    font-family: var(--font-mono);
+}
+
+/* Tags Section */
+.modal-tags-section,
+.modal-notes-section {
+    margin-bottom: var(--space-4);
+}
+
+.modal-tags-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.modal-tags-label {
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    font-weight: var(--fw-semibold);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.modal-tags-label i {
+    color: var(--color-orange);
+}
+
+.modal-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 30px;
+    padding: var(--space-2);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-color);
+}
+
+.modal-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 4px 10px;
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--color-orange);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-full);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    animation: dramaticIn 0.4s var(--ease-out);
+}
+
+.modal-tag .tag-delete {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+
+.modal-tag .tag-delete:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: var(--color-red);
+    opacity: 1;
+}
+
+/* Skeleton Row */
+.table-modern .skeleton-row td {
+    padding: var(--space-3);
+}
+
+.skeleton-sm {
+    height: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
     .modal-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        margin-bottom: 16px;
+        grid-template-columns: repeat(2, 1fr);
     }
-    
-    .modal-stat {
-        padding: 10px;
-        background: var(--bg-input);
-        border-radius: var(--radius-sm);
-        text-align: center;
-        border: 1px solid var(--border-color);
-    }
-    
-    .modal-stat-label {
-        display: block;
-        font-size: 0.55rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-    }
-    
-    .modal-stat-value {
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 700;
-        font-family: var(--font-mono);
-        color: var(--text-primary);
-    }
-    
-    .modal-stat-value.green { color: var(--green-primary); }
-    .modal-stat-value.cyan { color: var(--cyan-primary); }
-    .modal-stat-value.purple { color: var(--accent-purple); }
-    
-    /* ===== Modal Info List ===== */
-    .modal-info-list {
-        display: flex;
+
+    .modal-footer {
         flex-direction: column;
-        gap: 8px;
-        margin-bottom: 16px;
     }
-    
-    .modal-info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 12px;
-        background: var(--bg-input);
-        border-radius: var(--radius-sm);
-        gap: 10px;
+
+    .modal-footer .btn {
+        width: 100%;
     }
-    
-    .modal-info-label {
-        font-size: 0.7rem;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
+
+    .history-toolbar {
+        flex-direction: column;
+        align-items: stretch;
     }
-    
-    .modal-info-label i {
-        color: var(--green-primary);
-        font-size: 0.65rem;
-        width: 14px;
+
+    .history-toolbar .training-search {
+        width: 100%;
     }
-    
-    .modal-info-value {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        font-family: var(--font-mono);
-        text-align: left;
-        word-break: break-word;
-    }
-    
-    .modal-coins {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        justify-content: flex-end;
-        flex: 1;
-    }
-    
-    .modal-coin-chip {
-        font-size: 0.6rem;
-        padding: 3px 8px;
-        background: rgba(16, 185, 129, 0.12);
-        color: var(--green-primary);
-        border: 1px solid rgba(16, 185, 129, 0.25);
-        border-radius: var(--radius-full);
-        font-weight: 600;
-        font-family: var(--font-mono);
-    }
-    
-    /* ===== Tags Section ===== */
-    .modal-tags-section,
-    .modal-notes-section {
-        margin-bottom: 16px;
-    }
-    
-    .modal-tags-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    
-    .modal-tags-label {
-        font-size: 0.7rem;
-        color: var(--text-secondary);
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .modal-tags-label i {
-        color: var(--accent-orange);
-    }
-    
-    .modal-tags-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        min-height: 30px;
-        padding: 8px;
-        background: var(--bg-input);
-        border-radius: var(--radius-sm);
-        border: 1px dashed var(--border-color);
-    }
-    
-    .modal-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 10px;
-        background: rgba(245, 158, 11, 0.12);
-        color: var(--accent-orange);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        border-radius: var(--radius-full);
-        font-size: 0.65rem;
-        font-weight: 600;
-        animation: dramaticIn 0.4s ease;
-    }
-    
-    .modal-tag .tag-delete {
-        background: transparent;
-        border: none;
-        color: inherit;
-        cursor: pointer;
-        font-size: 0.75rem;
-        padding: 0;
-        width: 14px;
-        height: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        opacity: 0.7;
-        transition: var(--transition);
-    }
-    
-    .modal-tag .tag-delete:hover {
-        background: rgba(239, 68, 68, 0.3);
-        color: var(--accent-red);
-        opacity: 1;
-    }
-    
-    /* ===== Modal Actions ===== */
-    .modal-actions {
-        display: flex;
-        gap: 8px;
-        padding: 16px 24px;
-        border-top: 1px solid var(--border-color);
-        flex-wrap: wrap;
-        background: var(--bg-card);
-        position: sticky;
-        bottom: 0;
-        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    }
-    
-    .modal-actions .btn-model {
-        flex: 1;
-        min-width: 90px;
-    }
-    
-    /* ===== Responsive ===== */
-    @media (max-width: 768px) {
-        .modal-stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .modal-actions {
-            flex-direction: column;
-        }
-        
-        .modal-actions .btn-model {
-            width: 100%;
-        }
-        
-        .history-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        
-        .history-toolbar .training-search {
-            width: 100%;
-        }
-    }
+}
 </style>
 
 <script>
 // ============================================================
-// HISTORY TAB v3.0
+// MODEL HISTORY TAB v2.0
 // ============================================================
 
-// ===== State =====
-let historyData = [];
-let filteredData = [];
-let currentPage = 1;
-let pageSize = 25;
-let selectedVersion = null;
-let historyInterval = null;
-let debounceTimer = null;
-let isHistoryLoaded = false;
-let accuracyChart = null;
+let _modelHistoryData = [];
+let _modelHistoryFiltered = [];
+let _modelHistoryCurrentPage = 1;
+let _modelHistoryPageSize = 25;
+let _modelHistorySelectedVersion = null;
+let _modelHistoryInterval = null;
+let _modelHistoryDebounceTimer = null;
+let _modelHistoryInitialized = false;
+let _modelHistoryChart = null;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// Init
 // ============================================================
 
 window.init_history = function() {
-    console.log('📋 History tab initializing...');
-    if (isHistoryLoaded) return;
-    isHistoryLoaded = true;
-    
-    loadHistory();
-    
-    if (historyInterval) clearInterval(historyInterval);
-    historyInterval = setInterval(loadHistory, 60000);
+    console.log('📚 Model history tab initializing...');
+
+    if (_modelHistoryInitialized) return;
+    _modelHistoryInitialized = true;
+
+    loadModelHistory();
+
+    if (_modelHistoryInterval) clearInterval(_modelHistoryInterval);
+    _modelHistoryInterval = setInterval(() => {
+        const activeTab = document.querySelector('#modelTabs .model-tab-btn.active');
+        if (activeTab?.dataset.tab === 'history') {
+            loadModelHistory();
+        }
+    }, 60000);
 };
+
+// ============================================================
+// Cleanup
+// ============================================================
 
 window.cleanup_history = function() {
-    console.log('🧹 History tab cleaning up...');
-    isHistoryLoaded = false;
-    
-    if (historyInterval) {
-        clearInterval(historyInterval);
-        historyInterval = null;
+    console.log('🧹 Model history tab cleaning up...');
+
+    if (_modelHistoryInterval) {
+        clearInterval(_modelHistoryInterval);
+        _modelHistoryInterval = null;
     }
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
+    if (_modelHistoryDebounceTimer) {
+        clearTimeout(_modelHistoryDebounceTimer);
+        _modelHistoryDebounceTimer = null;
     }
-    if (accuracyChart) {
-        accuracyChart.destroy();
-        accuracyChart = null;
+    if (_modelHistoryChart) {
+        _modelHistoryChart.destroy();
+        _modelHistoryChart = null;
     }
+
+    _modelHistoryInitialized = false;
 };
 
 // ============================================================
-// ۲. LOAD HISTORY
+// Load History
 // ============================================================
 
-async function loadHistory() {
+async function loadModelHistory() {
     const limit = parseInt(document.getElementById('historyLimit')?.value || 25);
-    pageSize = limit;
-    currentPage = 1;
-    
+    _modelHistoryPageSize = limit;
+    _modelHistoryCurrentPage = 1;
+
     try {
-        const data = await api.getModelHistory(100);
-        
-        if (data && data.success && data.data) {
-            historyData = data.data;
-            filteredData = [...historyData];
-            
-            updateHeroStats();
-            renderChart();
-            renderHistory();
-            
+        // ✅ api.getModelHistory() (موجود در api.js)
+        const data = await window.api?.getModelHistory?.(100);
+
+        if (data?.success && data.data) {
+            _modelHistoryData = data.data;
+            _modelHistoryFiltered = [..._modelHistoryData];
+
+            updateModelHistoryHeroStats();
+            renderModelHistoryChart();
+            renderModelHistory();
+
             const totalEl = document.getElementById('totalVersions');
-            if (totalEl) totalEl.textContent = historyData.length;
+            if (totalEl) totalEl.textContent = _modelHistoryData.length;
         } else {
-            showEmptyState();
+            showModelHistoryEmpty();
         }
     } catch (error) {
-        console.error('❌ History error:', error);
-        showErrorState(error.message);
+        console.error('❌ Model history error:', error);
+        showModelHistoryError(error.message);
     }
 }
 
 // ============================================================
-// ۳. HERO STATS
+// Hero Stats
 // ============================================================
 
-function updateHeroStats() {
+function updateModelHistoryHeroStats() {
     const totalEl = document.getElementById('heroTotalVersions');
-    if (totalEl) totalEl.textContent = historyData.length;
-    
+    if (totalEl) totalEl.textContent = _modelHistoryData.length;
+
     // بهترین دقت
-    const best = historyData.reduce((max, item) => {
+    const best = _modelHistoryData.reduce((max, item) => {
         return (item.accuracy || 0) > (max.accuracy || 0) ? item : max;
     }, { accuracy: 0 });
-    
+
     const bestAcc = document.getElementById('heroBestAccuracy');
     if (bestAcc) {
         const val = ((best.accuracy || 0) * 100).toFixed(1);
         bestAcc.textContent = val + '%';
     }
-    
+
     const bestVer = document.getElementById('historyBestVersion');
     if (bestVer) bestVer.textContent = best.version || '—';
-    
+
     // نسخه فعال
-    const active = historyData.find(h => h.is_active);
+    const active = _modelHistoryData.find(h => h.is_active);
     const activeEl = document.getElementById('heroActiveVersion');
     if (activeEl) activeEl.textContent = active?.version || '—';
-    
-    // دایره - بر اساس بهترین دقت
-    updateCircle((best.accuracy || 0) * 100);
-    
+
+    // دایره
+    updateModelHistoryCircle((best.accuracy || 0) * 100);
+
     // Badge
     const icon = document.getElementById('historyStatsIcon');
     const label = document.getElementById('historyStatsLabel');
     if (icon) icon.textContent = '📚';
-    if (label) label.textContent = `${historyData.length} نسخه`;
+    if (label) label.textContent = `${_modelHistoryData.length} نسخه`;
 }
 
-function updateCircle(percent) {
+function updateModelHistoryCircle(percent) {
     const circle = document.getElementById('historyCircle');
     if (!circle) return;
-    
+
     const circumference = 2 * Math.PI * 65;
     const offset = circumference - (percent / 100) * circumference;
-    
+
     circle.style.strokeDasharray = circumference;
     circle.style.strokeDashoffset = circumference;
     circle.style.transition = 'none';
-    
+
     void circle.offsetWidth;
-    
-    circle.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.22, 1, 0.36, 1)';
+
+    circle.style.transition = 'stroke-dashoffset 1.5s var(--ease-out)';
     circle.style.strokeDashoffset = offset;
 }
 
 // ============================================================
-// ۴. RENDER CHART
+// Chart
 // ============================================================
 
-function renderChart() {
+function renderModelHistoryChart() {
     const ctx = document.getElementById('accuracyChart');
     if (!ctx) return;
-    
-    if (accuracyChart) {
-        accuracyChart.destroy();
-        accuracyChart = null;
+
+    if (typeof Chart === 'undefined') return;
+
+    if (_modelHistoryChart) {
+        _modelHistoryChart.destroy();
+        _modelHistoryChart = null;
     }
-    
-    // داده‌های نمودار (قدیمی به جدید)
-    const sorted = [...historyData]
+
+    const sorted = [..._modelHistoryData]
         .filter(h => h.training_date && h.accuracy !== undefined)
         .sort((a, b) => new Date(a.training_date) - new Date(b.training_date));
-    
+
     if (sorted.length === 0) {
-        accuracyChart = new Chart(ctx, {
+        _modelHistoryChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['بدون داده'],
@@ -980,8 +898,8 @@ function renderChart() {
                     borderWidth: 2,
                     pointRadius: 0,
                     tension: 0.3,
-                    fill: true
-                }]
+                    fill: true,
+                }],
             },
             options: {
                 responsive: true,
@@ -989,27 +907,28 @@ function renderChart() {
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
                 scales: {
                     x: { grid: { display: false }, ticks: { display: false } },
-                    y: { grid: { display: false }, ticks: { display: false } }
-                }
-            }
+                    y: { grid: { display: false }, ticks: { display: false } },
+                },
+            },
         });
         return;
     }
-    
+
     const labels = sorted.map(h => {
         const date = new Date(h.training_date);
         return date.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' });
     });
-    
+
     const accuracyData = sorted.map(h => (h.accuracy || 0) * 100);
     const versions = sorted.map(h => h.version || '');
     const isActive = sorted.map(h => h.is_active || false);
-    
-    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 220);
+
+    const chartCtx = ctx.getContext('2d');
+    const gradient = chartCtx.createLinearGradient(0, 0, 0, 240);
     gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
     gradient.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
-    
-    accuracyChart = new Chart(ctx, {
+
+    _modelHistoryChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -1024,8 +943,8 @@ function renderChart() {
                 pointBorderColor: '#fff',
                 pointBorderWidth: 1,
                 tension: 0.3,
-                fill: true
-            }]
+                fill: true,
+            }],
         },
         options: {
             responsive: true,
@@ -1040,79 +959,78 @@ function renderChart() {
                     borderWidth: 1,
                     padding: 10,
                     callbacks: {
-                        title: (items) => sorted[items[0].dataIndex].version || '',
+                        title: (items) => versions[items[0].dataIndex] || '',
                         label: (context) => `دقت: ${context.parsed.y.toFixed(2)}%`,
                         afterLabel: (context) => {
-                            const isAct = isActive[context.dataIndex];
-                            return isAct ? '✅ نسخه فعال' : '';
-                        }
-                    }
-                }
+                            return isActive[context.dataIndex] ? '✅ نسخه فعال' : '';
+                        },
+                    },
+                },
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                    ticks: { 
-                        color: 'var(--text-muted)', 
+                    grid: { color: 'rgba(255, 255, 255, 0.04)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
                         font: { size: 9, family: 'inherit' },
-                        maxTicksLimit: 10
-                    }
+                        maxTicksLimit: 10,
+                    },
                 },
                 y: {
-                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                    ticks: { 
-                        color: 'var(--text-muted)', 
+                    grid: { color: 'rgba(255, 255, 255, 0.04)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
                         font: { size: 9, family: 'inherit' },
-                        callback: (v) => v + '%'
-                    }
-                }
+                        callback: (v) => v + '%',
+                    },
+                },
             },
-            interaction: { intersect: false, mode: 'index' }
-        }
+            interaction: { intersect: false, mode: 'index' },
+        },
     });
 }
 
 // ============================================================
-// ۵. RENDER HISTORY
+// Render Table
 // ============================================================
 
-function renderHistory() {
+function renderModelHistory() {
     const tbody = document.getElementById('historyBody');
     if (!tbody) return;
-    
-    const start = (currentPage - 1) * pageSize;
-    const end = Math.min(start + pageSize, filteredData.length);
-    const pageData = filteredData.slice(start, end);
-    
-    // Pagination info
+
+    const start = (_modelHistoryCurrentPage - 1) * _modelHistoryPageSize;
+    const end = Math.min(start + _modelHistoryPageSize, _modelHistoryFiltered.length);
+    const pageData = _modelHistoryFiltered.slice(start, end);
+
+    // Pagination Info
     const pagInfo = document.getElementById('paginationInfo');
     if (pagInfo) {
-        pagInfo.textContent = filteredData.length > 0
-            ? `نمایش ${start + 1}-${end} از ${filteredData.length}`
+        pagInfo.textContent = _modelHistoryFiltered.length > 0
+            ? `نمایش ${start + 1}-${end} از ${_modelHistoryFiltered.length}`
             : 'نمایش ۰ از ۰';
     }
-    
-    const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+
+    const totalPages = Math.ceil(_modelHistoryFiltered.length / _modelHistoryPageSize) || 1;
     const pageInfo = document.getElementById('pageInfo');
-    if (pageInfo) pageInfo.textContent = `صفحه ${currentPage} از ${totalPages}`;
-    
+    if (pageInfo) pageInfo.textContent = `صفحه ${_modelHistoryCurrentPage} از ${totalPages}`;
+
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
-    if (prevBtn) prevBtn.disabled = currentPage <= 1;
-    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
-    
+    if (prevBtn) prevBtn.disabled = _modelHistoryCurrentPage <= 1;
+    if (nextBtn) nextBtn.disabled = _modelHistoryCurrentPage >= totalPages;
+
     const filteredCount = document.getElementById('filteredCount');
     if (filteredCount) {
         const span = filteredCount.querySelector('span');
-        if (span) span.textContent = filteredData.length;
+        if (span) span.textContent = _modelHistoryFiltered.length;
     }
-    
+
     if (pageData.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" style="padding:0;">
-                    <div class="empty-state-model" style="padding:40px 20px;">
-                        <span class="empty-icon" style="font-size:2.5rem;">📭</span>
+                    <div class="empty-state" style="padding:var(--space-10) var(--space-5);">
+                        <span class="empty-icon">📭</span>
                         <div class="empty-title">هیچ نسخه‌ای یافت نشد</div>
                         <div class="empty-message">لطفاً ابتدا مدل را آموزش دهید</div>
                     </div>
@@ -1121,30 +1039,30 @@ function renderHistory() {
         `;
         return;
     }
-    
+
     tbody.innerHTML = pageData.map((item, i) => {
         const accuracy = (item.accuracy || 0) * 100;
         const isActive = item.is_active || false;
         const isEnsemble = item.is_ensemble || false;
-        
+
         let accClass = 'low';
         if (accuracy >= 70) accClass = 'high';
         else if (accuracy >= 55) accClass = 'medium';
-        
+
         return `
-            <tr style="animation: slideUp 0.3s ease backwards; animation-delay:${Math.min(i * 0.03, 0.3)}s; cursor:pointer;" 
-                onclick="showDetail('${escapeAttr(item.version)}')">
+            <tr style="animation: slideUp 0.3s var(--ease-out) backwards; animation-delay:${Math.min(i * 0.03, 0.3)}s; cursor:pointer;"
+                onclick="showModelHistoryDetail('${escapeModelHistoryAttr(item.version)}')">
                 <td>
                     <span class="version-badge ${isActive ? 'active' : 'inactive'}">
                         ${isActive ? '✅' : '📦'}
-                        ${escapeHtml(item.version || 'N/A')}
+                        ${escapeModelHistoryHtml(item.version || 'N/A')}
                     </span>
                     ${isEnsemble ? '<span class="version-badge ensemble" style="margin-right:4px;">Ensemble</span>' : ''}
                 </td>
                 <td class="accuracy-cell ${accClass}">${accuracy.toFixed(2)}%</td>
-                <td style="font-size:0.7rem;color:var(--text-secondary);">${escapeHtml(item.period || '—')}</td>
-                <td style="font-size:0.7rem;color:var(--text-secondary);font-family:var(--font-mono);">${item.training_samples || 0}</td>
-                <td style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">${formatDate(item.training_date) || '—'}</td>
+                <td style="font-size:var(--fs-xs);color:var(--text-secondary);">${escapeModelHistoryHtml(item.period || '—')}</td>
+                <td style="font-size:var(--fs-xs);color:var(--text-secondary);font-family:var(--font-mono);">${item.training_samples || 0}</td>
+                <td style="font-size:var(--fs-xs);color:var(--text-muted);font-family:var(--font-mono);">${formatDate(item.training_date) || '—'}</td>
                 <td>
                     <span class="version-badge ${isActive ? 'active' : 'inactive'}" style="font-size:0.55rem;">
                         ${isActive ? 'فعال' : 'غیرفعال'}
@@ -1152,20 +1070,20 @@ function renderHistory() {
                 </td>
                 <td>
                     <div class="row-actions" onclick="event.stopPropagation();">
-                        <button class="row-action-btn" onclick="showDetail('${escapeAttr(item.version)}')" title="جزئیات">
+                        <button class="row-action-btn" onclick="showModelHistoryDetail('${escapeModelHistoryAttr(item.version)}')" title="جزئیات">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="row-action-btn" onclick="exportVersion('${escapeAttr(item.version)}')" title="دانلود">
+                        <button class="row-action-btn" onclick="exportModelHistoryVersionByVersion('${escapeModelHistoryAttr(item.version)}')" title="دانلود">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="row-action-btn purple" onclick="generateVersionReport('${escapeAttr(item.version)}')" title="گزارش">
+                        <button class="row-action-btn purple" onclick="generateModelHistoryReportByVersion('${escapeModelHistoryAttr(item.version)}')" title="گزارش">
                             <i class="fas fa-file-alt"></i>
                         </button>
                         ${!isActive ? `
-                            <button class="row-action-btn" onclick="activateVersion('${escapeAttr(item.version)}')" title="فعال‌سازی" style="color:var(--green-primary);">
+                            <button class="row-action-btn" onclick="activateModelHistoryVersionByVersion('${escapeModelHistoryAttr(item.version)}')" title="فعال‌سازی" style="color:var(--color-green);">
                                 <i class="fas fa-check"></i>
                             </button>
-                            <button class="row-action-btn danger" onclick="deleteVersion('${escapeAttr(item.version)}')" title="حذف">
+                            <button class="row-action-btn danger" onclick="deleteModelHistoryVersionByVersion('${escapeModelHistoryAttr(item.version)}')" title="حذف">
                                 <i class="fas fa-trash"></i>
                             </button>
                         ` : ''}
@@ -1177,17 +1095,17 @@ function renderHistory() {
 }
 
 // ============================================================
-// ۶. EMPTY / ERROR
+// Empty / Error States
 // ============================================================
 
-function showEmptyState() {
+function showModelHistoryEmpty() {
     const tbody = document.getElementById('historyBody');
     if (tbody) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" style="padding:0;">
-                    <div class="empty-state-model" style="padding:40px 20px;">
-                        <span class="empty-icon" style="font-size:2.5rem;">📭</span>
+                    <div class="empty-state" style="padding:var(--space-10) var(--space-5);">
+                        <span class="empty-icon">📭</span>
                         <div class="empty-title">هیچ نسخه‌ای یافت نشد</div>
                     </div>
                 </td>
@@ -1196,16 +1114,20 @@ function showEmptyState() {
     }
 }
 
-function showErrorState(message) {
+function showModelHistoryError(message) {
     const tbody = document.getElementById('historyBody');
     if (tbody) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="7" style="padding:0;">
-                    <div class="empty-state-model" style="padding:40px 20px;">
-                        <span class="empty-icon" style="font-size:2.5rem;color:var(--accent-red);">⚠️</span>
-                        <div class="empty-title" style="color:var(--accent-red);">خطا در بارگذاری</div>
-                        <div class="empty-message">${escapeHtml(message || '')}</div>
+                    <div class="empty-state error" style="padding:var(--space-10) var(--space-5);">
+                        <span class="empty-icon">⚠️</span>
+                        <div class="empty-title">خطا در بارگذاری</div>
+                        <div class="empty-message">${escapeModelHistoryHtml(message || '')}</div>
+                        <button class="empty-action" onclick="loadModelHistory()">
+                            <i class="fas fa-sync-alt"></i>
+                            تلاش مجدد
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -1214,125 +1136,118 @@ function showErrorState(message) {
 }
 
 // ============================================================
-// ۷. FILTER
+// Filter
 // ============================================================
 
-function filterHistory() {
+function filterModelHistory() {
     const search = (document.getElementById('historySearch')?.value || '').toLowerCase().trim();
     const sort = document.getElementById('historySort')?.value || 'date_desc';
-    
-    filteredData = historyData.filter(item => {
+
+    _modelHistoryFiltered = _modelHistoryData.filter(item => {
         const version = (item.version || '').toLowerCase();
         const period = (item.period || '').toLowerCase();
         return version.includes(search) || period.includes(search);
     });
-    
+
     const sortFns = {
-        'date_desc': (a, b) => new Date(b.training_date) - new Date(a.training_date),
-        'date_asc': (a, b) => new Date(a.training_date) - new Date(b.training_date),
-        'accuracy_desc': (a, b) => (b.accuracy || 0) - (a.accuracy || 0),
-        'accuracy_asc': (a, b) => (a.accuracy || 0) - (b.accuracy || 0),
+        date_desc: (a, b) => new Date(b.training_date) - new Date(a.training_date),
+        date_asc: (a, b) => new Date(a.training_date) - new Date(b.training_date),
+        accuracy_desc: (a, b) => (b.accuracy || 0) - (a.accuracy || 0),
+        accuracy_asc: (a, b) => (a.accuracy || 0) - (b.accuracy || 0),
     };
-    
-    if (sortFns[sort]) filteredData.sort(sortFns[sort]);
-    
-    currentPage = 1;
-    renderHistory();
+
+    if (sortFns[sort]) _modelHistoryFiltered.sort(sortFns[sort]);
+
+    _modelHistoryCurrentPage = 1;
+    renderModelHistory();
 }
 
-function debouncedFilterHistory() {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(filterHistory, 250);
+function debouncedFilterModelHistory() {
+    if (_modelHistoryDebounceTimer) clearTimeout(_modelHistoryDebounceTimer);
+    _modelHistoryDebounceTimer = setTimeout(filterModelHistory, 250);
 }
 
-function prevPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        renderHistory();
+function prevModelHistoryPage() {
+    if (_modelHistoryCurrentPage > 1) {
+        _modelHistoryCurrentPage--;
+        renderModelHistory();
     }
 }
 
-function nextPage() {
-    const totalPages = Math.ceil(filteredData.length / pageSize);
-    if (currentPage < totalPages) {
-        currentPage++;
-        renderHistory();
+function nextModelHistoryPage() {
+    const totalPages = Math.ceil(_modelHistoryFiltered.length / _modelHistoryPageSize);
+    if (_modelHistoryCurrentPage < totalPages) {
+        _modelHistoryCurrentPage++;
+        renderModelHistory();
     }
 }
 
 // ============================================================
-// ۸. DETAIL MODAL
+// Detail Modal
 // ============================================================
 
-function showDetail(version) {
-    const item = historyData.find(h => h.version === version);
+function showModelHistoryDetail(version) {
+    const item = _modelHistoryData.find(h => h.version === version);
     if (!item) return;
-    
-    selectedVersion = version;
+
+    _modelHistorySelectedVersion = version;
+
     const isActive = item.is_active || false;
     const accuracy = (item.accuracy || 0) * 100;
-    
-    // Hero
+
     setText('detailHeroIcon', isActive ? '✅' : '📦');
     setText('detailVersion', version);
     setText('detailHeroAccuracy', `${accuracy.toFixed(2)}% دقت`);
-    
-    // Stats
+
     setText('detailAccuracy', accuracy.toFixed(2) + '%');
     setText('detailF1', item.f1_score ? (item.f1_score * 100).toFixed(2) + '%' : '—');
     setText('detailSamples', item.training_samples || 0);
     setText('detailPeriod', item.period || '—');
-    
-    // Info
     setText('detailDate', formatDate(item.training_date) || '—');
-    
+
     const statusEl = document.getElementById('detailStatus');
     if (statusEl) {
         statusEl.textContent = isActive ? '✅ فعال' : '📦 غیرفعال';
-        statusEl.style.color = isActive ? 'var(--green-primary)' : 'var(--text-muted)';
+        statusEl.style.color = isActive ? 'var(--color-green)' : 'var(--text-muted)';
     }
-    
+
     // Coins
     const coinsEl = document.getElementById('detailCoins');
     if (coinsEl && item.coins && item.coins.length > 0) {
-        coinsEl.innerHTML = item.coins.map(c => 
-            `<span class="modal-coin-chip">${escapeHtml(c.toUpperCase().slice(0, 6))}</span>`
+        coinsEl.innerHTML = item.coins.map(c =>
+            `<span class="modal-coin-chip">${escapeModelHistoryHtml(c.toUpperCase().slice(0, 6))}</span>`
         ).join('');
     } else if (coinsEl) {
         coinsEl.textContent = '—';
     }
-    
-    // Tags
-    renderTags(version);
-    
-    // Notes
+
+    renderModelHistoryTags(version);
+
     const notesEl = document.getElementById('detailNotes');
     if (notesEl) {
         notesEl.value = localStorage.getItem(`version_notes_${version}`) || '';
     }
-    
-    // Buttons
+
     const activateBtn = document.getElementById('modalActivateBtn');
     const deleteBtn = document.getElementById('modalDeleteBtn');
     if (activateBtn) activateBtn.style.display = isActive ? 'none' : 'flex';
     if (deleteBtn) deleteBtn.style.display = isActive ? 'none' : 'flex';
-    
-    // Open modal
+
     const modal = document.getElementById('historyDetailModal');
     if (modal) modal.classList.add('active');
 }
 
-function closeDetailModal() {
+function closeModelHistoryDetail() {
     const modal = document.getElementById('historyDetailModal');
     if (modal) modal.classList.remove('active');
-    selectedVersion = null;
+    _modelHistorySelectedVersion = null;
 }
 
 // ============================================================
-// ۹. TAGS (localStorage)
+// Tags (localStorage)
 // ============================================================
 
-function getTags(version) {
+function getModelHistoryTags(version) {
     try {
         const tags = localStorage.getItem(`version_tags_${version}`);
         return tags ? JSON.parse(tags) : [];
@@ -1341,7 +1256,7 @@ function getTags(version) {
     }
 }
 
-function saveTagsToStorage(version, tags) {
+function saveModelHistoryTagsToStorage(version, tags) {
     try {
         localStorage.setItem(`version_tags_${version}`, JSON.stringify(tags));
     } catch (e) {
@@ -1349,87 +1264,92 @@ function saveTagsToStorage(version, tags) {
     }
 }
 
-function renderTags(version) {
+function renderModelHistoryTags(version) {
     const container = document.getElementById('detailTags');
     if (!container) return;
-    
-    const tags = getTags(version);
-    
+
+    const tags = getModelHistoryTags(version);
+
     if (tags.length === 0) {
-        container.innerHTML = '<span style="font-size:0.7rem;color:var(--text-muted);">هیچ تگی ثبت نشده</span>';
+        container.innerHTML = '<span style="font-size:var(--fs-xs);color:var(--text-muted);">هیچ تگی ثبت نشده</span>';
         return;
     }
-    
+
     container.innerHTML = tags.map((tag, i) => `
         <span class="modal-tag" style="animation-delay:${i * 0.05}s;">
-            ${escapeHtml(tag)}
-            <button class="tag-delete" onclick="removeTag('${escapeAttr(tag)}')" title="حذف">×</button>
+            ${escapeModelHistoryHtml(tag)}
+            <button class="tag-delete" onclick="removeModelHistoryTag('${escapeModelHistoryAttr(tag)}')" title="حذف">×</button>
         </span>
     `).join('');
 }
 
-function openTagInput() {
+function openModelHistoryTagInput() {
     const wrapper = document.getElementById('tagInputWrapper');
     const input = document.getElementById('tagInput');
+
     if (wrapper) wrapper.style.display = 'block';
+
     if (input) {
         input.value = '';
         input.focus();
         input.onkeydown = (e) => {
-            if (e.key === 'Enter') saveTag();
+            if (e.key === 'Enter') saveModelHistoryTag();
             if (e.key === 'Escape') wrapper.style.display = 'none';
         };
     }
 }
 
-function saveTag() {
-    if (!selectedVersion) return;
-    
+function saveModelHistoryTag() {
+    if (!_modelHistorySelectedVersion) return;
+
     const input = document.getElementById('tagInput');
     const tag = input?.value.trim();
-    
+
     if (!tag) return;
-    
-    const tags = getTags(selectedVersion);
+
+    const tags = getModelHistoryTags(_modelHistorySelectedVersion);
+
     if (tags.includes(tag)) {
         if (typeof showToast === 'function') showToast('⚠️ این تگ قبلاً ثبت شده', 'warning');
         return;
     }
-    
+
     tags.push(tag);
-    saveTagsToStorage(selectedVersion, tags);
-    renderTags(selectedVersion);
-    
+    saveModelHistoryTagsToStorage(_modelHistorySelectedVersion, tags);
+    renderModelHistoryTags(_modelHistorySelectedVersion);
+
     if (input) input.value = '';
-    document.getElementById('tagInputWrapper').style.display = 'none';
-    
+
+    const wrapper = document.getElementById('tagInputWrapper');
+    if (wrapper) wrapper.style.display = 'none';
+
     if (typeof showToast === 'function') showToast('✅ تگ اضافه شد', 'success');
 }
 
-function removeTag(tag) {
-    if (!selectedVersion) return;
+function removeModelHistoryTag(tag) {
+    if (!_modelHistorySelectedVersion) return;
     if (!confirm(`حذف تگ "${tag}"؟`)) return;
-    
-    let tags = getTags(selectedVersion);
+
+    let tags = getModelHistoryTags(_modelHistorySelectedVersion);
     tags = tags.filter(t => t !== tag);
-    saveTagsToStorage(selectedVersion, tags);
-    renderTags(selectedVersion);
-    
+    saveModelHistoryTagsToStorage(_modelHistorySelectedVersion, tags);
+    renderModelHistoryTags(_modelHistorySelectedVersion);
+
     if (typeof showToast === 'function') showToast('🗑️ تگ حذف شد', 'success');
 }
 
 // ============================================================
-// ۱۰. NOTES (localStorage)
+// Notes (localStorage)
 // ============================================================
 
-function saveNotes() {
-    if (!selectedVersion) return;
-    
+function saveModelHistoryNotes() {
+    if (!_modelHistorySelectedVersion) return;
+
     const notesEl = document.getElementById('detailNotes');
     const notes = notesEl?.value || '';
-    
+
     try {
-        localStorage.setItem(`version_notes_${selectedVersion}`, notes);
+        localStorage.setItem(`version_notes_${_modelHistorySelectedVersion}`, notes);
         if (typeof showToast === 'function') showToast('✅ یادداشت ذخیره شد', 'success');
     } catch (e) {
         if (typeof showToast === 'function') showToast('❌ خطا در ذخیره', 'error');
@@ -1437,122 +1357,154 @@ function saveNotes() {
 }
 
 // ============================================================
-// ۱۱. ACTIONS
+// Actions
 // ============================================================
 
-async function activateVersion(version) {
-    if (!version) version = selectedVersion;
+async function activateModelHistoryVersion(version) {
+    if (!version) version = _modelHistorySelectedVersion;
     if (!version) return;
+
     if (!confirm(`فعال‌سازی نسخه "${version}"؟`)) return;
-    
+
     try {
-        const result = await api.activateModel(version);
-        
-        if (!result || !result.success) {
-            if (typeof showToast === 'function') showToast('❌ ' + (result?.message || 'خطا'), 'error');
+        // ✅ api.activateModel() (موجود در api.js)
+        const result = await window.api?.activateModel?.(version);
+
+        if (!result?.success) {
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (result?.message || 'خطا'), 'error');
+            }
             return;
         }
-        
+
         if (typeof showToast === 'function') showToast('✅ نسخه فعال شد', 'success');
-        closeDetailModal();
-        setTimeout(loadHistory, 500);
+
+        closeModelHistoryDetail();
+        setTimeout(loadModelHistory, 500);
     } catch (error) {
         if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
-async function deleteVersion(version) {
-    if (!version) version = selectedVersion;
+function activateModelHistoryVersionByVersion(version) {
+    activateModelHistoryVersion(version);
+}
+
+async function deleteModelHistoryVersion(version) {
+    if (!version) version = _modelHistorySelectedVersion;
     if (!version) return;
+
     if (!confirm(`⚠️ حذف نسخه "${version}"؟\nغیرقابل بازگشت!`)) return;
-    
+
     try {
-        const result = await api.deleteModel(version);
-        
-        if (!result || !result.success) {
-            if (typeof showToast === 'function') showToast('❌ ' + (result?.message || 'خطا'), 'error');
+        // ✅ api.deleteModel() (موجود در api.js)
+        const result = await window.api?.deleteModel?.(version);
+
+        if (!result?.success) {
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (result?.message || 'خطا'), 'error');
+            }
             return;
         }
-        
+
         if (typeof showToast === 'function') showToast('🗑️ نسخه حذف شد', 'success');
-        closeDetailModal();
-        setTimeout(loadHistory, 500);
+
+        closeModelHistoryDetail();
+        setTimeout(loadModelHistory, 500);
     } catch (error) {
         if (typeof showToast === 'function') showToast('❌ ' + error.message, 'error');
     }
 }
 
-function exportVersion(version) {
-    if (!version) version = selectedVersion;
+function deleteModelHistoryVersionByVersion(version) {
+    deleteModelHistoryVersion(version);
+}
+
+function exportModelHistoryVersion(version) {
+    if (!version) version = _modelHistorySelectedVersion;
     if (!version) return;
-    api.exportModel(version);
+
+    // ✅ api.exportModel() (موجود در api.js)
+    window.api?.exportModel?.(version);
+
     if (typeof showToast === 'function') showToast('📥 دانلود شروع شد', 'success');
 }
 
-function generateVersionReport(version) {
-    if (!version) version = selectedVersion;
+function exportModelHistoryVersionByVersion(version) {
+    exportModelHistoryVersion(version);
+}
+
+function generateModelHistoryReport(version) {
+    if (!version) version = _modelHistorySelectedVersion;
     if (!version) return;
-    
+
     const url = `/report_template.html?version=${encodeURIComponent(version)}`;
     const w = window.open(url, '_blank');
-    
+
     if (!w) {
         if (typeof showToast === 'function') showToast('⚠️ پنجره جدید را مجاز کنید', 'warning');
         return;
     }
-    
+
     if (typeof showToast === 'function') showToast(`📊 گزارش ${version} باز شد`, 'success');
 }
 
+function generateModelHistoryReportByVersion(version) {
+    generateModelHistoryReport(version);
+}
+
 // ============================================================
-// ۱۲. EXPORT
+// Export CSV / JSON
 // ============================================================
 
-function exportHistoryCSV() {
-    if (historyData.length === 0) {
+function exportModelHistoryCSV() {
+    if (_modelHistoryData.length === 0) {
         if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
         return;
     }
-    
+
     const headers = ['نسخه', 'دقت', 'بازه', 'نمونه‌ها', 'تاریخ', 'وضعیت'];
-    const rows = historyData.map(item => [
+    const rows = _modelHistoryData.map(item => [
         item.version || 'N/A',
         ((item.accuracy || 0) * 100).toFixed(2) + '%',
         item.period || '—',
         item.training_samples || 0,
         formatDate(item.training_date) || '',
-        item.is_active ? 'فعال' : 'غیرفعال'
+        item.is_active ? 'فعال' : 'غیرفعال',
     ]);
-    
-    const csv = [headers, ...rows].map(r => r.map(escapeCsv).join(',')).join('\n');
+
+    const csv = [headers, ...rows]
+        .map(r => r.map(escapeModelHistoryCsv).join(','))
+        .join('\n');
+
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `model_history_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    
+
     if (typeof showToast === 'function') showToast('📥 CSV دانلود شد', 'success');
 }
 
-function exportHistoryJSON() {
-    if (historyData.length === 0) {
+function exportModelHistoryJSON() {
+    if (_modelHistoryData.length === 0) {
         if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
         return;
     }
-    
-    const blob = new Blob([JSON.stringify(historyData, null, 2)], { type: 'application/json' });
+
+    const blob = new Blob([JSON.stringify(_modelHistoryData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `model_history_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
-    
+
     if (typeof showToast === 'function') showToast('📥 JSON دانلود شد', 'success');
 }
 
 // ============================================================
-// ۱۳. UTILS
+// Helpers
 // ============================================================
 
 function setText(id, value) {
@@ -1560,7 +1512,7 @@ function setText(id, value) {
     if (el) el.textContent = value ?? '—';
 }
 
-function escapeHtml(str) {
+function escapeModelHistoryHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -1570,18 +1522,16 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-function escapeAttr(str) {
+function escapeModelHistoryAttr(str) {
     if (!str) return '';
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-function escapeCsv(value) {
+function escapeModelHistoryCsv(value) {
     const str = String(value ?? '');
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return '"' + str.replace(/"/g, '""') + '"';
     }
     return str;
 }
-
-console.log('✅ History tab v3.0 loaded');
 </script>
