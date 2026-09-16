@@ -1,10 +1,19 @@
+<!-- ============================================================
+     debug_tabs/healing.html — تب خودترمیمی
+     نسخه ۲.۰ — با init/cleanup استاندارد
+     ============================================================ -->
+
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-heartbeat"></i> خودترمیمی (Self-Healer)
-        <button class="btn btn-xs btn-outline" onclick="refreshHealing()" style="margin-right:auto;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-heart-pulse"></i>
+            <span>خودترمیمی (Self-Healer)</span>
+        </div>
+        <button class="btn btn-xs btn-outline" onclick="refreshDebugHealing()">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
+
     <div id="healingContent">
         <div class="loading-container">
             <div class="loading-spinner"></div>
@@ -15,134 +24,289 @@
 
 <script>
 // ============================================================
-// تابع refreshHealing
+// DEBUG HEALING TAB
 // ============================================================
-async function refreshHealing() {
+
+let _healingInterval = null;
+
+async function refreshDebugHealing() {
     const container = document.getElementById('healingContent');
+    if (!container) return;
+
     container.innerHTML = `
         <div class="loading-container">
             <div class="loading-spinner"></div>
             <p class="loading-text">در حال بارگذاری...</p>
         </div>
     `;
-    
+
     try {
         const data = await api.getHealingStatus();
-        if (data.success && data.data) {
-            const d = data.data;
-            const dbStatus = d.databases || {};
-            const dbCount = Object.keys(dbStatus).length;
-            const connectedCount = Object.values(dbStatus).filter(v => v === true).length;
-            
-            let html = `
-                <div class="healing-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;">
-                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:1.3rem;font-weight:700;color:${d.status === 'running' ? 'var(--accent-green)' : 'var(--accent-orange)'};">${d.status === 'running' ? '✅ فعال' : '⏹️ غیرفعال'}</div>
-                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">وضعیت</div>
-                    </div>
-                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:1.3rem;font-weight:700;color:var(--accent-cyan);">${d.healing_actions || 0}</div>
-                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">اقدامات انجام شده</div>
-                    </div>
-                    <div style="background:var(--bg-input);padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:1.3rem;font-weight:700;color:${connectedCount === dbCount && dbCount > 0 ? 'var(--accent-green)' : 'var(--accent-orange)'};">${dbCount > 0 ? `${connectedCount}/${dbCount}` : '—'}</div>
-                        <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">دیتابیس‌های متصل</div>
-                    </div>
-                </div>
-            `;
-            
-            if (dbCount > 0) {
-                html += `
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;">
-                        ${Object.entries(dbStatus).map(([name, connected]) => `
-                            <span class="badge ${connected ? 'badge-green' : 'badge-red'}">${connected ? '🟢' : '🔴'} ${name}</span>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:10px;color:var(--text-muted);">
-                        ℹ️ هیچ دیتابیسی ثبت نشده است
-                    </div>
-                `;
-            }
-            
-            html += `
-                <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px;">
-                    <span>🧠 مدل: ${d.model_loaded ? '✅ بارگذاری شده' : '❌ بارگذاری نشده'}</span>
-                    ${d.model_accuracy !== null && d.model_accuracy !== undefined ? ` • 🎯 دقت: ${(d.model_accuracy * 100).toFixed(1)}%` : ''}
-                    <span> • ⏱️ آپتایم: ${d.uptime || '0s'}</span>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-success btn-sm" onclick="triggerHealing()"><i class="fas fa-play"></i> اجرای Healing</button>
-                    <button class="btn btn-outline btn-sm" onclick="resetHealing()"><i class="fas fa-undo"></i> بازنشانی</button>
-                </div>
-                <div style="margin-top:12px;font-size:0.6rem;color:var(--text-muted);">
-                    آخرین اقدام: ${d.last_healing ? formatTimeAgo(d.last_healing) : '—'}
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        } else {
-            container.innerHTML = `
-                <div class="error-msg">
-                    <span class="icon">⚠️</span>
-                    <p>داده‌های خودترمیمی در دسترس نیست</p>
-                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${data.error || 'خطا در دریافت داده'}</p>
-                </div>
-            `;
+
+        if (!data?.success || !data.data) {
+            throw new Error(data?.error || 'داده‌های خودترمیمی در دسترس نیست');
         }
+
+        const d = data.data;
+        const dbStatus = d.databases || {};
+        const dbCount = Object.keys(dbStatus).length;
+        const connectedCount = Object.values(dbStatus).filter(v => v === true).length;
+
+        const statusColor = d.status === 'running' ? 'var(--color-green)' : 'var(--color-orange)';
+        const statusText = d.status === 'running' ? '✅ فعال' : '⏹️ غیرفعال';
+
+        const dbColor = (connectedCount === dbCount && dbCount > 0)
+            ? 'var(--color-green)'
+            : 'var(--color-orange)';
+
+        container.innerHTML = `
+            <!-- Stats Grid -->
+            <div class="healing-grid">
+                <div class="healing-stat">
+                    <div class="hs-value" style="color:${statusColor};">${statusText}</div>
+                    <div class="hs-label">وضعیت</div>
+                </div>
+                <div class="healing-stat">
+                    <div class="hs-value cyan">${d.healing_actions || 0}</div>
+                    <div class="hs-label">اقدامات انجام شده</div>
+                </div>
+                <div class="healing-stat">
+                    <div class="hs-value" style="color:${dbColor};">
+                        ${dbCount > 0 ? `${connectedCount}/${dbCount}` : '—'}
+                    </div>
+                    <div class="hs-label">دیتابیس‌های متصل</div>
+                </div>
+            </div>
+
+            <!-- Databases List -->
+            ${dbCount > 0 ? `
+                <div class="healing-db-list">
+                    ${Object.entries(dbStatus).map(([name, connected]) => `
+                        <span class="badge ${connected ? 'badge-green' : 'badge-red'}">
+                            ${connected ? '🟢' : '🔴'} ${escapeHtml(name)}
+                        </span>
+                    `).join('')}
+                </div>
+            ` : `
+                <div class="healing-empty">
+                    ℹ️ هیچ دیتابیسی ثبت نشده است
+                </div>
+            `}
+
+            <!-- Model Info -->
+            <div class="healing-info">
+                <span>🧠 مدل: ${d.model_loaded ? '✅ بارگذاری شده' : '❌ بارگذاری نشده'}</span>
+                ${d.model_accuracy !== null && d.model_accuracy !== undefined
+                    ? `<span>🎯 دقت: ${(d.model_accuracy * 100).toFixed(1)}%</span>`
+                    : ''}
+                <span>⏱️ آپتایم: ${d.uptime || '0s'}</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="healing-actions">
+                <button class="btn btn-success btn-sm" onclick="triggerDebugHealing()">
+                    <i class="fas fa-play"></i>
+                    <span>اجرای Healing</span>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="resetDebugHealing()">
+                    <i class="fas fa-undo"></i>
+                    <span>بازنشانی</span>
+                </button>
+            </div>
+
+            <!-- Last Action -->
+            <div class="healing-timestamp">
+                آخرین اقدام: ${d.last_healing ? (formatTimeAgo(d.last_healing) || '—') : '—'}
+            </div>
+        `;
     } catch (err) {
         console.error('Healing error:', err);
         container.innerHTML = `
-            <div class="error-msg">
-                <span class="icon">❌</span>
-                <p>خطا در دریافت وضعیت خودترمیمی</p>
-                <p style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${err.message}</p>
+            <div class="empty-state error">
+                <span class="empty-icon">❌</span>
+                <div class="empty-title">خطا در دریافت وضعیت</div>
+                <div class="empty-message">${escapeHtml(err.message)}</div>
+                <button class="empty-action" onclick="refreshDebugHealing()">
+                    <i class="fas fa-sync-alt"></i>
+                    تلاش مجدد
+                </button>
             </div>
         `;
     }
 }
 
-// ============================================================
-// توابع اجرای Healing
-// ============================================================
-async function triggerHealing() {
+async function triggerDebugHealing() {
     if (!confirm('⚠️ آیا از اجرای دستی Self-Healing اطمینان دارید؟')) return;
+
     try {
         const data = await api.triggerHealing();
-        if (data.success) {
-            showToast('✅ Self-Healing اجرا شد', 'success');
-            refreshHealing();
+
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast('✅ Self-Healing اجرا شد', 'success');
+            }
+            refreshDebugHealing();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
 
-async function resetHealing() {
+async function resetDebugHealing() {
     if (!confirm('⚠️ آیا از بازنشانی تلاش‌های Self-Healing اطمینان دارید؟')) return;
+
     try {
         const data = await api.resetHealing();
-        if (data.success) {
-            showToast('✅ تلاش‌ها بازنشانی شد', 'success');
-            refreshHealing();
+
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast('✅ تلاش‌ها بازنشانی شد', 'success');
+            }
+            refreshDebugHealing();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
 
 // ============================================================
-// تابع init برای تب healing
+// INIT / CLEANUP
 // ============================================================
+
 window.init_healing = function() {
-    refreshHealing();
-    // بروزرسانی هر ۳۰ ثانیه
-    setInterval(refreshHealing, 30000);
+    console.log('💚 Debug healing tab initializing...');
+    refreshDebugHealing();
+
+    if (_healingInterval) clearInterval(_healingInterval);
+    _healingInterval = setInterval(() => {
+        const activeTab = document.querySelector('#debugTabs .tab-btn.active');
+        if (activeTab?.dataset.tab === 'healing') {
+            refreshDebugHealing();
+        }
+    }, 30000);
 };
+
+window.cleanup_healing = function() {
+    console.log('🧹 Debug healing tab cleaning up...');
+    if (_healingInterval) {
+        clearInterval(_healingInterval);
+        _healingInterval = null;
+    }
+};
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 </script>
+
+<style>
+.healing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.healing-stat {
+    background: var(--bg-input);
+    padding: var(--space-5);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    text-align: center;
+    transition: var(--transition);
+    animation: slideUp 0.4s var(--ease-out) backwards;
+}
+
+.healing-stat:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+}
+
+.healing-stat .hs-value {
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-extrabold);
+    font-family: var(--font-mono);
+    margin-bottom: var(--space-2);
+}
+
+.healing-stat .hs-value.cyan { color: var(--color-cyan); }
+
+.healing-stat .hs-label {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--fw-semibold);
+}
+
+.healing-db-list {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.healing-empty {
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+}
+
+.healing-info {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+.healing-actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+}
+
+.healing-timestamp {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+@media (max-width: 768px) {
+    .healing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .healing-actions .btn {
+        flex: 1;
+    }
+}
+</style>
