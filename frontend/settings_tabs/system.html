@@ -1,6 +1,6 @@
 <!-- ============================================================
-     settings_tabs/system.html - تب سیستم
-     نسخه ۱.۰ - اطلاعات سیستم
+     settings_tabs/system.html — تب سیستم
+     نسخه ۲.۰ — رفع api.getStatus() ناموجود
      ============================================================ -->
 
 <div class="settings-tab-content">
@@ -61,21 +61,20 @@
         </div>
 
         <div id="sys_database_list">
-            <div class="settings-info-item">
-                <span class="info-label">در حال بررسی...</span>
-                <span class="info-value">—</span>
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
             </div>
         </div>
 
         <div class="settings-actions">
-            <button class="settings-btn settings-btn-secondary" onclick="refreshSystemInfo()">
+            <button class="btn btn-outline btn-sm" onclick="refreshSystemInfo()">
                 <i class="fas fa-sync-alt"></i>
-                بروزرسانی
+                <span>بروزرسانی</span>
             </button>
         </div>
     </div>
 
-    <!-- ===== گروه ۳: API & Credits ===== -->
+    <!-- ===== گروه ۳: API ===== -->
     <div class="settings-group">
         <div class="group-title">
             <i class="fas fa-cloud"></i>
@@ -115,17 +114,17 @@
         </div>
 
         <div class="settings-actions" style="margin-top: 0; padding-top: 0; border-top: none;">
-            <button class="settings-btn settings-btn-secondary" onclick="exportSettings()">
+            <button class="btn btn-outline btn-sm" onclick="exportSettings()">
                 <i class="fas fa-download"></i>
-                خروجی تنظیمات
+                <span>خروجی تنظیمات</span>
             </button>
-            <button class="settings-btn settings-btn-secondary" onclick="openDebugPage()">
+            <button class="btn btn-outline btn-sm" onclick="openDebugPage()">
                 <i class="fas fa-bug"></i>
-                صفحه دیباگ
+                <span>صفحه دیباگ</span>
             </button>
-            <button class="settings-btn settings-btn-secondary" onclick="openDatabasePage()">
+            <button class="btn btn-outline btn-sm" onclick="openDatabasePage()">
                 <i class="fas fa-database"></i>
-                مدیریت دیتابیس
+                <span>مدیریت دیتابیس</span>
             </button>
         </div>
     </div>
@@ -134,62 +133,42 @@
 
 <script>
 // ============================================================
-// SYSTEM TAB CONTROLLER
+// SETTINGS SYSTEM TAB
 // ============================================================
 
-function init_settings_system() {
-    console.log('⚙️ Initializing system tab...');
-    loadSystemInfo();
-    
-    // شروع بروزرسانی خودکار
-    if (window._systemInfoInterval) {
-        clearInterval(window._systemInfoInterval);
-    }
-    window._systemInfoInterval = setInterval(loadSystemInfo, 30000);
-}
-
-function cleanup_settings_system() {
-    console.log('🧹 Cleaning up system tab...');
-    
-    if (window._systemInfoInterval) {
-        clearInterval(window._systemInfoInterval);
-        window._systemInfoInterval = null;
-    }
-}
+let _systemInfoInterval = null;
 
 // ============================================================
-// LOAD SYSTEM INFO
+// Load System Info
 // ============================================================
 
 async function loadSystemInfo() {
     try {
-        // نسخه از API root
+        // ===== نسخه از API root =====
         try {
             const res = await fetch('/api');
-            const data = await res.json();
-            
-            const versionEl = document.getElementById('sys_version');
-            if (versionEl) versionEl.textContent = data.version || '—';
-            
-            const nameEl = document.getElementById('sys_name');
-            if (nameEl) nameEl.textContent = data.name || 'Trading Signal System';
+            if (res.ok) {
+                const data = await res.json();
+                setText('sys_version', data.version || '—');
+                setText('sys_name', data.name || 'Trading Signal System');
+            }
         } catch (e) {
-            console.debug('Could not fetch API root:', e);
+            console.debug('API root not available:', e);
         }
-        
+
         // Environment
-        const envEl = document.getElementById('sys_env');
-        if (envEl) envEl.textContent = 'Production';
-        
-        // Health
+        setText('sys_env', 'Production');
+
+        // ===== Health =====
         try {
-            const health = await window.api.getHealth();
-            
+            // ✅ FIX: api.getHealth() (موجود در api.js)
+            const health = await window.api?.getHealth?.();
+
             const healthEl = document.getElementById('sys_health');
-            if (healthEl) {
-                const status = health.status || 'unknown';
-                if (status === 'ok') {
-                    healthEl.innerHTML = '<span class="settings-live-dot"></span> پایدار';
+            if (healthEl && health) {
+                const status = health.status || health.data?.status || 'unknown';
+                if (status === 'ok' || status === 'healthy') {
+                    healthEl.innerHTML = '<span class="status-dot online"></span> پایدار';
                     healthEl.className = 'info-value green';
                 } else if (status === 'degraded') {
                     healthEl.textContent = '⚠️ ضعیف';
@@ -202,42 +181,41 @@ async function loadSystemInfo() {
         } catch (e) {
             console.debug('Health check error:', e);
         }
-        
-        // Uptime
+
+        // ===== Uptime =====
         try {
-            const stats = await window.api.getAppStats();
-            if (stats.success && stats.data?.uptime) {
-                const uptimeEl = document.getElementById('sys_uptime');
-                if (uptimeEl) uptimeEl.textContent = stats.data.uptime.app_formatted || '—';
+            const stats = await window.api?.getAppStats?.();
+            if (stats?.success && stats.data?.uptime) {
+                setText('sys_uptime', stats.data.uptime.app_formatted || '—');
             }
         } catch (e) {
             console.debug('Stats error:', e);
         }
-        
-        // Databases
+
+        // ===== Databases =====
         await loadDatabasesStatus();
-        
-        // API Status
+
+        // ===== API Status =====
         await loadApiStatus();
-        
+
         console.log('✅ System info loaded');
     } catch (err) {
-        console.error('❌ Failed to load system info:', err);
+        console.error('❌ Load system info error:', err);
     }
 }
 
 // ============================================================
-// LOAD DATABASES STATUS
+// Databases Status
 // ============================================================
 
 async function loadDatabasesStatus() {
     try {
-        const health = await window.api.getHealthSummary();
+        // ✅ FIX: api.getHealthSummary() (موجود در api.js)
+        const health = await window.api?.getHealthSummary?.();
         const container = document.getElementById('sys_database_list');
-        
         if (!container) return;
-        
-        if (!health.success || !health.data) {
+
+        if (!health?.success || !health.data) {
             container.innerHTML = `
                 <div class="settings-info-item">
                     <span class="info-label">خطا در دریافت داده</span>
@@ -246,10 +224,10 @@ async function loadDatabasesStatus() {
             `;
             return;
         }
-        
+
         const data = health.data;
         const details = data.details || {};
-        
+
         const dbNames = ['primary', 'backup', 'analytics', 'logs', 'archive', 'cache'];
         const dbLabels = {
             primary: 'دیتابیس اصلی',
@@ -259,7 +237,6 @@ async function loadDatabasesStatus() {
             archive: 'آرشیو',
             cache: 'کش (Redis)',
         };
-        
         const dbIcons = {
             primary: 'fa-database',
             backup: 'fa-archive',
@@ -268,68 +245,70 @@ async function loadDatabasesStatus() {
             archive: 'fa-box-archive',
             cache: 'fa-bolt',
         };
-        
+
         container.innerHTML = dbNames.map(dbName => {
             const info = details[dbName] || {};
             const isConnected = info.connected === true || info.status === 'online';
-            
-            const statusIcon = isConnected 
-                ? '<span class="settings-live-dot"></span>' 
-                : '❌';
-            
-            const statusClass = isConnected ? 'green' : 'red';
-            const statusText = isConnected ? 'متصل' : 'قطع';
-            
+
             return `
                 <div class="settings-info-item">
                     <span class="info-label">
                         <i class="fas ${dbIcons[dbName] || 'fa-database'}"></i>
                         ${dbLabels[dbName] || dbName}
                     </span>
-                    <span class="info-value ${statusClass}">
-                        ${statusIcon} ${statusText}
+                    <span class="info-value ${isConnected ? 'green' : 'red'}">
+                        ${isConnected ? '<span class="status-dot online"></span> متصل' : '❌ قطع'}
                     </span>
                 </div>
             `;
         }).join('');
-        
     } catch (err) {
-        console.error('❌ Failed to load databases status:', err);
+        console.error('❌ Load databases status error:', err);
     }
 }
 
 // ============================================================
-// LOAD API STATUS
+// API Status
 // ============================================================
 
 async function loadApiStatus() {
     try {
-        // API Status
+        // ===== API Status =====
+        // ✅ FIX: به جای api.getStatus() → api.getCryptoStats()
+        // (چون getStatus وجود نداره، از getCryptoStats استفاده می‌کنیم که وضعیت API رو داره)
         try {
-            const status = await window.api.getStatus();
+            const stats = await window.api?.getCryptoStats?.();
             const statusEl = document.getElementById('sys_api_status');
-            if (statusEl) {
-                if (status?.status === 'ok') {
-                    statusEl.innerHTML = '<span class="settings-live-dot"></span> فعال';
+
+            if (statusEl && stats?.success && stats.data) {
+                const ws = stats.data.websocket || {};
+                const pm = stats.data.price_manager || {};
+
+                if (ws.connected === true) {
+                    statusEl.innerHTML = '<span class="status-dot online"></span> فعال';
                     statusEl.className = 'info-value green';
-                } else {
-                    statusEl.textContent = '⚠️ غیرفعال';
+                } else if (pm.is_running) {
+                    statusEl.innerHTML = '<span class="status-dot warning"></span> Fallback';
                     statusEl.className = 'info-value orange';
+                } else {
+                    statusEl.innerHTML = '<span class="status-dot offline"></span> غیرفعال';
+                    statusEl.className = 'info-value red';
                 }
             }
         } catch (e) {
             console.debug('API status error:', e);
         }
-        
-        // Credits
+
+        // ===== Credits =====
         try {
-            const credits = await window.api.getCredits();
+            // ✅ api.getCredits() (موجود در api.js)
+            const credits = await window.api?.getCredits?.();
             const creditsEl = document.getElementById('sys_api_credits');
+
             if (creditsEl && credits?.data) {
                 const remaining = credits.data.remainingCredits || 0;
-                creditsEl.textContent = remaining.toLocaleString('fa-IR');
-                
-                // رنگ بر اساس اعتبار
+                creditsEl.textContent = remaining.toLocaleString('en-US');
+
                 if (remaining < 100) {
                     creditsEl.className = 'info-value red';
                 } else if (remaining < 500) {
@@ -341,53 +320,68 @@ async function loadApiStatus() {
         } catch (e) {
             console.debug('Credits error:', e);
         }
-        
-        // Request count (از app metrics)
+
+        // ===== Requests Count =====
         try {
+            // ✅ appMetrics.get() (موجود در app.js)
             const metrics = window.appMetrics?.get?.() || {};
             const requestsEl = document.getElementById('sys_api_requests');
             if (requestsEl) {
-                requestsEl.textContent = (metrics.totalRequests || 0).toLocaleString('fa-IR');
+                requestsEl.textContent = (metrics.totalRequests || 0).toLocaleString('en-US');
             }
         } catch (e) {
             console.debug('Metrics error:', e);
         }
     } catch (err) {
-        console.error('❌ Failed to load API status:', err);
+        console.error('❌ Load API status error:', err);
     }
 }
 
 // ============================================================
-// REFRESH
+// Refresh
 // ============================================================
 
 function refreshSystemInfo() {
-    window.showToast?.('🔄 در حال بروزرسانی...', 'info', 1500);
+    if (typeof showToast === 'function') {
+        showToast('🔄 در حال بروزرسانی...', 'info', 1500);
+    }
     loadSystemInfo();
 }
 
 // ============================================================
-// ACTIONS
+// Actions
 // ============================================================
 
 function exportSettings() {
     try {
         const settings = {
-            scheduler: appSettings.get('scheduler'),
-            theme: appSettings.get('theme'),
-            cache: appSettings.get('cache'),
-            notifications: appSettings.get('notifications'),
-            dashboard: appSettings.get('dashboard'),
+            scheduler: window.appSettings?.get('scheduler'),
+            theme: window.appSettings?.get('theme'),
+            cache: window.appSettings?.get('cache'),
+            notifications: window.appSettings?.get('notifications'),
+            dashboard: window.appSettings?.get('dashboard'),
             exported_at: new Date().toISOString(),
         };
-        
+
         const filename = `settings_${new Date().toISOString().slice(0, 10)}.json`;
-        window.downloadJSON?.(settings, filename);
-        
-        window.showToast?.('📥 دانلود شروع شد', 'success');
+
+        // ✅ downloadJSON() از utils.js
+        if (typeof downloadJSON === 'function') {
+            downloadJSON(settings, filename);
+        } else {
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        if (typeof showToast === 'function') showToast('📥 دانلود شروع شد', 'success');
     } catch (err) {
         console.error('❌ Export settings error:', err);
-        window.showToast?.('❌ خطا در خروجی', 'error');
+        if (typeof showToast === 'function') showToast('❌ خطا در خروجی', 'error');
     }
 }
 
@@ -399,5 +393,37 @@ function openDatabasePage() {
     window.open('/database', '_blank');
 }
 
-console.log('✅ System tab script loaded');
+// ============================================================
+// Helpers
+// ============================================================
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
+window.init_settings_system = function() {
+    console.log('⚙️ Settings system tab initializing...');
+    loadSystemInfo();
+
+    if (_systemInfoInterval) clearInterval(_systemInfoInterval);
+    _systemInfoInterval = setInterval(() => {
+        const activeTab = document.querySelector('#settingsTabs .settings-tab-btn.active');
+        if (activeTab?.dataset.tab === 'system') {
+            loadSystemInfo();
+        }
+    }, 30000);
+};
+
+window.cleanup_settings_system = function() {
+    console.log('🧹 Settings system tab cleaning up...');
+    if (_systemInfoInterval) {
+        clearInterval(_systemInfoInterval);
+        _systemInfoInterval = null;
+    }
+};
 </script>
