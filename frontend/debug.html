@@ -3,248 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>دیباگ</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="theme-color" content="#0a0e1a">
+    <title>دیباگ | سیستم تحلیلگر</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        /* ============================================================
-           DEBUG - استایل‌های اصلی
-           ============================================================ */
-        
-        .debug-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .debug-stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            text-align: center;
-            transition: var(--transition);
-        }
-        .debug-stat-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-2px);
-        }
-        .debug-stat-card .stat-icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
-        .debug-stat-card .stat-value { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); }
-        .debug-stat-card .stat-value.green { color: var(--accent-green); }
-        .debug-stat-card .stat-value.orange { color: var(--accent-orange); }
-        .debug-stat-card .stat-value.red { color: var(--accent-red); }
-        .debug-stat-card .stat-value.cyan { color: var(--accent-cyan); }
-        .debug-stat-card .stat-label {
-            font-size: 0.55rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-        }
-        .debug-stat-card .ram-bar-container {
-            width: 100%;
-            height: 4px;
-            background: var(--bg-input);
-            border-radius: var(--radius-full);
-            overflow: hidden;
-            margin-top: 4px;
-        }
-        .debug-stat-card .ram-bar {
-            height: 100%;
-            border-radius: var(--radius-full);
-            transition: width 0.5s ease, background 0.5s ease;
-            width: 0%;
-        }
 
-        /* ===== TABS ===== */
-        .debug-tabs {
-            display: flex;
-            gap: 4px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-sm);
-            padding: 4px;
-            border: 1px solid var(--border-color);
-            margin-bottom: 16px;
-            overflow-x: auto;
-            flex-wrap: nowrap;
-        }
-        .debug-tabs .tab-btn {
-            padding: 8px 16px;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.75rem;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-        .debug-tabs .tab-btn:hover {
-            color: var(--text-primary);
-            background: var(--bg-hover);
-        }
-        .debug-tabs .tab-btn.active {
-            background: rgba(0, 212, 255, 0.08);
-            color: var(--accent-cyan);
-        }
-        .debug-tabs .tab-btn .badge {
-            font-size: 0.5rem;
-            padding: 1px 6px;
-            border-radius: var(--radius-full);
-            background: var(--accent-red);
-            color: white;
-        }
+    <!-- Base CSS -->
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/themes.css">
 
-        /* ===== TAB CONTENT ===== */
-        .tab-content-wrapper {
-            min-height: 400px;
-            position: relative;
-        }
-        .tab-content-wrapper .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            gap: 16px;
-        }
-        .tab-content-wrapper .loading-spinner {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-cyan);
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .tab-content-wrapper .loading-text {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-        .tab-content-wrapper .error-msg {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--accent-orange);
-        }
-        .tab-content-wrapper .error-msg .icon {
-            font-size: 2.5rem;
-            display: block;
-            margin-bottom: 10px;
-        }
+    <!-- Shared -->
+    <link rel="stylesheet" href="/css/nav.css">
+    <link rel="stylesheet" href="/css/pages/shared-page.css">
 
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 1024px) {
-            .debug-stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 768px) {
-            .debug-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .debug-stat-card { padding: 10px 12px; }
-            .debug-stat-card .stat-value { font-size: 0.9rem; }
-            .debug-tabs { flex-wrap: nowrap; overflow-x: auto; }
-            .debug-tabs .tab-btn { font-size: 0.65rem; padding: 6px 12px; }
-        }
-        @media (max-width: 480px) {
-            .debug-stats-grid { grid-template-columns: 1fr 1fr; }
-            .debug-stat-card .stat-value { font-size: 0.8rem; }
-            .debug-tabs .tab-btn { font-size: 0.6rem; padding: 4px 8px; }
-        }
-    </style>
+    <!-- Page-specific -->
+    <link rel="stylesheet" href="/css/pages/debug.css">
 </head>
 <body>
 
+    <!-- Navigation -->
     <div id="navContainer"></div>
 
-    <div class="container">
+    <!-- Main -->
+    <div class="tabbed-page debug-page">
 
-        <!-- ===== PAGE HEADER ===== -->
-        <div class="page-header">
-            <div>
-                <h1><i class="fas fa-bug" style="color:#ff6b00;"></i> دیباگ</h1>
-                <span class="subtitle">ابزارهای عیب‌یابی و مدیریت سیستم</span>
+        <div class="container">
+
+            <!-- ====================================================
+                 Header
+                 ==================================================== -->
+            <div class="page-header">
+                <div>
+                    <h1>
+                        <span class="page-icon">
+                            <i class="fas fa-bug"></i>
+                        </span>
+                        <span>دیباگ</span>
+                    </h1>
+                    <span class="subtitle">ابزارهای عیب‌یابی و مدیریت سیستم</span>
+                </div>
+                <div class="header-actions">
+                    <span class="timestamp" id="pageTimestamp">—</span>
+                </div>
             </div>
-            <span class="timestamp" id="pageTimestamp"></span>
+
+            <!-- ====================================================
+                 Stats Grid
+                 ==================================================== -->
+            <div class="debug-stats-grid">
+                <div class="debug-stat-card">
+                    <span class="stat-icon">💻</span>
+                    <div class="stat-value cyan" id="debugCpu">—</div>
+                    <div class="stat-label">CPU (App)</div>
+                </div>
+                <div class="debug-stat-card">
+                    <span class="stat-icon">💾</span>
+                    <div class="stat-value green" id="debugRam">—</div>
+                    <div class="ram-bar-container">
+                        <div class="ram-bar" id="debugRamBar" style="width:0%;"></div>
+                    </div>
+                    <div class="stat-label">RAM (از ۵۱۲MB)</div>
+                </div>
+                <div class="debug-stat-card">
+                    <span class="stat-icon">⏱️</span>
+                    <div class="stat-value cyan" id="debugUptime">—</div>
+                    <div class="stat-label">آپتایم اپلیکیشن</div>
+                </div>
+                <div class="debug-stat-card">
+                    <span class="stat-icon">📊</span>
+                    <div class="stat-value purple" id="debugCollections">—</div>
+                    <div class="stat-label">جمع‌آوری‌ها</div>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 Tabs
+                 ==================================================== -->
+            <div class="tabs" id="debugTabs">
+                <button class="tab-btn active" data-tab="status">
+                    <i class="fas fa-heartbeat"></i>
+                    <span>وضعیت</span>
+                </button>
+                <button class="tab-btn" data-tab="logs">
+                    <i class="fas fa-list"></i>
+                    <span>لاگ‌ها</span>
+                </button>
+                <button class="tab-btn" data-tab="cli">
+                    <i class="fas fa-terminal"></i>
+                    <span>کنسول</span>
+                </button>
+                <button class="tab-btn" data-tab="system">
+                    <i class="fas fa-server"></i>
+                    <span>سیستم</span>
+                </button>
+                <button class="tab-btn" data-tab="cache">
+                    <i class="fas fa-database"></i>
+                    <span>کش</span>
+                </button>
+                <button class="tab-btn" data-tab="processes">
+                    <i class="fas fa-tasks"></i>
+                    <span>پردازش‌ها</span>
+                </button>
+                <button class="tab-btn" data-tab="healing">
+                    <i class="fas fa-heart-pulse"></i>
+                    <span>خودترمیمی</span>
+                </button>
+            </div>
+
+            <!-- ====================================================
+                 Tab Content
+                 ==================================================== -->
+            <div class="tab-wrapper" id="tabContent">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">در حال بارگذاری...</p>
+                </div>
+            </div>
+
         </div>
-
-        <!-- ===== STATS ===== -->
-        <div class="debug-stats-grid" id="debugStats">
-            <div class="debug-stat-card">
-                <span class="stat-icon">💻</span>
-                <div class="stat-value" id="debugCpu">—</div>
-                <div class="stat-label">CPU (App)</div>
-            </div>
-            <div class="debug-stat-card">
-                <span class="stat-icon">💾</span>
-                <div class="stat-value" id="debugRam">—</div>
-                <div class="ram-bar-container"><div class="ram-bar" id="debugRamBar" style="width:0%;"></div></div>
-                <div class="stat-label">RAM (از ۵۱۲MB)</div>
-            </div>
-            <div class="debug-stat-card">
-                <span class="stat-icon">⏱️</span>
-                <div class="stat-value cyan" id="debugUptime">—</div>
-                <div class="stat-label">آپتایم اپلیکیشن</div>
-            </div>
-            <div class="debug-stat-card">
-                <span class="stat-icon">📊</span>
-                <div class="stat-value cyan" id="debugCollections">—</div>
-                <div class="stat-label">جمع‌آوری‌ها</div>
-            </div>
-        </div>
-
-        <!-- ===== TABS ===== -->
-        <div class="debug-tabs" id="debugTabs">
-            <button class="tab-btn active" data-tab="status">
-                <i class="fas fa-heartbeat"></i> وضعیت
-            </button>
-            <button class="tab-btn" data-tab="logs">
-                <i class="fas fa-list"></i> لاگ‌ها
-            </button>
-            <button class="tab-btn" data-tab="cli">
-                <i class="fas fa-terminal"></i> کنسول
-            </button>
-            <button class="tab-btn" data-tab="system">
-                <i class="fas fa-server"></i> سیستم
-            </button>
-            <button class="tab-btn" data-tab="cache">
-                <i class="fas fa-database"></i> کش
-                <span class="badge" id="cacheBadge" style="display:none;">!</span>
-            </button>
-            <button class="tab-btn" data-tab="processes">
-                <i class="fas fa-tasks"></i> پردازش‌ها
-            </button>
-            <button class="tab-btn" data-tab="healing">
-                <i class="fas fa-heartbeat"></i> خودترمیمی
-            </button>
-        </div>
-
-        <!-- ===== TAB CONTENT ===== -->
-        <div class="tab-content-wrapper" id="tabContent">
-            <div class="loading-container">
-                <div class="loading-spinner"></div>
-                <p class="loading-text">در حال بارگذاری...</p>
-            </div>
-        </div>
-
     </div>
 
-    <!-- ===== TOAST ===== -->
-    <div class="toast-container" id="toastContainer"></div>
-
     <!-- ============================================================
-    SCRIPTS
-    ============================================================ -->
+         SCRIPTS
+         ============================================================ -->
+
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jalaliday@1/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mitt@3/dist/mitt.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/radash@12/dist/radash.umd.js"></script>
+
     <script src="/js/utils.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
-    <script src="/js/debug-loader.js"></script>
+
+    <!-- Core -->
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/tabs.js"></script>
+    <script src="/js/core/nav.js"></script>
+    <script src="/js/core/index.js"></script>
+
+    <!-- Loader -->
+    <script src="/js/loaders/debug-loader.js"></script>
 
 </body>
 </html>
