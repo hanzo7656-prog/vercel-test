@@ -1,177 +1,420 @@
+<!-- ============================================================
+     debug_tabs/cache.html — تب کش (Redis)
+     نسخه ۲.۰ — رفع خطاهای runtime + api.js هماهنگ
+     ============================================================ -->
+
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-database"></i> مدیریت کش (Redis)
-        <div style="display:flex;gap:6px;margin-right:auto;">
-            <button class="btn btn-xs btn-outline" onclick="refreshCache()"><i class="fas fa-sync-alt"></i></button>
-            <button class="btn btn-xs btn-danger" onclick="purgeCache()"><i class="fas fa-broom"></i> پاکسازی کامل</button>
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-database"></i>
+            <span>مدیریت کش (Redis)</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-xs btn-outline" onclick="refreshDebugCache()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="btn btn-xs btn-danger" onclick="purgeDebugCache()">
+                <i class="fas fa-broom"></i>
+                <span>پاکسازی کامل</span>
+            </button>
         </div>
     </div>
-    
-    <!-- ===== STATS ===== -->
-    <div id="cacheStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;">
-        <div style="background:var(--bg-input);padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-cyan);" id="cacheKeyCount">—</div>
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;">🔑 کلیدها</div>
+
+    <!-- Stats -->
+    <div class="cache-stats" id="cacheStats">
+        <div class="cache-stat">
+            <div class="cs-value cyan" id="cacheKeyCount">—</div>
+            <div class="cs-label">🔑 کلیدها</div>
         </div>
-        <div style="background:var(--bg-input);padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-green);" id="cacheMemory">—</div>
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;">💾 حافظه</div>
+        <div class="cache-stat">
+            <div class="cs-value green" id="cacheMemory">—</div>
+            <div class="cs-label">💾 حافظه</div>
         </div>
-        <div style="background:var(--bg-input);padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-color);text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:${connected ? 'var(--accent-green)' : 'var(--accent-red)'};" id="cacheStatus">—</div>
-            <div style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;">🔌 وضعیت</div>
+        <div class="cache-stat">
+            <div class="cs-value" id="cacheStatus">—</div>
+            <div class="cs-label">🔌 وضعیت</div>
         </div>
     </div>
-    
-    <!-- ===== SEARCH ===== -->
-    <div class="cache-search" style="display:flex;gap:8px;margin-bottom:12px;">
-        <input id="cacheSearchInput" placeholder="جستجو در کلیدها (مثل: session:*)" onkeypress="if(event.key==='Enter') searchCache()" style="flex:1;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.75rem;">
-        <button class="btn btn-xs btn-outline" onclick="searchCache()"><i class="fas fa-search"></i> جستجو</button>
-        <button class="btn btn-xs btn-outline" onclick="refreshCache()"><i class="fas fa-sync-alt"></i> همه</button>
+
+    <!-- Search -->
+    <div class="cache-toolbar">
+        <input
+            type="text"
+            id="cacheSearchInput"
+            class="form-input"
+            placeholder="جستجو در کلیدها (مثال: session:*)..."
+            onkeypress="if(event.key==='Enter') searchDebugCache()">
+        <button class="btn btn-sm btn-outline" onclick="searchDebugCache()">
+            <i class="fas fa-search"></i>
+            <span>جستجو</span>
+        </button>
+        <button class="btn btn-sm btn-outline" onclick="refreshDebugCache()">
+            <i class="fas fa-sync-alt"></i>
+            <span>همه</span>
+        </button>
     </div>
-    
-    <!-- ===== KEYS ===== -->
-    <div id="cacheKeys" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);min-height:60px;max-height:300px;overflow-y:auto;">
-        <div class="loading-container" style="padding:20px;">
-            <div class="loading-spinner" style="width:24px;height:24px;"></div>
-            <p class="loading-text" style="font-size:0.7rem;">در حال بارگذاری کلیدها...</p>
+
+    <!-- Keys -->
+    <div class="cache-keys" id="cacheKeys">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بارگذاری کلیدها...</p>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// CACHE TAB - کامل و پیشرفته
+// DEBUG CACHE TAB
 // ============================================================
 
-let cacheKeysData = [];
+let _cacheKeysData = [];
+let _cacheInterval = null;
 
-async function refreshCache() {
+// ============================================================
+// Load Cache Keys
+// ============================================================
+
+async function refreshDebugCache(pattern = '*') {
     const keysContainer = document.getElementById('cacheKeys');
+    if (!keysContainer) return;
+
     keysContainer.innerHTML = `
-        <div class="loading-container" style="padding:20px;">
-            <div class="loading-spinner" style="width:24px;height:24px;"></div>
-            <p class="loading-text" style="font-size:0.7rem;">در حال بارگذاری کلیدها...</p>
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">در حال بارگذاری کلیدها...</p>
         </div>
     `;
-    
+
     try {
-        const data = await api.getDebugCache();
-        if (data.success && data.data) {
-            cacheKeysData = data.data.keys || [];
-            const count = data.data.total_keys || 0;
-            const connected = data.data.connected || false;
-            const memory = data.data.memory || '—';
-            
-            document.getElementById('cacheKeyCount').textContent = count;
-            document.getElementById('cacheMemory').textContent = memory;
-            document.getElementById('cacheStatus').textContent = connected ? '✅ متصل' : '❌ قطع';
-            document.getElementById('cacheStatus').style.color = connected ? 'var(--accent-green)' : 'var(--accent-red)';
-            
-            renderCacheKeys(cacheKeysData);
-        } else {
-            keysContainer.innerHTML = `
-                <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
-                    🔑 هیچ کلیدی یافت نشد
-                </div>
-            `;
+        // ✅ FIX: به جای getDebugCache → getRedisKeys
+        const data = await api.getRedisKeys({ pattern, limit: 200 });
+        const statsData = await api.getRedisStats();
+
+        if (!data?.success) {
+            throw new Error(data?.error || 'خطا در دریافت کلیدها');
         }
+
+        _cacheKeysData = data.data || [];
+
+        // Stats
+        const stats = statsData?.data || data.stats || {};
+        const count = stats.total_keys || _cacheKeysData.length;
+        const memory = stats.memory || stats.used_memory_human || '—';
+        const connected = stats.connected !== false;
+
+        setText('cacheKeyCount', count);
+        setText('cacheMemory', memory);
+
+        const statusEl = document.getElementById('cacheStatus');
+        if (statusEl) {
+            statusEl.textContent = connected ? '✅ متصل' : '❌ قطع';
+            statusEl.className = 'cs-value ' + (connected ? 'green' : 'red');
+        }
+
+        // Render keys
+        renderDebugCacheKeys(_cacheKeysData);
+
     } catch (err) {
         console.error('Cache error:', err);
         keysContainer.innerHTML = `
-            <div style="text-align:center;padding:20px;color:var(--accent-red);width:100%;">
-                ❌ خطا در دریافت کش
+            <div class="empty-state error">
+                <span class="empty-icon">❌</span>
+                <div class="empty-title">خطا در دریافت کش</div>
+                <div class="empty-message">${escapeHtml(err.message)}</div>
+                <button class="empty-action" onclick="refreshDebugCache()">
+                    <i class="fas fa-sync-alt"></i>
+                    تلاش مجدد
+                </button>
             </div>
         `;
     }
 }
 
-function renderCacheKeys(keys) {
+function renderDebugCacheKeys(keys) {
     const container = document.getElementById('cacheKeys');
+    if (!container) return;
+
     if (!keys || keys.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
-                🔑 هیچ کلیدی یافت نشد
+            <div class="empty-state">
+                <span class="empty-icon">🔑</span>
+                <div class="empty-title">هیچ کلیدی یافت نشد</div>
+                <div class="empty-message">Redis خالی است یا فیلتر نتیجه‌ای ندارد</div>
             </div>
         `;
         return;
     }
-    
-    container.innerHTML = keys.map(k => `
-        <span class="key-tag" data-key="${k.key}" style="background:rgba(0,0,0,0.3);padding:2px 10px;border-radius:4px;font-size:0.6rem;font-family:var(--font-mono);color:var(--accent-cyan);border:1px solid rgba(0,212,255,0.06);display:inline-flex;align-items:center;gap:6px;">
-            ${k.key}
-            <span onclick="deleteCacheKey('${k.key}')" style="cursor:pointer;color:var(--text-muted);font-size:0.5rem;transition:var(--transition);" 
-                  onmouseover="this.style.color='var(--accent-red)'" 
-                  onmouseout="this.style.color='var(--text-muted)'">✕</span>
-        </span>
-    `).join('');
-}
 
-async function searchCache() {
-    const pattern = document.getElementById('cacheSearchInput').value.trim() || '*';
-    const keysContainer = document.getElementById('cacheKeys');
-    keysContainer.innerHTML = `
-        <div class="loading-container" style="padding:20px;">
-            <div class="loading-spinner" style="width:24px;height:24px;"></div>
-            <p class="loading-text" style="font-size:0.7rem;">در حال جستجو...</p>
+    container.innerHTML = `
+        <div class="cache-keys-grid">
+            ${keys.map(k => `
+                <div class="cache-key-item" title="${escapeAttr(k.key)}">
+                    <span class="ck-key">${escapeHtml(k.key)}</span>
+                    <button class="ck-delete" onclick="deleteDebugCacheKey('${escapeAttr(k.key)}')" title="حذف">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('')}
         </div>
     `;
-    
-    try {
-        const data = await api.searchCache(pattern);
-        if (data.success && data.data) {
-            const keys = data.data;
-            if (keys.length === 0) {
-                keysContainer.innerHTML = `
-                    <div style="text-align:center;padding:20px;color:var(--text-muted);width:100%;">
-                        🔑 کلیدی با الگوی "${pattern}" یافت نشد
-                    </div>
-                `;
-                return;
-            }
-            renderCacheKeys(keys);
-        }
-    } catch (err) {
-        keysContainer.innerHTML = `
-            <div style="text-align:center;padding:20px;color:var(--accent-red);width:100%;">
-                ❌ خطا در جستجو
-            </div>
-        `;
-    }
 }
 
-async function deleteCacheKey(key) {
+// ============================================================
+// Search
+// ============================================================
+
+async function searchDebugCache() {
+    const pattern = document.getElementById('cacheSearchInput')?.value.trim() || '*';
+    await refreshDebugCache(pattern);
+}
+
+// ============================================================
+// Delete Key
+// ============================================================
+
+async function deleteDebugCacheKey(key) {
     if (!confirm(`⚠️ آیا از حذف کلید "${key}" اطمینان دارید؟`)) return;
+
     try {
-        const data = await api.deleteCacheKey(key);
-        if (data.success) {
-            showToast('🗑️ کلید "' + key + '" حذف شد', 'success');
-            refreshCache();
+        // ✅ FIX: به جای deleteCacheKey → deleteRedisKey
+        const data = await api.deleteRedisKey(key);
+
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast('🗑️ کلید حذف شد', 'success');
+            }
+            refreshDebugCache();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
 
-async function purgeCache() {
-    if (!confirm('⚠️ آیا از پاکسازی کامل کش و آزادسازی حافظه اطمینان دارید؟')) return;
+// ============================================================
+// Purge All
+// ============================================================
+
+async function purgeDebugCache() {
+    if (!confirm('⚠️ آیا از پاکسازی کامل کش اطمینان دارید؟ این عمل غیرقابل بازگشت است.')) return;
+
     try {
-        const data = await api.purgeCache();
-        if (data.success) {
-            showToast('🗑️ کش پاکسازی و حافظه آزاد شد', 'success');
-            refreshCache();
+        // ✅ FIX: به جای purgeCache → clearRedis(true)
+        const data = await api.clearRedis(true);
+
+        if (data?.success) {
+            if (typeof showToast === 'function') {
+                showToast('🗑️ کش پاکسازی شد', 'success');
+            }
+            refreshDebugCache();
         } else {
-            showToast('❌ ' + data.error, 'error');
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data?.error || 'خطا'), 'error');
+            }
         }
     } catch (err) {
-        showToast('❌ خطا', 'error');
+        if (typeof showToast === 'function') {
+            showToast('❌ ' + err.message, 'error');
+        }
     }
 }
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
 
 window.init_cache = function() {
-    refreshCache();
-    setInterval(refreshCache, 30000);
+    console.log('💾 Debug cache tab initializing...');
+    refreshDebugCache();
+
+    if (_cacheInterval) clearInterval(_cacheInterval);
+    _cacheInterval = setInterval(() => {
+        const activeTab = document.querySelector('#debugTabs .tab-btn.active');
+        if (activeTab?.dataset.tab === 'cache') {
+            refreshDebugCache();
+        }
+    }, 30000);
+};
+
+window.cleanup_cache = function() {
+    console.log('🧹 Debug cache tab cleaning up...');
+    if (_cacheInterval) {
+        clearInterval(_cacheInterval);
+        _cacheInterval = null;
+    }
 };
 </script>
+
+<style>
+/* ============================================================
+   Cache Stats
+   ============================================================ */
+
+.cache-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.cache-stat {
+    background: var(--bg-input);
+    padding: var(--space-4);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    text-align: center;
+    transition: var(--transition);
+    animation: slideUp 0.4s var(--ease-out) backwards;
+}
+
+.cache-stat:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+}
+
+.cache-stat .cs-value {
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-extrabold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.cache-stat .cs-value.cyan { color: var(--color-cyan); }
+.cache-stat .cs-value.green { color: var(--color-green); }
+.cache-stat .cs-value.red { color: var(--color-red); }
+
+.cache-stat .cs-label {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--fw-semibold);
+}
+
+/* ============================================================
+   Cache Toolbar
+   ============================================================ */
+
+.cache-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.cache-toolbar .form-input {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ============================================================
+   Cache Keys
+   ============================================================ */
+
+.cache-keys {
+    padding: var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    min-height: 100px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.cache-keys-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.cache-key-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px 8px 4px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-cyan);
+    transition: var(--transition);
+    animation: slideUp 0.3s var(--ease-out) backwards;
+    max-width: 100%;
+}
+
+.cache-key-item:hover {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.cache-key-item .ck-key {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+}
+
+.cache-key-item .ck-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.65rem;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.cache-key-item .ck-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--color-red);
+}
+
+@media (max-width: 768px) {
+    .cache-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .cache-key-item .ck-key {
+        max-width: 180px;
+    }
+}
+</style>
