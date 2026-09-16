@@ -1,241 +1,573 @@
+<!-- ============================================================
+     debug_tabs/cli.html — تب کنسول تعاملی
+     نسخه ۲.۰ — با init/cleanup استاندارد + mode switcher
+     ============================================================ -->
+
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-terminal"></i> کنسول تعاملی
-        <div style="display:flex;gap:6px;margin-right:auto;">
-            <button class="btn btn-xs btn-danger" onclick="clearCli()"><i class="fas fa-eraser"></i></button>
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-terminal"></i>
+            <span>کنسول تعاملی</span>
         </div>
+        <button class="btn btn-xs btn-danger" onclick="clearCli()">
+            <i class="fas fa-eraser"></i>
+            <span>پاک</span>
+        </button>
     </div>
 
     <!-- Mode Switcher -->
-    <div class="cli-mode-switcher" style="display:flex;gap:4px;background:var(--bg-input);border-radius:var(--radius-sm);padding:3px;border:1px solid var(--border-color);margin-bottom:10px;">
-        <button class="mode-btn mode-python active" data-mode="python" onclick="setCliMode('python')" style="padding:6px 14px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:0.7rem;font-weight:500;transition:var(--transition);font-family:inherit;display:flex;align-items:center;gap:6px;">
-            <i class="fab fa-python"></i> Python
+    <div class="cli-mode-switcher" id="cliModeSwitcher">
+        <button class="cli-mode-btn active" data-mode="python" onclick="setCliMode('python')">
+            <i class="fab fa-python"></i>
+            <span>Python</span>
         </button>
-        <button class="mode-btn mode-shell" data-mode="shell" onclick="setCliMode('shell')" style="padding:6px 14px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:0.7rem;font-weight:500;transition:var(--transition);font-family:inherit;display:flex;align-items:center;gap:6px;">
-            <i class="fas fa-terminal"></i> Shell
+        <button class="cli-mode-btn" data-mode="shell" onclick="setCliMode('shell')">
+            <i class="fas fa-terminal"></i>
+            <span>Shell</span>
         </button>
-        <button class="mode-btn mode-terminal" data-mode="terminal" onclick="setCliMode('terminal')" style="padding:6px 14px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:0.7rem;font-weight:500;transition:var(--transition);font-family:inherit;display:flex;align-items:center;gap:6px;">
-            <i class="fas fa-desktop"></i> Terminal
+        <button class="cli-mode-btn" data-mode="terminal" onclick="setCliMode('terminal')">
+            <i class="fas fa-desktop"></i>
+            <span>Terminal</span>
         </button>
     </div>
 
-    <!-- Console Output -->
-    <div class="console-output" id="cliOutput" style="background:rgba(0,0,0,0.4);border-radius:var(--radius-sm);padding:14px 16px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);max-height:400px;overflow-y:auto;border:1px solid var(--border-color);min-height:200px;">
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">🚀</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">کنسول آماده است. <span class="highlight" style="color:var(--accent-cyan);">/help</span> برای راهنما</span>
+    <!-- Output -->
+    <div class="console-output cli-output" id="cliOutput">
+        <div class="log-line">
+            <span class="log-time">🚀</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">کنسول آماده است. <strong class="text-cyan">/help</strong> برای راهنما</span>
         </div>
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">💡</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">میانبرها: <span class="highlight" style="color:var(--accent-cyan);">/cpu</span> <span class="highlight" style="color:var(--accent-cyan);">/ram</span> <span class="highlight" style="color:var(--accent-cyan);">/uptime</span> <span class="highlight" style="color:var(--accent-cyan);">/stats</span> <span class="highlight" style="color:var(--accent-cyan);">/clear</span> <span class="highlight" style="color:var(--accent-cyan);">/help</span></span>
+        <div class="log-line">
+            <span class="log-time">💡</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">
+                میانبرها:
+                <strong class="text-cyan">/cpu</strong>
+                <strong class="text-cyan">/ram</strong>
+                <strong class="text-cyan">/uptime</strong>
+                <strong class="text-cyan">/stats</strong>
+                <strong class="text-cyan">/clear</strong>
+                <strong class="text-cyan">/help</strong>
+            </span>
         </div>
     </div>
 
-    <!-- CLI Input -->
-    <div class="cli-area" style="margin-top:12px;">
-        <div class="cli-input-wrapper" style="position:relative;">
-            <textarea id="cliInput" placeholder="دستور خود را وارد کنید..." style="width:100%;padding:10px 14px;background:rgba(0,0,0,0.3);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:0.85rem;resize:vertical;min-height:60px;transition:var(--transition);direction:ltr;padding-left:120px;"></textarea>
-            <span class="cli-prompt python" id="cliPrompt" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;pointer-events:none;opacity:0.8;color:#00d4ff;">>>> </span>
+    <!-- Input -->
+    <div class="cli-area">
+        <div class="cli-input-wrapper">
+            <span class="cli-prompt" id="cliPrompt">>>> </span>
+            <textarea
+                id="cliInput"
+                class="cli-input"
+                placeholder="دستور خود را وارد کنید..."
+                spellcheck="false"></textarea>
         </div>
-        <div class="cli-shortcuts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding:6px 10px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border-color);">
-            <button class="shortcut" onclick="insertCommand('/cpu')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">⚡</span>/cpu</button>
-            <button class="shortcut" onclick="insertCommand('/ram')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">💾</span>/ram</button>
-            <button class="shortcut" onclick="insertCommand('/uptime')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">⏱️</span>/uptime</button>
-            <button class="shortcut" onclick="insertCommand('/stats')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">📊</span>/stats</button>
-            <button class="shortcut" onclick="insertCommand('/clear')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">🧹</span>/clear</button>
-            <button class="shortcut" onclick="insertCommand('/help')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">❓</span>/help</button>
-            <button class="shortcut" onclick="insertCommand('ls -la')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">📂</span>ls</button>
-            <button class="shortcut" onclick="insertCommand('ps aux')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">📈</span>ps</button>
-            <button class="shortcut" onclick="insertCommand('df -h')" style="font-size:0.55rem;color:var(--text-muted);padding:2px 8px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);font-family:var(--font-mono);background:transparent;"><span class="icon" style="margin-left:4px;">💿</span>df</button>
+
+        <!-- Shortcuts -->
+        <div class="cli-shortcuts">
+            <button class="cli-shortcut" onclick="insertCliCommand('/cpu')">⚡ /cpu</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('/ram')">💾 /ram</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('/uptime')">⏱️ /uptime</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('/stats')">📊 /stats</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('/help')">❓ /help</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('ls -la')">📂 ls</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('ps aux')">📈 ps</button>
+            <button class="cli-shortcut" onclick="insertCliCommand('df -h')">💿 df</button>
         </div>
-        <div class="cli-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <button class="btn btn-primary" onclick="executeCommand()" style="padding:6px 16px;border-radius:var(--radius-sm);font-size:0.75rem;"><i class="fas fa-play"></i> اجرا (Ctrl+Enter)</button>
-            <button class="btn btn-outline" onclick="clearCliInput()" style="padding:6px 16px;border-radius:var(--radius-sm);font-size:0.75rem;"><i class="fas fa-times"></i> پاک کردن</button>
+
+        <!-- Actions -->
+        <div class="cli-actions">
+            <button class="btn btn-primary btn-sm" onclick="executeCliCommand()">
+                <i class="fas fa-play"></i>
+                <span>اجرا (Ctrl+Enter)</span>
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="clearCliInput()">
+                <i class="fas fa-times"></i>
+                <span>پاک کردن</span>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// CLI FUNCTIONS
+// DEBUG CLI TAB
 // ============================================================
-let currentCliMode = 'python';
-let cliHistory = [];
-let historyIndex = -1;
+
+let _cliMode = 'python';
+let _cliHistory = [];
+let _cliHistoryIndex = -1;
+let _cliInitialized = false;
+
+// ============================================================
+// Commands Shortcuts
+// ============================================================
+
+const CLI_SHORTCUTS = {
+    '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
+    '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
+    '/uptime': 'import psutil, os, time; p=psutil.Process(os.getpid()); s=int(time.time()-p.create_time()); d,h,m=s//86400,(s%86400)//3600,(s%3600)//60; print(f"Uptime: {d}d {h}h {m}m")',
+    '/stats': 'import psutil, os, time; p=psutil.Process(os.getpid()); m=p.memory_info(); c=p.cpu_percent(interval=0.3); u=int(time.time()-p.create_time()); d,h,mi=u//86400,(u%86400)//3600,(u%3600)//60; print(f"PID: {os.getpid()}\\nCPU: {c}%\\nRAM: {m.rss/(1024*1024):.1f} MB\\nUptime: {d}d {h}h {mi}m")',
+    '/clear': '__CLEAR__',
+    '/help': 'print("📋 میانبرها:\\n  /cpu   - مصرف CPU\\n  /ram   - مصرف RAM\\n  /uptime - آپتایم\\n  /stats - همه آمار\\n  /clear - پاک کردن\\n  /help  - راهنما")',
+};
+
+// ============================================================
+// Mode Switcher
+// ============================================================
 
 function setCliMode(mode) {
-    currentCliMode = mode;
-    
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.remove('active');
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--text-secondary)';
-        if (btn.dataset.mode === mode) {
-            btn.classList.add('active');
-            if (mode === 'python') {
-                btn.style.background = 'rgba(0,212,255,0.2)';
-                btn.style.color = '#00d4ff';
-            } else if (mode === 'shell') {
-                btn.style.background = 'rgba(245,158,11,0.2)';
-                btn.style.color = '#f59e0b';
-            } else if (mode === 'terminal') {
-                btn.style.background = 'rgba(34,211,238,0.2)';
-                btn.style.color = '#22d3ee';
-            }
-        }
-    });
-    
-    const prompt = document.getElementById('cliPrompt');
-    const input = document.getElementById('cliInput');
-    
-    const prompts = {
-        'python': { text: '>>> ', color: '#00d4ff' },
-        'shell': { text: '$ ', color: '#f59e0b' },
-        'terminal': { text: '$ ', color: '#22d3ee' }
+    _cliMode = mode;
+
+    const modes = {
+        python: { prompt: '>>> ', color: '#00d4ff' },
+        shell: { prompt: '$ ', color: '#f59e0b' },
+        terminal: { prompt: '$ ', color: '#22d3ee' },
     };
-    
-    const p = prompts[mode] || prompts['python'];
-    prompt.textContent = p.text;
-    prompt.style.color = p.color;
-    input.style.borderColor = p.color;
-    input.placeholder = mode === 'python' ? 'دستور پایتون را وارد کنید...' :
-                        mode === 'shell' ? 'دستور شل را وارد کنید...' :
-                        'دستور ترمینال را وارد کنید...';
+
+    const cfg = modes[mode] || modes.python;
+
+    // Update buttons
+    document.querySelectorAll('#cliModeSwitcher .cli-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    // Update prompt
+    const prompt = document.getElementById('cliPrompt');
+    if (prompt) {
+        prompt.textContent = cfg.prompt;
+        prompt.style.color = cfg.color;
+    }
+
+    // Update input
+    const input = document.getElementById('cliInput');
+    if (input) {
+        input.placeholder = mode === 'python'
+            ? 'دستور پایتون...'
+            : mode === 'shell'
+                ? 'دستور شل...'
+                : 'دستور ترمینال...';
+    }
 }
 
-function insertCommand(cmd) {
-    document.getElementById('cliInput').value = cmd;
-    document.getElementById('cliInput').focus();
+function insertCliCommand(cmd) {
+    const input = document.getElementById('cliInput');
+    if (input) {
+        input.value = cmd;
+        input.focus();
+    }
 }
 
 function clearCliInput() {
-    document.getElementById('cliInput').value = '';
+    const input = document.getElementById('cliInput');
+    if (input) input.value = '';
 }
 
-function copyLogLine(btn) {
-    const line = btn.closest('.log-line');
-    if (!line) return;
-    const time = line.querySelector('.log-time')?.textContent || '';
-    const level = line.querySelector('.log-level')?.textContent || '';
-    const msg = line.querySelector('.log-msg')?.textContent || '';
-    copyToClipboard(`[${time}] ${level}: ${msg}`);
-}
+// ============================================================
+// Execute
+// ============================================================
 
-async function executeCommand() {
+async function executeCliCommand() {
     const input = document.getElementById('cliInput');
     const output = document.getElementById('cliOutput');
+    if (!input || !output) return;
+
     let cmd = input.value.trim();
-    
     if (!cmd) {
-        showToast('⚠️ لطفاً یک دستور وارد کنید', 'warning');
+        if (typeof showToast === 'function') showToast('⚠️ دستور را وارد کنید', 'warning');
         return;
     }
 
-    if (cmd) {
-        cliHistory.push(cmd);
-        if (cliHistory.length > 50) cliHistory.shift();
-        historyIndex = -1;
-    }
+    // Save to history
+    _cliHistory.push(cmd);
+    if (_cliHistory.length > 50) _cliHistory.shift();
+    _cliHistoryIndex = -1;
 
-    const shortcuts = {
-        '/cpu': 'import psutil, os; p=psutil.Process(os.getpid()); print(f"App CPU: {p.cpu_percent(interval=0.3)}%")',
-        '/ram': 'import psutil, os; p=psutil.Process(os.getpid()); m=p.memory_info(); print(f"App RAM: {m.rss/(1024*1024):.1f} MB")',
-        '/uptime': 'import psutil, os, time; p=psutil.Process(os.getpid()); s=int(time.time()-p.create_time()); d,h,m=s//86400,(s%86400)//3600,(s%3600)//60; print(f"Uptime: {d}d {h}h {m}m")',
-        '/stats': 'import psutil, os, time; p=psutil.Process(os.getpid()); m=p.memory_info(); c=p.cpu_percent(interval=0.3); u=int(time.time()-p.create_time()); d,h,mi=u//86400,(u%86400)//3600,(u%3600)//60; print(f"PID: {os.getpid()}\\nCPU: {c}%\\nRAM: {m.rss/(1024*1024):.1f} MB\\nUptime: {d}d {h}h {mi}m")',
-        '/clear': 'clearCli()',
-        '/help': 'print("📋 میانبرها:\\n  /cpu   - نمایش مصرف CPU\\n  /ram   - نمایش مصرف RAM\\n  /uptime - نمایش آپتایم\\n  /stats - نمایش همه آمار\\n  /clear - پاک کردن خروجی\\n  /help  - نمایش این راهنما\\n\\n💡 حالت‌ها: Python, Shell, Terminal")'
-    };
-
-    let type = currentCliMode;
+    let type = _cliMode;
     let actualCmd = cmd;
 
-    if (shortcuts[cmd]) {
-        actualCmd = shortcuts[cmd];
-        if (actualCmd === 'clearCli()') {
+    // Check shortcut
+    if (CLI_SHORTCUTS[cmd]) {
+        actualCmd = CLI_SHORTCUTS[cmd];
+
+        if (actualCmd === '__CLEAR__') {
             clearCli();
+            input.value = '';
             return;
         }
-        type = 'python';
-    }
 
-    if (cmd.startsWith('/') && !shortcuts[cmd]) {
+        type = 'python';
+    } else if (cmd.startsWith('/')) {
         type = 'shell';
         actualCmd = cmd.substring(1);
     }
 
-    const now = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const typeLabels = { 'python': '🐍 PY', 'shell': '💻 SH', 'terminal': '🖥️ TM' };
-    const typeColors = { 'python': 'var(--accent-green)', 'shell': '#f59e0b', 'terminal': '#22d3ee' };
-    const typeLevels = { 'python': 'cmd', 'shell': 'shell', 'terminal': 'terminal' };
-    
+    // Add command line
+    const now = new Date().toLocaleTimeString('fa-IR');
+    const typeLabels = {
+        python: '🐍 PY',
+        shell: '💻 SH',
+        terminal: '🖥️ TM',
+    };
+    const typeColors = {
+        python: 'var(--color-green)',
+        shell: 'var(--color-orange)',
+        terminal: 'var(--color-cyan)',
+    };
+
     output.innerHTML += `
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">${now}</span>
-            <span class="log-level ${typeLevels[type]}" style="min-width:60px;font-weight:600;font-size:0.6rem;color:${typeColors[type]};">${typeLabels[type] || '📝'}</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">${cmd}</span>
-            <button class="log-copy-btn" onclick="copyLogLine(this)" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:0.5rem;padding:0 4px;border-radius:4px;transition:var(--transition);flex-shrink:0;"><i class="fas fa-copy"></i></button>
+        <div class="log-line cmd">
+            <span class="log-time">${now}</span>
+            <span class="log-level" style="color:${typeColors[type] || 'var(--color-cyan)'};">
+                ${typeLabels[type] || '📝'}
+            </span>
+            <span class="log-msg">${escapeHtml(cmd)}</span>
         </div>
     `;
 
     input.value = '';
     output.scrollTop = output.scrollHeight;
 
+    // Execute
     try {
         const data = await api.executeDebugCommand(actualCmd, type, 15);
-        if (data.success) {
-            let result = data.result || 'انجام شد';
+
+        if (data?.success) {
+            const result = data.result || 'انجام شد';
             output.innerHTML += `
-                <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                    <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">${now}</span>
-                    <span class="log-level success" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-green);">✅ RESULT</span>
-                    <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;white-space:pre-wrap;background:rgba(0,0,0,0.15);padding:4px 8px;border-radius:4px;margin:2px 0;">${result}</span>
-                    <button class="log-copy-btn" onclick="copyLogLine(this)" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:0.5rem;padding:0 4px;border-radius:4px;transition:var(--transition);flex-shrink:0;"><i class="fas fa-copy"></i></button>
+                <div class="log-line success">
+                    <span class="log-time">${now}</span>
+                    <span class="log-level success">✅ RESULT</span>
+                    <span class="log-msg">${escapeHtml(result)}</span>
+                    <button class="log-copy-btn" onclick="copyCliLine(this)">
+                        <i class="fas fa-copy"></i>
+                    </button>
                 </div>
             `;
         } else {
             output.innerHTML += `
-                <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                    <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">${now}</span>
-                    <span class="log-level error" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-red);">❌ ERROR</span>
-                    <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:var(--accent-red);">${data.error || 'خطا'}</span>
-                    <button class="log-copy-btn" onclick="copyLogLine(this)" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:0.5rem;padding:0 4px;border-radius:4px;transition:var(--transition);flex-shrink:0;"><i class="fas fa-copy"></i></button>
+                <div class="log-line error">
+                    <span class="log-time">${now}</span>
+                    <span class="log-level error">❌ ERROR</span>
+                    <span class="log-msg">${escapeHtml(data?.error || 'خطا')}</span>
                 </div>
             `;
         }
     } catch (err) {
         output.innerHTML += `
-            <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-                <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">${now}</span>
-                <span class="log-level error" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-red);">❌ ERROR</span>
-                <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:var(--accent-red);">${err.message || 'خطا در ارتباط'}</span>
-                <button class="log-copy-btn" onclick="copyLogLine(this)" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:0.5rem;padding:0 4px;border-radius:4px;transition:var(--transition);flex-shrink:0;"><i class="fas fa-copy"></i></button>
+            <div class="log-line error">
+                <span class="log-time">${now}</span>
+                <span class="log-level error">❌ ERROR</span>
+                <span class="log-msg">${escapeHtml(err.message)}</span>
             </div>
         `;
     }
+
     output.scrollTop = output.scrollHeight;
 }
 
 function clearCli() {
     const output = document.getElementById('cliOutput');
-    const mode = currentCliMode || 'python';
-    const modeLabels = { 'python': 'Python', 'shell': 'Shell', 'terminal': 'Terminal' };
+    if (!output) return;
+
+    const modeLabels = {
+        python: 'Python',
+        shell: 'Shell',
+        terminal: 'Terminal',
+    };
+
     output.innerHTML = `
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">🧹</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">خروجی کنسول پاک شد</span>
+        <div class="log-line">
+            <span class="log-time">🧹</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">خروجی پاک شد</span>
         </div>
-        <div class="log-line" style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;">
-            <span class="log-time" style="color:var(--text-muted);min-width:70px;font-size:0.6rem;">💡</span>
-            <span class="log-level info" style="min-width:60px;font-weight:600;font-size:0.6rem;color:var(--accent-cyan);">INFO</span>
-            <span class="log-msg" style="flex:1;word-break:break-word;white-space:pre-wrap;color:#c0d0e0;">حالت: ${modeLabels[mode]} | میانبرها: <span class="highlight" style="color:var(--accent-cyan);">/cpu</span> <span class="highlight" style="color:var(--accent-cyan);">/ram</span> <span class="highlight" style="color:var(--accent-cyan);">/uptime</span> <span class="highlight" style="color:var(--accent-cyan);">/stats</span> <span class="highlight" style="color:var(--accent-cyan);">/clear</span> <span class="highlight" style="color:var(--accent-cyan);">/help</span></span>
+        <div class="log-line">
+            <span class="log-time">💡</span>
+            <span class="log-level info">INFO</span>
+            <span class="log-msg">
+                حالت فعلی: <strong>${modeLabels[_cliMode]}</strong> |
+                <strong class="text-cyan">/help</strong> برای راهنما
+            </span>
         </div>
     `;
 }
 
+function copyCliLine(btn) {
+    const line = btn.closest('.log-line');
+    if (!line) return;
+
+    const msg = line.querySelector('.log-msg')?.textContent || '';
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(msg).then(() => {
+            if (typeof showToast === 'function') showToast('📋 کپی شد', 'success');
+        });
+    }
+}
+
+// ============================================================
+// Setup Events
+// ============================================================
+
+function _setupCliEvents() {
+    const input = document.getElementById('cliInput');
+    if (!input) return;
+
+    input.addEventListener('keydown', (e) => {
+        // Ctrl+Enter → execute
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            executeCliCommand();
+            return;
+        }
+
+        // Up arrow → previous command
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (_cliHistory.length === 0) return;
+
+            if (_cliHistoryIndex === -1) {
+                _cliHistoryIndex = _cliHistory.length - 1;
+            } else if (_cliHistoryIndex > 0) {
+                _cliHistoryIndex--;
+            }
+
+            input.value = _cliHistory[_cliHistoryIndex] || '';
+            return;
+        }
+
+        // Down arrow → next command
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (_cliHistoryIndex === -1) return;
+
+            if (_cliHistoryIndex < _cliHistory.length - 1) {
+                _cliHistoryIndex++;
+                input.value = _cliHistory[_cliHistoryIndex] || '';
+            } else {
+                _cliHistoryIndex = -1;
+                input.value = '';
+            }
+            return;
+        }
+
+        // Enter (without Ctrl) → new line (default textarea behavior)
+    });
+}
+
+// ============================================================
+// INIT / CLEANUP
+// ============================================================
+
 window.init_cli = function() {
+    console.log('💻 Debug CLI tab initializing...');
+
+    if (_cliInitialized) return;
+    _cliInitialized = true;
+
     setCliMode('python');
+    _setupCliEvents();
 };
+
+window.cleanup_cli = function() {
+    console.log('🧹 Debug CLI tab cleaning up...');
+    _cliInitialized = false;
+};
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 </script>
+
+<style>
+/* ============================================================
+   CLI Mode Switcher
+   ============================================================ */
+
+.cli-mode-switcher {
+    display: flex;
+    gap: var(--space-1);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.cli-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    transition: var(--transition);
+    flex: 1;
+    justify-content: center;
+    line-height: 1;
+}
+
+.cli-mode-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.cli-mode-btn.active {
+    background: rgba(0, 212, 255, 0.15);
+    color: var(--color-cyan);
+    font-weight: var(--fw-semibold);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+}
+
+.cli-mode-btn.active i {
+    color: var(--color-cyan);
+}
+
+.cli-mode-btn[data-mode="shell"].active {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-orange);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.cli-mode-btn[data-mode="shell"].active i {
+    color: var(--color-orange);
+}
+
+.cli-mode-btn[data-mode="terminal"].active {
+    background: rgba(34, 211, 238, 0.15);
+    color: var(--color-green);
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.2);
+}
+
+.cli-mode-btn[data-mode="terminal"].active i {
+    color: var(--color-green);
+}
+
+/* ============================================================
+   CLI Input
+   ============================================================ */
+
+.cli-area {
+    margin-top: var(--space-4);
+}
+
+.cli-input-wrapper {
+    position: relative;
+    margin-bottom: var(--space-3);
+}
+
+.cli-prompt {
+    position: absolute;
+    left: 14px;
+    top: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: var(--fw-bold);
+    color: var(--color-cyan);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.cli-input {
+    width: 100%;
+    padding: 12px 14px 12px 50px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 70px;
+    transition: var(--transition);
+    direction: ltr;
+    text-align: left;
+}
+
+.cli-input:focus {
+    outline: none;
+    border-color: var(--color-cyan);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.cli-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+    direction: rtl;
+    text-align: right;
+}
+
+/* ============================================================
+   CLI Shortcuts
+   ============================================================ */
+
+.cli-shortcuts {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-3);
+}
+
+.cli-shortcut {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: var(--font-mono);
+    background: transparent;
+    line-height: 1;
+}
+
+.cli-shortcut:hover {
+    border-color: var(--color-cyan);
+    color: var(--color-cyan);
+    background: rgba(0, 212, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   CLI Actions
+   ============================================================ */
+
+.cli-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   CLI Output
+   ============================================================ */
+
+.cli-output {
+    min-height: 200px;
+    max-height: 400px;
+}
+
+.cli-output .log-line.cmd .log-msg {
+    color: var(--color-cyan);
+    font-weight: var(--fw-medium);
+}
+</style>
