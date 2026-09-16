@@ -6,6 +6,10 @@
     <meta name="theme-color" content="#0a0e1a">
     <title>نمودار | سیستم تحلیلگر</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <!-- Base CSS -->
     <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/base.css">
@@ -20,196 +24,80 @@
     <!-- Page-specific -->
     <link rel="stylesheet" href="/css/pages/chart.css">
 </head>
-<body class="chart-page-body">
+<body class="chart-body">
 
-    <!-- Navigation (NavManager خودش لود می‌کنه) -->
+    <!-- ============================================================
+         NAVIGATION (auto-loaded by NavManager)
+         ============================================================ -->
     <div id="navContainer"></div>
 
     <!-- ============================================================
          CHART CONTAINER
          ============================================================ -->
-    <div class="chart-page-container">
-
-        <!-- ====================================================
-             Overlay Loading (وقتی TradingView در حال لود)
-             ==================================================== -->
-        <div class="tv-loading-overlay" id="tvLoading">
-            <div class="tv-loading-content">
-                <div class="tv-loading-spinner"></div>
-                <div class="tv-loading-text">در حال بارگذاری نمودار...</div>
-                <div class="tv-loading-sub">TradingView Advanced Chart</div>
-            </div>
-        </div>
-
-        <!-- ====================================================
-             Chart Wrapper
-             ==================================================== -->
+    <div class="chart-container">
         <div class="chart-wrapper">
 
-            <!-- ============================================
-                 Sidebar (coin selector)
-                 ============================================ -->
-            <aside class="chart-sidebar" id="chartSidebar">
-
-                <div class="sidebar-header">
-                    <i class="fas fa-chart-line"></i>
-                    <span>نمادها</span>
-                </div>
-
-                <div class="sidebar-symbols">
-                    <button class="symbol-btn active" data-symbol="BINANCE:BTCUSDT">
-                        <span class="symbol-icon">₿</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">BTC/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:ETHUSDT">
-                        <span class="symbol-icon">⟠</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">ETH/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:SOLUSDT">
-                        <span class="symbol-icon">◎</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">SOL/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:BNBUSDT">
-                        <span class="symbol-icon">⬢</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">BNB/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:XRPUSDT">
-                        <span class="symbol-icon">✕</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">XRP/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:ADAUSDT">
-                        <span class="symbol-icon">₳</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">ADA/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:DOGEUSDT">
-                        <span class="symbol-icon">Ð</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">DOGE/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-
-                    <button class="symbol-btn" data-symbol="BINANCE:AVAXUSDT">
-                        <span class="symbol-icon">🔺</span>
-                        <div class="symbol-info">
-                            <span class="symbol-name">AVAX/USDT</span>
-                            <span class="symbol-exchange">Binance</span>
-                        </div>
-                    </button>
-                </div>
-
-                <div class="sidebar-footer">
-                    <div class="sidebar-footer-label">منبع داده</div>
-                    <div class="sidebar-footer-value">
-                        <i class="fas fa-bolt" style="color: var(--color-orange);"></i>
-                        <span>TradingView</span>
-                    </div>
-                </div>
-
-            </aside>
-
-            <!-- ============================================
-                 TradingView Chart Container
-                 ============================================ -->
-            <div class="tv-container">
-
-                <!-- Toolbar (بالای چارت) -->
-                <div class="chart-toolbar">
-
-                    <div class="toolbar-left">
-                        <button class="sidebar-toggle" id="sidebarToggle" title="نمایش/مخفی نمادها">
-                            <i class="fas fa-bars"></i>
-                        </button>
-
-                        <div class="toolbar-symbol">
-                            <span class="toolbar-symbol-icon" id="toolbarSymbolIcon">₿</span>
-                            <span class="toolbar-symbol-name" id="toolbarSymbolName">BTC/USDT</span>
-                            <span class="toolbar-symbol-exchange">Binance</span>
-                        </div>
-                    </div>
-
-                    <div class="toolbar-right">
-
-                        <div class="toolbar-group">
-                            <label class="toolbar-label">تم</label>
-                            <select id="tvTheme" class="toolbar-select">
-                                <option value="dark" selected>🌙 تیره</option>
-                                <option value="light">☀️ روشن</option>
-                            </select>
-                        </div>
-
-                        <div class="toolbar-group">
-                            <label class="toolbar-label">بازه</label>
-                            <select id="tvInterval" class="toolbar-select">
-                                <option value="1">۱ دقیقه</option>
-                                <option value="5">۵ دقیقه</option>
-                                <option value="15">۱۵ دقیقه</option>
-                                <option value="60">۱ ساعت</option>
-                                <option value="240">۴ ساعت</option>
-                                <option value="D" selected>روزانه</option>
-                                <option value="W">هفتگی</option>
-                                <option value="M">ماهانه</option>
-                            </select>
-                        </div>
-
-                        <div class="toolbar-group">
-                            <label class="toolbar-label">نوع</label>
-                            <select id="tvStyle" class="toolbar-select">
-                                <option value="1" selected>کندل</option>
-                                <option value="8">شمعی</option>
-                                <option value="3">خطی</option>
-                                <option value="2">میله‌ای</option>
-                                <option value="9">سطحی</option>
-                            </select>
-                        </div>
-
-                        <button class="toolbar-btn" id="tvResetBtn" title="ریست">
-                            <i class="fas fa-redo"></i>
-                        </button>
-
-                        <button class="toolbar-btn" id="tvFullscreenBtn" title="تمام صفحه">
-                            <i class="fas fa-expand"></i>
-                        </button>
-
-                    </div>
-
-                </div>
-
-                <!-- TradingView Widget Mount Point -->
-                <div class="tradingview-widget-mount" id="tradingviewMount">
-                    <div class="tradingview-widget-container" id="tvContainer" style="height:100%;width:100%;">
-                        <div class="tradingview-widget-container__widget" style="height:100%;width:100%;"></div>
-                    </div>
-                </div>
-
+            <!-- Loading overlay -->
+            <div class="chart-loading" id="chartLoading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">در حال بارگذاری نمودار...</div>
             </div>
 
-        </div>
+            <!-- Info banner -->
+            <div class="chart-info-banner">
+                <span class="live-dot"></span>
+                <span>زنده از</span>
+                <strong>TradingView</strong>
+            </div>
 
+            <!-- TradingView Widget -->
+            <div class="tradingview-widget-container" style="height:100%;width:100%">
+                <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+                <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE" rel="noopener nofollow" target="_blank">
+                        <span class="blue-text">BTCUSDT price</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                </div>
+
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "allow_symbol_change": true,
+                    "calendar": false,
+                    "details": false,
+                    "hide_side_toolbar": false,
+                    "hide_top_toolbar": false,
+                    "hide_legend": false,
+                    "hide_volume": false,
+                    "hotlist": false,
+                    "interval": "D",
+                    "locale": "en",
+                    "save_image": true,
+                    "style": "1",
+                    "symbol": "BINANCE:BTCUSDT",
+                    "theme": "dark",
+                    "timezone": "Asia/Tehran",
+                    "backgroundColor": "#0F0F0F",
+                    "gridColor": "rgba(242, 242, 242, 0.2)",
+                    "watchlist": [
+                        "BINANCE:BTCUSDT",
+                        "BINANCE:ETHUSDT",
+                        "BINANCE:SOLUSDT",
+                        "BINANCE:BNBUSDT",
+                        "BINANCE:XRPUSDT",
+                        "BINANCE:ADAUSDT"
+                    ],
+                    "withdateranges": true,
+                    "compareSymbols": [],
+                    "support_host": "https://www.tradingview.com",
+                    "studies": [
+                        "STD;Divergence%1Indicator"
+                    ],
+                    "autosize": true
+                }
+                </script>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================
@@ -230,7 +118,7 @@
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
 
-    <!-- Core (فاز ۱) -->
+    <!-- Core (NavManager خودکار nav + loading-overlay لود می‌کنه) -->
     <script src="/js/core/theme.js"></script>
     <script src="/js/core/tabs.js"></script>
     <script src="/js/core/nav.js"></script>
@@ -239,334 +127,109 @@
     <!-- Page Script -->
     <script>
     // ============================================================
-    // CHART PAGE v2.0 — TradingView Advanced Chart Widget
+    // CHART PAGE (TradingView) v2.0
     // ============================================================
 
     (function() {
         'use strict';
 
         // ========================================================
-        // State
+        // Hide Loading
         // ========================================================
 
-        const state = {
-            currentSymbol: 'BINANCE:BTCUSDT',
-            currentInterval: 'D',
-            currentStyle: '1',
-            currentTheme: 'dark',
-            sidebarVisible: true,
-            tvScriptLoaded: false,
-            isFullscreen: false,
-        };
-
-        // Symbol info map
-        const SYMBOL_INFO = {
-            'BINANCE:BTCUSDT': { icon: '₿', name: 'BTC/USDT', exchange: 'Binance' },
-            'BINANCE:ETHUSDT': { icon: '⟠', name: 'ETH/USDT', exchange: 'Binance' },
-            'BINANCE:SOLUSDT': { icon: '◎', name: 'SOL/USDT', exchange: 'Binance' },
-            'BINANCE:BNBUSDT': { icon: '⬢', name: 'BNB/USDT', exchange: 'Binance' },
-            'BINANCE:XRPUSDT': { icon: '✕', name: 'XRP/USDT', exchange: 'Binance' },
-            'BINANCE:ADAUSDT': { icon: '₳', name: 'ADA/USDT', exchange: 'Binance' },
-            'BINANCE:DOGEUSDT': { icon: 'Ð', name: 'DOGE/USDT', exchange: 'Binance' },
-            'BINANCE:AVAXUSDT': { icon: '🔺', name: 'AVAX/USDT', exchange: 'Binance' },
-        };
-
-        // ========================================================
-        // Render TradingView Widget
-        // ========================================================
-
-        function renderTradingViewWidget() {
-            const mount = document.getElementById('tradingviewMount');
-            if (!mount) return;
-
-            // پاک کردن قبلی
-            mount.innerHTML = `
-                <div class="tradingview-widget-container" style="height:100%;width:100%;">
-                    <div class="tradingview-widget-container__widget" style="height:100%;width:100%;"></div>
-                </div>
-            `;
-
-            const container = mount.querySelector('.tradingview-widget-container');
-            if (!container) return;
-
-            // ساخت config
-            const config = {
-                autosize: true,
-                symbol: state.currentSymbol,
-                interval: state.currentInterval,
-                timezone: 'Asia/Tehran',
-                theme: state.currentTheme,
-                style: state.currentStyle,
-                locale: 'fa',
-                backgroundColor: state.currentTheme === 'dark' ? '#0a0e1a' : '#ffffff',
-                gridColor: state.currentTheme === 'dark'
-                    ? 'rgba(148, 163, 184, 0.1)'
-                    : 'rgba(100, 116, 139, 0.15)',
-                hide_side_toolbar: false,
-                hide_top_toolbar: false,
-                hide_legend: false,
-                hide_volume: false,
-                allow_symbol_change: true,
-                calendar: false,
-                details: false,
-                hotlist: false,
-                save_image: true,
-                withdateranges: true,
-                watchlist: [],
-                compareSymbols: [],
-                studies: [],
-                support_host: 'https://www.tradingview.com',
-            };
-
-            // ساخت script
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-            script.async = true;
-            script.innerHTML = JSON.stringify(config);
-
-            // اضافه کردن
-            container.appendChild(script);
-
-            console.log('✅ TradingView widget rendered:', state.currentSymbol);
-        }
-
-        // ========================================================
-        // Symbol Buttons
-        // ========================================================
-
-        function setupSymbolButtons() {
-            const buttons = document.querySelectorAll('.symbol-btn');
-
-            buttons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const symbol = btn.dataset.symbol;
-                    if (!symbol || symbol === state.currentSymbol) return;
-
-                    // بروزرسانی active
-                    buttons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    // بروزرسانی state
-                    state.currentSymbol = symbol;
-
-                    // بروزرسانی toolbar
-                    updateToolbar();
-
-                    // رندر مجدد widget
-                    renderTradingViewWidget();
-
-                    // بستن sidebar در موبایل
-                    if (window.innerWidth < 1024) {
-                        toggleSidebar(false);
-                    }
-
-                    // Toast
-                    if (typeof showToast === 'function') {
-                        const info = SYMBOL_INFO[symbol];
-                        showToast(`📊 ${info?.name || symbol}`, 'info', 1500);
-                    }
-                });
-            });
-        }
-
-        function updateToolbar() {
-            const info = SYMBOL_INFO[state.currentSymbol];
-            if (!info) return;
-
-            const iconEl = document.getElementById('toolbarSymbolIcon');
-            const nameEl = document.getElementById('toolbarSymbolName');
-
-            if (iconEl) iconEl.textContent = info.icon;
-            if (nameEl) nameEl.textContent = info.name;
-        }
-
-        // ========================================================
-        // Sidebar Toggle
-        // ========================================================
-
-        function toggleSidebar(force) {
-            const sidebar = document.getElementById('chartSidebar');
-            if (!sidebar) return;
-
-            const shouldShow = force !== undefined
-                ? force
-                : !state.sidebarVisible;
-
-            state.sidebarVisible = shouldShow;
-            sidebar.classList.toggle('visible', shouldShow);
-
-            // اگه در موبایل، overlay اضافه کن
-            if (window.innerWidth < 1024) {
-                sidebar.classList.toggle('mobile-visible', shouldShow);
+        function hideLoading() {
+            const loading = document.getElementById('chartLoading');
+            if (loading) {
+                loading.classList.add('hidden');
+                setTimeout(() => {
+                    if (loading.parentNode) loading.remove();
+                }, 600);
             }
         }
 
-        function setupSidebarToggle() {
-            const btn = document.getElementById('sidebarToggle');
-            if (!btn) return;
+        // ========================================================
+        // Sync Theme with TradingView
+        // ========================================================
 
-            btn.addEventListener('click', () => {
-                toggleSidebar();
-            });
+        function syncChartTheme() {
+            // TradingView theme از ابتدا "dark" ست شده
+            // اگه تم سایت light باشه، می‌تونیم بعداً اضافه کنیم
+            const isLight = window.themeManager?.isLight?.();
 
-            // بستن با کلیک بیرون در موبایل
-            document.addEventListener('click', (e) => {
-                if (window.innerWidth >= 1024) return;
-                if (!state.sidebarVisible) return;
-
-                const sidebar = document.getElementById('chartSidebar');
-                const toggle = document.getElementById('sidebarToggle');
-
-                if (sidebar && !sidebar.contains(e.target) &&
-                    toggle && !toggle.contains(e.target)) {
-                    toggleSidebar(false);
-                }
-            });
+            if (isLight) {
+                // TODO: در آینده، رفرش widget با theme "light"
+                // فعلاً فقط لاگ می‌کنیم
+                console.log('ℹ️ Light theme detected — TradingView stays dark');
+            }
         }
 
         // ========================================================
-        // Toolbar Selects
+        // Watch theme changes
         // ========================================================
 
-        function setupToolbarControls() {
-            // Theme
-            const themeSelect = document.getElementById('tvTheme');
-            if (themeSelect) {
-                themeSelect.addEventListener('change', () => {
-                    state.currentTheme = themeSelect.value;
-                    renderTradingViewWidget();
+        function watchThemeChanges() {
+            if (window.themeManager?.on) {
+                window.themeManager.on((state) => {
+                    console.log('🎨 Theme changed:', state.effective);
+                    // TradingView widget خودش theme رو نمی‌تونه live تغییر بده
+                    // برای تغییر، نیاز به reload widget هست
                 });
             }
-
-            // Interval
-            const intervalSelect = document.getElementById('tvInterval');
-            if (intervalSelect) {
-                intervalSelect.addEventListener('change', () => {
-                    state.currentInterval = intervalSelect.value;
-                    renderTradingViewWidget();
-                });
-            }
-
-            // Style
-            const styleSelect = document.getElementById('tvStyle');
-            if (styleSelect) {
-                styleSelect.addEventListener('change', () => {
-                    state.currentStyle = styleSelect.value;
-                    renderTradingViewWidget();
-                });
-            }
-
-            // Reset
-            const resetBtn = document.getElementById('tvResetBtn');
-            if (resetBtn) {
-                resetBtn.addEventListener('click', () => {
-                    state.currentSymbol = 'BINANCE:BTCUSDT';
-                    state.currentInterval = 'D';
-                    state.currentStyle = '1';
-
-                    // Reset UI
-                    document.querySelectorAll('.symbol-btn').forEach(b => {
-                        b.classList.toggle('active', b.dataset.symbol === state.currentSymbol);
-                    });
-
-                    if (themeSelect) themeSelect.value = state.currentTheme;
-                    if (intervalSelect) intervalSelect.value = 'D';
-                    if (styleSelect) styleSelect.value = '1';
-
-                    updateToolbar();
-                    renderTradingViewWidget();
-
-                    if (typeof showToast === 'function') {
-                        showToast('🔄 نمودار ریست شد', 'info', 1500);
-                    }
-                });
-            }
-
-            // Fullscreen
-            const fullscreenBtn = document.getElementById('tvFullscreenBtn');
-            if (fullscreenBtn) {
-                fullscreenBtn.addEventListener('click', toggleFullscreen);
-            }
         }
 
         // ========================================================
-        // Fullscreen
+        // Detect widget load (via MutationObserver)
         // ========================================================
 
-        function toggleFullscreen() {
-            const wrapper = document.querySelector('.chart-wrapper');
+        function detectWidgetLoad() {
+            const wrapper = document.querySelector('.tradingview-widget-container__widget');
             if (!wrapper) return;
 
-            if (!document.fullscreenElement) {
-                wrapper.requestFullscreen().then(() => {
-                    state.isFullscreen = true;
-                    updateFullscreenBtn(true);
-                }).catch(err => {
-                    console.warn('Fullscreen error:', err);
-                });
-            } else {
-                document.exitFullscreen().then(() => {
-                    state.isFullscreen = false;
-                    updateFullscreenBtn(false);
-                });
-            }
-        }
-
-        function updateFullscreenBtn(isFullscreen) {
-            const btn = document.getElementById('tvFullscreenBtn');
-            if (!btn) return;
-
-            const icon = btn.querySelector('i');
-            if (icon) {
-                icon.className = isFullscreen
-                    ? 'fas fa-compress'
-                    : 'fas fa-expand';
-            }
-        }
-
-        // ========================================================
-        // Sync with theme manager
-        // ========================================================
-
-        function setupThemeSync() {
-            if (!window.themeManager) return;
-
-            // بروزرسانی اولیه
-            const effective = window.themeManager.getEffective();
-            state.currentTheme = effective === 'light' ? 'light' : 'dark';
-
-            const themeSelect = document.getElementById('tvTheme');
-            if (themeSelect) {
-                themeSelect.value = state.currentTheme;
-            }
-
-            // گوش دادن به تغییرات
-            window.themeManager.on((themeState) => {
-                const newTheme = themeState.effective === 'light' ? 'light' : 'dark';
-                if (newTheme !== state.currentTheme) {
-                    state.currentTheme = newTheme;
-
-                    if (themeSelect) {
-                        themeSelect.value = newTheme;
-                    }
-
-                    renderTradingViewWidget();
+            const observer = new MutationObserver(() => {
+                // اگه داخل widget iframe اضافه شده، یعنی لود شد
+                const iframe = wrapper.querySelector('iframe');
+                if (iframe) {
+                    console.log('✅ TradingView widget loaded');
+                    hideLoading();
+                    observer.disconnect();
                 }
             });
+
+            observer.observe(wrapper, {
+                childList: true,
+                subtree: true,
+            });
+
+            // Fallback: بعد از ۵ ثانیه force hide
+            setTimeout(() => {
+                const iframe = wrapper.querySelector('iframe');
+                if (iframe) {
+                    hideLoading();
+                    observer.disconnect();
+                }
+            }, 5000);
         }
 
         // ========================================================
-        // Hide Loading Overlay
+        // Responsive resize handler
         // ========================================================
 
-        function hideLoadingOverlay() {
-            const overlay = document.getElementById('tvLoading');
-            if (!overlay) return;
+        let resizeTimeout;
+        function handleResize() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // TradingView widget خودش autosize هست
+                // فقط لاگ می‌کنیم
+                console.log('📱 Screen resized:', window.innerWidth + 'x' + window.innerHeight);
+            }, 250);
+        }
 
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-            }, 800);
+        // ========================================================
+        // Prevent scroll issues
+        // ========================================================
+
+        function lockScroll() {
+            document.body.style.overflow = 'hidden';
         }
 
         // ========================================================
@@ -574,66 +237,29 @@
         // ========================================================
 
         function init() {
-            console.log('📈 Chart page initializing...');
+            console.log('🚀 Chart page initializing...');
 
-            // ۱. رندر TradingView Widget
-            renderTradingViewWidget();
+            lockScroll();
+            syncChartTheme();
+            watchThemeChanges();
+            detectWidgetLoad();
 
-            // ۲. Setup symbol buttons
-            setupSymbolButtons();
-
-            // ۳. Setup sidebar
-            if (window.innerWidth >= 1024) {
-                toggleSidebar(true);
-            }
-            setupSidebarToggle();
-
-            // ۴. Setup toolbar
-            setupToolbarControls();
-
-            // ۵. Sync با theme
-            setupThemeSync();
-
-            // ۶. مخفی کردن loading
-            hideLoadingOverlay();
+            window.addEventListener('resize', handleResize);
 
             console.log('✅ Chart page ready');
         }
 
-        // ========================================================
-        // Fullscreen Events
-        // ========================================================
-
-        document.addEventListener('fullscreenchange', () => {
-            state.isFullscreen = !!document.fullscreenElement;
-            updateFullscreenBtn(state.isFullscreen);
-        });
-
-        // ========================================================
-        // Resize Handler
-        // ========================================================
-
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                // اگه از موبایل به دسکتاپ رفت
-                if (window.innerWidth >= 1024 && !state.sidebarVisible) {
-                    toggleSidebar(true);
-                }
-            }, 200);
         });
 
-        // ========================================================
         // Start
-        // ========================================================
-
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
-
     })();
     </script>
 
