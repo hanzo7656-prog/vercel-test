@@ -1,9 +1,9 @@
 <!-- ============================================================
-     dashboard.html - تب داشبورد مدل
-     نسخه ۳.۱ - با Fix SVG Circle + Layout
+     model_tabs/dashboard.html — تب داشبورد مدل
+     نسخه ۲.۰ — با init/cleanup استاندارد
      ============================================================ -->
 
-<!-- SVG Gradient -->
+<!-- SVG Gradient for Health Circle -->
 <svg width="0" height="0" style="position:absolute;">
     <defs>
         <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -13,9 +13,8 @@
     </defs>
 </svg>
 
-<!-- ===== HERO SECTION ===== -->
-<div class="hero-card" id="heroCard">
-    
+<!-- ===== HERO ===== -->
+<div class="hero-card">
     <div class="health-circle-wrapper">
         <svg class="health-circle" viewBox="0 0 140 140">
             <circle class="circle-bg" cx="70" cy="70" r="65"/>
@@ -29,7 +28,7 @@
 
     <div class="hero-info">
         <h2 class="hero-title">
-            <i class="fas fa-brain" style="color:var(--green-primary);"></i>
+            <i class="fas fa-brain" style="color:var(--color-green);"></i>
             <span id="heroModelName">مدل XGBoost</span>
             <span class="badge-version" id="heroVersion">—</span>
         </h2>
@@ -79,7 +78,7 @@
 
 <!-- ===== LIVE ROW ===== -->
 <div class="live-row">
-    <!-- پیش‌بینی‌ها -->
+    <!-- Predictions -->
     <div class="card-section">
         <div class="section-header-model">
             <div class="section-title-model">
@@ -109,7 +108,7 @@
         </div>
     </div>
 
-    <!-- هشدارها -->
+    <!-- Alerts -->
     <div class="card-section">
         <div class="section-header-model">
             <div class="section-title-model">
@@ -141,46 +140,59 @@
         </div>
     </div>
     <div class="next-action">
-        <button class="btn-model btn-primary" onclick="goToTraining()">
+        <button class="btn-model btn-primary" onclick="goToTrainingTab()">
             <i class="fas fa-graduation-cap"></i>
-            آموزش جدید
+            <span>آموزش جدید</span>
         </button>
     </div>
 </div>
 
 <script>
 // ============================================================
-// DASHBOARD TAB v3.1 - با Fix SVG Circle
+// MODEL DASHBOARD TAB v2.0
 // ============================================================
 
-let dashboardInterval = null;
-let isDashboardLoaded = false;
+let _dashInterval = null;
+let _dashInitialized = false;
 
 // ============================================================
-// INIT
+// Init
 // ============================================================
 
 window.init_dashboard = function() {
-    console.log('📊 Dashboard tab initializing...');
-    if (isDashboardLoaded) return;
-    isDashboardLoaded = true;
-    loadAll();
-    
-    if (dashboardInterval) clearInterval(dashboardInterval);
-    dashboardInterval = setInterval(loadAll, 20000);
-};
+    console.log('📊 Model dashboard tab initializing...');
 
-window.cleanup_dashboard = function() {
-    console.log('🧹 Dashboard tab cleaning up...');
-    isDashboardLoaded = false;
-    if (dashboardInterval) {
-        clearInterval(dashboardInterval);
-        dashboardInterval = null;
-    }
+    if (_dashInitialized) return;
+    _dashInitialized = true;
+
+    loadAll();
+
+    if (_dashInterval) clearInterval(_dashInterval);
+    _dashInterval = setInterval(() => {
+        const activeTab = document.querySelector('#modelTabs .model-tab-btn.active');
+        if (activeTab?.dataset.tab === 'dashboard') {
+            loadAll();
+        }
+    }, 20000);
 };
 
 // ============================================================
-// LOAD ALL
+// Cleanup
+// ============================================================
+
+window.cleanup_dashboard = function() {
+    console.log('🧹 Model dashboard tab cleaning up...');
+
+    if (_dashInterval) {
+        clearInterval(_dashInterval);
+        _dashInterval = null;
+    }
+
+    _dashInitialized = false;
+};
+
+// ============================================================
+// Load All
 // ============================================================
 
 async function loadAll() {
@@ -188,28 +200,28 @@ async function loadAll() {
         loadModelStatus(),
         loadPredictions(),
         loadAlerts(),
-        loadNextTraining()
+        loadNextTraining(),
     ]);
 }
 
 // ============================================================
-// MODEL STATUS + HEALTH SCORE
+// Model Status + Health
 // ============================================================
 
 async function loadModelStatus() {
     try {
         const [statusRes, historyRes] = await Promise.allSettled([
-            api.getModelStatus(),
-            api.getModelHistory(1)
+            window.api?.getModelStatus?.(),
+            window.api?.getModelHistory?.(1),
         ]);
-        
+
         let accuracy = null;
         let version = 'N/A';
         let isLoaded = false;
         let isTraining = false;
         let totalTrainings = 0;
         let lastTrainingDate = null;
-        
+
         if (statusRes.status === 'fulfilled' && statusRes.value?.success) {
             const data = statusRes.value.data || {};
             accuracy = data.last_score;
@@ -218,42 +230,45 @@ async function loadModelStatus() {
             isTraining = data.is_training || false;
             totalTrainings = data.total_trainings || 0;
         }
-        
+
         if (historyRes.status === 'fulfilled' && historyRes.value?.success) {
             const history = historyRes.value.data;
             if (history && history.length > 0) {
                 lastTrainingDate = history[0].training_date;
             }
         }
-        
-        const healthScore = calculateHealthScore({
-            accuracy, totalTrainings, lastTrainingDate, isLoaded
+
+        const healthScore = calculateModelHealth({
+            accuracy,
+            totalTrainings,
+            lastTrainingDate,
+            isLoaded,
         });
-        
+
         updateHeroSection({ version, isLoaded, isTraining, accuracy, lastTrainingDate });
         updateHealthCircle(healthScore);
         updateStats({ isLoaded, isTraining, version, accuracy, totalTrainings });
-        
+
     } catch (error) {
         console.error('❌ Model status error:', error);
     }
 }
 
 // ============================================================
-// HEALTH SCORE
+// Health Score
 // ============================================================
 
-function calculateHealthScore({ accuracy, totalTrainings, lastTrainingDate, isLoaded }) {
+function calculateModelHealth({ accuracy, totalTrainings, lastTrainingDate, isLoaded }) {
     let score = 0;
-    
+
     // دقت ۴۰٪
     if (accuracy !== null && accuracy !== undefined) {
         score += Math.min(accuracy * 100, 100) * 0.4;
     }
-    
+
     // تعداد آموزش ۲۰٪
     score += Math.min(totalTrainings * 2, 20);
-    
+
     // تازگی ۲۵٪
     if (lastTrainingDate) {
         const daysOld = (Date.now() - new Date(lastTrainingDate).getTime()) / (1000 * 60 * 60 * 24);
@@ -263,81 +278,73 @@ function calculateHealthScore({ accuracy, totalTrainings, lastTrainingDate, isLo
         else if (daysOld < 30) score += 10;
         else score += 5;
     }
-    
-    // فعال ۱۵٪
+
+    // فعال بودن ۱۵٪
     if (isLoaded) score += 15;
-    
+
     return Math.round(Math.min(score, 100));
 }
 
 // ============================================================
-// ✅ FIX: UPDATE HEALTH CIRCLE (مستقیم، بدون CSS var)
+// Update Circle
 // ============================================================
 
 function updateHealthCircle(score) {
     const circle = document.getElementById('healthCircle');
     const numberEl = document.getElementById('healthScoreNumber');
-    
+
     if (!circle || !numberEl) return;
-    
-    // محاسبه محیط دایره (r=65)
-    const circumference = 2 * Math.PI * 65; // ≈ 408.4
+
+    const circumference = 2 * Math.PI * 65;
     const offset = circumference - (score / 100) * circumference;
-    
-    // انیمیشن عدد
-    animateNumber(numberEl, score, 1500);
-    
-    // ✅ ست کردن مستقیم با JS
+
+    animateModelNumber(numberEl, score, 1500);
+
     circle.style.strokeDasharray = circumference;
     circle.style.strokeDashoffset = circumference;
     circle.style.transition = 'none';
-    
-    // Force reflow
+
     void circle.offsetWidth;
-    
-    // حالا انیمیشن
-    circle.style.transition = 'stroke-dashoffset 2s cubic-bezier(0.22, 1, 0.36, 1)';
+
+    circle.style.transition = 'stroke-dashoffset 2s var(--ease-out)';
     circle.style.strokeDashoffset = offset;
 }
 
 // ============================================================
-// ANIMATE NUMBER
+// Animate Number
 // ============================================================
 
-function animateNumber(element, target, duration = 1500, decimals = 0, suffix = '') {
+function animateModelNumber(element, target, duration = 1500, decimals = 0, suffix = '') {
     if (!element) return;
+
     if (!target && target !== 0) {
         element.textContent = '0' + suffix;
         return;
     }
-    
+
     const startTime = performance.now();
-    const startValue = 0;
-    
+
     function update(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 4);
-        const current = startValue + (target - startValue) * eased;
-        
+        const current = target * eased;
+
         element.textContent = current.toFixed(decimals) + suffix;
-        
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        }
+
+        if (progress < 1) requestAnimationFrame(update);
     }
-    
+
     requestAnimationFrame(update);
 }
 
 // ============================================================
-// UPDATE HERO
+// Update Hero
 // ============================================================
 
 function updateHeroSection({ version, isLoaded, isTraining, accuracy, lastTrainingDate }) {
-    const versionEl = document.getElementById('heroVersion');
-    if (versionEl) versionEl.textContent = version;
-    
+    setText('heroVersion', version);
+
     const statusEl = document.getElementById('heroStatus');
     if (statusEl) {
         if (isTraining) {
@@ -351,14 +358,14 @@ function updateHeroSection({ version, isLoaded, isTraining, accuracy, lastTraini
             statusEl.className = 'hero-metric-value purple';
         }
     }
-    
+
     const lastTrainingEl = document.getElementById('heroLastTraining');
     if (lastTrainingEl) {
-        lastTrainingEl.textContent = lastTrainingDate 
-            ? (typeof formatTimeAgo === 'function' ? formatTimeAgo(new Date(lastTrainingDate)) : formatDate(lastTrainingDate))
+        lastTrainingEl.textContent = lastTrainingDate
+            ? ((typeof formatTimeAgo === 'function') ? formatTimeAgo(new Date(lastTrainingDate)) : formatDate(lastTrainingDate))
             : '—';
     }
-    
+
     const accuracyEl = document.getElementById('heroAccuracy');
     if (accuracyEl) {
         if (accuracy !== null && accuracy !== undefined) {
@@ -367,7 +374,7 @@ function updateHeroSection({ version, isLoaded, isTraining, accuracy, lastTraini
             accuracyEl.textContent = '—';
         }
     }
-    
+
     const subtitleEl = document.getElementById('heroSubtitle');
     if (subtitleEl) {
         if (isLoaded) {
@@ -379,7 +386,7 @@ function updateHeroSection({ version, isLoaded, isTraining, accuracy, lastTraini
 }
 
 // ============================================================
-// UPDATE STATS
+// Update Stats
 // ============================================================
 
 function updateStats({ isLoaded, isTraining, version, accuracy, totalTrainings }) {
@@ -396,54 +403,53 @@ function updateStats({ isLoaded, isTraining, version, accuracy, totalTrainings }
             statusEl.className = 'stat-value purple';
         }
     }
-    
-    const versionEl = document.getElementById('statVersion');
-    if (versionEl) versionEl.textContent = version;
-    
+
+    setText('statVersion', version);
+
     const accuracyEl = document.getElementById('statAccuracy');
     if (accuracyEl) {
         if (accuracy !== null && accuracy !== undefined) {
-            animateNumber(accuracyEl, accuracy * 100, 1200, 1, '%');
+            animateModelNumber(accuracyEl, accuracy * 100, 1200, 1, '%');
         } else {
             accuracyEl.textContent = '—';
         }
     }
-    
+
     const trainingsEl = document.getElementById('statTrainings');
     if (trainingsEl) {
-        animateNumber(trainingsEl, totalTrainings, 1000, 0);
+        animateModelNumber(trainingsEl, totalTrainings, 1000, 0);
     }
 }
 
 // ============================================================
-// LOAD PREDICTIONS
+// Load Predictions
 // ============================================================
 
 async function loadPredictions() {
     const container = document.getElementById('predictionsList');
     if (!container) return;
-    
+
     try {
-        const data = await api.getPredictionHistory(5);
-        
-        if (data && data.success && data.data && data.data.length > 0) {
+        const data = await window.api?.getPredictionHistory?.(5);
+
+        if (data?.success && data.data && data.data.length > 0) {
             container.innerHTML = data.data.slice(0, 5).map((pred, i) => {
                 const signal = pred.signal_type || 'NEUTRAL';
                 const config = {
-                    'BUY': { icon: '🟢', cls: 'buy', label: 'خرید' },
-                    'SELL': { icon: '🔴', cls: 'sell', label: 'فروش' },
-                    'NEUTRAL': { icon: '🟡', cls: 'neutral', label: 'خنثی' }
+                    BUY: { icon: '🟢', cls: 'buy', label: 'خرید' },
+                    SELL: { icon: '🔴', cls: 'sell', label: 'فروش' },
+                    NEUTRAL: { icon: '🟡', cls: 'neutral', label: 'خنثی' },
                 };
-                const cfg = config[signal] || config['NEUTRAL'];
-                
+                const cfg = config[signal] || config.NEUTRAL;
+
                 return `
                     <div class="prediction-item" style="animation-delay:${0.05 + i * 0.05}s;">
                         <div class="pred-icon ${cfg.cls}">${cfg.icon}</div>
                         <div class="pred-info">
-                            <span class="pred-coin">${escapeHtml(pred.coin_name || pred.coin || '—')}</span>
+                            <span class="pred-coin">${escapeModelHtml(pred.coin_name || pred.coin || '—')}</span>
                             <span class="pred-signal">${cfg.label} • ${pred.confidence || 0}% اطمینان</span>
                         </div>
-                        <span class="pred-time">${typeof formatTimeAgo === 'function' ? formatTimeAgo(new Date(pred.timestamp)) : '—'}</span>
+                        <span class="pred-time">${(typeof formatTimeAgo === 'function') ? formatTimeAgo(new Date(pred.timestamp)) : '—'}</span>
                     </div>
                 `;
             }).join('');
@@ -462,35 +468,35 @@ async function loadPredictions() {
 }
 
 // ============================================================
-// LOAD ALERTS
+// Load Alerts
 // ============================================================
 
 async function loadAlerts() {
     const container = document.getElementById('alertsList');
     const countEl = document.getElementById('alertsCount');
     if (!container) return;
-    
+
     try {
-        const data = await api.getAlerts({ limit: 5, resolved: false });
-        
-        if (data && data.success && data.data && data.data.length > 0) {
+        const data = await window.api?.getAlerts?.({ limit: 5, resolved: false });
+
+        if (data?.success && data.data && data.data.length > 0) {
             if (countEl) countEl.textContent = data.data.length;
-            
+
             container.innerHTML = data.data.slice(0, 4).map((alert, i) => {
                 const level = alert.level || 'INFO';
                 const config = {
-                    'CRITICAL': { icon: '🚨', cls: 'critical' },
-                    'WARNING': { icon: '⚠️', cls: 'warning' },
-                    'INFO': { icon: 'ℹ️', cls: 'info' }
+                    CRITICAL: { icon: '🚨', cls: 'critical' },
+                    WARNING: { icon: '⚠️', cls: 'warning' },
+                    INFO: { icon: 'ℹ️', cls: 'info' },
                 };
-                const cfg = config[level] || config['INFO'];
-                
+                const cfg = config[level] || config.INFO;
+
                 return `
                     <div class="alert-item ${cfg.cls}" style="animation-delay:${0.05 + i * 0.05}s;">
                         <span class="alert-icon">${cfg.icon}</span>
                         <div class="alert-content">
-                            <span class="alert-message">${escapeHtml(alert.message || 'رویداد جدید')}</span>
-                            <span class="alert-time">${typeof formatTimeAgo === 'function' ? formatTimeAgo(new Date(alert.timestamp)) : '—'}</span>
+                            <span class="alert-message">${escapeModelHtml(alert.message || 'رویداد جدید')}</span>
+                            <span class="alert-time">${(typeof formatTimeAgo === 'function') ? formatTimeAgo(new Date(alert.timestamp)) : '—'}</span>
                         </div>
                     </div>
                 `;
@@ -512,24 +518,24 @@ async function loadAlerts() {
 }
 
 // ============================================================
-// LOAD NEXT TRAINING
+// Load Next Training
 // ============================================================
 
 async function loadNextTraining() {
     const timeEl = document.getElementById('nextTrainingTime');
     const progressEl = document.getElementById('nextProgressBar');
-    
+
     try {
-        const data = await api.getScheduleStatus();
-        
-        if (data && data.success && data.data) {
+        const data = await window.api?.getScheduleStatus?.();
+
+        if (data?.success && data.data) {
             const s = data.data;
             const isRunning = s.is_running || false;
             const nextTraining = s.next_training;
-            
+
             if (isRunning && nextTraining) {
                 if (timeEl) timeEl.textContent = formatDate(nextTraining) || '—';
-                
+
                 if (progressEl) {
                     const now = Date.now();
                     const next = new Date(nextTraining).getTime();
@@ -538,7 +544,7 @@ async function loadNextTraining() {
                     const total = next - start;
                     const elapsed = now - start;
                     const percent = Math.min(Math.max((elapsed / total) * 100, 0), 100);
-                    
+
                     setTimeout(() => {
                         progressEl.style.width = percent + '%';
                     }, 300);
@@ -555,25 +561,31 @@ async function loadNextTraining() {
 }
 
 // ============================================================
-// GO TO TRAINING
+// Go To Training
 // ============================================================
 
-function goToTraining() {
+function goToTrainingTab() {
     const tabs = document.querySelectorAll('#modelTabs .model-tab-btn');
     tabs.forEach(b => b.classList.remove('active'));
+
     const targetBtn = document.querySelector('#modelTabs .model-tab-btn[data-tab="training"]');
     if (targetBtn) targetBtn.classList.add('active');
-    
+
     if (typeof window.loadModelTab === 'function') {
         window.loadModelTab('training');
     }
 }
 
 // ============================================================
-// UTILS
+// Helpers
 // ============================================================
 
-function escapeHtml(str) {
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
+
+function escapeModelHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -582,6 +594,4 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-console.log('✅ Dashboard tab v3.1 loaded');
 </script>
