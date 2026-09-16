@@ -1,181 +1,142 @@
 <!-- ============================================================
-     predict.html - تب پیش‌بینی لحظه‌ای
-     نسخه ۴.۰ - با CSS مشترک analyzer-animations.css
+     analyzer_tabs/predict.html — تب پیش‌بینی
+     نسخه ۳.۰ — با init/cleanup استاندارد + api.js هماهنگ
      ============================================================ -->
 
 <div class="card">
-    <!-- ============================================================
-         HEADER
-         ============================================================ -->
-    <div class="card-title">
-        <i class="fas fa-wand-magic-sparkles"></i>
-        <span>پیش‌بینی لحظه‌ای</span>
-        
-        <div style="display:flex;align-items:center;gap:8px;margin-right:auto;flex-wrap:wrap;">
-            <!-- وضعیت اتصال API -->
-            <span class="analyzer-status-badge unknown" id="apiStatus">
-                <span class="status-dot"></span>
+    <!-- ====================================================
+         Header
+         ==================================================== -->
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            <span>پیش‌بینی لحظه‌ای</span>
+        </div>
+
+        <div class="header-actions">
+            <span class="status-badge" id="apiStatus">
+                <span class="status-indicator" style="background: var(--text-muted);"></span>
                 <span class="status-text">در حال بررسی...</span>
             </span>
-            
-            <!-- وضعیت پیش‌بینی -->
-            <span class="analyzer-status-badge unknown" id="predictStatus">
-                <span class="status-dot"></span>
+
+            <span class="status-badge" id="predictStatus">
+                <span class="status-indicator" style="background: var(--text-muted);"></span>
                 <span class="status-text">آماده</span>
             </span>
-            
-            <!-- دکمه refresh -->
-            <button class="btn btn-xs btn-outline" id="refreshBtn" onclick="refreshCoins()" 
-                    style="padding:3px 10px;font-size:0.65rem;">
+
+            <button class="btn btn-xs btn-outline" onclick="refreshPredictCoins()" title="بروزرسانی">
                 <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
 
-    <!-- ============================================================
-         TOOLBAR
-         ============================================================ -->
-    <div class="analyzer-toolbar">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;">
-            <!-- Search -->
-            <div class="analyzer-search">
-                <input type="text" id="coinSearch" 
-                       placeholder="جستجو در ارزها..." 
-                       oninput="debouncedFilterCoins()">
-                <span class="search-icon">🔍</span>
-            </div>
-            
-            <!-- Sort Filter -->
-            <select id="sortFilter" class="analyzer-filter" onchange="filterCoins()">
-                <option value="rank_asc">📊 رتبه (صعودی)</option>
-                <option value="rank_desc">📊 رتبه (نزولی)</option>
-                <option value="name_asc">🔤 نام (الفبا)</option>
-                <option value="name_desc">🔤 نام (معکوس)</option>
-                <option value="price_asc">💰 قیمت (کمترین)</option>
-                <option value="price_desc">💰 قیمت (بیشترین)</option>
-                <option value="change_desc">📈 بیشترین تغییر</option>
-                <option value="change_asc">📉 کمترین تغییر</option>
-            </select>
-            
-            <!-- Change Filter -->
-            <select id="changeFilter" class="analyzer-filter" onchange="filterCoins()">
-                <option value="all">🔄 همه</option>
-                <option value="positive">📈 مثبت</option>
-                <option value="negative">📉 منفی</option>
-                <option value="high">🔥 بیش از ۵٪</option>
-            </select>
+    <!-- ====================================================
+         Toolbar
+         ==================================================== -->
+    <div class="predict-toolbar">
+        <div class="predict-search">
+            <input
+                type="text"
+                id="coinSearch"
+                class="form-input"
+                placeholder="جستجو در ارزها..."
+                oninput="debouncedFilterPredictCoins()">
+            <span class="search-icon">🔍</span>
         </div>
-        
-        <!-- Counters -->
-        <div class="analyzer-counters">
-            <span class="analyzer-counter-badge" id="coinCount">
+
+        <select id="sortFilter" class="form-select" onchange="filterPredictCoins()">
+            <option value="rank_asc">📊 رتبه (صعودی)</option>
+            <option value="rank_desc">📊 رتبه (نزولی)</option>
+            <option value="name_asc">🔤 نام</option>
+            <option value="price_desc">💰 قیمت (بیشترین)</option>
+            <option value="change_desc">📈 بیشترین تغییر</option>
+            <option value="change_asc">📉 کمترین تغییر</option>
+        </select>
+
+        <select id="changeFilter" class="form-select" onchange="filterPredictCoins()">
+            <option value="all">🔄 همه</option>
+            <option value="positive">📈 مثبت</option>
+            <option value="negative">📉 منفی</option>
+            <option value="high">🔥 بیش از ۵٪</option>
+        </select>
+
+        <div class="predict-counters">
+            <span class="counter-badge" id="coinCount">
                 <i class="fas fa-coins"></i>
                 <span>۰</span>
             </span>
-            <span class="analyzer-counter-badge api-live" id="apiPriceCount" style="display:none;">
+            <span class="counter-badge live" id="apiPriceCount" style="display:none;">
                 <i class="fas fa-bolt"></i>
                 <span>۰</span>
             </span>
         </div>
     </div>
 
-    <!-- ============================================================
-         COINS GRID
-         ============================================================ -->
-    <div id="coinsGrid" class="analyzer-coins-grid">
-        <!-- Skeleton Loading - ۶ کارت -->
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-        <div class="analyzer-skeleton-card">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
+    <!-- ====================================================
+         Coins Grid
+         ==================================================== -->
+    <div id="coinsGrid" class="predict-coins-grid">
+        <div class="predict-skeleton"></div>
+        <div class="predict-skeleton"></div>
+        <div class="predict-skeleton"></div>
+        <div class="predict-skeleton"></div>
+        <div class="predict-skeleton"></div>
+        <div class="predict-skeleton"></div>
     </div>
 
-    <!-- ============================================================
-         SELECTED INDICATOR
-         ============================================================ -->
-    <div id="selectedIndicator" class="analyzer-selected-indicator">
+    <!-- ====================================================
+         Selected Indicator
+         ==================================================== -->
+    <div id="selectedIndicator" class="predict-selected">
         <span class="check-icon">✓</span>
         <span>ارز انتخاب شده:</span>
         <span class="coin-label" id="selectedCoinName">—</span>
         <span class="hint">(برای پیش‌بینی کلیک کنید)</span>
     </div>
 
-    <!-- ============================================================
-         RESULT CARD
-         ============================================================ -->
-    <div id="predictResult" class="analyzer-result">
-        <div class="analyzer-result-content">
-            
+    <!-- ====================================================
+         Result Card
+         ==================================================== -->
+    <div id="predictResult" class="predict-result">
+        <div class="predict-result-content">
+
             <!-- Signal Circle -->
-            <div class="analyzer-signal-circle neutral" id="signalCircle">
+            <div class="signal-circle neutral" id="signalCircle">
                 <span class="signal-emoji">⏳</span>
                 <span class="signal-label">در انتظار</span>
             </div>
-            
-            <!-- Details Grid -->
-            <div class="analyzer-result-details">
-                <div class="analyzer-detail-item" style="animation-delay:0.05s;">
-                    <div class="detail-label">قیمت</div>
-                    <div class="detail-value cyan" id="resultPrice">—</div>
+
+            <!-- Details -->
+            <div class="predict-details">
+                <div class="predict-detail">
+                    <div class="pd-label">قیمت</div>
+                    <div class="pd-value cyan" id="resultPrice">—</div>
                 </div>
-                <div class="analyzer-detail-item" style="animation-delay:0.10s;">
-                    <div class="detail-label">اطمینان</div>
-                    <div class="detail-value" id="resultConfidence">—</div>
-                    <div class="analyzer-confidence-bar">
+                <div class="predict-detail">
+                    <div class="pd-label">اطمینان</div>
+                    <div class="pd-value" id="resultConfidence">—</div>
+                    <div class="confidence-bar">
                         <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
                     </div>
                 </div>
-                <div class="analyzer-detail-item" style="animation-delay:0.15s;">
-                    <div class="detail-label">مدل</div>
-                    <div class="detail-value purple" id="resultMode">—</div>
+                <div class="predict-detail">
+                    <div class="pd-label">مدل</div>
+                    <div class="pd-value purple" id="resultMode">—</div>
                 </div>
-                <div class="analyzer-detail-item" style="animation-delay:0.20s;">
-                    <div class="detail-label">سیگنال</div>
-                    <div class="detail-value" id="resultSignalType">—</div>
+                <div class="predict-detail">
+                    <div class="pd-label">سیگنال</div>
+                    <div class="pd-value" id="resultSignalType">—</div>
                 </div>
             </div>
         </div>
-        
-        <!-- Signal Description -->
-        <div style="margin-top:12px;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:8px;font-size:0.7rem;color:var(--text-secondary);" 
-             id="resultDetail">
+
+        <!-- Description -->
+        <div class="predict-result-desc" id="resultDetail">
             در انتظار پیش‌بینی...
         </div>
-        
+
         <!-- Footer -->
-        <div class="analyzer-result-footer">
+        <div class="predict-result-footer">
             <div class="timestamp">
                 <i class="fas fa-clock"></i>
                 <span id="resultTime">—</span>
@@ -184,363 +145,837 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         API STATS PANEL
-         ============================================================ -->
-    <div id="apiStats" class="analyzer-api-stats">
-        <div class="analyzer-api-stats-grid">
-            <div class="analyzer-api-stat">
-                <div class="stat-label">وضعیت</div>
-                <div class="stat-value" id="statConnection">—</div>
+    <!-- ====================================================
+         API Stats
+         ==================================================== -->
+    <div id="apiStats" class="predict-api-stats">
+        <div class="api-stats-grid">
+            <div class="api-stat">
+                <div class="as-label">وضعیت</div>
+                <div class="as-value" id="statConnection">—</div>
             </div>
-            <div class="analyzer-api-stat">
-                <div class="stat-label">نمادها</div>
-                <div class="stat-value cyan" id="statSymbols">—</div>
+            <div class="api-stat">
+                <div class="as-label">نمادها</div>
+                <div class="as-value cyan" id="statSymbols">—</div>
             </div>
-            <div class="analyzer-api-stat">
-                <div class="stat-label">پیام‌ها</div>
-                <div class="stat-value" id="statMessages">—</div>
+            <div class="api-stat">
+                <div class="as-label">پیام‌ها</div>
+                <div class="as-value" id="statMessages">—</div>
             </div>
-            <div class="analyzer-api-stat">
-                <div class="stat-label">Fallback</div>
-                <div class="stat-value orange" id="statFallback">—</div>
+            <div class="api-stat">
+                <div class="as-label">Fallback</div>
+                <div class="as-value orange" id="statFallback">—</div>
             </div>
-            <div class="analyzer-api-stat">
-                <div class="stat-label">آخرین بروزرسانی</div>
-                <div class="stat-value" id="statLastUpdate">—</div>
+            <div class="api-stat">
+                <div class="as-label">آخرین بروزرسانی</div>
+                <div class="as-value" id="statLastUpdate">—</div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+/* ============================================================
+   Predict Tab Styles
+   ============================================================ */
+
+.predict-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+}
+
+.predict-search {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
+}
+
+.predict-search .form-input {
+    padding-right: 36px;
+}
+
+.predict-search .search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+
+.predict-counters {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-right: auto;
+}
+
+.counter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+.counter-badge.live {
+    color: var(--color-green);
+    border-color: rgba(34, 211, 238, 0.25);
+    animation: breathe 2s ease-in-out infinite;
+}
+
+/* Coins Grid */
+.predict-coins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3);
+    max-height: 460px;
+    overflow-y: auto;
+    padding: var(--space-1);
+    margin-bottom: var(--space-4);
+}
+
+.predict-skeleton {
+    height: 110px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+/* Coin Card */
+.predict-coin {
+    background: var(--bg-input);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.4s var(--ease-out) backwards;
+}
+
+.predict-coin:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 212, 255, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.12);
+}
+
+.predict-coin.selected {
+    background: linear-gradient(
+        135deg,
+        rgba(0, 212, 255, 0.08),
+        rgba(139, 92, 246, 0.08)
+    );
+    border-color: var(--color-cyan);
+    box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.08);
+}
+
+.predict-coin.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 0.75rem;
+    color: var(--color-cyan);
+    font-weight: var(--fw-bold);
+}
+
+.predict-coin .pc-symbol {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-sm);
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.predict-coin .pc-symbol img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.predict-coin .pc-name {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+
+.predict-coin .pc-price {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    padding: 2px 4px;
+    border-radius: var(--radius-xs);
+    transition: var(--transition);
+}
+
+.predict-coin .pc-price.flash-up {
+    animation: priceFlashUp 0.8s ease;
+}
+
+.predict-coin .pc-price.flash-down {
+    animation: priceFlashDown 0.8s ease;
+}
+
+.predict-coin .pc-change {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    margin-top: 3px;
+}
+
+.predict-coin .pc-change.up { color: var(--color-green); }
+.predict-coin .pc-change.down { color: var(--color-red); }
+.predict-coin .pc-change.neutral { color: var(--text-muted); }
+
+.predict-coin .pc-rank {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+}
+
+/* Selected Indicator */
+.predict-selected {
+    display: none;
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: linear-gradient(
+        135deg,
+        rgba(0, 212, 255, 0.06),
+        rgba(139, 92, 246, 0.04)
+    );
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    animation: slideUp 0.3s var(--ease-out);
+}
+
+.predict-selected.active {
+    display: flex;
+}
+
+.predict-selected .check-icon {
+    color: var(--color-green);
+    font-weight: var(--fw-bold);
+}
+
+.predict-selected .coin-label {
+    color: var(--text-primary);
+    font-weight: var(--fw-semibold);
+}
+
+.predict-selected .hint {
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    margin-right: auto;
+}
+
+/* Result Card */
+.predict-result {
+    display: none;
+    margin-bottom: var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    animation: slideUp 0.4s var(--ease-out);
+    position: relative;
+    overflow: hidden;
+}
+
+.predict-result.active {
+    display: block;
+}
+
+.predict-result.signal-buy {
+    border-color: rgba(34, 211, 238, 0.3);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.06), var(--bg-input));
+}
+
+.predict-result.signal-sell {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), var(--bg-input));
+}
+
+.predict-result.signal-neutral {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), var(--bg-input));
+}
+
+.predict-result-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+}
+
+/* Signal Circle */
+.signal-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    transition: var(--transition);
+}
+
+.signal-circle.buy {
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.25), rgba(34, 211, 238, 0.05));
+    border: 2px solid var(--color-green);
+    color: var(--color-green);
+    animation: successPulse 2.5s ease-in-out infinite;
+}
+
+.signal-circle.sell {
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.05));
+    border: 2px solid var(--color-red);
+    color: var(--color-red);
+    animation: successPulse 2.5s ease-in-out infinite;
+}
+
+.signal-circle.neutral {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.05));
+    border: 2px solid var(--color-orange);
+    color: var(--color-orange);
+}
+
+.signal-circle .signal-emoji {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.signal-circle .signal-label {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Details */
+.predict-details {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: var(--space-3);
+    min-width: 200px;
+}
+
+.predict-detail {
+    text-align: center;
+    padding: var(--space-3) var(--space-2);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.predict-detail:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(0, 212, 255, 0.15);
+}
+
+.predict-detail .pd-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-1);
+}
+
+.predict-detail .pd-value {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.predict-detail .pd-value.cyan { color: var(--color-cyan); }
+.predict-detail .pd-value.green { color: var(--color-green); }
+.predict-detail .pd-value.red { color: var(--color-red); }
+.predict-detail .pd-value.purple { color: var(--color-purple); }
+.predict-detail .pd-value.orange { color: var(--color-orange); }
+
+/* Confidence */
+.confidence-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: var(--space-2);
+}
+
+.confidence-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+    transition: width 0.8s var(--ease-out);
+}
+
+/* Result Description */
+.predict-result-desc {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    line-height: var(--lh-relaxed);
+    margin-bottom: var(--space-3);
+}
+
+/* Result Footer */
+.predict-result-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-color);
+}
+
+.predict-result-footer .timestamp {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.predict-result-footer .source-badge {
+    font-size: var(--fs-xs);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--color-purple);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    font-family: var(--font-mono);
+    font-weight: var(--fw-medium);
+}
+
+/* API Stats */
+.predict-api-stats {
+    display: none;
+    margin-top: var(--space-3);
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.predict-api-stats.active {
+    display: block;
+    animation: slideUp 0.3s var(--ease-out);
+}
+
+.api-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: var(--space-3);
+}
+
+.api-stat {
+    text-align: center;
+    padding: var(--space-2);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.02);
+    transition: var(--transition);
+}
+
+.api-stat:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.api-stat .as-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-1);
+}
+
+.api-stat .as-value {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.api-stat .as-value.cyan { color: var(--color-cyan); }
+.api-stat .as-value.green { color: var(--color-green); }
+.api-stat .as-value.orange { color: var(--color-orange); }
+.api-stat .as-value.red { color: var(--color-red); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .predict-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .predict-search {
+        width: 100%;
+    }
+
+    .predict-coins-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: var(--space-2);
+    }
+
+    .predict-result-content {
+        flex-direction: column;
+    }
+
+    .signal-circle {
+        width: 80px;
+        height: 80px;
+    }
+
+    .signal-circle .signal-emoji {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .predict-coins-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .api-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
 <script>
 // ============================================================
-// PREDICT TAB v4.0
+// PREDICT TAB v3.0
 // ============================================================
 
-// ===== State =====
-let allCoins = [];
-let filteredCoins = [];
-let selectedCoinId = null;
-let isPredictLoading = false;
-let predictAbortController = null;
-let priceUpdateInterval = null;
-let debounceTimer = null;
-let isPredictLoaded = false;
-let apiStatsInterval = null;
+let _predictCoins = [];
+let _predictFiltered = [];
+let _predictSelectedCoinId = null;
+let _predictPriceInterval = null;
+let _predictApiStatsInterval = null;
+let _predictDebounceTimer = null;
+let _predictAbortController = null;
+let _predictIsLoading = false;
+let _predictInitialized = false;
 
 // ============================================================
-// ۱. INITIALIZE / CLEANUP
+// Init
 // ============================================================
 
-window.init_predict = function() {
+window.init_predict = async function() {
     console.log('🔮 Predict tab initializing...');
-    if (isPredictLoaded) {
-        console.log('⚠️ Already loaded, skipping');
-        return;
-    }
-    isPredictLoaded = true;
-    loadCoins();
+
+    if (_predictInitialized) return;
+    _predictInitialized = true;
+
+    await loadPredictCoins();
 };
+
+// ============================================================
+// Cleanup
+// ============================================================
 
 window.cleanup_predict = function() {
     console.log('🧹 Predict tab cleaning up...');
-    isPredictLoaded = false;
-    
-    if (priceUpdateInterval) {
-        clearInterval(priceUpdateInterval);
-        priceUpdateInterval = null;
+
+    if (_predictPriceInterval) {
+        clearInterval(_predictPriceInterval);
+        _predictPriceInterval = null;
     }
-    if (apiStatsInterval) {
-        clearInterval(apiStatsInterval);
-        apiStatsInterval = null;
+    if (_predictApiStatsInterval) {
+        clearInterval(_predictApiStatsInterval);
+        _predictApiStatsInterval = null;
     }
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
+    if (_predictDebounceTimer) {
+        clearTimeout(_predictDebounceTimer);
+        _predictDebounceTimer = null;
     }
-    if (predictAbortController) {
-        predictAbortController.abort();
-        predictAbortController = null;
+    if (_predictAbortController) {
+        _predictAbortController.abort();
+        _predictAbortController = null;
     }
+
+    _predictInitialized = false;
 };
 
 // ============================================================
-// ۲. LOAD COINS
+// Load Coins
 // ============================================================
 
-async function loadCoins() {
+async function loadPredictCoins() {
     const grid = document.getElementById('coinsGrid');
-    showSkeletonLoading(grid);
-    
+    if (!grid) return;
+
+    showPredictSkeleton(grid);
+
     try {
-        await checkApiHealth();
-        
-        const data = await api.getCoinsList({ limit: 100 });
-        
-        if (!data || !data.success || !data.data || data.data.length === 0) {
-            showEmptyState(grid, 'empty', 'هیچ ارزی یافت نشد', 'لیست ارزها خالی است');
+        await checkPredictApiHealth();
+
+        // ✅ api.getCoinsList() (موجود در api.js)
+        const data = await window.api?.getCoinsList?.({ limit: 100 });
+
+        if (!data?.success || !data.data || data.data.length === 0) {
+            showPredictEmpty(grid, 'empty');
             return;
         }
-        
-        allCoins = data.data;
-        filteredCoins = [...allCoins];
-        
+
+        _predictCoins = data.data;
+        _predictFiltered = [..._predictCoins];
+
         // بازیابی آخرین انتخاب
         const savedCoinId = localStorage.getItem('lastPredictedCoin');
         let defaultCoin = null;
-        
+
         if (savedCoinId) {
-            defaultCoin = allCoins.find(c => c.id === savedCoinId);
+            defaultCoin = _predictCoins.find(c => c.id === savedCoinId);
         }
         if (!defaultCoin) {
-            defaultCoin = allCoins.find(c => c.id === 'bitcoin') || allCoins[0];
+            defaultCoin = _predictCoins.find(c => c.id === 'bitcoin') || _predictCoins[0];
         }
-        
+
         if (defaultCoin) {
-            selectedCoinId = defaultCoin.id;
-            updateSelectedIndicator(defaultCoin);
+            _predictSelectedCoinId = defaultCoin.id;
+            updatePredictSelectedIndicator(defaultCoin);
         }
-        
-        renderCoins();
-        updateCoinCount();
-        
-        await updatePricesFromAPI();
-        
+
+        renderPredictCoins();
+        updatePredictCoinCount();
+
+        // ✅ api.getRealtimePrices() (موجود در api.js)
+        await updatePredictPrices();
+
         // پیش‌بینی خودکار
-        if (selectedCoinId) {
-            setTimeout(() => predictCoin(selectedCoinId), 800);
+        if (_predictSelectedCoinId) {
+            setTimeout(() => predictCoin(_predictSelectedCoinId), 500);
         }
-        
-        startAutoPriceUpdate();
-        startApiStatsUpdate();
-        
+
+        // Auto-refresh prices
+        _predictPriceInterval = setInterval(() => {
+            const activeTab = document.querySelector('#analyzerTabs .analyzer-tab-btn.active');
+            if (activeTab?.dataset.tab === 'predict') {
+                updatePredictPrices();
+            }
+        }, 12000);
+
+        // Auto-refresh API stats
+        _predictApiStatsInterval = setInterval(() => {
+            const activeTab = document.querySelector('#analyzerTabs .analyzer-tab-btn.active');
+            if (activeTab?.dataset.tab === 'predict') {
+                checkPredictApiHealth();
+            }
+        }, 20000);
+
     } catch (error) {
-        console.error('❌ loadCoins error:', error);
-        
-        let errorMsg = 'خطا در دریافت لیست ارزها';
-        if (error.message) {
-            if (error.message.includes('401')) errorMsg = 'لطفاً دوباره وارد شوید';
-            else if (error.message.includes('429')) errorMsg = 'محدودیت درخواست، چند لحظه صبر کنید';
-            else if (error.message.includes('Failed to fetch')) errorMsg = 'اتصال به سرور برقرار نیست';
-        }
-        
-        showEmptyState(grid, 'error', 'خطا در بارگذاری', errorMsg);
+        console.error('❌ Load predict coins error:', error);
+        showPredictEmpty(grid, 'error', error.message);
     }
 }
 
 // ============================================================
-// ۳. SKELETON / EMPTY STATE
+// API Health
 // ============================================================
 
-function showSkeletonLoading(grid) {
-    grid.innerHTML = Array(6).fill('').map((_, i) => `
-        <div class="analyzer-skeleton-card" style="animation-delay:${i * 0.05}s;">
-            <div class="analyzer-skeleton-line symbol"></div>
-            <div class="analyzer-skeleton-line name"></div>
-            <div class="analyzer-skeleton-line price"></div>
-            <div class="analyzer-skeleton-line change"></div>
-        </div>
-    `).join('');
-}
-
-function showEmptyState(grid, type, title, message) {
-    const icon = type === 'error' ? '❌' : '📭';
-    grid.innerHTML = `
-        <div class="analyzer-empty ${type}">
-            <span class="empty-icon">${icon}</span>
-            <div class="empty-title">${title}</div>
-            <div class="empty-message">${message}</div>
-            <button class="empty-action" onclick="loadCoins()">
-                <i class="fas fa-sync-alt"></i>
-                تلاش مجدد
-            </button>
-        </div>
-    `;
-}
-
-// ============================================================
-// ۴. API HEALTH CHECK
-// ============================================================
-
-async function checkApiHealth() {
+async function checkPredictApiHealth() {
     try {
-        const stats = await api.getCryptoStats();
-        
-        if (!stats || !stats.success || !stats.data) {
-            updateApiStatusBadge('unknown', 'وضعیت نامشخص');
+        // ✅ api.getCryptoStats() (موجود در api.js)
+        const stats = await window.api?.getCryptoStats?.();
+
+        if (!stats?.success || !stats.data) {
+            updatePredictStatus('apiStatus', 'unknown', 'وضعیت نامشخص');
             return;
         }
-        
+
         const data = stats.data;
         const ws = data.websocket || {};
         const pm = data.price_manager || {};
-        
+
         let status = 'unknown';
         let text = 'وضعیت نامشخص';
-        
+
         if (ws.connected === true) {
             status = 'online';
             text = 'متصل (FreeCrypto)';
         } else if (pm.is_running && pm.last_update) {
-            status = 'degraded';
+            status = 'warning';
             text = 'Fallback (CoinStats)';
         } else {
             status = 'offline';
             text = 'قطع';
         }
-        
-        updateApiStatusBadge(status, text);
-        updateApiStatsPanel(data);
-        
+
+        updatePredictStatus('apiStatus', status, text);
+        updatePredictApiStatsPanel(data);
+
     } catch (e) {
-        console.warn('checkApiHealth error:', e);
-        updateApiStatusBadge('offline', 'خطا در بررسی');
+        console.warn('checkPredictApiHealth error:', e);
+        updatePredictStatus('apiStatus', 'offline', 'خطا در بررسی');
     }
 }
 
-function updateApiStatusBadge(status, text) {
-    const badge = document.getElementById('apiStatus');
+function updatePredictStatus(elementId, status, text) {
+    const badge = document.getElementById(elementId);
     if (!badge) return;
-    
-    badge.className = 'analyzer-status-badge ' + status;
+
+    const statusColors = {
+        online: 'var(--color-green)',
+        warning: 'var(--color-orange)',
+        offline: 'var(--color-red)',
+        unknown: 'var(--text-muted)',
+    };
+
+    const indicator = badge.querySelector('.status-indicator');
     const textEl = badge.querySelector('.status-text');
-    if (textEl) textEl.textContent = text;
+
+    if (indicator) {
+        indicator.style.background = statusColors[status] || statusColors.unknown;
+    }
+    if (textEl) {
+        textEl.textContent = text;
+    }
 }
 
-function updateApiStatsPanel(data) {
+function updatePredictApiStatsPanel(data) {
     const panel = document.getElementById('apiStats');
     if (!panel) return;
-    
+
     panel.classList.add('active');
-    
+
     const ws = data.websocket || {};
     const pm = data.price_manager || {};
-    
+
     const statConn = document.getElementById('statConnection');
     if (statConn) {
         const isConnected = ws.connected === true;
         statConn.textContent = isConnected ? '✅ متصل' : '⚠️ Fallback';
-        statConn.className = 'stat-value ' + (isConnected ? 'green' : 'orange');
+        statConn.className = 'as-value ' + (isConnected ? 'green' : 'orange');
     }
-    
-    const statSymbols = document.getElementById('statSymbols');
-    if (statSymbols) statSymbols.textContent = ws.symbols_count || 0;
-    
-    const statMessages = document.getElementById('statMessages');
-    if (statMessages) statMessages.textContent = ws.messages_received || 0;
-    
-    const statFallback = document.getElementById('statFallback');
-    if (statFallback) statFallback.textContent = pm.fallback_count || 0;
-    
+
+    setText('statSymbols', ws.symbols_count || 0);
+    setText('statMessages', ws.messages_received || 0);
+    setText('statFallback', pm.fallback_count || 0);
+
     const statLast = document.getElementById('statLastUpdate');
     if (statLast && pm.last_update) {
-        const ts = typeof pm.last_update === 'number' 
-            ? pm.last_update * 1000 
+        const ts = typeof pm.last_update === 'number'
+            ? pm.last_update * 1000
             : new Date(pm.last_update).getTime();
-        statLast.textContent = formatTimeAgo(new Date(ts)) || '—';
+        statLast.textContent = (typeof formatTimeAgo === 'function')
+            ? formatTimeAgo(new Date(ts))
+            : '—';
     }
 }
 
-function startApiStatsUpdate() {
-    if (apiStatsInterval) return;
-    
-    apiStatsInterval = setInterval(async () => {
-        await checkApiHealth();
-    }, 20000);
-}
-
 // ============================================================
-// ۵. PRICE UPDATE
+// Update Prices
 // ============================================================
 
-async function updatePricesFromAPI() {
+async function updatePredictPrices() {
     try {
-        const symbols = allCoins
-            .slice(0, 20)
+        const symbols = _predictCoins
+            .slice(0, 30)
             .map(c => (c.symbol || '').toUpperCase())
             .filter(Boolean);
-        
+
         if (symbols.length === 0) return;
-        
-        const data = await api.getRealtimePrices(symbols);
-        
-        if (data.success && data.data) {
-            let updatedCount = 0;
-            const missing = [];
-            
-            symbols.forEach(symbol => {
-                const priceData = data.data[symbol];
-                
-                if (!priceData || !priceData.price) {
-                    missing.push(symbol);
-                    return;
-                }
-                
-                const price = priceData.price;
-                if (price > 0) {
-                    const el = document.querySelector(`.coin-price[data-symbol="${symbol}"]`);
-                    if (el) {
-                        const oldPrice = parseFloat(el.dataset.price || '0');
-                        const newPrice = parseFloat(price);
-                        
-                        if (oldPrice > 0 && newPrice !== oldPrice) {
-                            el.classList.remove('flash-up', 'flash-down');
-                            void el.offsetWidth;
-                            if (newPrice > oldPrice) {
-                                el.classList.add('flash-up');
-                            } else {
-                                el.classList.add('flash-down');
-                            }
-                        }
-                        
-                        el.textContent = formatCurrency(price);
-                        el.dataset.price = price;
-                        updatedCount++;
-                    }
-                }
-            });
-            
-            const counter = document.getElementById('apiPriceCount');
-            if (counter) {
-                counter.style.display = 'inline-flex';
-                const countSpan = counter.querySelector('span');
-                if (countSpan) countSpan.textContent = updatedCount;
+
+        // ✅ api.getRealtimePrices() (موجود در api.js)
+        const data = await window.api?.getRealtimePrices?.(symbols);
+
+        if (!data?.success || !data.data) return;
+
+        let updatedCount = 0;
+
+        symbols.forEach(symbol => {
+            const priceData = data.data[symbol];
+            if (!priceData || !priceData.price) return;
+
+            const price = priceData.price;
+            if (price <= 0) return;
+
+            const el = document.querySelector(`.pc-price[data-symbol="${symbol}"]`);
+            if (!el) return;
+
+            const oldPrice = parseFloat(el.dataset.price || '0');
+            const newPrice = parseFloat(price);
+
+            if (oldPrice > 0 && newPrice !== oldPrice) {
+                el.classList.remove('flash-up', 'flash-down');
+                void el.offsetWidth;
+                el.classList.add(newPrice > oldPrice ? 'flash-up' : 'flash-down');
             }
-            
-            if (missing.length > 0 && !window._missingWarned) {
-                console.debug('⚠️ Missing symbols:', missing.slice(0, 5));
-                window._missingWarned = true;
-                setTimeout(() => { window._missingWarned = false; }, 60000);
-            }
+
+            el.textContent = formatCurrency(price);
+            el.dataset.price = price;
+            updatedCount++;
+        });
+
+        const counter = document.getElementById('apiPriceCount');
+        if (counter) {
+            counter.style.display = 'inline-flex';
+            const countSpan = counter.querySelector('span');
+            if (countSpan) countSpan.textContent = updatedCount;
         }
     } catch (error) {
-        console.warn('updatePricesFromAPI error:', error.message);
+        console.warn('updatePredictPrices error:', error.message);
     }
 }
 
-function startAutoPriceUpdate() {
-    if (priceUpdateInterval) {
-        clearInterval(priceUpdateInterval);
-    }
-    
-    priceUpdateInterval = setInterval(() => {
-        if (allCoins.length > 0) {
-            updatePricesFromAPI();
-        }
-    }, 12000);
-}
-
 // ============================================================
-// ۶. RENDER COINS
+// Render Coins
 // ============================================================
 
-function renderCoins() {
+function renderPredictCoins() {
     const grid = document.getElementById('coinsGrid');
-    
-    if (filteredCoins.length === 0) {
+    if (!grid) return;
+
+    if (_predictFiltered.length === 0) {
         grid.innerHTML = `
-            <div class="analyzer-empty">
+            <div class="empty-state" style="grid-column:1/-1;">
                 <span class="empty-icon">🔍</span>
                 <div class="empty-title">نتیجه‌ای یافت نشد</div>
                 <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
@@ -548,275 +983,307 @@ function renderCoins() {
         `;
         return;
     }
-    
-    grid.innerHTML = filteredCoins.map((coin, i) => {
-        const isSelected = selectedCoinId === coin.id;
+
+    grid.innerHTML = _predictFiltered.map((coin, i) => {
+        const isSelected = _predictSelectedCoinId === coin.id;
         const change = coin.priceChange1d || 0;
         const changeCls = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
         const changeText = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
         const price = coin.price || 0;
         const symbol = (coin.symbol || coin.id.toUpperCase().slice(0, 4)).toUpperCase();
-        const name = escapeHtml(coin.name || coin.id);
+        const name = escapePredictHtml(coin.name || coin.id);
         const rank = coin.rank || '—';
-        
-        const delay = Math.min(i * 0.03, 0.5);
-        
+
         return `
-            <div class="analyzer-coin-card ${isSelected ? 'selected' : ''}"
-                 data-coin-id="${coin.id}"
-                 data-symbol="${symbol}"
-                 style="animation-delay:${delay}s;">
-                <div class="coin-symbol">
-                    <img src="${escapeHtml(coin.icon || '')}" 
-                         onerror="this.style.display='none'" 
-                         alt="${escapeHtml(symbol)}">
-                    <span>${escapeHtml(symbol)}</span>
+            <div class="predict-coin ${isSelected ? 'selected' : ''}"
+                 data-coin-id="${escapePredictAttr(coin.id)}"
+                 style="animation-delay:${Math.min(i * 0.02, 0.4)}s;"
+                 onclick="predictCoin('${escapePredictAttr(coin.id)}')">
+                <div class="pc-symbol">
+                    ${coin.icon ? `<img src="${escapePredictAttr(coin.icon)}" onerror="this.style.display='none'" alt="${symbol}">` : ''}
+                    <span>${escapePredictHtml(symbol)}</span>
                 </div>
-                <div class="coin-name">${name}</div>
-                <div class="coin-price" data-symbol="${symbol}" data-price="${price}">
+                <div class="pc-name">${name}</div>
+                <div class="pc-price" data-symbol="${symbol}" data-price="${price}">
                     ${formatCurrency(price)}
                 </div>
-                <div class="coin-change ${changeCls}">${changeText}</div>
-                <div class="coin-rank">#${rank}</div>
+                <div class="pc-change ${changeCls}">${changeText}</div>
+                <div class="pc-rank">#${rank}</div>
             </div>
         `;
     }).join('');
-    
-    grid.querySelectorAll('.analyzer-coin-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const coinId = card.dataset.coinId;
-            if (coinId) predictCoin(coinId);
-        });
-    });
 }
 
 // ============================================================
-// ۷. FILTER
+// Filter
 // ============================================================
 
-function filterCoins() {
-    const search = (document.getElementById('coinSearch').value || '').toLowerCase().trim();
-    const sort = document.getElementById('sortFilter').value;
-    const changeFilter = document.getElementById('changeFilter').value;
-    
-    filteredCoins = allCoins.filter(coin => {
+function filterPredictCoins() {
+    const search = (document.getElementById('coinSearch')?.value || '').toLowerCase().trim();
+    const sort = document.getElementById('sortFilter')?.value || 'rank_asc';
+    const changeFilter = document.getElementById('changeFilter')?.value || 'all';
+
+    _predictFiltered = _predictCoins.filter(coin => {
         const name = (coin.name || '').toLowerCase();
         const symbol = (coin.symbol || '').toLowerCase();
         const id = (coin.id || '').toLowerCase();
         return name.includes(search) || symbol.includes(search) || id.includes(search);
     });
-    
+
     if (changeFilter === 'positive') {
-        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) > 0);
+        _predictFiltered = _predictFiltered.filter(c => (c.priceChange1d || 0) > 0);
     } else if (changeFilter === 'negative') {
-        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) < 0);
+        _predictFiltered = _predictFiltered.filter(c => (c.priceChange1d || 0) < 0);
     } else if (changeFilter === 'high') {
-        filteredCoins = filteredCoins.filter(c => (c.priceChange1d || 0) > 5);
+        _predictFiltered = _predictFiltered.filter(c => (c.priceChange1d || 0) > 5);
     }
-    
+
     const sortFns = {
-        'rank_asc': (a, b) => (a.rank || 999) - (b.rank || 999),
-        'rank_desc': (a, b) => (b.rank || 0) - (a.rank || 0),
-        'name_asc': (a, b) => (a.name || '').localeCompare(b.name || ''),
-        'name_desc': (a, b) => (b.name || '').localeCompare(a.name || ''),
-        'price_asc': (a, b) => (a.price || 0) - (b.price || 0),
-        'price_desc': (a, b) => (b.price || 0) - (a.price || 0),
-        'change_desc': (a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0),
-        'change_asc': (a, b) => (a.priceChange1d || 0) - (b.priceChange1d || 0),
+        rank_asc: (a, b) => (a.rank || 999) - (b.rank || 999),
+        rank_desc: (a, b) => (b.rank || 0) - (a.rank || 0),
+        name_asc: (a, b) => (a.name || '').localeCompare(b.name || ''),
+        price_desc: (a, b) => (b.price || 0) - (a.price || 0),
+        change_desc: (a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0),
+        change_asc: (a, b) => (a.priceChange1d || 0) - (b.priceChange1d || 0),
     };
-    
-    if (sortFns[sort]) filteredCoins.sort(sortFns[sort]);
-    
-    updateCoinCount();
-    renderCoins();
+
+    if (sortFns[sort]) _predictFiltered.sort(sortFns[sort]);
+
+    updatePredictCoinCount();
+    renderPredictCoins();
 }
 
-function debouncedFilterCoins() {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(filterCoins, 250);
+function debouncedFilterPredictCoins() {
+    if (_predictDebounceTimer) clearTimeout(_predictDebounceTimer);
+    _predictDebounceTimer = setTimeout(filterPredictCoins, 250);
 }
 
-function updateCoinCount() {
+function updatePredictCoinCount() {
     const el = document.getElementById('coinCount');
     if (el) {
         const span = el.querySelector('span');
-        if (span) span.textContent = filteredCoins.length;
+        if (span) span.textContent = _predictFiltered.length;
     }
 }
 
 // ============================================================
-// ۸. PREDICT
+// Predict
 // ============================================================
 
 async function predictCoin(coinId) {
     if (!coinId) return;
-    
-    if (isPredictLoading) {
-        if (predictAbortController) {
-            predictAbortController.abort();
-        }
+
+    if (_predictIsLoading && _predictAbortController) {
+        _predictAbortController.abort();
     }
-    
-    selectedCoinId = coinId;
+
+    _predictSelectedCoinId = coinId;
     localStorage.setItem('lastPredictedCoin', coinId);
-    
-    const coin = allCoins.find(c => c.id === coinId);
-    if (coin) updateSelectedIndicator(coin);
-    
-    renderCoins();
-    
-    isPredictLoading = true;
-    updatePredictStatusBadge('unknown', 'در حال پیش‌بینی...');
+
+    const coin = _predictCoins.find(c => c.id === coinId);
+    if (coin) updatePredictSelectedIndicator(coin);
+
+    renderPredictCoins();
+
+    _predictIsLoading = true;
+    updatePredictStatus('predictStatus', 'unknown', 'در حال پیش‌بینی...');
     showPredictLoading(coin);
-    
-    predictAbortController = new AbortController();
-    
+
+    _predictAbortController = new AbortController();
+
     try {
-        const data = await api.predictSingle(coinId, '24h');
-        
-        if (!data.success || !data.data) {
-            throw new Error(data.error || 'پیش‌بینی ناموفق');
+        // ✅ api.predictSingle() (موجود در api.js)
+        const data = await window.api?.predictSingle?.(coinId, '24h');
+
+        if (!data?.success || !data.data) {
+            throw new Error(data?.error || 'پیش‌بینی ناموفق');
         }
-        
+
         showPredictResult(data.data);
-        updatePredictStatusBadge('online', 'پیش‌بینی شد');
-        
+        updatePredictStatus('predictStatus', 'online', 'پیش‌بینی شد');
+
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.log('⏹️ Predict cancelled');
-            return;
-        }
-        
+        if (error.name === 'AbortError') return;
+
         console.error('❌ Predict error:', error);
         showPredictError(error.message || 'خطا در پیش‌بینی');
-        updatePredictStatusBadge('offline', 'خطا');
+        updatePredictStatus('predictStatus', 'offline', 'خطا');
     } finally {
-        isPredictLoading = false;
-        predictAbortController = null;
+        _predictIsLoading = false;
+        _predictAbortController = null;
     }
 }
 
-function updateSelectedIndicator(coin) {
+function updatePredictSelectedIndicator(coin) {
     const indicator = document.getElementById('selectedIndicator');
     const nameEl = document.getElementById('selectedCoinName');
-    
+
     if (indicator && nameEl) {
         indicator.classList.add('active');
-        nameEl.textContent = `${coin.symbol} - ${coin.name}`;
+        nameEl.textContent = `${coin.symbol || ''} - ${coin.name || ''}`;
     }
-}
-
-function updatePredictStatusBadge(status, text) {
-    const badge = document.getElementById('predictStatus');
-    if (!badge) return;
-    
-    badge.className = 'analyzer-status-badge ' + status;
-    const textEl = badge.querySelector('.status-text');
-    if (textEl) textEl.textContent = text;
 }
 
 // ============================================================
-// ۹. RESULT
+// Show Result
 // ============================================================
 
 function showPredictLoading(coin) {
     const result = document.getElementById('predictResult');
+    if (!result) return;
+
     result.classList.add('active');
-    result.className = 'analyzer-result active';
-    
+    result.className = 'predict-result active';
+
     const circle = document.getElementById('signalCircle');
-    circle.className = 'analyzer-signal-circle neutral';
-    circle.querySelector('.signal-emoji').textContent = '⏳';
-    circle.querySelector('.signal-label').textContent = 'تحلیل';
-    
-    document.getElementById('resultPrice').textContent = coin ? formatCurrency(coin.price) : '—';
-    document.getElementById('resultConfidence').textContent = '—';
-    document.getElementById('resultMode').textContent = '—';
-    document.getElementById('resultSignalType').textContent = '—';
-    document.getElementById('resultDetail').textContent = 'در حال دریافت داده از مدل...';
-    document.getElementById('resultTime').textContent = '—';
-    document.getElementById('confidenceFill').style.width = '0%';
+    if (circle) {
+        circle.className = 'signal-circle neutral';
+        const emoji = circle.querySelector('.signal-emoji');
+        const label = circle.querySelector('.signal-label');
+        if (emoji) emoji.textContent = '⏳';
+        if (label) label.textContent = 'تحلیل';
+    }
+
+    setText('resultPrice', coin ? formatCurrency(coin.price) : '—');
+    setText('resultConfidence', '—');
+    setText('resultMode', '—');
+    setText('resultSignalType', '—');
+    setText('resultDetail', 'در حال دریافت داده از مدل...');
+    setText('resultTime', '—');
+
+    const fill = document.getElementById('confidenceFill');
+    if (fill) fill.style.width = '0%';
 }
 
 function showPredictResult(d) {
     const result = document.getElementById('predictResult');
+    if (!result) return;
+
     const signalType = d.signal_type || 'NEUTRAL';
-    
+
     const config = {
-        'BUY': { emoji: '🟢', label: 'خرید', cls: 'buy', color: 'green' },
-        'SELL': { emoji: '🔴', label: 'فروش', cls: 'sell', color: 'red' },
-        'NEUTRAL': { emoji: '🟡', label: 'خنثی', cls: 'neutral', color: 'orange' }
+        BUY: { emoji: '🟢', label: 'خرید', cls: 'buy', color: 'green' },
+        SELL: { emoji: '🔴', label: 'فروش', cls: 'sell', color: 'red' },
+        NEUTRAL: { emoji: '🟡', label: 'خنثی', cls: 'neutral', color: 'orange' },
     };
-    
-    const cfg = config[signalType] || config['NEUTRAL'];
-    
-    result.className = `analyzer-result active signal-${cfg.cls}`;
-    
+
+    const cfg = config[signalType] || config.NEUTRAL;
+
+    result.className = `predict-result active signal-${cfg.cls}`;
+
     const circle = document.getElementById('signalCircle');
-    circle.className = `analyzer-signal-circle ${cfg.cls}`;
-    circle.querySelector('.signal-emoji').textContent = cfg.emoji;
-    circle.querySelector('.signal-label').textContent = cfg.label;
-    
-    document.getElementById('resultPrice').textContent = formatCurrency(d.current_price);
-    
+    if (circle) {
+        circle.className = `signal-circle ${cfg.cls}`;
+        const emoji = circle.querySelector('.signal-emoji');
+        const label = circle.querySelector('.signal-label');
+        if (emoji) emoji.textContent = cfg.emoji;
+        if (label) label.textContent = cfg.label;
+    }
+
+    setText('resultPrice', formatCurrency(d.current_price));
+
     const confidence = parseInt(d.confidence) || 0;
-    document.getElementById('resultConfidence').textContent = confidence + '%';
-    document.getElementById('resultConfidence').className = 'detail-value ' + (confidence > 60 ? 'green' : 'orange');
-    document.getElementById('confidenceFill').style.width = confidence + '%';
-    
-    document.getElementById('resultMode').textContent = d.model_mode || 'DEMO';
-    document.getElementById('resultSignalType').textContent = signalType;
-    document.getElementById('resultSignalType').className = 'detail-value ' + cfg.color;
-    
-    document.getElementById('resultDetail').textContent = d.signal || 'سیگنال ثبت شده';
-    document.getElementById('resultTime').textContent = formatDate(d.timestamp) || '—';
-    document.getElementById('resultSource').textContent = `مدل ${d.model_mode || 'DEMO'}`;
+    const confEl = document.getElementById('resultConfidence');
+    if (confEl) {
+        confEl.textContent = confidence + '%';
+        confEl.className = 'pd-value ' + (confidence > 60 ? 'green' : 'orange');
+    }
+
+    const fill = document.getElementById('confidenceFill');
+    if (fill) fill.style.width = confidence + '%';
+
+    setText('resultMode', d.model_mode || 'DEMO');
+
+    const sigTypeEl = document.getElementById('resultSignalType');
+    if (sigTypeEl) {
+        sigTypeEl.textContent = signalType;
+        sigTypeEl.className = 'pd-value ' + cfg.color;
+    }
+
+    setText('resultDetail', d.signal || 'سیگنال ثبت شده');
+    setText('resultTime', formatDate(d.timestamp) || '—');
+    setText('resultSource', `مدل ${d.model_mode || 'DEMO'}`);
 }
 
 function showPredictError(message) {
     const result = document.getElementById('predictResult');
+    if (!result) return;
+
     result.classList.add('active');
-    result.className = 'analyzer-result active';
-    
+    result.className = 'predict-result active';
+
     const circle = document.getElementById('signalCircle');
-    circle.className = 'analyzer-signal-circle sell';
-    circle.querySelector('.signal-emoji').textContent = '❌';
-    circle.querySelector('.signal-label').textContent = 'خطا';
-    
-    document.getElementById('resultDetail').textContent = message;
-    document.getElementById('resultSignalType').textContent = 'خطا';
-    document.getElementById('resultSignalType').className = 'detail-value red';
+    if (circle) {
+        circle.className = 'signal-circle sell';
+        const emoji = circle.querySelector('.signal-emoji');
+        const label = circle.querySelector('.signal-label');
+        if (emoji) emoji.textContent = '❌';
+        if (label) label.textContent = 'خطا';
+    }
+
+    setText('resultDetail', message);
+
+    const sigTypeEl = document.getElementById('resultSignalType');
+    if (sigTypeEl) {
+        sigTypeEl.textContent = 'خطا';
+        sigTypeEl.className = 'pd-value red';
+    }
 }
 
 // ============================================================
-// ۱۰. REFRESH
+// Refresh
 // ============================================================
 
-function refreshCoins() {
-    if (typeof showToast === 'function') {
-        showToast('🔄 بروزرسانی...', 'info');
+async function refreshPredictCoins() {
+    if (typeof showToast === 'function') showToast('🔄 بروزرسانی...', 'info', 1500);
+
+    if (_predictPriceInterval) {
+        clearInterval(_predictPriceInterval);
+        _predictPriceInterval = null;
     }
-    
-    if (priceUpdateInterval) {
-        clearInterval(priceUpdateInterval);
-        priceUpdateInterval = null;
+    if (_predictApiStatsInterval) {
+        clearInterval(_predictApiStatsInterval);
+        _predictApiStatsInterval = null;
     }
-    if (apiStatsInterval) {
-        clearInterval(apiStatsInterval);
-        apiStatsInterval = null;
-    }
-    
-    // ✅ reset flag برای load مجدد
-    isPredictLoaded = false;
-    loadCoins();
-    isPredictLoaded = true;
+
+    _predictInitialized = false;
+    await loadPredictCoins();
+    _predictInitialized = true;
 }
 
 // ============================================================
-// ۱۱. UTILS
+// Helpers
 // ============================================================
 
-function escapeHtml(str) {
+function showPredictSkeleton(grid) {
+    grid.innerHTML = Array(6).fill('').map((_, i) => `
+        <div class="predict-skeleton" style="animation-delay:${i * 0.05}s;"></div>
+    `).join('');
+}
+
+function showPredictEmpty(grid, type, message) {
+    const icon = type === 'error' ? '❌' : '📭';
+    const title = type === 'error' ? 'خطا در بارگذاری' : 'هیچ ارزی یافت نشد';
+
+    grid.innerHTML = `
+        <div class="empty-state ${type}" style="grid-column:1/-1;">
+            <span class="empty-icon">${icon}</span>
+            <div class="empty-title">${title}</div>
+            ${message ? `<div class="empty-message">${escapePredictHtml(message)}</div>` : ''}
+            <button class="empty-action" onclick="loadPredictCoins()">
+                <i class="fas fa-sync-alt"></i>
+                تلاش مجدد
+            </button>
+        </div>
+    `;
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? '—';
+}
+
+function escapePredictHtml(str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -826,5 +1293,8 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-console.log('✅ Predict tab v4.0 loaded');
+function escapePredictAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 </script>
