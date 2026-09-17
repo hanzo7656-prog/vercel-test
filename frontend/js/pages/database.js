@@ -1,6 +1,13 @@
 // ============================================================
 // database.js — Database Page Script
-// نسخه ۲.۰ — رفع ۸ خطای runtime + استفاده از Archive
+// نسخه ۳.۰ — ارتقا کامل:
+//   - loadingSystem v5 (inline + modal)
+//   - Smart caching
+//   - Debounced search
+//   - Auto-refresh فقط تب فعال
+//   - Keyboard shortcuts
+//   - Retry logic
+//   - Last updated timestamp
 // ============================================================
 
 (function() {
@@ -10,11 +17,49 @@
     // State
     // ============================================================
 
-    let pgData = [];
-    let redisData = [];
-    let archiveData = [];
-    let monitorInterval = null;
-    let isMigrationRunning = false;
+    const state = {
+        // Data
+        pgData: [],
+        redisData: [],
+        archiveData: [],
+
+        // Filters
+        filters: {
+            pg: { search: '', size: 'all' },
+            redis: { search: '', type: 'all' },
+            archive: { search: '' },
+        },
+
+        // Intervals
+        monitorInterval: null,
+        activeTabRefreshInterval: null,
+
+        // Migration
+        isMigrationRunning: false,
+
+        // Retry config
+        maxRetries: 2,
+        retryDelay: 800,
+
+        // Debounce
+        searchDebounceTimers: {},
+
+        // Last updated
+        lastUpdated: {
+            overview: null,
+            postgresql: null,
+            redis: null,
+            archive: null,
+            monitor: null,
+        },
+
+        // Cache (TTL: 30s)
+        cache: new Map(),
+        cacheTTL: 30000,
+
+        // Active tab
+        activeTab: 'overview',
+    };
 
     // ============================================================
     // Helpers
@@ -40,178 +85,359 @@
         if (el) el.textContent = value ?? '—';
     }
 
+    function escapeCsv(value) {
+        const str = String(value ?? '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }
+
+    function downloadCSV(content, filename) {
+        const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (typeof showToast === 'function') showToast('📥 دانلود شد', 'success');
+    }
+
+    function debounce(fn, delay = 300) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    function toPersian(num) {
+        return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    }
+
+    // ============================================================
+    // Cache Helper
+    // ============================================================
+
+    function getCache(key) {
+        const item = state.cache.get(key);
+        if (!item) return null;
+        if (Date.now() > item.expires) {
+            state.cache.delete(key);
+            return null;
+        }
+        return item.value;
+    }
+
+    function setCache(key, value, ttl = state.cacheTTL) {
+        state.cache.set(key, {
+            value,
+            expires: Date.now() + ttl,
+        });
+    }
+
+    function clearCache(pattern = null) {
+        if (!pattern) {
+            state.cache.clear();
+            return;
+        }
+        for (const key of state.cache.keys()) {
+            if (key.includes(pattern)) {
+                state.cache.delete(key);
+            }
+        }
+    }
+
+    // ============================================================
+    // Retry Logic
+    // ============================================================
+
+    async function withRetry(fn, retries = state.maxRetries) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= retries + 1; attempt++) {
+            try {
+                return await fn();
+            } catch (err) {
+                lastError = err;
+                console.warn(`⚠️ Attempt ${attempt} failed:`, err.message);
+
+                if (attempt <= retries) {
+                    await new Promise(r => setTimeout(r, state.retryDelay));
+                }
+            }
+        }
+
+        throw lastError;
+    }
+
+    // ============================================================
+    // Inline Loading for Tabs
+    // ============================================================
+
+    function showTabLoading(tabId) {
+        const container = document.getElementById(tabId);
+        if (!container) return;
+
+        if (window.loadingSystem?.showInline) {
+            window.loadingSystem.showInline(container, { color: '#00d4ff' });
+        }
+    }
+
+    function hideTabLoading() {
+        if (window.loadingSystem?.hideInline) {
+            window.loadingSystem.hideInline();
+        }
+    }
+
     // ============================================================
     // ۱. Load Overview
     // ============================================================
 
-    async function loadOverview() {
+    async function loadOverview(force = false) {
         const container = document.getElementById('overviewContent');
         if (!container) return;
 
+        // چک cache
+        if (!force) {
+            const cached = getCache('overview');
+            if (cached) {
+                renderOverview(cached);
+                return;
+            }
+        }
+
+        showTabLoading('overviewContent');
+
         try {
-            // ✅ FIX: به جای getHealthDatabase → getHealthSummary
-            const data = await window.api.getHealthSummary();
-            const dbListRes = await window.api.getDBList();
+            const [data, dbListRes] = await withRetry(async () => {
+                return await Promise.all([
+                    window.api.getHealthSummary(),
+                    window.api.getDBList(),
+                ]);
+            });
 
             if (!data?.success || !data.data) {
                 throw new Error('خطا در دریافت وضعیت دیتابیس‌ها');
             }
 
-            const summary = data.data;
-            const details = summary.details || {};
-            const dbList = dbListRes?.data || [];
-
-            // شمارش متصل/قطع
-            let online = 0;
-            let offline = 0;
-            const entries = Object.entries(details);
-
-            entries.forEach(([_, info]) => {
-                if (info?.connected) online++;
-                else offline++;
-            });
-
-            // آپدیت stats
-            setText('dbTotal', entries.length || dbList.length);
-            setText('dbOnline', online);
-            setText('dbOffline', offline);
-
-            // پیدا کردن تعداد جدول‌های PostgreSQL
-            try {
-                const tables = await window.api.getPostgreSQLTables('primary');
-                if (tables?.success && tables.data) {
-                    setText('dbTables', tables.data.length);
-                }
-            } catch (e) { /* ignore */ }
-
-            // Render overview
-            const icons = {
-                postgresql: '🐘',
-                postgres: '🐘',
-                redis: '⚡',
-                archive: '📦',
-                sqlite: '📄',
-                primary: '🗄️',
-                backup: '💾',
-                analytics: '📊',
-                logs: '📝',
+            const result = {
+                summary: data.data,
+                dbList: dbListRes?.data || [],
             };
 
-            const dbNames = Object.keys(details).length > 0
-                ? Object.keys(details)
-                : dbList.map(d => d.name || d);
+            // Cache کن
+            setCache('overview', result, 15000);
 
-            if (dbNames.length === 0) {
-                container.innerHTML = `
-                    <div class="db-empty">
-                        <span class="empty-icon">📭</span>
-                        <div class="empty-title">هیچ دیتابیسی یافت نشد</div>
-                        <div class="empty-message">اطلاعات دیتابیس در دسترس نیست</div>
-                    </div>
-                `;
-                return;
-            }
+            renderOverview(result);
 
-            container.innerHTML = `
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
-                    ${dbNames.map(name => {
-                        const info = details[name] || {};
-                        const isConnected = info.connected === true || info.status === 'online';
-                        const icon = icons[info.type] || icons[name] || '📦';
-                        const version = info.version || '—';
-
-                        return `
-                            <div style="background:var(--bg-input);padding:16px 18px;border-radius:var(--radius-sm);border:1px solid ${isConnected ? 'var(--border-color)' : 'rgba(239, 68, 68, 0.3)'};transition:var(--transition);">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
-                                    <div style="display:flex;align-items:center;gap:10px;">
-                                        <span style="font-size:1.6rem;">${icon}</span>
-                                        <div>
-                                            <div style="font-weight:600;font-size:0.95rem;color:var(--text-primary);">${escapeHtml(name)}</div>
-                                            <div style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">
-                                                ${escapeHtml(info.type || 'unknown')} • ${escapeHtml(version)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:1.3rem;font-weight:700;color:${isConnected ? 'var(--color-green)' : 'var(--color-red)'};">
-                                            ${isConnected ? '🟢' : '🔴'}
-                                        </div>
-                                        <div style="font-size:0.55rem;color:${isConnected ? 'var(--color-green)' : 'var(--color-red)'};font-weight:600;text-transform:uppercase;">
-                                            ${isConnected ? 'متصل' : 'قطع'}
-                                        </div>
-                                    </div>
-                                </div>
-                                ${info.last_check ? `
-                                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border-color);font-size:0.7rem;color:var(--text-muted);display:flex;gap:12px;flex-wrap:wrap;">
-                                        <span>🕐 آخرین بررسی: ${formatTimeAgo(info.last_check) || '—'}</span>
-                                        ${info.ping_ms !== undefined ? `<span>⚡ ${info.ping_ms}ms</span>` : ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
+            // Last updated
+            state.lastUpdated.overview = new Date();
 
         } catch (err) {
             console.error('❌ Overview error:', err);
+            renderOverviewError(err.message);
+        } finally {
+            hideTabLoading();
+        }
+    }
+
+    function renderOverview(result) {
+        const container = document.getElementById('overviewContent');
+        if (!container) return;
+
+        const summary = result.summary;
+        const details = summary.details || {};
+        const dbList = result.dbList;
+
+        // شمارش
+        let online = 0;
+        let offline = 0;
+        const entries = Object.entries(details);
+
+        entries.forEach(([_, info]) => {
+            if (info?.connected) online++;
+            else offline++;
+        });
+
+        // آپدیت stats
+        setText('dbTotal', entries.length || dbList.length);
+        setText('dbOnline', online);
+        setText('dbOffline', offline);
+
+        // PostgreSQL tables count
+        if (state.pgData.length > 0) {
+            setText('dbTables', state.pgData.length);
+        } else {
+            window.api.getPostgreSQLTables('primary').then(tables => {
+                if (tables?.success && tables.data) {
+                    setText('dbTables', tables.data.length);
+                }
+            }).catch(() => {});
+        }
+
+        // Render
+        const icons = {
+            postgresql: '🐘',
+            postgres: '🐘',
+            redis: '⚡',
+            archive: '📦',
+            sqlite: '📄',
+            primary: '🗄️',
+            backup: '💾',
+            analytics: '📊',
+            logs: '📝',
+        };
+
+        const dbNames = Object.keys(details).length > 0
+            ? Object.keys(details)
+            : dbList.map(d => d.name || d);
+
+        if (dbNames.length === 0) {
             container.innerHTML = `
                 <div class="db-empty">
-                    <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
-                    <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
-                    <div class="empty-message">${escapeHtml(err.message)}</div>
+                    <span class="empty-icon">📭</span>
+                    <div class="empty-title">هیچ دیتابیسی یافت نشد</div>
+                    <div class="empty-message">اطلاعات دیتابیس در دسترس نیست</div>
                 </div>
             `;
+            return;
         }
+
+        container.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+                ${dbNames.map(name => {
+                    const info = details[name] || {};
+                    const isConnected = info.connected === true || info.status === 'online';
+                    const icon = icons[info.type] || icons[name] || '📦';
+                    const version = info.version || '—';
+
+                    return `
+                        <div style="background:var(--bg-input);padding:16px 18px;border-radius:var(--radius-sm);border:1px solid ${isConnected ? 'var(--border-color)' : 'rgba(239, 68, 68, 0.3)'};transition:var(--transition);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <span style="font-size:1.6rem;">${icon}</span>
+                                    <div>
+                                        <div style="font-weight:600;font-size:0.95rem;color:var(--text-primary);">${escapeHtml(name)}</div>
+                                        <div style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">
+                                            ${escapeHtml(info.type || 'unknown')} • ${escapeHtml(version)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:1.3rem;font-weight:700;color:${isConnected ? 'var(--color-green)' : 'var(--color-red)'};">
+                                        ${isConnected ? '🟢' : '🔴'}
+                                    </div>
+                                    <div style="font-size:0.55rem;color:${isConnected ? 'var(--color-green)' : 'var(--color-red)'};font-weight:600;text-transform:uppercase;">
+                                        ${isConnected ? 'متصل' : 'قطع'}
+                                    </div>
+                                </div>
+                            </div>
+                            ${info.last_check ? `
+                                <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border-color);font-size:0.7rem;color:var(--text-muted);display:flex;gap:12px;flex-wrap:wrap;">
+                                    <span>🕐 آخرین بررسی: ${formatTimeAgo(info.last_check) || '—'}</span>
+                                    ${info.ping_ms !== undefined ? `<span>⚡ ${info.ping_ms}ms</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    function renderOverviewError(message) {
+        const container = document.getElementById('overviewContent');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="db-empty">
+                <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
+                <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
+                <div class="empty-message">${escapeHtml(message)}</div>
+                <button class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="DatabasePage.loadOverview(true)">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>تلاش مجدد</span>
+                </button>
+            </div>
+        `;
     }
 
     // ============================================================
     // ۲. Load PostgreSQL
     // ============================================================
 
-    async function loadPostgreSQL() {
+    async function loadPostgreSQL(force = false) {
         const tbody = document.getElementById('pgTableBody');
         if (!tbody) return;
 
+        if (!force) {
+            const cached = getCache('postgresql');
+            if (cached) {
+                state.pgData = cached;
+                renderPGTable(applyPGFilters(cached));
+                return;
+            }
+        }
+
+        showTabLoading('tab-postgresql');
+
         try {
-            const data = await window.api.getPostgreSQLTables('primary');
+            const data = await withRetry(() =>
+                window.api.getPostgreSQLTables('primary')
+            );
 
             if (!data?.success || !data.data) {
                 throw new Error(data?.error || 'خطا در دریافت جدول‌ها');
             }
 
-            pgData = data.data;
+            state.pgData = data.data;
 
-            // آمار
-            setText('pgTableCount', pgData.length);
+            setCache('postgresql', state.pgData, 20000);
+
+            // Stats
+            setText('pgTableCount', state.pgData.length);
 
             let totalSize = 0;
             let totalRows = 0;
-            pgData.forEach(t => {
+            state.pgData.forEach(t => {
                 totalSize += t.size_mb || 0;
                 totalRows += t.row_count || 0;
             });
 
             setText('pgSize', totalSize.toFixed(1) + ' MB');
             setText('pgRows', totalRows.toLocaleString('en-US'));
-            setText('dbTables', pgData.length);
+            setText('dbTables', state.pgData.length);
 
-            renderPGTable(pgData);
+            renderPGTable(applyPGFilters(state.pgData));
+
+            state.lastUpdated.postgresql = new Date();
 
         } catch (err) {
             console.error('❌ PostgreSQL error:', err);
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="db-empty" style="padding:0;">
-                        <div style="padding:40px 20px;text-align:center;">
-                            <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
-                            <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
-                            <div class="empty-message">${escapeHtml(err.message)}</div>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            renderPGError(err.message);
+        } finally {
+            hideTabLoading();
         }
+    }
+
+    function applyPGFilters(data) {
+        const { search, size } = state.filters.pg;
+
+        let filtered = data.filter(t =>
+            (t.table_name || '').toLowerCase().includes(search.toLowerCase())
+        );
+
+        if (size === 'large') {
+            filtered = filtered.filter(t => (t.size_mb || 0) > 10);
+        } else if (size === 'medium') {
+            filtered = filtered.filter(t => (t.size_mb || 0) >= 1 && (t.size_mb || 0) <= 10);
+        } else if (size === 'small') {
+            filtered = filtered.filter(t => (t.size_mb || 0) < 1);
+        }
+
+        return filtered;
     }
 
     function renderPGTable(data) {
@@ -225,6 +451,7 @@
                         <div class="db-empty">
                             <span class="empty-icon">📭</span>
                             <div class="empty-title">هیچ جدولی یافت نشد</div>
+                            <div class="empty-message">${state.filters.pg.search ? 'فیلتر را تغییر دهید' : ''}</div>
                         </div>
                     </td>
                 </tr>
@@ -266,45 +493,92 @@
         }).join('');
     }
 
+    function renderPGError(message) {
+        const tbody = document.getElementById('pgTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding:0;">
+                    <div class="db-empty">
+                        <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
+                        <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
+                        <div class="empty-message">${escapeHtml(message)}</div>
+                        <button class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="DatabasePage.refreshPostgreSQL(true)">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>تلاش مجدد</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
     // ============================================================
     // ۳. Load Redis
     // ============================================================
 
-    async function loadRedis() {
+    async function loadRedis(force = false) {
         const tbody = document.getElementById('redisTableBody');
         if (!tbody) return;
 
+        if (!force) {
+            const cached = getCache('redis');
+            if (cached) {
+                state.redisData = cached.data;
+                renderRedisStats(cached.stats);
+                renderRedisTable(applyRedisFilters(cached.data));
+                return;
+            }
+        }
+
+        showTabLoading('tab-redis');
+
         try {
-            const data = await window.api.getRedisKeys({ limit: 200 });
+            const data = await withRetry(() =>
+                window.api.getRedisKeys({ limit: 200 })
+            );
 
             if (!data?.success) {
                 throw new Error(data?.error || 'خطا در دریافت کلیدها');
             }
 
-            redisData = data.data || [];
+            state.redisData = data.data || [];
 
-            // آمار
             const stats = data.stats || {};
-            setText('redisKeyCount', stats.total_keys || redisData.length);
-            setText('redisMemory', stats.memory || '—');
-            setText('redisClients', stats.clients || '—');
+            setCache('redis', { data: state.redisData, stats }, 15000);
 
-            renderRedisTable(redisData);
+            renderRedisStats(stats);
+            renderRedisTable(applyRedisFilters(state.redisData));
+
+            state.lastUpdated.redis = new Date();
 
         } catch (err) {
             console.error('❌ Redis error:', err);
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="padding:0;">
-                        <div class="db-empty">
-                            <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
-                            <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
-                            <div class="empty-message">${escapeHtml(err.message)}</div>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            renderRedisError(err.message);
+        } finally {
+            hideTabLoading();
         }
+    }
+
+    function renderRedisStats(stats) {
+        setText('redisKeyCount', stats.total_keys || state.redisData.length);
+        setText('redisMemory', stats.memory || '—');
+        setText('redisClients', stats.clients || '—');
+    }
+
+    function applyRedisFilters(data) {
+        const { search, type } = state.filters.redis;
+
+        let filtered = data.filter(k =>
+            (k.key || '').toLowerCase().includes(search.toLowerCase())
+        );
+
+        if (type !== 'all') {
+            filtered = filtered.filter(k => k.type === type);
+        }
+
+        return filtered;
     }
 
     function renderRedisTable(data) {
@@ -318,7 +592,7 @@
                         <div class="db-empty">
                             <span class="empty-icon">🔑</span>
                             <div class="empty-title">هیچ کلیدی یافت نشد</div>
-                            <div class="empty-message">Redis خالی است</div>
+                            <div class="empty-message">Redis خالی است یا فیلتر نتیجه‌ای ندارد</div>
                         </div>
                     </td>
                 </tr>
@@ -368,29 +642,64 @@
         }).join('');
     }
 
+    function renderRedisError(message) {
+        const tbody = document.getElementById('redisTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding:0;">
+                    <div class="db-empty">
+                        <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
+                        <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
+                        <div class="empty-message">${escapeHtml(message)}</div>
+                        <button class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="DatabasePage.refreshRedis(true)">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>تلاش مجدد</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
     // ============================================================
-    // ۴. Load Archive (جایگزین SQLite)
+    // ۴. Load Archive
     // ============================================================
 
-    async function loadArchive() {
+    async function loadArchive(force = false) {
         const tbody = document.getElementById('archiveTableBody');
         if (!tbody) return;
 
+        if (!force) {
+            const cached = getCache('archive');
+            if (cached) {
+                state.archiveData = cached;
+                renderArchiveTable(applyArchiveFilters(cached));
+                return;
+            }
+        }
+
+        showTabLoading('tab-archive');
+
         try {
-            const data = await window.api.getArchiveTables();
+            const data = await withRetry(() =>
+                window.api.getArchiveTables()
+            );
 
             if (!data?.success) {
                 throw new Error(data?.error || 'خطا در دریافت جدول‌ها');
             }
 
-            archiveData = data.data || [];
+            state.archiveData = data.data || [];
+            setCache('archive', state.archiveData, 20000);
 
-            // آمار
-            setText('archiveTableCount', archiveData.length);
+            // Stats
+            setText('archiveTableCount', state.archiveData.length);
 
             let totalSize = 0;
             let totalRows = 0;
-            archiveData.forEach(t => {
+            state.archiveData.forEach(t => {
                 totalSize += t.size_mb || 0;
                 totalRows += t.row_count || 0;
             });
@@ -398,22 +707,23 @@
             setText('archiveSize', totalSize.toFixed(1) + ' MB');
             setText('archiveRows', totalRows.toLocaleString('en-US'));
 
-            renderArchiveTable(archiveData);
+            renderArchiveTable(applyArchiveFilters(state.archiveData));
+
+            state.lastUpdated.archive = new Date();
 
         } catch (err) {
             console.error('❌ Archive error:', err);
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" style="padding:0;">
-                        <div class="db-empty">
-                            <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
-                            <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
-                            <div class="empty-message">${escapeHtml(err.message)}</div>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            renderArchiveError(err.message);
+        } finally {
+            hideTabLoading();
         }
+    }
+
+    function applyArchiveFilters(data) {
+        const { search } = state.filters.archive;
+        return data.filter(t =>
+            (t.table_name || '').toLowerCase().includes(search.toLowerCase())
+        );
     }
 
     function renderArchiveTable(data) {
@@ -462,8 +772,29 @@
         }).join('');
     }
 
+    function renderArchiveError(message) {
+        const tbody = document.getElementById('archiveTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="padding:0;">
+                    <div class="db-empty">
+                        <span class="empty-icon" style="color:var(--color-red);">⚠️</span>
+                        <div class="empty-title" style="color:var(--color-red);">خطا در بارگذاری</div>
+                        <div class="empty-message">${escapeHtml(message)}</div>
+                        <button class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="DatabasePage.refreshArchive(true)">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>تلاش مجدد</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
     // ============================================================
-    // ۵. Load Monitor (✅ FIX: جایگزین getDBMonitor)
+    // ۵. Load Monitor
     // ============================================================
 
     async function loadMonitor() {
@@ -471,7 +802,6 @@
         if (!container) return;
 
         try {
-            // ✅ FIX: ترکیب چند API به جای getDBMonitor ناموجود
             const [healthRes, redisStatsRes, pgStatsRes, archiveStatsRes] = await Promise.allSettled([
                 window.api.getHealthSummary(),
                 window.api.getRedisStats(),
@@ -487,7 +817,6 @@
             const details = health?.details || {};
             const dbNames = Object.keys(details);
 
-            // شمارش
             let connected = 0;
             let disconnected = 0;
             dbNames.forEach(name => {
@@ -505,7 +834,6 @@
                 )
                 : 0;
 
-            // Render stats
             let html = `
                 <div class="monitor-grid">
                     <div class="monitor-card">
@@ -529,7 +857,6 @@
                 </div>
             `;
 
-            // Status list
             html += `<div class="monitor-status-list">`;
 
             const icons = {
@@ -570,7 +897,6 @@
 
             html += `</div>`;
 
-            // Charts
             html += `
                 <div class="monitor-charts">
                     <div class="monitor-chart-wrapper">
@@ -584,8 +910,9 @@
 
             container.innerHTML = html;
 
-            // Render charts
             renderMonitorCharts(dbNames, details, redisStats, pgStats, archiveStats);
+
+            state.lastUpdated.monitor = new Date();
 
         } catch (err) {
             console.error('❌ Monitor error:', err);
@@ -605,12 +932,9 @@
         const textColor = getComputedStyle(document.documentElement)
             .getPropertyValue('--text-secondary').trim() || '#94a3b8';
 
-        // ===== Health Chart =====
         const ctx1 = document.getElementById('monitorHealthChart');
         if (ctx1) {
-            const healthData = dbNames.map(name =>
-                details[name]?.connected ? 100 : 0
-            );
+            const healthData = dbNames.map(name => details[name]?.connected ? 100 : 0);
 
             if (window._monitorHealthChart) {
                 window._monitorHealthChart.destroy();
@@ -669,7 +993,6 @@
             });
         }
 
-        // ===== Size Chart =====
         const ctx2 = document.getElementById('monitorSizeChart');
         if (ctx2) {
             const sizeData = [
@@ -694,11 +1017,7 @@
                             'rgba(239, 68, 68, 0.7)',
                             'rgba(139, 92, 246, 0.7)',
                         ],
-                        borderColor: [
-                            '#00d4ff',
-                            '#ef4444',
-                            '#8b5cf6',
-                        ],
+                        borderColor: ['#00d4ff', '#ef4444', '#8b5cf6'],
                         borderWidth: 2,
                     }],
                 },
@@ -739,6 +1058,7 @@
         tabs.forEach(btn => {
             btn.addEventListener('click', () => {
                 const tabName = btn.dataset.tab;
+                state.activeTab = tabName;
 
                 tabs.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -764,45 +1084,44 @@
     }
 
     // ============================================================
-    // ۷. Filters
+    // ۷. Debounced Filters
     // ============================================================
 
-    function filterPGTables() {
-        const search = (document.getElementById('pgSearch')?.value || '').toLowerCase();
-        const filter = document.getElementById('pgFilter')?.value || 'all';
+    const debouncedPGFilter = debounce(() => {
+        renderPGTable(applyPGFilters(state.pgData));
+    }, 300);
 
-        let filtered = pgData.filter(t =>
-            (t.table_name || '').toLowerCase().includes(search)
-        );
+    const debouncedRedisFilter = debounce(() => {
+        renderRedisTable(applyRedisFilters(state.redisData));
+    }, 300);
 
-        if (filter === 'large') filtered = filtered.filter(t => (t.size_mb || 0) > 10);
-        else if (filter === 'medium') filtered = filtered.filter(t => (t.size_mb || 0) >= 1 && (t.size_mb || 0) <= 10);
-        else if (filter === 'small') filtered = filtered.filter(t => (t.size_mb || 0) < 1);
+    const debouncedArchiveFilter = debounce(() => {
+        renderArchiveTable(applyArchiveFilters(state.archiveData));
+    }, 300);
 
-        renderPGTable(filtered);
+    function onPGSearchChange() {
+        state.filters.pg.search = document.getElementById('pgSearch')?.value || '';
+        debouncedPGFilter();
     }
 
-    function filterRedisKeys() {
-        const search = (document.getElementById('redisSearch')?.value || '').toLowerCase();
-        const typeFilter = document.getElementById('redisTypeFilter')?.value || 'all';
-
-        let filtered = redisData.filter(k =>
-            (k.key || '').toLowerCase().includes(search)
-        );
-
-        if (typeFilter !== 'all') {
-            filtered = filtered.filter(k => k.type === typeFilter);
-        }
-
-        renderRedisTable(filtered);
+    function onPGFilterChange() {
+        state.filters.pg.size = document.getElementById('pgFilter')?.value || 'all';
+        renderPGTable(applyPGFilters(state.pgData));
     }
 
-    function filterArchiveTables() {
-        const search = (document.getElementById('archiveSearch')?.value || '').toLowerCase();
-        const filtered = archiveData.filter(t =>
-            (t.table_name || '').toLowerCase().includes(search)
-        );
-        renderArchiveTable(filtered);
+    function onRedisSearchChange() {
+        state.filters.redis.search = document.getElementById('redisSearch')?.value || '';
+        debouncedRedisFilter();
+    }
+
+    function onRedisTypeChange() {
+        state.filters.redis.type = document.getElementById('redisTypeFilter')?.value || 'all';
+        renderRedisTable(applyRedisFilters(state.redisData));
+    }
+
+    function onArchiveSearchChange() {
+        state.filters.archive.search = document.getElementById('archiveSearch')?.value || '';
+        debouncedArchiveFilter();
     }
 
     // ============================================================
@@ -812,8 +1131,23 @@
     async function viewPGTable(tableName) {
         if (!tableName) return;
 
+        if (window.loadingSystem?.showModal) {
+            window.loadingSystem.showModal({
+                messages: [`در حال دریافت ${tableName}...`],
+                duration: 3000,
+                showProgress: false,
+                color: '#00d4ff',
+            });
+        }
+
         try {
-            const data = await window.api.getPostgreSQLTableData('primary', tableName, { limit: 20 });
+            const data = await withRetry(() =>
+                window.api.getPostgreSQLTableData('primary', tableName, { limit: 20 })
+            );
+
+            if (window.loadingSystem?.hideModal) {
+                window.loadingSystem.hideModal();
+            }
 
             if (!data?.success || !data.data) {
                 if (typeof showToast === 'function') showToast('❌ خطا در دریافت داده‌ها', 'error');
@@ -843,12 +1177,13 @@
             alert(msg);
 
         } catch (err) {
-            if (typeof showToast === 'function') showToast('❌ خطا در دریافت داده‌ها', 'error');
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
+            if (typeof showToast === 'function') showToast('❌ ' + err.message, 'error');
         }
     }
 
     function copyPGMeta(tableName) {
-        const t = pgData.find(x => x.table_name === tableName);
+        const t = state.pgData.find(x => x.table_name === tableName);
         if (!t) return;
 
         const text = `نام جدول: ${t.table_name}\nرکوردها: ${t.row_count || 0}\nحجم: ${(t.size_mb || 0).toFixed(2)} MB`;
@@ -863,16 +1198,15 @@
     }
 
     function copyPGTable() {
-        if (pgData.length === 0) {
+        if (state.pgData.length === 0) {
             if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
             return;
         }
 
-        const text = pgData.map(t =>
-            `${t.table_name}\t${t.row_count || 0}\t${(t.size_mb || 0).toFixed(2)}`
-        ).join('\n');
-
-        const header = 'نام جدول\tرکوردها\tحجم (MB)\n' + text;
+        const header = 'نام جدول\tرکوردها\tحجم (MB)\n' +
+            state.pgData.map(t =>
+                `${t.table_name}\t${t.row_count || 0}\t${(t.size_mb || 0).toFixed(2)}`
+            ).join('\n');
 
         if (typeof copyToClipboard === 'function') {
             copyToClipboard(header);
@@ -880,13 +1214,13 @@
     }
 
     function exportPGTable() {
-        if (pgData.length === 0) {
+        if (state.pgData.length === 0) {
             if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
             return;
         }
 
         const headers = ['نام جدول', 'رکوردها', 'حجم (MB)'];
-        const rows = pgData.map(t => [
+        const rows = state.pgData.map(t => [
             t.table_name,
             t.row_count || 0,
             (t.size_mb || 0).toFixed(2),
@@ -899,25 +1233,6 @@
         downloadCSV(csv, `postgresql_tables_${new Date().toISOString().slice(0, 10)}.csv`);
     }
 
-    function escapeCsv(value) {
-        const str = String(value ?? '');
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
-    }
-
-    function downloadCSV(content, filename) {
-        const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-        if (typeof showToast === 'function') showToast('📥 دانلود شد', 'success');
-    }
-
     // ============================================================
     // ۹. Redis Actions
     // ============================================================
@@ -925,8 +1240,19 @@
     async function viewRedisKey(key) {
         if (!key) return;
 
+        if (window.loadingSystem?.showModal) {
+            window.loadingSystem.showModal({
+                messages: [`در حال دریافت ${key}...`],
+                duration: 2000,
+                showProgress: false,
+                color: '#ef4444',
+            });
+        }
+
         try {
-            const data = await window.api.getRedisKey(key);
+            const data = await withRetry(() => window.api.getRedisKey(key));
+
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
 
             if (data?.success && data.data) {
                 const value = data.data.value;
@@ -941,6 +1267,7 @@
                 if (typeof showToast === 'function') showToast('❌ خطا در دریافت مقدار', 'error');
             }
         } catch (err) {
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
             if (typeof showToast === 'function') showToast('❌ ' + err.message, 'error');
         }
     }
@@ -959,11 +1286,12 @@
         if (!confirm(`⚠️ آیا از حذف کلید "${key}" اطمینان دارید؟`)) return;
 
         try {
-            const data = await window.api.deleteRedisKey(key);
+            const data = await withRetry(() => window.api.deleteRedisKey(key));
 
             if (data?.success) {
                 if (typeof showToast === 'function') showToast('🗑️ حذف شد', 'success');
-                loadRedis();
+                clearCache('redis');
+                loadRedis(true);
             } else {
                 if (typeof showToast === 'function') showToast('❌ خطا در حذف', 'error');
             }
@@ -973,13 +1301,13 @@
     }
 
     function copyRedisKeys() {
-        if (redisData.length === 0) {
+        if (state.redisData.length === 0) {
             if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
             return;
         }
 
-        const text = redisData.map(k => `${k.key}\t${k.type}\t${k.ttl}`).join('\n');
-        const header = 'کلید\tنوع\tTTL\n' + text;
+        const header = 'کلید\tنوع\tTTL\n' +
+            state.redisData.map(k => `${k.key}\t${k.type}\t${k.ttl}`).join('\n');
 
         if (typeof copyToClipboard === 'function') {
             copyToClipboard(header);
@@ -987,12 +1315,12 @@
     }
 
     function exportRedisKeys() {
-        if (redisData.length === 0) {
+        if (state.redisData.length === 0) {
             if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
             return;
         }
 
-        const json = JSON.stringify(redisData, null, 2);
+        const json = JSON.stringify(state.redisData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1006,16 +1334,29 @@
     async function clearRedis() {
         if (!confirm('⚠️ پاک کردن همه کلیدهای Redis؟')) return;
 
+        if (window.loadingSystem?.showModal) {
+            window.loadingSystem.showModal({
+                messages: ['در حال پاک‌سازی Redis...|لطفاً صبر کنید'],
+                duration: 3000,
+                showProgress: true,
+                color: '#ef4444',
+            });
+        }
+
         try {
-            const data = await window.api.clearRedis(true);
+            const data = await withRetry(() => window.api.clearRedis(true));
+
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
 
             if (data?.success) {
                 if (typeof showToast === 'function') showToast('🗑️ Redis پاک شد', 'success');
-                loadRedis();
+                clearCache('redis');
+                loadRedis(true);
             } else {
                 if (typeof showToast === 'function') showToast('❌ خطا', 'error');
             }
         } catch (err) {
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
             if (typeof showToast === 'function') showToast('❌ ' + err.message, 'error');
         }
     }
@@ -1027,8 +1368,21 @@
     async function viewArchiveTable(tableName) {
         if (!tableName) return;
 
+        if (window.loadingSystem?.showModal) {
+            window.loadingSystem.showModal({
+                messages: [`در حال دریافت ${tableName}...`],
+                duration: 3000,
+                showProgress: false,
+                color: '#8b5cf6',
+            });
+        }
+
         try {
-            const data = await window.api.getArchiveTableData(tableName, { limit: 20 });
+            const data = await withRetry(() =>
+                window.api.getArchiveTableData(tableName, { limit: 20 })
+            );
+
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
 
             if (!data?.success || !data.data) {
                 if (typeof showToast === 'function') showToast('❌ خطا در دریافت داده‌ها', 'error');
@@ -1058,12 +1412,13 @@
             alert(msg);
 
         } catch (err) {
-            if (typeof showToast === 'function') showToast('❌ خطا در دریافت داده‌ها', 'error');
+            if (window.loadingSystem?.hideModal) window.loadingSystem.hideModal();
+            if (typeof showToast === 'function') showToast('❌ ' + err.message, 'error');
         }
     }
 
     function copyArchiveMeta(tableName) {
-        const t = archiveData.find(x => x.table_name === tableName);
+        const t = state.archiveData.find(x => x.table_name === tableName);
         if (!t) return;
 
         const text = `نام جدول: ${t.table_name}\nرکوردها: ${t.row_count || 0}\nحجم: ${(t.size_mb || 0).toFixed(2)} MB`;
@@ -1074,13 +1429,10 @@
     }
 
     function copyArchiveTable() {
-        if (archiveData.length === 0) return;
+        if (state.archiveData.length === 0) return;
 
-        const text = archiveData.map(t =>
-            `${t.table_name}\t${t.row_count || 0}`
-        ).join('\n');
-
-        const header = 'نام جدول\tرکوردها\n' + text;
+        const header = 'نام جدول\tرکوردها\n' +
+            state.archiveData.map(t => `${t.table_name}\t${t.row_count || 0}`).join('\n');
 
         if (typeof copyToClipboard === 'function') {
             copyToClipboard(header);
@@ -1088,13 +1440,13 @@
     }
 
     function exportArchiveTable() {
-        if (archiveData.length === 0) {
+        if (state.archiveData.length === 0) {
             if (typeof showToast === 'function') showToast('⚠️ داده‌ای نیست', 'warning');
             return;
         }
 
         const headers = ['نام جدول', 'رکوردها', 'حجم (MB)'];
-        const rows = archiveData.map(t => [
+        const rows = state.archiveData.map(t => [
             t.table_name,
             t.row_count || 0,
             (t.size_mb || 0).toFixed(2),
@@ -1108,12 +1460,12 @@
     }
 
     // ============================================================
-    // ۱۱. Migration
+    // ۱۱. Migration (با Modal Loading پیشرفته)
     // ============================================================
 
     async function runMigration() {
-        if (isMigrationRunning) return;
-        isMigrationRunning = true;
+        if (state.isMigrationRunning) return;
+        state.isMigrationRunning = true;
 
         const btn = document.getElementById('migrationBtn');
         const modal = document.getElementById('migrationModal');
@@ -1142,15 +1494,7 @@
         if (titleEl) titleEl.textContent = 'در حال بروزرسانی دیتابیس...';
         if (subtitleEl) subtitleEl.textContent = 'لطفاً صبر کنید';
 
-        const stepMessages = [
-            'آماده‌سازی محیط',
-            'دریافت داده‌های API',
-            'پردازش داده‌ها',
-            'ساخت جدول‌های جدید',
-            'بررسی یکپارچگی داده‌ها',
-        ];
-
-        steps.forEach((step, i) => {
+        steps.forEach((step) => {
             if (!step) return;
             step.className = '';
             const icon = step.querySelector('.icon');
@@ -1240,12 +1584,14 @@
                 lastRunEl.textContent = 'آخرین بروزرسانی: ' + new Date().toLocaleString('fa-IR');
             }
 
-            // Reload data
+            // پاک کردن cache
+            clearCache();
+
             setTimeout(() => {
-                loadOverview();
-                loadPostgreSQL();
-                loadRedis();
-                loadArchive();
+                loadOverview(true);
+                loadPostgreSQL(true);
+                loadRedis(true);
+                loadArchive(true);
             }, 500);
 
         } catch (error) {
@@ -1259,7 +1605,7 @@
             if (closeBtn) closeBtn.classList.add('show');
         }
 
-        isMigrationRunning = false;
+        state.isMigrationRunning = false;
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-play"></i> اجرای بروزرسانی';
@@ -1284,31 +1630,91 @@
     }
 
     // ============================================================
-    // ۱۲. Auto Update Monitor
+    // ۱۲. Auto Update Monitor (فقط تب فعال)
     // ============================================================
 
-    function startMonitorAutoUpdate() {
-        if (monitorInterval) clearInterval(monitorInterval);
+    function startActiveTabRefresh() {
+        if (state.activeTabRefreshInterval) {
+            clearInterval(state.activeTabRefreshInterval);
+        }
 
-        monitorInterval = setInterval(() => {
-            // فقط اگه تب monitor فعال باشه
-            const activeTab = document.querySelector('#dbTabs .tab-btn.active');
-            if (activeTab?.dataset.tab === 'monitor') {
-                loadMonitor();
+        state.activeTabRefreshInterval = setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+
+            // فقط تب فعال
+            switch (state.activeTab) {
+                case 'overview':
+                    loadOverview(true);
+                    break;
+                case 'postgresql':
+                    loadPostgreSQL(true);
+                    break;
+                case 'redis':
+                    loadRedis(true);
+                    break;
+                case 'archive':
+                    loadArchive(true);
+                    break;
+                case 'monitor':
+                    loadMonitor();
+                    break;
             }
-        }, 15000);
+        }, 30000); // هر 30s
     }
 
     // ============================================================
-    // ۱۳. Init
+    // ۱۳. Keyboard Shortcuts
+    // ============================================================
+
+    function initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+R / Cmd+R → refresh tab فعال
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+
+                switch (state.activeTab) {
+                    case 'overview':
+                        loadOverview(true);
+                        break;
+                    case 'postgresql':
+                        loadPostgreSQL(true);
+                        break;
+                    case 'redis':
+                        loadRedis(true);
+                        break;
+                    case 'archive':
+                        loadArchive(true);
+                        break;
+                    case 'monitor':
+                        loadMonitor();
+                        break;
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast('🔄 بروزرسانی تب فعال', 'info', 1500);
+                }
+            }
+
+            // Escape → بستن modal migration
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('migrationModal');
+                if (modal?.classList.contains('active') && !state.isMigrationRunning) {
+                    closeMigrationModal();
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // ۱۴. Init
     // ============================================================
 
     async function init() {
         console.log('🚀 Database page initializing...');
 
         initTabs();
+        initKeyboardShortcuts();
 
-        // لود همه داده‌ها
         await Promise.allSettled([
             loadOverview(),
             loadPostgreSQL(),
@@ -1316,26 +1722,35 @@
             loadArchive(),
         ]);
 
-        startMonitorAutoUpdate();
+        startActiveTabRefresh();
 
         console.log('✅ Database page ready');
     }
 
     // ============================================================
-    // ۱۴. Expose Actions
+    // ۱۵. Expose Actions
     // ============================================================
 
     window.DatabasePage = {
-        // Filters
-        filterPGTables,
-        filterRedisKeys,
-        filterArchiveTables,
+        // Loaders (force refresh)
+        loadOverview: (force) => loadOverview(force !== false),
+        loadPostgreSQL: (force) => loadPostgreSQL(force !== false),
+        loadRedis: (force) => loadRedis(force !== false),
+        loadArchive: (force) => loadArchive(force !== false),
+        loadMonitor,
 
-        // Refresh
-        refreshPostgreSQL: loadPostgreSQL,
-        refreshRedis: loadRedis,
-        refreshArchive: loadArchive,
+        // Alias refresh
+        refreshPostgreSQL: (force) => loadPostgreSQL(force !== false),
+        refreshRedis: (force) => loadRedis(force !== false),
+        refreshArchive: (force) => loadArchive(force !== false),
         refreshMonitor: loadMonitor,
+
+        // Filters
+        onPGSearchChange,
+        onPGFilterChange,
+        onRedisSearchChange,
+        onRedisTypeChange,
+        onArchiveSearchChange,
 
         // PostgreSQL
         viewPGTable,
@@ -1360,6 +1775,9 @@
         // Migration
         runMigration,
         closeMigrationModal,
+
+        // Utils
+        clearCache,
     };
 
     // ============================================================
@@ -1372,13 +1790,11 @@
         init();
     }
 
-    // Cleanup
     window.addEventListener('beforeunload', () => {
-        if (monitorInterval) {
-            clearInterval(monitorInterval);
-            monitorInterval = null;
-        }
+        if (state.monitorInterval) clearInterval(state.monitorInterval);
+        if (state.activeTabRefreshInterval) clearInterval(state.activeTabRefreshInterval);
+        clearCache();
     });
 
-    console.log('✅ Database script v2.0 loaded');
+    console.log('✅ Database script v3.0 loaded (with enhancements)');
 })();
