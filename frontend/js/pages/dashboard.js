@@ -1,6 +1,6 @@
 // ============================================================
 // dashboard.js — Dashboard Page Script
-// نسخه ۲.۰ — با SplashLoader + بهبودها
+// نسخه ۳.۰ — با loadingSystem v5 (showModal/hideModal)
 // ============================================================
 
 (function() {
@@ -425,16 +425,25 @@
     }
 
     // ============================================================
-    // ۷. Refresh
+    // ۷. Refresh (با Modal Loading)
     // ============================================================
 
     async function refreshDashboard() {
         console.log('🔄 Refreshing dashboard...');
 
-        if (window.loadingSystem?.show) {
-            window.loadingSystem.show({
-                messages: ['بروزرسانی...', 'دریافت اطلاعات جدید|لطفاً صبر کنید'],
+        // ✅ استفاده از showModal (v5)
+        if (window.loadingSystem?.showModal) {
+            window.loadingSystem.showModal({
+                messages: [
+                    'در حال بروزرسانی...|لطفاً صبر کنید',
+                    'دریافت اطلاعات جدید...|کمی صبر کنید',
+                    'آماده‌سازی نمایش...|در حال اتمام',
+                ],
                 duration: 2000,
+                showProgress: true,
+                showPercent: false,
+                color: '#00d4ff',
+                cancellable: false,
             });
         }
 
@@ -454,8 +463,9 @@
                 showToast('❌ خطا در بروزرسانی', 'error');
             }
         } finally {
-            if (window.loadingSystem?.hide) {
-                window.loadingSystem.hide();
+            // ✅ hideModal
+            if (window.loadingSystem?.hideModal) {
+                window.loadingSystem.hideModal();
             }
         }
     }
@@ -472,6 +482,14 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function debounce(fn, delay = 300) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
     }
 
     // ============================================================
@@ -564,18 +582,6 @@
     }
 
     // ============================================================
-    // Helpers
-    // ============================================================
-
-    function debounce(fn, delay = 300) {
-        let timer = null;
-        return function(...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn.apply(this, args), delay);
-        };
-    }
-
-    // ============================================================
     // Expose
     // ============================================================
 
@@ -601,5 +607,5 @@
         }
     });
 
-    console.log('✅ Dashboard script v2.0 loaded');
+    console.log('✅ Dashboard script v3.0 loaded');
 })();
