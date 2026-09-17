@@ -1,75 +1,45 @@
 <!-- ============================================================
-     components/loading-overlay.html — Loading Overlay v3.0
-     نسخه ۳.۰ — با توکن‌ها + انیمیشن‌های پیشرفته + تم روشن/تیره
+     components/loading-overlay.html — Loading Overlay v5.0
+     نسخه ۵.۰ — دو حالت تخصصی:
+       1. Inline: داخل container (بدون نوشته، بدون کارت)
+       2. Modal: کل صفحه + کارت مربعی + نوشته + کنسل
      ============================================================ -->
 
 <!-- ============================================================
-     OVERLAY CONTAINER
+     INLINE LOADER (داخل container)
      ============================================================ -->
-<div class="loading-overlay" id="loadingOverlay" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="loading-card">
+<div class="inline-loader" id="inlineLoader">
+    <span class="inline-loader-spinner" id="inlineLoaderSpinner"></span>
+</div>
 
-        <!-- ====================================================
-             Background decoration
-             ==================================================== -->
-        <div class="loading-bg">
-            <div class="loading-orb orb-1"></div>
-            <div class="loading-orb orb-2"></div>
+<!-- ============================================================
+     MODAL LOADER (کل صفحه)
+     ============================================================ -->
+<div class="modal-loader" id="modalLoader" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-loader-card">
+
+        <!-- Spinner -->
+        <div class="modal-loader-spinner-wrapper">
+            <span class="loader" id="modalLoaderSpinner"></span>
         </div>
 
-        <!-- ====================================================
-             Spinner (dual ring)
-             ==================================================== -->
-        <div class="loading-spinner-wrapper">
-            <svg class="loading-spinner-svg" viewBox="0 0 72 72">
-                <!-- Outer ring -->
-                <circle class="spinner-ring outer" cx="36" cy="36" r="30"/>
-                <!-- Middle ring (reverse) -->
-                <circle class="spinner-ring middle" cx="36" cy="36" r="22"/>
-                <!-- Inner ring (fast) -->
-                <circle class="spinner-ring inner" cx="36" cy="36" r="14"/>
-            </svg>
+        <!-- Messages -->
+        <div class="modal-loader-message" id="modalLoaderMessage">در حال انجام...</div>
+        <div class="modal-loader-submessage" id="modalLoaderSubMessage">لطفاً صبر کنید</div>
 
-            <!-- Center icon -->
-            <div class="loading-center-icon" id="loadingCenterIcon">
-                <i class="fas fa-chart-pie"></i>
-            </div>
+        <!-- Progress -->
+        <div class="modal-loader-progress" id="modalLoaderProgressWrapper" style="display:none;">
+            <div class="progress-fill" id="modalLoaderProgress"></div>
         </div>
 
-        <!-- ====================================================
-             Three Dots
-             ==================================================== -->
-        <div class="loading-dots" id="loadingDots">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-        </div>
-
-        <!-- ====================================================
-             Messages
-             ==================================================== -->
-        <div class="loading-message" id="loadingMessage">در حال انجام...</div>
-        <div class="loading-submessage" id="loadingSubMessage">لطفاً صبر کنید</div>
-
-        <!-- ====================================================
-             Progress Bar
-             ==================================================== -->
-        <div class="loading-progress" id="loadingProgressWrapper">
-            <div class="progress-fill indeterminate" id="loadingProgress"></div>
-        </div>
-
-        <!-- ====================================================
-             Progress Percent (نمایش عددی)
-             ==================================================== -->
-        <div class="loading-percent" id="loadingPercent" style="display:none;">
-            <span class="percent-value" id="loadingPercentValue">۰</span>
+        <!-- Percent -->
+        <div class="modal-loader-percent" id="modalLoaderPercent" style="display:none;">
+            <span class="percent-value" id="modalLoaderPercentValue">۰</span>
             <span class="percent-symbol">%</span>
         </div>
 
-        <!-- ====================================================
-             Cancel button (اختیاری)
-             ==================================================== -->
-        <button class="loading-cancel-btn" id="loadingCancelBtn" style="display:none;">
+        <!-- Cancel -->
+        <button class="modal-loader-cancel" id="modalLoaderCancel" style="display:none;" type="button">
             <i class="fas fa-times"></i>
             <span>لغو</span>
         </button>
@@ -79,392 +49,535 @@
 
 <style>
 /* ============================================================
-   LOADING OVERLAY STYLES v3.0
+   INLINE LOADER — داخل container
    ============================================================ */
 
-/* ============================================================
-   ۱. Overlay Container
-   ============================================================ */
-
-.loading-overlay {
-    position: fixed;
+.inline-loader {
+    position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    z-index: var(--z-modal);
     display: none;
-    justify-content: center;
     align-items: center;
-    padding: var(--space-5);
-    animation: fadeIn 0.3s var(--ease-out);
-    font-family: var(--font-main);
-    direction: rtl;
+    justify-content: center;
+    background: var(--bg-card, rgba(17, 24, 39, 0.6));
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 100;
+    border-radius: inherit;
+    animation: inlineLoaderFadeIn 0.2s ease;
 }
 
-.loading-overlay.active {
-    display: flex;
-}
-
-[data-theme="light"] .loading-overlay {
+[data-theme="light"] .inline-loader {
     background: rgba(255, 255, 255, 0.6);
 }
 
-/* ============================================================
-   ۲. Card
-   ============================================================ */
-
-.loading-card {
-    position: relative;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--space-8) var(--space-10);
-    min-width: 300px;
-    max-width: 420px;
-    width: 100%;
-    text-align: center;
-    box-shadow:
-        var(--shadow-xl),
-        0 0 0 1px rgba(255, 255, 255, 0.03) inset;
-    animation: scaleIn 0.4s var(--ease-spring);
-    overflow: hidden;
-}
-
-[data-theme="light"] .loading-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(0, 0, 0, 0.06);
-}
-
-/* ============================================================
-   ۳. Background Orbs
-   ============================================================ */
-
-.loading-bg {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    border-radius: var(--radius-xl);
-}
-
-.loading-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.25;
-}
-
-.loading-orb.orb-1 {
-    width: 180px;
-    height: 180px;
-    background: var(--color-cyan);
-    top: -80px;
-    right: -80px;
-    animation: orbFloat 8s ease-in-out infinite;
-}
-
-.loading-orb.orb-2 {
-    width: 140px;
-    height: 140px;
-    background: var(--color-purple);
-    bottom: -60px;
-    left: -60px;
-    animation: orbFloat 8s ease-in-out infinite 2s;
-}
-
-/* ============================================================
-   ۴. Spinner (Dual Ring)
-   ============================================================ */
-
-.loading-spinner-wrapper {
-    position: relative;
-    width: 90px;
-    height: 90px;
-    margin: 0 auto var(--space-5);
-    z-index: 1;
-}
-
-.loading-spinner-svg {
-    width: 100%;
-    height: 100%;
-    filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.3));
-}
-
-.spinner-ring {
-    fill: none;
-    stroke-linecap: round;
-    transform-origin: center;
-}
-
-.spinner-ring.outer {
-    stroke: var(--color-cyan);
-    stroke-width: 3;
-    stroke-dasharray: 30 200;
-    animation: spinnerRotate 2s linear infinite;
-}
-
-.spinner-ring.middle {
-    stroke: var(--color-purple);
-    stroke-width: 2.5;
-    stroke-dasharray: 20 140;
-    animation: spinnerRotateReverse 1.5s linear infinite;
-}
-
-.spinner-ring.inner {
-    stroke: var(--color-green);
-    stroke-width: 2;
-    stroke-dasharray: 10 80;
-    animation: spinnerRotate 1s linear infinite;
-}
-
-@keyframes spinnerRotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@keyframes spinnerRotateReverse {
-    from { transform: rotate(360deg); }
-    to { transform: rotate(0deg); }
-}
-
-/* Center icon */
-.loading-center-icon {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.5rem;
-    color: var(--color-cyan);
-    animation: breathe 2s ease-in-out infinite;
-    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
-}
-
-/* ============================================================
-   ۵. Three Dots
-   ============================================================ */
-
-.loading-dots {
+.inline-loader.active {
     display: flex;
-    justify-content: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-4);
-    z-index: 1;
-    position: relative;
 }
 
-.loading-dots .dot {
-    width: 8px;
-    height: 8px;
+@keyframes inlineLoaderFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Inline spinner */
+.inline-loader-spinner {
+    --color-1: #00d4ff;
+    --size: 1px;
+
+    color: var(--color-1);
+    font-size: calc(8 * var(--size));  /* کوچیک‌تر از modal */
+    width: 1em;
+    height: 1em;
     border-radius: 50%;
-    background: var(--color-cyan);
-    opacity: 0.3;
-    transition: all 0.3s var(--ease-out);
+    position: relative;
+    text-indent: -9999em;
+    animation: inlineMulShdSpin 1.3s infinite linear;
+    transform: translateZ(0);
 }
 
-.loading-dots .dot.active {
-    opacity: 1;
-    transform: scale(1.3);
-    box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-}
-
-.loading-dots .dot:nth-child(1).active {
-    animation: dotPulse 1.2s ease-in-out infinite 0s;
-    background: var(--color-cyan);
-}
-
-.loading-dots .dot:nth-child(2).active {
-    animation: dotPulse 1.2s ease-in-out infinite 0.2s;
-    background: var(--color-purple);
-}
-
-.loading-dots .dot:nth-child(3).active {
-    animation: dotPulse 1.2s ease-in-out infinite 0.4s;
-    background: var(--color-green);
-}
-
-@keyframes dotPulse {
-    0%, 100% {
-        opacity: 0.3;
-        transform: scale(1);
-        box-shadow: 0 0 0 rgba(0, 212, 255, 0);
+@keyframes inlineMulShdSpin {
+    0%,
+    100% {
+        box-shadow:
+            0 -3em 0 0.2em,
+            2em -2em 0 0em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0,
+            2em -2em 0 0.2em,
+            3em 0 0 0,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em,
+            2em -2em 0 0,
+            3em 0 0 0.2em,
+            2em 2em 0 0,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 0,
+            2em 2em 0 0.2em,
+            0 3em 0 0em,
+            -2em 2em 0 -1em,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
     }
     50% {
-        opacity: 1;
-        transform: scale(1.3);
-        box-shadow: 0 0 15px currentColor;
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 0em,
+            0 3em 0 0.2em,
+            -2em 2em 0 0,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 0,
+            -2em 2em 0 0.2em,
+            -3em 0 0 0,
+            -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0.2em,
+            -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0,
+            -2em -2em 0 0.2em;
     }
 }
 
 /* ============================================================
-   ۶. Messages
+   MODAL LOADER — کل صفحه
    ============================================================ */
 
-.loading-message {
-    font-size: var(--fs-md);
-    font-weight: var(--fw-semibold);
-    color: var(--text-primary);
-    margin-bottom: var(--space-2);
-    min-height: 24px;
-    transition: var(--transition);
-    position: relative;
-    z-index: 1;
+.modal-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: modalLoaderFadeIn 0.3s ease;
+    font-family: var(--font-main, -apple-system, BlinkMacSystemFont, sans-serif);
+    direction: rtl;
 }
 
-.loading-submessage {
-    font-size: var(--fs-sm);
-    color: var(--text-secondary);
-    min-height: 20px;
-    transition: var(--transition);
-    position: relative;
-    z-index: 1;
-    margin-bottom: var(--space-5);
+[data-theme="light"] .modal-loader {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.modal-loader.active {
+    display: flex;
+}
+
+@keyframes modalLoaderFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* ============================================================
-   ۷. Progress Bar
+   Card مربعی
    ============================================================ */
 
-.loading-progress {
-    width: 100%;
-    height: 5px;
-    background: var(--bg-input);
-    border-radius: var(--radius-full);
-    overflow: hidden;
-    margin-top: var(--space-2);
+.modal-loader-card {
     position: relative;
+    background: var(--bg-secondary, #111827);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: 20px;
+    padding: 32px 28px;
+    width: 220px;
+    /* مربعی: عرض = ارتفاع تقریبی */
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    animation: modalLoaderScaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+[data-theme="light"] .modal-loader-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.modal-loader-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle at 70% 30%,
+        rgba(0, 212, 255, 0.06),
+        transparent 60%
+    );
+    pointer-events: none;
+    animation: modalLoaderBreath 8s ease-in-out infinite;
+}
+
+@keyframes modalLoaderScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes modalLoaderBreath {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.1); }
+}
+
+/* ============================================================
+   Spinner (iOS-style 8 dots)
+   ============================================================ */
+
+.modal-loader-spinner-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 1;
 }
 
-.loading-progress .progress-fill {
+.loader {
+    --color-1: #00d4ff;
+    --size: 1px;
+
+    color: var(--color-1);
+    font-size: calc(9 * var(--size));
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    position: relative;
+    text-indent: -9999em;
+    animation: mulShdSpin 1.3s infinite linear;
+    transform: translateZ(0);
+}
+
+@keyframes mulShdSpin {
+    0%,
+    100% {
+        box-shadow:
+            0 -3em 0 0.2em,
+            2em -2em 0 0em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0,
+            2em -2em 0 0.2em,
+            3em 0 0 0,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em,
+            2em -2em 0 0,
+            3em 0 0 0.2em,
+            2em 2em 0 0,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 0,
+            2em 2em 0 0.2em,
+            0 3em 0 0em,
+            -2em 2em 0 -1em,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 0em,
+            0 3em 0 0.2em,
+            -2em 2em 0 0,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 0,
+            -2em 2em 0 0.2em,
+            -3em 0 0 0,
+            -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0.2em,
+            -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0,
+            -2em -2em 0 0.2em;
+    }
+}
+
+/* ============================================================
+   Messages
+   ============================================================ */
+
+.modal-loader-message {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    min-height: 22px;
+    line-height: 1.4;
+}
+
+.modal-loader-submessage {
+    font-size: 0.7rem;
+    color: var(--text-secondary, #94a3b8);
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    min-height: 16px;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   Progress Bar
+   ============================================================ */
+
+.modal-loader-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-input, rgba(255, 255, 255, 0.06));
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    margin-top: 4px;
+}
+
+.modal-loader-progress .progress-fill {
     height: 100%;
-    border-radius: var(--radius-full);
+    border-radius: 9999px;
     background: linear-gradient(
         90deg,
-        var(--color-cyan) 0%,
-        var(--color-purple) 50%,
-        var(--color-cyan) 100%
+        #00d4ff 0%,
+        #8b5cf6 50%,
+        #00d4ff 100%
     );
     background-size: 200% auto;
     width: 0%;
-    transition: width 0.4s var(--ease-out);
-    animation: gradientFlow 3s ease infinite;
+    transition: width 0.4s ease;
+    animation: progressGradientFlow 3s ease infinite;
     position: relative;
     overflow: hidden;
 }
 
-.loading-progress .progress-fill::after {
+@keyframes progressGradientFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.modal-loader-progress .progress-fill::after {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(
         90deg,
         transparent,
-        rgba(255, 255, 255, 0.3),
+        rgba(255, 255, 255, 0.35),
         transparent
     );
     background-size: 200% 100%;
-    animation: shimmer 1.5s linear infinite;
+    animation: progressShimmer 1.5s linear infinite;
 }
 
-.loading-progress .progress-fill.indeterminate {
-    width: 30%;
-    animation: progressIndeterminate 1.5s ease-in-out infinite;
+@keyframes progressShimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
 /* ============================================================
-   ۸. Progress Percent
+   Percent
    ============================================================ */
 
-.loading-percent {
-    margin-top: var(--space-3);
-    font-family: var(--font-mono);
-    font-size: var(--fs-sm);
-    color: var(--color-cyan);
-    font-weight: var(--fw-bold);
+.modal-loader-percent {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: #00d4ff;
+    font-weight: 700;
     position: relative;
     z-index: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
 }
 
-.loading-percent .percent-value {
-    font-size: var(--fs-lg);
+.modal-loader-percent .percent-value {
+    font-size: 1.1rem;
 }
 
-.loading-percent .percent-symbol {
-    font-size: var(--fs-sm);
-    color: var(--text-muted);
-    margin-right: 2px;
+.modal-loader-percent .percent-symbol {
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
 }
 
 /* ============================================================
-   ۹. Cancel Button
+   Cancel Button
    ============================================================ */
 
-.loading-cancel-btn {
-    margin-top: var(--space-5);
-    padding: var(--space-2) var(--space-5);
+.modal-loader-cancel {
+    margin-top: 6px;
+    padding: 6px 16px;
     background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    color: var(--text-secondary, #94a3b8);
     font-family: inherit;
-    font-size: var(--fs-sm);
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 6px;
     position: relative;
     z-index: 1;
 }
 
-.loading-cancel-btn:hover {
+.modal-loader-cancel:hover {
     border-color: rgba(239, 68, 68, 0.4);
-    color: var(--color-red);
-    background: rgba(239, 68, 68, 0.05);
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.06);
 }
 
-.loading-cancel-btn i {
-    font-size: 0.8em;
+.modal-loader-cancel i {
+    font-size: 0.85em;
 }
 
 /* ============================================================
-   ۱۰. Responsive
+   Responsive
    ============================================================ */
 
 @media (max-width: 480px) {
-    .loading-card {
-        padding: var(--space-6) var(--space-5);
-        min-width: unset;
+    .modal-loader-card {
+        width: 180px;
+        min-height: 180px;
+        padding: 24px 20px;
+        border-radius: 16px;
     }
 
-    .loading-spinner-wrapper {
-        width: 72px;
-        height: 72px;
+    .modal-loader-spinner-wrapper {
+        width: 64px;
+        height: 64px;
     }
 
-    .loading-center-icon {
-        font-size: 1.2rem;
+    .loader {
+        font-size: calc(7 * var(--size));
     }
 
-    .loading-message {
-        font-size: var(--fs-base);
-    }
-
-    .loading-submessage {
-        font-size: var(--fs-xs);
+    .modal-loader-message {
+        font-size: 0.8rem;
     }
 }
 
 /* ============================================================
-   ۱۱. Reduced Motion
+   Reduced Motion
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
-    .spinner-ring,
-    .loading-orb,
-    .loading-center-icon,
-    .loading-dots .dot {
+    .loader,
+    .inline-loader-spinner,
+    .modal-loader-card::before,
+    .modal-loader-progress .progress-fill,
+    .modal-loader-progress .progress-fill::after {
         animation: none !important;
     }
 }
@@ -475,7 +588,7 @@
      ============================================================ -->
 <script>
 // ============================================================
-// LoadingSystem v3.0 — مدیریت لودینگ داخلی
+// LoadingSystem v5.0 — دو حالت تخصصی
 // ============================================================
 
 (function() {
@@ -483,46 +596,145 @@
 
     class LoadingSystem {
         constructor() {
-            // DOM
-            this.overlay = document.getElementById('loadingOverlay');
-            this.messageEl = document.getElementById('loadingMessage');
-            this.subMessageEl = document.getElementById('loadingSubMessage');
-            this.dots = document.querySelectorAll('#loadingDots .dot');
-            this.progress = document.getElementById('loadingProgress');
-            this.progressWrapper = document.getElementById('loadingProgressWrapper');
-            this.percentWrapper = document.getElementById('loadingPercent');
-            this.percentValue = document.getElementById('loadingPercentValue');
-            this.centerIcon = document.getElementById('loadingCenterIcon');
-            this.cancelBtn = document.getElementById('loadingCancelBtn');
+            // ===== Inline =====
+            this.inlineLoader = document.getElementById('inlineLoader');
+            this.inlineSpinner = document.getElementById('inlineLoaderSpinner');
+            this._inlineContainer = null;
+            this._inlineSavedParent = null;
+            this._inlineSavedNext = null;
+
+            // ===== Modal =====
+            this.modalLoader = document.getElementById('modalLoader');
+            this.modalMessageEl = document.getElementById('modalLoaderMessage');
+            this.modalSubMessageEl = document.getElementById('modalLoaderSubMessage');
+            this.modalProgress = document.getElementById('modalLoaderProgress');
+            this.modalProgressWrapper = document.getElementById('modalLoaderProgressWrapper');
+            this.modalPercentWrapper = document.getElementById('modalLoaderPercent');
+            this.modalPercentValue = document.getElementById('modalLoaderPercentValue');
+            this.modalCancelBtn = document.getElementById('modalLoaderCancel');
+            this.modalSpinner = document.getElementById('modalLoaderSpinner');
 
             // State
+            this.mode = null;         // 'inline' | 'modal'
             this.isActive = false;
             this.isCompleting = false;
-            this.dotsInterval = null;
             this.progressTimer = null;
-            this.messageRotateTimer = null;
-
             this._messages = [];
             this._subMessages = [];
             this._currentIndex = 0;
             this._duration = null;
-            this._startTime = 0;
             this._onCompleteCallback = null;
             this._onCancelCallback = null;
         }
 
         // ========================================================
-        // Show
+        // INLINE MODE — داخل container
         // ========================================================
 
-        show(options = {}) {
+        /**
+         * نمایش لودینگ داخل یک container
+         * @param {HTMLElement|string} container - عنصر یا سلکتور
+         * @param {Object} [options]
+         * @param {string} [options.color] - رنگ spinner
+         */
+        showInline(container, options = {}) {
+            const el = typeof container === 'string'
+                ? document.querySelector(container)
+                : container;
+
+            if (!el) {
+                console.warn('⚠️ LoadingSystem: container not found');
+                return;
+            }
+
+            // cleanup قبلی
+            this._cleanupInline();
+
+            // مطمئن شو container relative هست
+            const styles = window.getComputedStyle(el);
+            if (styles.position === 'static') {
+                el.style.position = 'relative';
+            }
+
+            // ذخیره parent اصلی
+            this._inlineSavedParent = this.inlineLoader.parentNode;
+            this._inlineSavedNext = this.inlineLoader.nextSibling;
+
+            // منتقل به container
+            el.appendChild(this.inlineLoader);
+            this._inlineContainer = el;
+
+            // رنگ
+            if (options.color && this.inlineSpinner) {
+                this.inlineSpinner.style.setProperty('--color-1', options.color);
+            }
+
+            // نمایش
+            this.inlineLoader.classList.add('active');
+            this.mode = 'inline';
+            this.isActive = true;
+
+            console.log('🔄 Inline loader shown in', el.className || el.id);
+        }
+
+        hideInline() {
+            if (this.mode !== 'inline') return;
+
+            this.inlineLoader.classList.remove('active');
+            this._cleanupInline();
+
+            this.mode = null;
+            this.isActive = false;
+
+            console.log('✅ Inline loader hidden');
+        }
+
+        _cleanupInline() {
+            this.inlineLoader.classList.remove('active');
+
+            // برگردون به body
+            if (this._inlineSavedParent) {
+                try {
+                    if (this._inlineSavedNext) {
+                        this._inlineSavedParent.insertBefore(this.inlineLoader, this._inlineSavedNext);
+                    } else {
+                        this._inlineSavedParent.appendChild(this.inlineLoader);
+                    }
+                } catch (e) {
+                    document.body.appendChild(this.inlineLoader);
+                }
+                this._inlineSavedParent = null;
+                this._inlineSavedNext = null;
+            }
+
+            this._inlineContainer = null;
+        }
+
+        // ========================================================
+        // MODAL MODE — کل صفحه
+        // ========================================================
+
+        /**
+         * نمایش لودینگ modal
+         * @param {Object} [options]
+         * @param {string[]} [options.messages]
+         * @param {string[]} [options.subMessages]
+         * @param {number} [options.duration] - auto progress
+         * @param {boolean} [options.showProgress=true]
+         * @param {boolean} [options.showPercent=false]
+         * @param {string} [options.color='#00d4ff']
+         * @param {boolean} [options.cancellable=false]
+         * @param {Function} [options.onComplete]
+         * @param {Function} [options.onCancel]
+         */
+        showModal(options = {}) {
             const {
                 messages = ['در حال انجام...'],
                 subMessages = ['لطفاً صبر کنید'],
                 duration = null,
                 showProgress = true,
                 showPercent = false,
-                icon = 'chart-pie',
+                color = '#00d4ff',
                 cancellable = false,
                 onComplete = null,
                 onCancel = null,
@@ -532,137 +744,123 @@
 
             this.isActive = true;
             this.isCompleting = false;
+            this.mode = 'modal';
             this._onCompleteCallback = onComplete || null;
             this._onCancelCallback = onCancel || null;
 
-            // normalize messages
+            // messages
             this._messages = Array.isArray(messages) ? messages : [messages];
             this._subMessages = Array.isArray(subMessages) ? subMessages : [subMessages];
             this._currentIndex = 0;
             this._duration = duration;
-            this._startTime = Date.now();
 
-            // set initial message
-            const firstMsg = this._messages[0] || 'در حال انجام...';
-            const firstSub = this._subMessages[0] || 'لطفاً صبر کنید';
+            // set initial
+            this.modalMessageEl.textContent = this._messages[0] || 'در حال انجام...';
+            this.modalSubMessageEl.textContent = this._subMessages[0] || 'لطفاً صبر کنید';
 
-            this.messageEl.textContent = firstMsg;
-            this.subMessageEl.textContent = firstSub;
-
-            // icon
-            if (this.centerIcon) {
-                this.centerIcon.innerHTML = `<i class="fas fa-${icon}"></i>`;
+            // color
+            if (this.modalSpinner) {
+                this.modalSpinner.style.setProperty('--color-1', color);
             }
-
-            // dots
-            this.startDotsAnimation();
 
             // progress
-            if (this.progressWrapper) {
-                this.progressWrapper.style.display = showProgress ? 'block' : 'none';
+            if (this.modalProgressWrapper) {
+                this.modalProgressWrapper.style.display = showProgress ? 'block' : 'none';
             }
 
-            if (showProgress) {
-                if (this.progress) {
-                    this.progress.classList.remove('indeterminate');
-                    this.progress.style.width = '0%';
-                }
+            if (showProgress && this.modalProgress) {
+                this.modalProgress.style.width = '0%';
             }
 
             // percent
-            if (this.percentWrapper) {
-                this.percentWrapper.style.display = showPercent ? 'block' : 'none';
+            if (this.modalPercentWrapper) {
+                this.modalPercentWrapper.style.display = showPercent ? 'flex' : 'none';
             }
 
-            if (showPercent && this.percentValue) {
-                this.percentValue.textContent = '۰';
+            if (showPercent && this.modalPercentValue) {
+                this.modalPercentValue.textContent = '۰';
             }
 
             // cancel
-            if (this.cancelBtn) {
-                this.cancelBtn.style.display = cancellable ? 'inline-flex' : 'none';
-                this.cancelBtn.onclick = () => this.cancel();
+            if (this.modalCancelBtn) {
+                this.modalCancelBtn.style.display = cancellable ? 'inline-flex' : 'none';
+                this.modalCancelBtn.onclick = () => this.cancelModal();
             }
 
-            // show overlay
-            this.overlay.classList.add('active');
-            this.overlay.setAttribute('aria-hidden', 'false');
+            // show
+            this.modalLoader.classList.add('active');
+            this.modalLoader.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
 
-            // start auto progress
+            // auto progress
             if (duration) {
-                this.startProgressAnimation(duration, showPercent);
+                this._startModalProgress(duration);
             }
 
-            console.log('🔄 Loading overlay shown:', firstMsg);
+            console.log('🔄 Modal loader shown:', this._messages[0]);
         }
 
-        // ========================================================
-        // Update Message
-        // ========================================================
+        hideModal() {
+            if (this.mode !== 'modal') return;
 
-        updateMessage(index) {
-            if (!this._messages || index >= this._messages.length) return;
+            this.modalLoader.classList.remove('active');
+            this.modalLoader.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
 
-            const mainMsg = this._messages[index] || this._messages[this._messages.length - 1];
-            const subMsg = this._subMessages[index] || this._subMessages[this._subMessages.length - 1] || '';
-
-            const parts = mainMsg.split('|');
-            this.messageEl.textContent = parts[0] || mainMsg;
-            this.subMessageEl.textContent = parts[1] || subMsg || '';
-
-            this._currentIndex = index;
-        }
-
-        // ========================================================
-        // Update Progress
-        // ========================================================
-
-        updateProgress(percent) {
-            if (!this.progress) return;
-
-            this.progress.classList.remove('indeterminate');
-            const clamped = Math.min(Math.max(percent, 0), 100);
-            this.progress.style.width = clamped + '%';
-
-            if (this.percentValue) {
-                const persianNum = this.toPersian(Math.round(clamped));
-                this.percentValue.textContent = persianNum;
+            if (this.progressTimer) {
+                clearTimeout(this.progressTimer);
+                this.progressTimer = null;
             }
+
+            if (this.modalProgress) {
+                this.modalProgress.style.width = '0%';
+            }
+
+            this.mode = null;
+            this.isActive = false;
+            this.isCompleting = false;
+
+            console.log('✅ Modal loader hidden');
         }
 
-        // ========================================================
-        // Dots Animation
-        // ========================================================
+        completeModal() {
+            if (this.mode !== 'modal' || this.isCompleting) return;
 
-        startDotsAnimation() {
-            this.stopDotsAnimation();
-            let activeIndex = 0;
+            this.isCompleting = true;
+            this.modalMessageEl.textContent = '✅ انجام شد';
+            this.modalSubMessageEl.textContent = '';
 
-            this.dots.forEach(d => d.classList.remove('active'));
+            if (this.modalProgress) {
+                this.modalProgress.style.width = '100%';
+            }
 
-            this.dotsInterval = setInterval(() => {
-                this.dots.forEach(d => d.classList.remove('active'));
-                if (this.dots.length > 0) {
-                    this.dots[activeIndex % this.dots.length].classList.add('active');
-                    activeIndex = (activeIndex + 1) % this.dots.length;
+            if (this.modalPercentValue) {
+                this.modalPercentValue.textContent = this._toPersian(100);
+            }
+
+            setTimeout(() => {
+                this.hideModal();
+                if (this._onCompleteCallback) {
+                    try { this._onCompleteCallback(); } catch (e) { console.error(e); }
                 }
-            }, 400);
+            }, 600);
         }
 
-        stopDotsAnimation() {
-            if (this.dotsInterval) {
-                clearInterval(this.dotsInterval);
-                this.dotsInterval = null;
+        cancelModal() {
+            if (this.mode !== 'modal') return;
+
+            if (this._onCancelCallback) {
+                try { this._onCancelCallback(); } catch (e) { console.error(e); }
+            } else {
+                this.hideModal();
             }
-            this.dots.forEach(d => d.classList.remove('active'));
         }
 
         // ========================================================
-        // Progress Animation
+        // Modal progress
         // ========================================================
 
-        startProgressAnimation(duration, showPercent) {
+        _startModalProgress(duration) {
             if (this.progressTimer) {
                 clearTimeout(this.progressTimer);
                 this.progressTimer = null;
@@ -671,12 +869,18 @@
             const startTime = Date.now();
 
             const update = () => {
-                if (!this.isActive || this.isCompleting) return;
+                if (this.mode !== 'modal' || this.isCompleting) return;
 
                 const elapsed = Date.now() - startTime;
                 const percent = Math.min((elapsed / duration) * 100, 100);
 
-                this.updateProgress(percent);
+                if (this.modalProgress) {
+                    this.modalProgress.style.width = percent + '%';
+                }
+
+                if (this.modalPercentValue) {
+                    this.modalPercentValue.textContent = this._toPersian(Math.round(percent));
+                }
 
                 // rotate messages
                 if (this._messages.length > 1) {
@@ -685,7 +889,9 @@
                     const newIndex = Math.min(Math.floor(ratio * total), total - 1);
 
                     if (newIndex !== this._currentIndex) {
-                        this.updateMessage(newIndex);
+                        this.modalMessageEl.textContent = this._messages[newIndex] || '';
+                        this.modalSubMessageEl.textContent = this._subMessages[newIndex] || '';
+                        this._currentIndex = newIndex;
                     }
                 }
 
@@ -698,89 +904,17 @@
         }
 
         // ========================================================
-        // Complete
-        // ========================================================
-
-        complete() {
-            if (!this.isActive || this.isCompleting) return;
-            this.isCompleting = true;
-
-            // success state
-            this.messageEl.textContent = '✅ انجام شد';
-            this.subMessageEl.textContent = 'عملیات با موفقیت کامل شد';
-
-            if (this.progress) {
-                this.progress.classList.remove('indeterminate');
-                this.progress.style.width = '100%';
-            }
-
-            if (this.percentValue) {
-                this.percentValue.textContent = this.toPersian(100);
-            }
-
-            if (this.centerIcon) {
-                this.centerIcon.innerHTML = '<i class="fas fa-check"></i>';
-                this.centerIcon.style.color = 'var(--color-green)';
-                this.centerIcon.style.animation = 'successPulse 0.6s ease';
-            }
-
-            this.stopDotsAnimation();
-
-            setTimeout(() => {
-                this.hide();
-                if (this._onCompleteCallback) {
-                    try { this._onCompleteCallback(); } catch (e) { console.error(e); }
-                }
-            }, 800);
-        }
-
-        // ========================================================
-        // Hide
+        // Auto-detect hide (بسته به mode)
         // ========================================================
 
         hide() {
-            if (!this.isActive) return;
-
-            this.isActive = false;
-            this.isCompleting = false;
-
-            this.overlay.classList.remove('active');
-            this.overlay.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-
-            this.stopDotsAnimation();
-
-            if (this.progressTimer) {
-                clearTimeout(this.progressTimer);
-                this.progressTimer = null;
-            }
-
-            // reset
-            if (this.progress) {
-                this.progress.classList.add('indeterminate');
-                this.progress.style.width = '0%';
-            }
-
-            if (this.centerIcon) {
-                this.centerIcon.style.color = 'var(--color-cyan)';
-                this.centerIcon.style.animation = '';
-            }
-
-            console.log('✅ Loading overlay hidden');
+            if (this.mode === 'inline') this.hideInline();
+            else if (this.mode === 'modal') this.hideModal();
         }
 
-        // ========================================================
-        // Cancel
-        // ========================================================
-
-        cancel() {
-            if (!this.isActive) return;
-
-            if (this._onCancelCallback) {
-                try { this._onCancelCallback(); } catch (e) { console.error(e); }
-            } else {
-                this.hide();
-            }
+        complete() {
+            if (this.mode === 'modal') this.completeModal();
+            else this.hide();
         }
 
         // ========================================================
@@ -788,39 +922,50 @@
         // ========================================================
 
         setMessage(message) {
-            this.messageEl.textContent = message;
+            if (this.modalMessageEl) this.modalMessageEl.textContent = message;
         }
 
         setSubMessage(message) {
-            this.subMessageEl.textContent = message;
+            if (this.modalSubMessageEl) this.modalSubMessageEl.textContent = message;
         }
 
         setProgress(percent) {
-            this.updateProgress(percent);
+            const clamped = Math.min(Math.max(percent, 0), 100);
+            if (this.modalProgress) {
+                this.modalProgress.style.width = clamped + '%';
+            }
+            if (this.modalPercentValue) {
+                this.modalPercentValue.textContent = this._toPersian(Math.round(clamped));
+            }
         }
 
         getStatus() {
             return {
+                mode: this.mode,
                 isActive: this.isActive,
                 isCompleting: this.isCompleting,
-                currentMessage: this.messageEl?.textContent || '',
-                currentSubMessage: this.subMessageEl?.textContent || '',
-                progress: this.progress?.style?.width || '0%',
             };
         }
 
-        toPersian(num) {
+        _toPersian(num) {
             return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
         }
     }
 
-    // ============================================================
-    // Singleton
-    // ============================================================
-
     const loadingSystem = new LoadingSystem();
     window.loadingSystem = loadingSystem;
 
-    console.log('✅ LoadingSystem v3.0 loaded');
+    // ===== Alias های ساده =====
+    window.loading = {
+        inline: (container, opts) => loadingSystem.showInline(container, opts),
+        hideInline: () => loadingSystem.hideInline(),
+        modal: (opts) => loadingSystem.showModal(opts),
+        hideModal: () => loadingSystem.hideModal(),
+        completeModal: () => loadingSystem.completeModal(),
+        hide: () => loadingSystem.hide(),
+        complete: () => loadingSystem.complete(),
+    };
+
+    console.log('✅ LoadingSystem v5.0 loaded (inline + modal)');
 })();
 </script>
