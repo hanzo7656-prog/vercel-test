@@ -1,55 +1,51 @@
 <!-- ============================================================
-     components/loading-overlay.html — Loading Overlay v5.0
-     نسخه ۵.۰ — دو حالت تخصصی:
-       1. Inline: داخل container (بدون نوشته، بدون کارت)
-       2. Modal: کل صفحه + کارت مربعی + نوشته + کنسل
+     components/loading-overlay.html — Loading Overlay v5.1
+     نسخه ۵.۱ — دو حالت تخصصی (بدون alias)
+     
+     استفاده:
+       inline: loadingSystem.showInline(container, {color})
+       modal:  loadingSystem.showModal({messages, duration, ...})
      ============================================================ -->
 
 <!-- ============================================================
-     INLINE LOADER (داخل container)
+     INLINE LOADER — داخل container
      ============================================================ -->
-<div class="inline-loader" id="inlineLoader">
+<div class="inline-loader" id="inlineLoader" aria-hidden="true">
     <span class="inline-loader-spinner" id="inlineLoaderSpinner"></span>
 </div>
 
 <!-- ============================================================
-     MODAL LOADER (کل صفحه)
+     MODAL LOADER — کل صفحه
      ============================================================ -->
 <div class="modal-loader" id="modalLoader" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal-loader-card">
 
-        <!-- Spinner -->
         <div class="modal-loader-spinner-wrapper">
             <span class="loader" id="modalLoaderSpinner"></span>
         </div>
 
-        <!-- Messages -->
         <div class="modal-loader-message" id="modalLoaderMessage">در حال انجام...</div>
         <div class="modal-loader-submessage" id="modalLoaderSubMessage">لطفاً صبر کنید</div>
 
-        <!-- Progress -->
         <div class="modal-loader-progress" id="modalLoaderProgressWrapper" style="display:none;">
             <div class="progress-fill" id="modalLoaderProgress"></div>
         </div>
 
-        <!-- Percent -->
         <div class="modal-loader-percent" id="modalLoaderPercent" style="display:none;">
             <span class="percent-value" id="modalLoaderPercentValue">۰</span>
             <span class="percent-symbol">%</span>
         </div>
 
-        <!-- Cancel -->
         <button class="modal-loader-cancel" id="modalLoaderCancel" style="display:none;" type="button">
             <i class="fas fa-times"></i>
             <span>لغو</span>
         </button>
-
     </div>
 </div>
 
 <style>
 /* ============================================================
-   INLINE LOADER — داخل container
+   INLINE LOADER
    ============================================================ */
 
 .inline-loader {
@@ -79,13 +75,12 @@
     to { opacity: 1; }
 }
 
-/* Inline spinner */
 .inline-loader-spinner {
     --color-1: #00d4ff;
     --size: 1px;
 
     color: var(--color-1);
-    font-size: calc(8 * var(--size));  /* کوچیک‌تر از modal */
+    font-size: calc(8 * var(--size));
     width: 1em;
     height: 1em;
     border-radius: 50%;
@@ -96,99 +91,58 @@
 }
 
 @keyframes inlineMulShdSpin {
-    0%,
-    100% {
+    0%, 100% {
         box-shadow:
-            0 -3em 0 0.2em,
-            2em -2em 0 0em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 0;
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
     }
     12.5% {
         box-shadow:
-            0 -3em 0 0,
-            2em -2em 0 0.2em,
-            3em 0 0 0,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
     }
     25% {
         box-shadow:
-            0 -3em 0 -0.5em,
-            2em -2em 0 0,
-            3em 0 0 0.2em,
-            2em 2em 0 0,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
     }
     37.5% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0em 0 0,
-            2em 2em 0 0.2em,
-            0 3em 0 0em,
-            -2em 2em 0 -1em,
-            -3em 0em 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
     }
     50% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 0em,
-            0 3em 0 0.2em,
-            -2em 2em 0 0,
-            -3em 0em 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
     }
     62.5% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 0,
-            -2em 2em 0 0.2em,
-            -3em 0 0 0,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
     }
     75% {
         box-shadow:
-            0em -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0em 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 0,
-            -3em 0em 0 0.2em,
-            -2em -2em 0 0;
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
     }
     87.5% {
         box-shadow:
-            0em -3em 0 0,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 0,
-            -3em 0em 0 0,
-            -2em -2em 0 0.2em;
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
     }
 }
 
 /* ============================================================
-   MODAL LOADER — کل صفحه
+   MODAL LOADER
    ============================================================ */
 
 .modal-loader {
@@ -220,10 +174,7 @@
     to { opacity: 1; }
 }
 
-/* ============================================================
-   Card مربعی
-   ============================================================ */
-
+/* Card مربعی */
 .modal-loader-card {
     position: relative;
     background: var(--bg-secondary, #111827);
@@ -231,7 +182,6 @@
     border-radius: 20px;
     padding: 32px 28px;
     width: 220px;
-    /* مربعی: عرض = ارتفاع تقریبی */
     min-height: 220px;
     display: flex;
     flex-direction: column;
@@ -268,14 +218,8 @@
 }
 
 @keyframes modalLoaderScaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.85);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes modalLoaderBreath {
@@ -283,10 +227,7 @@
     50% { transform: rotate(180deg) scale(1.1); }
 }
 
-/* ============================================================
-   Spinner (iOS-style 8 dots)
-   ============================================================ */
-
+/* Modal Spinner */
 .modal-loader-spinner-wrapper {
     position: relative;
     width: 80px;
@@ -313,101 +254,57 @@
 }
 
 @keyframes mulShdSpin {
-    0%,
-    100% {
+    0%, 100% {
         box-shadow:
-            0 -3em 0 0.2em,
-            2em -2em 0 0em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 0;
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
     }
     12.5% {
         box-shadow:
-            0 -3em 0 0,
-            2em -2em 0 0.2em,
-            3em 0 0 0,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
     }
     25% {
         box-shadow:
-            0 -3em 0 -0.5em,
-            2em -2em 0 0,
-            3em 0 0 0.2em,
-            2em 2em 0 0,
-            0 3em 0 -1em,
-            -2em 2em 0 -1em,
-            -3em 0 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
     }
     37.5% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0em 0 0,
-            2em 2em 0 0.2em,
-            0 3em 0 0em,
-            -2em 2em 0 -1em,
-            -3em 0em 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
     }
     50% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 0em,
-            0 3em 0 0.2em,
-            -2em 2em 0 0,
-            -3em 0em 0 -1em,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
     }
     62.5% {
         box-shadow:
-            0 -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 0,
-            -2em 2em 0 0.2em,
-            -3em 0 0 0,
-            -2em -2em 0 -1em;
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
     }
     75% {
         box-shadow:
-            0em -3em 0 -1em,
-            2em -2em 0 -1em,
-            3em 0em 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 0,
-            -3em 0em 0 0.2em,
-            -2em -2em 0 0;
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
     }
     87.5% {
         box-shadow:
-            0em -3em 0 0,
-            2em -2em 0 -1em,
-            3em 0 0 -1em,
-            2em 2em 0 -1em,
-            0 3em 0 -1em,
-            -2em 2em 0 0,
-            -3em 0em 0 0,
-            -2em -2em 0 0.2em;
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
     }
 }
 
-/* ============================================================
-   Messages
-   ============================================================ */
-
+/* Messages */
 .modal-loader-message {
     font-size: 0.9rem;
     font-weight: 600;
@@ -429,10 +326,7 @@
     line-height: 1.4;
 }
 
-/* ============================================================
-   Progress Bar
-   ============================================================ */
-
+/* Progress */
 .modal-loader-progress {
     width: 100%;
     height: 4px;
@@ -447,12 +341,7 @@
 .modal-loader-progress .progress-fill {
     height: 100%;
     border-radius: 9999px;
-    background: linear-gradient(
-        90deg,
-        #00d4ff 0%,
-        #8b5cf6 50%,
-        #00d4ff 100%
-    );
+    background: linear-gradient(90deg, #00d4ff 0%, #8b5cf6 50%, #00d4ff 100%);
     background-size: 200% auto;
     width: 0%;
     transition: width 0.4s ease;
@@ -470,12 +359,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.35),
-        transparent
-    );
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
     background-size: 200% 100%;
     animation: progressShimmer 1.5s linear infinite;
 }
@@ -485,10 +369,7 @@
     100% { background-position: 200% 0; }
 }
 
-/* ============================================================
-   Percent
-   ============================================================ */
-
+/* Percent */
 .modal-loader-percent {
     font-family: 'Courier New', monospace;
     font-size: 0.85rem;
@@ -510,10 +391,7 @@
     color: var(--text-muted, #64748b);
 }
 
-/* ============================================================
-   Cancel Button
-   ============================================================ */
-
+/* Cancel */
 .modal-loader-cancel {
     margin-top: 6px;
     padding: 6px 16px;
@@ -542,10 +420,7 @@
     font-size: 0.85em;
 }
 
-/* ============================================================
-   Responsive
-   ============================================================ */
-
+/* Responsive */
 @media (max-width: 480px) {
     .modal-loader-card {
         width: 180px;
@@ -568,10 +443,7 @@
     }
 }
 
-/* ============================================================
-   Reduced Motion
-   ============================================================ */
-
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
     .loader,
     .inline-loader-spinner,
@@ -584,11 +456,11 @@
 </style>
 
 <!-- ============================================================
-     SCRIPT
+     SCRIPT v5.1 — بدون alias، فقط دو متد اصلی
      ============================================================ -->
 <script>
 // ============================================================
-// LoadingSystem v5.0 — دو حالت تخصصی
+// LoadingSystem v5.1 — دو حالت تخصصی
 // ============================================================
 
 (function() {
@@ -596,14 +468,14 @@
 
     class LoadingSystem {
         constructor() {
-            // ===== Inline =====
+            // Inline
             this.inlineLoader = document.getElementById('inlineLoader');
             this.inlineSpinner = document.getElementById('inlineLoaderSpinner');
             this._inlineContainer = null;
             this._inlineSavedParent = null;
             this._inlineSavedNext = null;
 
-            // ===== Modal =====
+            // Modal
             this.modalLoader = document.getElementById('modalLoader');
             this.modalMessageEl = document.getElementById('modalLoaderMessage');
             this.modalSubMessageEl = document.getElementById('modalLoaderSubMessage');
@@ -615,7 +487,7 @@
             this.modalSpinner = document.getElementById('modalLoaderSpinner');
 
             // State
-            this.mode = null;         // 'inline' | 'modal'
+            this.mode = null;
             this.isActive = false;
             this.isCompleting = false;
             this.progressTimer = null;
@@ -628,14 +500,14 @@
         }
 
         // ========================================================
-        // INLINE MODE — داخل container
+        // INLINE MODE
         // ========================================================
 
         /**
          * نمایش لودینگ داخل یک container
          * @param {HTMLElement|string} container - عنصر یا سلکتور
          * @param {Object} [options]
-         * @param {string} [options.color] - رنگ spinner
+         * @param {string} [options.color='#00d4ff'] - رنگ spinner
          */
         showInline(container, options = {}) {
             const el = typeof container === 'string'
@@ -647,40 +519,36 @@
                 return;
             }
 
-            // cleanup قبلی
             this._cleanupInline();
 
-            // مطمئن شو container relative هست
             const styles = window.getComputedStyle(el);
             if (styles.position === 'static') {
                 el.style.position = 'relative';
             }
 
-            // ذخیره parent اصلی
             this._inlineSavedParent = this.inlineLoader.parentNode;
             this._inlineSavedNext = this.inlineLoader.nextSibling;
 
-            // منتقل به container
             el.appendChild(this.inlineLoader);
             this._inlineContainer = el;
 
-            // رنگ
             if (options.color && this.inlineSpinner) {
                 this.inlineSpinner.style.setProperty('--color-1', options.color);
             }
 
-            // نمایش
             this.inlineLoader.classList.add('active');
+            this.inlineLoader.setAttribute('aria-hidden', 'false');
             this.mode = 'inline';
             this.isActive = true;
 
-            console.log('🔄 Inline loader shown in', el.className || el.id);
+            console.log('🔄 Inline loader shown');
         }
 
         hideInline() {
             if (this.mode !== 'inline') return;
 
             this.inlineLoader.classList.remove('active');
+            this.inlineLoader.setAttribute('aria-hidden', 'true');
             this._cleanupInline();
 
             this.mode = null;
@@ -691,8 +559,8 @@
 
         _cleanupInline() {
             this.inlineLoader.classList.remove('active');
+            this.inlineLoader.setAttribute('aria-hidden', 'true');
 
-            // برگردون به body
             if (this._inlineSavedParent) {
                 try {
                     if (this._inlineSavedNext) {
@@ -711,15 +579,15 @@
         }
 
         // ========================================================
-        // MODAL MODE — کل صفحه
+        // MODAL MODE
         // ========================================================
 
         /**
-         * نمایش لودینگ modal
+         * نمایش لودینگ modal (کل صفحه)
          * @param {Object} [options]
          * @param {string[]} [options.messages]
          * @param {string[]} [options.subMessages]
-         * @param {number} [options.duration] - auto progress
+         * @param {number} [options.duration]
          * @param {boolean} [options.showProgress=true]
          * @param {boolean} [options.showPercent=false]
          * @param {string} [options.color='#00d4ff']
@@ -748,22 +616,18 @@
             this._onCompleteCallback = onComplete || null;
             this._onCancelCallback = onCancel || null;
 
-            // messages
             this._messages = Array.isArray(messages) ? messages : [messages];
             this._subMessages = Array.isArray(subMessages) ? subMessages : [subMessages];
             this._currentIndex = 0;
             this._duration = duration;
 
-            // set initial
             this.modalMessageEl.textContent = this._messages[0] || 'در حال انجام...';
             this.modalSubMessageEl.textContent = this._subMessages[0] || 'لطفاً صبر کنید';
 
-            // color
             if (this.modalSpinner) {
                 this.modalSpinner.style.setProperty('--color-1', color);
             }
 
-            // progress
             if (this.modalProgressWrapper) {
                 this.modalProgressWrapper.style.display = showProgress ? 'block' : 'none';
             }
@@ -772,7 +636,6 @@
                 this.modalProgress.style.width = '0%';
             }
 
-            // percent
             if (this.modalPercentWrapper) {
                 this.modalPercentWrapper.style.display = showPercent ? 'flex' : 'none';
             }
@@ -781,18 +644,15 @@
                 this.modalPercentValue.textContent = '۰';
             }
 
-            // cancel
             if (this.modalCancelBtn) {
                 this.modalCancelBtn.style.display = cancellable ? 'inline-flex' : 'none';
                 this.modalCancelBtn.onclick = () => this.cancelModal();
             }
 
-            // show
             this.modalLoader.classList.add('active');
             this.modalLoader.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
 
-            // auto progress
             if (duration) {
                 this._startModalProgress(duration);
             }
@@ -856,10 +716,6 @@
             }
         }
 
-        // ========================================================
-        // Modal progress
-        // ========================================================
-
         _startModalProgress(duration) {
             if (this.progressTimer) {
                 clearTimeout(this.progressTimer);
@@ -882,7 +738,6 @@
                     this.modalPercentValue.textContent = this._toPersian(Math.round(percent));
                 }
 
-                // rotate messages
                 if (this._messages.length > 1) {
                     const ratio = elapsed / duration;
                     const total = this._messages.length;
@@ -904,22 +759,13 @@
         }
 
         // ========================================================
-        // Auto-detect hide (بسته به mode)
+        // Helpers
         // ========================================================
 
-        hide() {
+        hideAll() {
             if (this.mode === 'inline') this.hideInline();
             else if (this.mode === 'modal') this.hideModal();
         }
-
-        complete() {
-            if (this.mode === 'modal') this.completeModal();
-            else this.hide();
-        }
-
-        // ========================================================
-        // Helpers
-        // ========================================================
 
         setMessage(message) {
             if (this.modalMessageEl) this.modalMessageEl.textContent = message;
@@ -955,17 +801,20 @@
     const loadingSystem = new LoadingSystem();
     window.loadingSystem = loadingSystem;
 
-    // ===== Alias های ساده =====
+    // ===== Global aliases =====
     window.loading = {
         inline: (container, opts) => loadingSystem.showInline(container, opts),
         hideInline: () => loadingSystem.hideInline(),
         modal: (opts) => loadingSystem.showModal(opts),
         hideModal: () => loadingSystem.hideModal(),
         completeModal: () => loadingSystem.completeModal(),
-        hide: () => loadingSystem.hide(),
-        complete: () => loadingSystem.complete(),
+        hideAll: () => loadingSystem.hideAll(),
+        setMessage: (msg) => loadingSystem.setMessage(msg),
+        setSubMessage: (msg) => loadingSystem.setSubMessage(msg),
+        setProgress: (p) => loadingSystem.setProgress(p),
+        getStatus: () => loadingSystem.getStatus(),
     };
 
-    console.log('✅ LoadingSystem v5.0 loaded (inline + modal)');
+    console.log('✅ LoadingSystem v5.1 loaded (inline + modal, no alias)');
 })();
 </script>
