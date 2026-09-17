@@ -1,6 +1,6 @@
 /* ============================================================
    chart.css — Chart Page (TradingView)
-   نسخه ۲.۰ — سیستم تحلیلگر
+   نسخه ۳.۰ — با inline loading (بدون HTML loader)
    ============================================================ */
 
 /* ============================================================
@@ -26,12 +26,12 @@ body.chart-body {
 
 .chart-container {
     width: 100%;
-    height: calc(100vh - var(--nav-height));
-    padding: var(--space-3);
+    height: calc(100vh - var(--nav-height, 62px));
+    padding: var(--space-3, 12px);
     display: flex;
     flex-direction: column;
     background: var(--bg-primary);
-    transition: height 0.2s var(--ease-out);
+    transition: height 0.2s var(--ease-out, ease);
 }
 
 /* ============================================================
@@ -43,16 +43,16 @@ body.chart-body {
     width: 100%;
     min-height: 0;
     background: var(--bg-primary);
-    border-radius: var(--radius);
-    border: 1px solid var(--border-color);
+    border-radius: var(--radius, 14px);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     overflow: hidden;
-    position: relative;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
+    position: relative;   /* ← مهم برای inline loader */
+    box-shadow: var(--shadow, 0 4px 16px rgba(0, 0, 0, 0.3));
+    transition: var(--transition, all 0.25s ease);
 }
 
 .chart-wrapper:hover {
-    border-color: var(--border-hover);
+    border-color: var(--border-hover, rgba(0, 212, 255, 0.25));
 }
 
 /* ============================================================
@@ -69,108 +69,143 @@ body.chart-body {
     height: calc(100% - 32px) !important;
 }
 
-/* مخفی کردن copyright */
 .chart-wrapper .tradingview-widget-copyright {
     display: none !important;
 }
 
 /* ============================================================
-   ۵. Loading State
-   ============================================================ */
-
-.chart-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-4);
-    background: var(--bg-primary);
-    z-index: 5;
-    transition: opacity 0.5s var(--ease-out);
-}
-
-.chart-loading.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.chart-loading .loading-spinner {
-    width: 48px;
-    height: 48px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--color-cyan);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-.chart-loading .loading-text {
-    font-size: var(--fs-sm);
-    color: var(--text-secondary);
-}
-
-/* ============================================================
-   ۶. Info Banner (بالای چارت)
+   ۵. Info Banner
    ============================================================ */
 
 .chart-info-banner {
     position: absolute;
-    top: var(--space-3);
-    right: var(--space-3);
+    top: 12px;
+    right: 12px;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
     padding: 6px 12px;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-full);
-    font-size: var(--fs-xs);
-    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    color: #94a3b8;
     z-index: 10;
     pointer-events: none;
-    animation: fadeIn 0.5s var(--ease-out);
+    animation: chartFadeIn 0.5s ease;
 }
 
 .chart-info-banner .live-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-green);
-    animation: pulseDot 2s ease-in-out infinite;
+    background: #22d3ee;
+    animation: chartLivePulse 2s ease-in-out infinite;
+}
+
+@keyframes chartLivePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes chartFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .chart-info-banner strong {
-    color: var(--color-cyan);
-    font-family: var(--font-mono);
+    color: #00d4ff;
+    font-family: 'Courier New', monospace;
+}
+
+/* ============================================================
+   ۶. Error State (اگه TradingView لود نشد)
+   ============================================================ */
+
+.chart-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4, 16px);
+    background: var(--bg-primary);
+    z-index: 10;
+    text-align: center;
+    padding: var(--space-5, 20px);
+    animation: chartFadeIn 0.3s ease;
+}
+
+.chart-error .error-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+    animation: chartFloat 3s ease-in-out infinite;
+}
+
+@keyframes chartFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.chart-error .error-title {
+    font-size: var(--fs-base, 0.85rem);
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.chart-error .error-message {
+    font-size: var(--fs-sm, 0.75rem);
+    color: var(--text-muted, #64748b);
+    max-width: 320px;
+    line-height: 1.6;
+}
+
+.chart-error .error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    padding: 8px 20px;
+    border-radius: var(--radius-sm, 10px);
+    background: linear-gradient(135deg, #00d4ff, #3b82f6);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: var(--fs-sm, 0.75rem);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition, all 0.25s ease);
+    box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3);
+}
+
+.chart-error .error-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.5);
 }
 
 /* ============================================================
    ۷. Responsive
    ============================================================ */
 
-/* تبلت */
 @media (max-width: 1024px) {
     .chart-container {
-        padding: var(--space-2);
+        padding: 8px;
     }
 }
 
-/* موبایل */
 @media (max-width: 768px) {
     .chart-container {
-        height: calc(100vh - var(--nav-height-mobile));
-        padding: var(--space-1);
+        height: calc(100vh - 54px);
+        padding: 4px;
     }
 
     .chart-wrapper {
-        border-radius: var(--radius-sm);
+        border-radius: 10px;
     }
 }
 
-/* موبایل کوچک */
 @media (max-width: 480px) {
     .chart-container {
         height: calc(100vh - 50px);
@@ -185,7 +220,6 @@ body.chart-body {
     }
 }
 
-/* Landscape موبایل */
 @media (max-width: 900px) and (orientation: landscape) {
     .chart-container {
         height: calc(100vh - 48px);
@@ -197,10 +231,9 @@ body.chart-body {
     }
 }
 
-/* دسکتاپ بزرگ */
 @media (min-width: 1400px) {
     .chart-container {
-        padding: var(--space-4) var(--space-6);
+        padding: 16px 24px;
     }
 }
 
@@ -210,7 +243,7 @@ body.chart-body {
 
 @media (prefers-reduced-motion: reduce) {
     .chart-info-banner .live-dot,
-    .chart-loading .loading-spinner {
+    .chart-error .error-icon {
         animation: none !important;
     }
 }
