@@ -35,13 +35,7 @@
          CHART CONTAINER
          ============================================================ -->
     <div class="chart-container">
-        <div class="chart-wrapper">
-
-            <!-- Loading overlay -->
-            <div class="chart-loading" id="chartLoading">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">در حال بارگذاری نمودار...</div>
-            </div>
+        <div class="chart-wrapper" id="chartWrapper">
 
             <!-- Info banner -->
             <div class="chart-info-banner">
@@ -49,6 +43,12 @@
                 <span>زنده از</span>
                 <strong>TradingView</strong>
             </div>
+
+            <!--
+                ============================================
+                Loading از loadingSystem میاد (inline mode)
+                ============================================
+            -->
 
             <!-- TradingView Widget -->
             <div class="tradingview-widget-container" style="height:100%;width:100%">
@@ -127,71 +127,72 @@
     <!-- Page Script -->
     <script>
     // ============================================================
-    // CHART PAGE (TradingView) v2.0
+    // CHART PAGE (TradingView) v3.0
+    // با inline loading از loadingSystem
     // ============================================================
 
     (function() {
         'use strict';
 
         // ========================================================
-        // Hide Loading
+        // State
         // ========================================================
 
-        function hideLoading() {
-            const loading = document.getElementById('chartLoading');
-            if (loading) {
-                loading.classList.add('hidden');
-                setTimeout(() => {
-                    if (loading.parentNode) loading.remove();
-                }, 600);
-            }
-        }
+        let _chartWidgetLoaded = false;
+        let _chartTimeoutId = null;
+        let _chartResizeTimer = null;
 
         // ========================================================
-        // Sync Theme with TradingView
+        // Show/Hide Chart Loading (INLINE)
         // ========================================================
 
-        function syncChartTheme() {
-            // TradingView theme از ابتدا "dark" ست شده
-            // اگه تم سایت light باشه، می‌تونیم بعداً اضافه کنیم
-            const isLight = window.themeManager?.isLight?.();
+        function showChartLoading() {
+            const wrapper = document.getElementById('chartWrapper');
+            if (!wrapper) return;
 
-            if (isLight) {
-                // TODO: در آینده، رفرش widget با theme "light"
-                // فعلاً فقط لاگ می‌کنیم
-                console.log('ℹ️ Light theme detected — TradingView stays dark');
-            }
-        }
-
-        // ========================================================
-        // Watch theme changes
-        // ========================================================
-
-        function watchThemeChanges() {
-            if (window.themeManager?.on) {
-                window.themeManager.on((state) => {
-                    console.log('🎨 Theme changed:', state.effective);
-                    // TradingView widget خودش theme رو نمی‌تونه live تغییر بده
-                    // برای تغییر، نیاز به reload widget هست
+            // استفاده از loadingSystem inline mode
+            if (window.loadingSystem?.showInline) {
+                window.loadingSystem.showInline(wrapper, {
+                    color: '#00d4ff',
                 });
+                console.log('🔄 Chart inline loading shown');
+            } else {
+                console.warn('⚠️ loadingSystem not available');
+            }
+        }
+
+        function hideChartLoading() {
+            if (window.loadingSystem?.hideInline) {
+                window.loadingSystem.hideInline();
+                console.log('✅ Chart inline loading hidden');
             }
         }
 
         // ========================================================
-        // Detect widget load (via MutationObserver)
+        // Detect Widget Load
         // ========================================================
 
         function detectWidgetLoad() {
             const wrapper = document.querySelector('.tradingview-widget-container__widget');
             if (!wrapper) return;
 
+            // اگه iframe از قبل هست
+            if (wrapper.querySelector('iframe')) {
+                console.log('✅ TradingView iframe already exists');
+                _chartWidgetLoaded = true;
+                hideChartLoading();
+                return;
+            }
+
+            // MutationObserver برای تشخیص اضافه شدن iframe
             const observer = new MutationObserver(() => {
-                // اگه داخل widget iframe اضافه شده، یعنی لود شد
                 const iframe = wrapper.querySelector('iframe');
-                if (iframe) {
+                if (iframe && !_chartWidgetLoaded) {
+                    _chartWidgetLoaded = true;
                     console.log('✅ TradingView widget loaded');
-                    hideLoading();
+                    hideChartLoading();
                     observer.disconnect();
+                    clearTimeout(_chartTimeoutId);
                 }
             });
 
@@ -200,66 +201,136 @@
                 subtree: true,
             });
 
-            // Fallback: بعد از ۵ ثانیه force hide
-            setTimeout(() => {
-                const iframe = wrapper.querySelector('iframe');
-                if (iframe) {
-                    hideLoading();
+            // Timeout: اگه بعد از ۱۲ ثانیه لود نشد
+            _chartTimeoutId = setTimeout(() => {
+                if (!_chartWidgetLoaded) {
+                    console.warn('⚠️ TradingView timeout — showing error');
                     observer.disconnect();
+                    hideChartLoading();
+                    showChartError();
                 }
-            }, 5000);
+            }, 12000);
         }
 
         // ========================================================
-        // Responsive resize handler
+        // Error State
         // ========================================================
 
-        let resizeTimeout;
+        function showChartError() {
+            const wrapper = document.getElementById('chartWrapper');
+            if (!wrapper) return;
+
+            // حذف قبلی اگه هست
+            const existing = wrapper.querySelector('.chart-error');
+            if (existing) existing.remove();
+
+            const errorEl = document.createElement('div');
+            errorEl.className = 'chart-error';
+            errorEl.innerHTML = `
+                <div class="error-icon">📡</div>
+                <div class="error-title">TradingView لود نشد</div>
+                <div class="error-message">
+                    احتمالاً به‌خاطر محدودیت شبکه یا VPN.
+                    اتصال اینترنت خود را بررسی کنید.
+                </div>
+                <button class="error-btn" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>تلاش مجدد</span>
+                </button>
+            `;
+
+            wrapper.appendChild(errorEl);
+        }
+
+        function hideChartError() {
+            const wrapper = document.getElementById('chartWrapper');
+            if (!wrapper) return;
+
+            const errorEl = wrapper.querySelector('.chart-error');
+            if (errorEl) errorEl.remove();
+        }
+
+        // ========================================================
+        // Handle Resize
+        // ========================================================
+
         function handleResize() {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                // TradingView widget خودش autosize هست
-                // فقط لاگ می‌کنیم
-                console.log('📱 Screen resized:', window.innerWidth + 'x' + window.innerHeight);
+            clearTimeout(_chartResizeTimer);
+            _chartResizeTimer = setTimeout(() => {
+                // TradingView autosize هست، فقط لاگ
+                console.log('📱 Resize:', window.innerWidth + 'x' + window.innerHeight);
             }, 250);
-        }
-
-        // ========================================================
-        // Prevent scroll issues
-        // ========================================================
-
-        function lockScroll() {
-            document.body.style.overflow = 'hidden';
         }
 
         // ========================================================
         // Init
         // ========================================================
 
-        function init() {
+        async function init() {
             console.log('🚀 Chart page initializing...');
 
-            lockScroll();
-            syncChartTheme();
-            watchThemeChanges();
+            // ۱. مطمئن شو nav + loadingSystem آماده‌ست
+            // NavManager خودش loading-overlay رو لود می‌کنه
+            // ولی هنوز ممکنه آماده نشده باشه — صبر کوتاه
+            await waitForLoadingSystem();
+
+            // ۲. نمایش loading (inline)
+            showChartLoading();
+
+            // ۳. تشخیص لود TradingView
             detectWidgetLoad();
 
+            // ۴. resize handler
             window.addEventListener('resize', handleResize);
 
             console.log('✅ Chart page ready');
         }
 
+        // ========================================================
+        // Wait for loadingSystem (اگه NavManager هنوز لودش نکرده)
+        // ========================================================
+
+        function waitForLoadingSystem(timeout = 3000) {
+            return new Promise((resolve) => {
+                if (window.loadingSystem?.showInline) {
+                    resolve();
+                    return;
+                }
+
+                const startTime = Date.now();
+                const checkInterval = setInterval(() => {
+                    if (window.loadingSystem?.showInline) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    } else if (Date.now() - startTime > timeout) {
+                        clearInterval(checkInterval);
+                        console.warn('⚠️ loadingSystem timeout');
+                        resolve();
+                    }
+                }, 50);
+            });
+        }
+
+        // ========================================================
         // Cleanup
+        // ========================================================
+
         window.addEventListener('beforeunload', () => {
-            clearTimeout(resizeTimeout);
+            clearTimeout(_chartTimeoutId);
+            clearTimeout(_chartResizeTimer);
+            hideChartLoading();
         });
 
+        // ========================================================
         // Start
+        // ========================================================
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
+
     })();
     </script>
 
