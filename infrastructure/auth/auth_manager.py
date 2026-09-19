@@ -71,13 +71,6 @@ class AuthManager:
     # ============================================================
 
     def _init_redis(self) -> None:
-        """
-        🆕 اتصال به Redis از طریق RedisManager
-
-        چرا: قبلاً از redis.Redis(host='localhost') استفاده می‌شد که
-        در Render به localhost وصل نمی‌شد. الان از همان RedisManager
-        استفاده می‌کنیم که در /api/health سالم است.
-        """
         try:
             logger.info("🔗 AuthManager: connecting to Redis via RedisManager...")
             from infrastructure.database import get_cache
@@ -93,16 +86,18 @@ class AuthManager:
                 logger.info("📝 Using in-memory session storage")
                 return
 
-            # تست واقعی
+            # 🆕 تست با dict (چون RedisManager با json round-trip کار می‌کند)
             try:
-                cache.set("auth:ping", "1", ttl=5)
+                cache.set("auth:ping", {"ok": True}, ttl=5)
                 val = cache.get("auth:ping")
                 cache.delete("auth:ping")
-                if val != "1":
-                    logger.warning("⚠️ AuthManager: Redis test write/read failed")
+                if not isinstance(val, dict) or val.get("ok") is not True:
+                    logger.warning(
+                        f"⚠️ AuthManager: Redis test failed (got {val!r})"
+                    )
                     return
             except Exception as e:
-                logger.warning(f"⚠️ AuthManager: Redis test failed: {e}")
+                logger.warning(f"⚠️ AuthManager: Redis test error: {e}")
                 return
 
             self._redis = cache
@@ -115,7 +110,6 @@ class AuthManager:
         except Exception as e:
             logger.warning(f"⚠️ AuthManager: Redis init error: {e}")
             logger.info("📝 Using in-memory session storage")
-
     # ============================================================
     # Session Storage Helpers
     # ============================================================
