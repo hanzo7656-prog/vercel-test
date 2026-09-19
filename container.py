@@ -231,6 +231,10 @@ class Container:
         return f"<Container services={len(self.list_services())}>"
 
 
+    def binance_ws_client(self) -> Any:
+        """دریافت Binance WS Client"""
+        return self.get('binance_ws_client')
+
 # ============================================================
 # Singleton
 # ============================================================
@@ -489,9 +493,18 @@ def start_services() -> None:
             logger.info("PriceManager started")
     except Exception as e:
         logger.error(f"PriceManager start failed: {e}")
-    
-    logger.info("Background services started")
 
+    # ۳. Binance WS Client 🆕
+    try:
+        binance_ws = container.get('binance_ws_client')
+        if binance_ws and hasattr(binance_ws, 'start'):
+            binance_ws.start()
+            logger.info("✅ BinanceWSClient started")
+    except Exception as e:
+        logger.error(f"❌ BinanceWSClient start failed: {e}")
+    
+    logger.info("✅ Background services started")
+    
 
 def stop_services() -> None:
     """توقف سرویس‌های پس‌زمینه"""
@@ -505,8 +518,18 @@ def stop_services() -> None:
             logger.info("PriceManager stopped")
     except Exception as e:
         logger.error(f"PriceManager stop failed: {e}")
-    
-    # ۲. FreeCryptoClient
+
+
+    # ۲. Binance WS Client 🆕
+    try:
+        binance_ws = container.get('binance_ws_client')
+        if binance_ws and hasattr(binance_ws, 'stop'):
+            binance_ws.stop()
+            logger.info("✅ BinanceWSClient stopped")
+    except Exception as e:
+        logger.error(f"❌ BinanceWSClient stop failed: {e}")
+ 
+    # ۳. FreeCryptoClient
     try:
         free_client = container.get('free_crypto_client')
         if free_client and hasattr(free_client, 'stop'):
