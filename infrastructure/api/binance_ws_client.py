@@ -8,7 +8,6 @@ import time
 from typing import Dict, Any, Optional, List, Set
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from pathlib import Path
 
 import requests  # برای REST snapshot
 import websockets  # برای WebSocket
@@ -25,7 +24,7 @@ class BinanceWSClient:
     Binance WebSocket Client
 
     ویژگی‌ها:
-        - Background thread
+        - Background thread از طریق ThreadingManager
         - Auto-reconnect با exponential backoff
         - Cache در Redis
         - Multiple symbols
@@ -48,7 +47,7 @@ class BinanceWSClient:
     DEFAULT_SYMBOLS = ["btcusdt", "ethusdt", "solusdt", "adausdt", "xrpusdt"]
 
     DEPTH_LEVELS = 20
-    UPDATE_SPEED = "100ms"
+    UPDATE_SPEED = "1000ms"   # 🆕 برای Render free tier (قبلاً 100ms)
 
     RECONNECT_INITIAL = 1
     RECONNECT_MAX = 30
@@ -59,6 +58,9 @@ class BinanceWSClient:
 
     # 🆕 حداکثر کهنگی مجاز داده (ثانیه)
     MAX_STALE_SECONDS = 10
+
+    # 🆕 نام thread در ThreadingManager
+    THREAD_NAME = "binance_ws_client"
 
     # ============================================================
     # Init
@@ -83,6 +85,9 @@ class BinanceWSClient:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
+        # 🆕 فلگ صریح (مثل is_connected در FreeCryptoClient)
+        self._running: bool = False
+
         # 🆕 وضعیت اتصال per-symbol
         self._connected_symbols: Set[str] = set()
 
@@ -104,48 +109,50 @@ class BinanceWSClient:
             self.start()
 
     # ============================================================
-    # Start / Stop
+    # Start / Stop / IsRunning — از طریق ThreadingManager
     # ============================================================
 
     def start(self) -> bool:
-        """شروع کلاینت در background thread"""
-        # 🆕 اگر thread قدیمی زنده است، اول بکشش و مطمئن شو مرده
-        if self._thread and self._thread.is_alive():
-            logger.warning("⚠️ Client already running, stopping old thread first")
-            self._stop_event.set()
-            self._thread.join(timeout=10)
-            if self._thread.is_alive():
-                logger.error("❌ Old thread did not stop in time")
-                return False
+        """شروع کلاینت از طریق ThreadingManager"""
+        from core.threading_manager import threading_manager
 
-        # 🆕 ریست کامل state
+        # اگر قبلاً ثبت شده و زنده است
+        status = threading_manager.get_status(self.THREAD_NAME)
+        if status and status.get("alive"):
+            logger.warning("⚠️ BinanceWSClient already running")
+            return False
+
+        # ریست کامل state
         self._stop_event.clear()
-        self._connected_symbols.clear()
+        with self._lock:
+            self._connected_symbols.clear()
+        self.stats["connected"] = False
+        self._running = True
 
-        self._thread = threading.Thread(
+        # ثبت در ThreadingManager — target همان _run_loop است، نه start
+        threading_manager.register(
+            name=self.THREAD_NAME,
             target=self._run_loop,
-            name="BinanceWSClient",
             daemon=True,
+            auto_restart=True,
+            max_restarts=10,
+            restart_delay=30,       # 🆕 فاصله‌ی restart برای جلوگیری از حلقه‌ی سریع
+            start_now=True,
         )
-        self._thread.start()
 
         self.stats["started_at"] = datetime.now().isoformat()
-        logger.info("🚀 BinanceWSClient started")
+        logger.info("🚀 BinanceWSClient started via ThreadingManager")
         return True
 
     def stop(self, timeout: float = 5.0) -> bool:
-        """توقف کلاینت"""
-        if not self._thread or not self._thread.is_alive():
-            return False
+        """توقف کلاینت از طریق ThreadingManager"""
+        from core.threading_manager import threading_manager
 
         self._stop_event.set()
+        self._running = False
 
-        if self._thread:
-            self._thread.join(timeout=timeout)
-
-        # 🆕 اگر هنوز زنده است، لاگ کن
-        if self._thread.is_alive():
-            logger.warning("⚠️ BinanceWSClient thread did not stop in time")
+        # توقف از طریق ThreadingManager
+        threading_manager.stop(self.THREAD_NAME)
 
         with self._lock:
             self._connected_symbols.clear()
@@ -156,27 +163,46 @@ class BinanceWSClient:
 
     def is_running(self) -> bool:
         """آیا کلاینت در حال اجراست؟"""
-        return self._thread is not None and self._thread.is_alive()
+        from core.threading_manager import threading_manager
+
+        status = threading_manager.get_status(self.THREAD_NAME)
+        if status:
+            return bool(status.get("alive", False)) and self._running
+        return False
 
     # ============================================================
     # Thread Main
     # ============================================================
 
     def _run_loop(self) -> None:
-        """حلقه اصلی (در thread)"""
+        """
+        حلقه اصلی (به‌عنوان target به ThreadingManager داده می‌شود)
+
+        ⚠️ نکته: ManagedThread._run_wrapper این تابع را در یک حلقه صدا می‌زند.
+        پس این تابع باید یا تا ابد بچرخد (while not stop)، یا سریع برگردد.
+        اینجا while داخلی داریم، پس عملاً یک بار صدا زده می‌شود و تا stop ادامه می‌دهد.
+        """
         logger.info("🔄 BinanceWSClient thread started")
+        self._running = True
 
-        while not self._stop_event.is_set():
-            try:
-                asyncio.run(self._run_all_symbols())
-            except Exception as e:
-                logger.error(f"❌ Run loop error: {e}", exc_info=True)
+        try:
+            while not self._stop_event.is_set():
+                try:
+                    asyncio.run(self._run_all_symbols())
+                except Exception as e:
+                    logger.error(f"❌ Run loop error: {e}", exc_info=True)
 
-            if not self._stop_event.is_set():
-                logger.info("🔄 Reconnecting in 5s...")
-                self._stop_event.wait(5)
+                if not self._stop_event.is_set():
+                    logger.info("🔄 Reconnecting in 5s...")
+                    self._stop_event.wait(5)
 
-        logger.info("🔄 BinanceWSClient thread stopped")
+        finally:
+            # 🆕 حتی اگر thread به‌خاطر exception بمیرد، این اجرا می‌شود
+            self._running = False
+            with self._lock:
+                self._connected_symbols.clear()
+            self.stats["connected"] = False
+            logger.info("🔄 BinanceWSClient thread stopped")
 
     async def _run_all_symbols(self) -> None:
         """شروع task برای همه symbol ها"""
@@ -473,7 +499,6 @@ class BinanceWSClient:
         with self._lock:
             if symbol in self._orderbooks:
                 ob = self._orderbooks[symbol].copy()
-                # 🆕 اگه حافظه تازه است، برگردون
                 if not self._is_stale(ob):
                     return ob
 
@@ -543,7 +568,6 @@ class BinanceWSClient:
             "cached_symbols_count": len(active_symbols),
             "total_symbols": len(self.symbols),
             "cache_connected": self.cache is not None and self.cache.is_connected(),
-            # 🆕 تعداد نمادهای متصل
             "connected_symbols_count": connected_count,
         }
 
