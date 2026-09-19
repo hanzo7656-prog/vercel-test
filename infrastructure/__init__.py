@@ -7,6 +7,7 @@
 # ✅ استفاده از Lazy Import برای جلوگیری از Circular Import
 # توابع کمکی برای دریافت سرویس‌ها
 
+
 def get_coinstats_client():
     """دریافت کلاینت CoinStats (Lazy Import)"""
     from infrastructure.api.coinstats_client import coinstats_client
@@ -25,6 +26,12 @@ def get_free_crypto_client():
     import os
     api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
     return create_free_crypto_client(api_key)
+
+
+def get_binance_ws_client():
+    """دریافت کلاینت Binance WebSocket (Lazy Import)"""
+    from infrastructure.api.binance_ws_client import binance_ws_client
+    return binance_ws_client
 
 
 def get_database_primary():
@@ -57,6 +64,12 @@ def get_prediction_repository():
     return PredictionRepository()
 
 
+def get_settings_repository():
+    """دریافت Repository تنظیمات (Lazy Import)"""
+    from infrastructure.repositories.settings_repository import SettingsRepository
+    return SettingsRepository()
+
+
 def get_auth_manager():
     """دریافت Auth Manager (Lazy Import)"""
     from infrastructure.auth.auth_manager import auth_manager
@@ -68,25 +81,19 @@ def get_alerter():
     from infrastructure.external.alerter import alerter
     return alerter
 
-# در تابع موجود اضافه کن:
-def get_settings_repository():
-    """دریافت Repository تنظیمات (Lazy Import)"""
-    from infrastructure.repositories.settings_repository import SettingsRepository
-    return SettingsRepository()
-
-
 
 __all__ = [
     # Lazy Loaders
     'get_coinstats_client',
     'get_cache_manager',
     'get_free_crypto_client',
+    'get_binance_ws_client',        # 🆕
     'get_database_primary',
     'get_database_cache',
     'get_database_backup',
     'get_model_repository',
     'get_prediction_repository',
+    'get_settings_repository',
     'get_auth_manager',
     'get_alerter',
-    'get_settings_repository',
 ]
