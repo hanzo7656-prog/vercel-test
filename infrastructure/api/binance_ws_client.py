@@ -9,8 +9,8 @@ from typing import Dict, Any, Optional, List, Set
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-import requests  # برای REST snapshot
-import websockets  # برای WebSocket
+import requests
+import websockets
 from websockets.exceptions import ConnectionClosed
 
 from infrastructure.database import get_cache
@@ -30,14 +30,7 @@ class BinanceWSClient:
         - Multiple symbols
         - REST snapshot + WS updates
         - Thread-safe
-
-    استفاده:
-        client = BinanceWSClient()
-        client.start()
-
-        # در هر جای دیگه
-        orderbook = client.get_orderbook('btcusdt')
-        price = client.get_price('btcusdt')
+        - is_running مستقل (heartbeat داخلی)
     """
 
     # Constants
@@ -47,19 +40,19 @@ class BinanceWSClient:
     DEFAULT_SYMBOLS = ["btcusdt", "ethusdt", "solusdt", "adausdt", "xrpusdt"]
 
     DEPTH_LEVELS = 20
-    UPDATE_SPEED = "1000ms"   # 🆕 برای Render free tier (قبلاً 100ms)
+    UPDATE_SPEED = "1000ms"
 
     RECONNECT_INITIAL = 1
     RECONNECT_MAX = 30
 
-    CACHE_TTL_ORDERBOOK = 30   # 30s
-    CACHE_TTL_PRICE = 300      # 5min
-    CACHE_TTL_STATS = 60       # 1min
+    CACHE_TTL_ORDERBOOK = 30
+    CACHE_TTL_PRICE = 300
+    CACHE_TTL_STATS = 60
 
-    # 🆕 حداکثر کهنگی مجاز داده (ثانیه)
     MAX_STALE_SECONDS = 10
+    HEARTBEAT_INTERVAL = 5
+    HEARTBEAT_MAX_AGE = 15
 
-    # 🆕 نام thread در ThreadingManager
     THREAD_NAME = "binance_ws_client"
 
     # ============================================================
@@ -75,17 +68,15 @@ class BinanceWSClient:
             s.lower() for s in (symbols or self.DEFAULT_SYMBOLS)
         ]
 
-        # Cache
         self.cache = get_cache()
 
-        # State
         self._orderbooks: Dict[str, Dict[str, Any]] = {}
         self._prices: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
-        # 🆕 فلگ صریح (مثل is_connected در FreeCryptoClient)
+        # 🆕 فلگ صریح
         self._running: bool = False
 
         # 🆕 وضعیت اتصال per-symbol
@@ -96,6 +87,7 @@ class BinanceWSClient:
             "connected": False,
             "started_at": None,
             "last_message_at": None,
+            "heartbeat": None,          # 🆕
             "total_messages": 0,
             "total_errors": 0,
             "reconnect_count": 0,
@@ -109,7 +101,7 @@ class BinanceWSClient:
             self.start()
 
     # ============================================================
-    # Start / Stop / IsRunning — از طریق ThreadingManager
+    # Start / Stop / IsRunning
     # ============================================================
 
     def start(self) -> bool:
@@ -127,16 +119,17 @@ class BinanceWSClient:
         with self._lock:
             self._connected_symbols.clear()
         self.stats["connected"] = False
+        self.stats["heartbeat"] = None
         self._running = True
 
-        # ثبت در ThreadingManager — target همان _run_loop است، نه start
+        # ثبت در ThreadingManager
         threading_manager.register(
             name=self.THREAD_NAME,
             target=self._run_loop,
             daemon=True,
             auto_restart=True,
             max_restarts=10,
-            restart_delay=30,       # 🆕 فاصله‌ی restart برای جلوگیری از حلقه‌ی سریع
+            restart_delay=30,
             start_now=True,
         )
 
@@ -145,13 +138,12 @@ class BinanceWSClient:
         return True
 
     def stop(self, timeout: float = 5.0) -> bool:
-        """توقف کلاینت از طریق ThreadingManager"""
+        """توقف کلاینت"""
         from core.threading_manager import threading_manager
 
         self._stop_event.set()
         self._running = False
 
-        # توقف از طریق ThreadingManager
         threading_manager.stop(self.THREAD_NAME)
 
         with self._lock:
@@ -162,28 +154,47 @@ class BinanceWSClient:
         return True
 
     def is_running(self) -> bool:
-        """آیا کلاینت در حال اجراست؟"""
-        from core.threading_manager import threading_manager
+        """
+        🆕 مستقل از ThreadingManager — بر اساس heartbeat داخلی
 
-        status = threading_manager.get_status(self.THREAD_NAME)
-        if status:
-            return bool(status.get("alive", False)) and self._running
-        return False
+        چرا: ThreadingManager per-worker است و درخواست ممکن است به
+        worker دیگری برسد که ThreadingManager خالی دارد.
+        """
+        if not self._running:
+            return False
+
+        hb = self.stats.get("heartbeat")
+        if not hb:
+            return False
+
+        try:
+            age = (datetime.now() - datetime.fromisoformat(hb)).total_seconds()
+            return age <= self.HEARTBEAT_MAX_AGE
+        except Exception:
+            return False
 
     # ============================================================
     # Thread Main
     # ============================================================
 
     def _run_loop(self) -> None:
-        """
-        حلقه اصلی (به‌عنوان target به ThreadingManager داده می‌شود)
-
-        ⚠️ نکته: ManagedThread._run_wrapper این تابع را در یک حلقه صدا می‌زند.
-        پس این تابع باید یا تا ابد بچرخد (while not stop)، یا سریع برگردد.
-        اینجا while داخلی داریم، پس عملاً یک بار صدا زده می‌شود و تا stop ادامه می‌دهد.
-        """
+        """حلقه اصلی + heartbeat داخلی"""
         logger.info("🔄 BinanceWSClient thread started")
         self._running = True
+        self.stats["heartbeat"] = datetime.now().isoformat()
+
+        # 🆕 heartbeat thread مستقل
+        def heartbeat_loop():
+            while not self._stop_event.is_set():
+                self.stats["heartbeat"] = datetime.now().isoformat()
+                self._stop_event.wait(self.HEARTBEAT_INTERVAL)
+
+        hb_thread = threading.Thread(
+            target=heartbeat_loop,
+            daemon=True,
+            name="BinanceWS-Heartbeat",
+        )
+        hb_thread.start()
 
         try:
             while not self._stop_event.is_set():
@@ -197,23 +208,20 @@ class BinanceWSClient:
                     self._stop_event.wait(5)
 
         finally:
-            # 🆕 حتی اگر thread به‌خاطر exception بمیرد، این اجرا می‌شود
             self._running = False
             with self._lock:
                 self._connected_symbols.clear()
             self.stats["connected"] = False
+            self.stats["heartbeat"] = None
             logger.info("🔄 BinanceWSClient thread stopped")
 
     async def _run_all_symbols(self) -> None:
-        """شروع task برای همه symbol ها"""
         tasks = []
-
         for symbol in self.symbols:
             if self._stop_event.is_set():
                 break
             task = asyncio.create_task(self._ws_task(symbol))
             tasks.append(task)
-
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -222,15 +230,6 @@ class BinanceWSClient:
     # ============================================================
 
     async def _ws_task(self, symbol: str) -> None:
-        """
-        Task برای یک symbol
-
-        مراحل:
-            1. REST snapshot (order book اولیه)
-            2. WS connect
-            3. دریافت updates
-            4. Cache در Redis
-        """
         reconnect_delay = self.RECONNECT_INITIAL
         url = f"{self.BINANCE_WS_BASE}/{symbol}@depth{self.DEPTH_LEVELS}@{self.UPDATE_SPEED}"
 
@@ -238,17 +237,13 @@ class BinanceWSClient:
             try:
                 self.stats["current_symbol"] = symbol
 
-                # ۱. REST snapshot
                 snapshot = await self._fetch_snapshot(symbol)
-
                 if snapshot:
                     with self._lock:
                         self._orderbooks[symbol] = snapshot
-
                     self._cache_orderbook(symbol, snapshot)
                     logger.info(f"✅ Snapshot fetched: {symbol}")
 
-                # ۲. WebSocket connect
                 logger.info(f"🔗 Connecting to Binance WS: {symbol}")
 
                 async with websockets.connect(
@@ -259,7 +254,6 @@ class BinanceWSClient:
                 ) as ws:
                     logger.info(f"✅ WS connected: {symbol}")
 
-                    # 🆕 ثبت اتصال per-symbol
                     with self._lock:
                         self._connected_symbols.add(symbol)
                     self._update_connected_flag()
@@ -269,14 +263,11 @@ class BinanceWSClient:
                     async for message in ws:
                         if self._stop_event.is_set():
                             break
-
                         try:
                             data = json.loads(message)
                             self._process_orderbook_update(symbol, data)
-
                             self.stats["total_messages"] += 1
                             self.stats["last_message_at"] = datetime.now().isoformat()
-
                         except json.JSONDecodeError as e:
                             logger.warning(f"⚠️ Invalid JSON for {symbol}: {e}")
                         except Exception as e:
@@ -293,7 +284,6 @@ class BinanceWSClient:
                 self.stats["reconnect_count"] += 1
                 self.stats["total_errors"] += 1
             finally:
-                # 🆕 حذف اتصال per-symbol در هر خروج
                 with self._lock:
                     self._connected_symbols.discard(symbol)
                 self._update_connected_flag()
@@ -304,7 +294,6 @@ class BinanceWSClient:
                 reconnect_delay = min(reconnect_delay * 2, self.RECONNECT_MAX)
 
     def _update_connected_flag(self) -> None:
-        """🆕 به‌روزرسانی فلگ connected بر اساس اتصال‌های واقعی"""
         with self._lock:
             self.stats["connected"] = len(self._connected_symbols) > 0
 
@@ -313,23 +302,12 @@ class BinanceWSClient:
     # ============================================================
 
     async def _fetch_snapshot(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """
-        دریافت snapshot اولیه از REST API
-
-        این لازمه چون Binance depth stream فقط updates می‌ده
-        """
         try:
             url = f"{self.BINANCE_REST_BASE}/api/v3/depth"
-            params = {
-                "symbol": symbol.upper(),
-                "limit": self.DEPTH_LEVELS,
-            }
+            params = {"symbol": symbol.upper(), "limit": self.DEPTH_LEVELS}
 
             response = await asyncio.to_thread(
-                requests.get,
-                url,
-                params=params,
-                timeout=10,
+                requests.get, url, params=params, timeout=10,
             )
 
             if response.status_code == 200:
@@ -345,7 +323,6 @@ class BinanceWSClient:
 
             logger.warning(f"⚠️ Snapshot failed for {symbol}: HTTP {response.status_code}")
             return None
-
         except Exception as e:
             logger.error(f"❌ Snapshot error for {symbol}: {e}")
             return None
@@ -354,19 +331,11 @@ class BinanceWSClient:
     # Process Updates
     # ============================================================
 
-    def _process_orderbook_update(
-        self,
-        symbol: str,
-        data: Dict[str, Any],
-    ) -> None:
-        """
-        پردازش update از WebSocket
-        """
+    def _process_orderbook_update(self, symbol: str, data: Dict[str, Any]) -> None:
         try:
             bids = data.get("bids", [])
             asks = data.get("asks", [])
 
-            # 🆕 محاسبه با Decimal برای جلوگیری از نویز float
             best_bid = self._to_float(bids[0][0]) if bids else 0.0
             best_ask = self._to_float(asks[0][0]) if asks else 0.0
 
@@ -394,7 +363,6 @@ class BinanceWSClient:
 
             with self._lock:
                 self._orderbooks[symbol] = orderbook
-
                 self._prices[symbol] = {
                     "symbol": symbol,
                     "price": mid_price,
@@ -411,7 +379,6 @@ class BinanceWSClient:
 
     @staticmethod
     def _to_float(value: Any) -> float:
-        """🆕 تبدیل ایمن string به float"""
         try:
             return float(Decimal(str(value)))
         except (InvalidOperation, ValueError, TypeError):
@@ -421,35 +388,19 @@ class BinanceWSClient:
     # Cache
     # ============================================================
 
-    def _cache_orderbook(
-        self,
-        symbol: str,
-        orderbook: Dict[str, Any],
-    ) -> None:
-        """ذخیره order book در Redis"""
+    def _cache_orderbook(self, symbol: str, orderbook: Dict[str, Any]) -> None:
         if not self.cache or not self.cache.is_connected():
             return
-
         try:
-            key = f"ws:orderbook:{symbol}"
-            self.cache.set(key, orderbook, ttl=self.CACHE_TTL_ORDERBOOK)
+            self.cache.set(f"ws:orderbook:{symbol}", orderbook, ttl=self.CACHE_TTL_ORDERBOOK)
         except Exception as e:
             logger.debug(f"⚠️ Cache orderbook error: {e}")
 
-    def _cache_price(
-        self,
-        symbol: str,
-        price: float,
-        best_bid: float,
-        best_ask: float,
-    ) -> None:
-        """ذخیره قیمت در Redis"""
+    def _cache_price(self, symbol: str, price: float, best_bid: float, best_ask: float) -> None:
         if not self.cache or not self.cache.is_connected():
             return
-
         try:
-            key = f"ws:price:{symbol}"
-            self.cache.set(key, {
+            self.cache.set(f"ws:price:{symbol}", {
                 "price": price,
                 "best_bid": best_bid,
                 "best_ask": best_ask,
@@ -459,16 +410,10 @@ class BinanceWSClient:
             logger.debug(f"⚠️ Cache price error: {e}")
 
     def _cache_stats(self) -> None:
-        """ذخیره آمار در Redis"""
         if not self.cache or not self.cache.is_connected():
             return
-
         try:
-            self.cache.set(
-                "ws:stats",
-                self.get_stats(),
-                ttl=self.CACHE_TTL_STATS,
-            )
+            self.cache.set("ws:stats", self.get_stats(), ttl=self.CACHE_TTL_STATS)
         except Exception as e:
             logger.debug(f"⚠️ Cache stats error: {e}")
 
@@ -477,7 +422,6 @@ class BinanceWSClient:
     # ============================================================
 
     def _is_stale(self, item: Dict[str, Any]) -> bool:
-        """🆕 بررسی کهنگی داده"""
         ts = item.get("timestamp")
         if not ts:
             return True
@@ -488,76 +432,36 @@ class BinanceWSClient:
             return True
 
     def get_orderbook(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """
-        دریافت order book یک symbol
-
-        اول از حافظه، اگه نبود از Redis
-        """
         symbol = symbol.lower()
-
-        # ۱. از حافظه
         with self._lock:
             if symbol in self._orderbooks:
                 ob = self._orderbooks[symbol].copy()
                 if not self._is_stale(ob):
                     return ob
-
-        # ۲. از Redis
-        if self.cache and self.cache.is_connected():
-            try:
-                cached = self.cache.get(f"ws:orderbook:{symbol}")
-                if cached and not self._is_stale(cached):
-                    return cached
-            except Exception:
-                pass
-
         return None
 
     def get_price(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """
-        دریافت قیمت یک symbol
-
-        اول از حافظه، اگه نبود از Redis
-        """
         symbol = symbol.lower()
-
-        # ۱. از حافظه
         with self._lock:
             if symbol in self._prices:
                 p = self._prices[symbol].copy()
                 if not self._is_stale(p):
                     return p
-
-        # ۲. از Redis
-        if self.cache and self.cache.is_connected():
-            try:
-                cached = self.cache.get(f"ws:price:{symbol}")
-                if cached and not self._is_stale(cached):
-                    return cached
-            except Exception:
-                pass
-
         return None
 
     def get_all_prices(self) -> Dict[str, Dict[str, Any]]:
-        """دریافت همه قیمت‌ها"""
         result = {}
-
         with self._lock:
             for symbol in self.symbols:
                 if symbol in self._prices:
                     p = self._prices[symbol].copy()
                     if not self._is_stale(p):
                         result[symbol] = p
-
         return result
 
     def get_stats(self) -> Dict[str, Any]:
-        """دریافت آمار کامل"""
         with self._lock:
-            active_symbols = [
-                s for s in self.symbols if s in self._orderbooks
-            ]
+            active_symbols = [s for s in self.symbols if s in self._orderbooks]
             connected_count = len(self._connected_symbols)
 
         return {
@@ -572,37 +476,26 @@ class BinanceWSClient:
         }
 
     def subscribe(self, symbol: str) -> bool:
-        """اضافه کردن symbol جدید (runtime)"""
         symbol = symbol.lower()
-
         if symbol in self.symbols:
             return False
-
         self.symbols.append(symbol)
         logger.info(f"✅ Symbol added: {symbol}")
-
-        # نیاز به restart thread
         if self.is_running():
             self.stop(timeout=10)
             time.sleep(1)
             self.start()
-
         return True
 
     def unsubscribe(self, symbol: str) -> bool:
-        """حذف symbol (runtime)"""
         symbol = symbol.lower()
-
         if symbol not in self.symbols:
             return False
-
         self.symbols.remove(symbol)
-
         with self._lock:
             self._orderbooks.pop(symbol, None)
             self._prices.pop(symbol, None)
             self._connected_symbols.discard(symbol)
-
         self._update_connected_flag()
         logger.info(f"✅ Symbol removed: {symbol}")
         return True
