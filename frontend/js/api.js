@@ -651,6 +651,41 @@ class ApiClient {
         });
     }
 
+
+    // ============================================================
+    // ۲۴. Binance WebSocket Real-time
+    // ============================================================
+
+    getWSStats() {
+        return this.request('/api/crypto/ws-stats');
+    }
+
+    getWSPrices() {
+        return this.request('/api/crypto/ws-prices');
+    }
+
+    getWSPrice(symbol) {
+        return this.request(`/api/crypto/ws-price/${encodeURIComponent(symbol)}`);
+    }
+
+    getWSOrderbook(symbol, levels = null) {
+        const params = levels ? `?levels=${levels}` : '';
+        return this.request(`/api/crypto/ws-orderbook/${encodeURIComponent(symbol)}${params}`);
+    }
+
+    subscribeWS(symbol) {
+        return this.request('/api/crypto/ws-subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ symbol })
+        });
+    }
+
+    unsubscribeWS(symbol) {
+        return this.request('/api/crypto/ws-unsubscribe', {
+            method: 'POST',
+            body: JSON.stringify({ symbol })
+        });
+    }
     // ============================================================
     // ۱۷. هشدارها (ALERTS)
     // ============================================================
