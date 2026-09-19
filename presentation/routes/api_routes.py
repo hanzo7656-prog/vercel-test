@@ -3845,6 +3845,253 @@ def get_chart_data(coin):
     except Exception as e:
         logger.error(f"Chart data error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# BINANCE WEBSOCKET - Real-time data
+# ============================================================
+
+@api_bp.route('/crypto/ws-stats', methods=['GET'])
+@require_auth()
+def binance_ws_stats():
+    """
+    دریافت آمار کلاینت WebSocket
+    
+    خروجی:
+        - connected: bool
+        - total_messages: int
+        - reconnect_count: int
+        - active_symbols: List[str]
+        - ...
+    """
+    try:
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        stats = ws_client.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS stats error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/ws-prices', methods=['GET'])
+@require_auth()
+def binance_ws_prices():
+    """
+    دریافت قیمت‌های Real-time همه symbolها
+    
+    خروجی:
+        {
+            "btcusdt": {"price": 65000, "best_bid": ..., ...},
+            "ethusdt": {...},
+            ...
+        }
+    """
+    try:
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        prices = ws_client.get_all_prices()
+        
+        return jsonify({
+            'success': True,
+            'data': prices,
+            'count': len(prices),
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS prices error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/ws-price/<symbol>', methods=['GET'])
+@require_auth()
+def binance_ws_price(symbol):
+    """
+    دریافت قیمت یک symbol خاص
+    
+    مثال:
+        GET /api/crypto/ws-price/btcusdt
+        GET /api/crypto/ws-price/ethusdt
+    """
+    try:
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        price = ws_client.get_price(symbol)
+        
+        if not price:
+            return jsonify({
+                'success': False,
+                'error': f'No price for symbol: {symbol}',
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': price,
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS price error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/ws-orderbook/<symbol>', methods=['GET'])
+@require_auth()
+def binance_ws_orderbook(symbol):
+    """
+    دریافت Order Book یک symbol
+    
+    Query params:
+        levels: تعداد سطوح (پیش‌فرض: همه)
+    
+    مثال:
+        GET /api/crypto/ws-orderbook/btcusdt
+        GET /api/crypto/ws-orderbook/btcusdt?levels=10
+    """
+    try:
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        orderbook = ws_client.get_orderbook(symbol)
+        
+        if not orderbook:
+            return jsonify({
+                'success': False,
+                'error': f'No orderbook for symbol: {symbol}',
+            }), 404
+        
+        # محدودیت levels
+        levels = request.args.get('levels', type=int)
+        if levels and levels > 0:
+            orderbook = orderbook.copy()
+            orderbook['bids'] = orderbook.get('bids', [])[:levels]
+            orderbook['asks'] = orderbook.get('asks', [])[:levels]
+        
+        return jsonify({
+            'success': True,
+            'data': orderbook,
+            'timestamp': datetime.now().isoformat(),
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS orderbook error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/ws-subscribe', methods=['POST'])
+@require_auth('admin')
+def binance_ws_subscribe():
+    """
+    اضافه کردن symbol جدید
+    
+    Body:
+        {"symbol": "bnbusdt"}
+    """
+    try:
+        data = request.json or {}
+        symbol = data.get('symbol', '').strip().lower()
+        
+        if not symbol:
+            return jsonify({
+                'success': False,
+                'error': 'symbol is required',
+            }), 400
+        
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        result = ws_client.subscribe(symbol)
+        
+        return jsonify({
+            'success': result,
+            'message': f'Symbol {symbol} added' if result else 'Already subscribed',
+            'symbol': symbol,
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS subscribe error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/crypto/ws-unsubscribe', methods=['POST'])
+@require_auth('admin')
+def binance_ws_unsubscribe():
+    """
+    حذف symbol
+    
+    Body:
+        {"symbol": "bnbusdt"}
+    """
+    try:
+        data = request.json or {}
+        symbol = data.get('symbol', '').strip().lower()
+        
+        if not symbol:
+            return jsonify({
+                'success': False,
+                'error': 'symbol is required',
+            }), 400
+        
+        container = current_app.container
+        ws_client = container.get('binance_ws_client')
+        
+        if not ws_client:
+            return jsonify({
+                'success': False,
+                'error': 'BinanceWSClient not available',
+            }), 503
+        
+        result = ws_client.unsubscribe(symbol)
+        
+        return jsonify({
+            'success': result,
+            'message': f'Symbol {symbol} removed' if result else 'Symbol not found',
+            'symbol': symbol,
+        })
+        
+    except Exception as e:
+        logger.error(f"Binance WS unsubscribe error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
 # ۱۳. هشدارها (ALERTS)
 # ============================================================
