@@ -105,24 +105,30 @@ class BinanceWSClient:
     # ============================================================
 
     def start(self) -> bool:
-        """شروع کلاینت از طریق ThreadingManager"""
         from core.threading_manager import threading_manager
-
-        # اگر قبلاً ثبت شده و زنده است
+    
+        # 🆕 اگر thread قبلی در ThreadingManager هست، اول بکشش
         status = threading_manager.get_status(self.THREAD_NAME)
         if status and status.get("alive"):
-            logger.warning("⚠️ BinanceWSClient already running")
-            return False
-
-        # ریست کامل state
+            logger.warning("⚠️ Stopping old thread before starting new one")
+            threading_manager.stop(self.THREAD_NAME)
+            time.sleep(2)   # صبر کن تا کامل بمیرد
+    
+        # ریست کامل
         self._stop_event.clear()
+        self._running = False
         with self._lock:
             self._connected_symbols.clear()
         self.stats["connected"] = False
         self.stats["heartbeat"] = None
+        self.stats["total_messages"] = 0
+        self.stats["total_errors"] = 0
+        self.stats["reconnect_count"] = 0
+        self.stats["last_message_at"] = None
+        self.stats["started_at"] = datetime.now().isoformat()
+    
         self._running = True
-
-        # ثبت در ThreadingManager
+    
         threading_manager.register(
             name=self.THREAD_NAME,
             target=self._run_loop,
@@ -132,8 +138,7 @@ class BinanceWSClient:
             restart_delay=30,
             start_now=True,
         )
-
-        self.stats["started_at"] = datetime.now().isoformat()
+    
         logger.info("🚀 BinanceWSClient started via ThreadingManager")
         return True
 
