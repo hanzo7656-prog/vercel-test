@@ -56,6 +56,9 @@ def get_free_crypto_client():
     return get_service('free_crypto_client')
 
 
+def get_binance_ws_client():        # 🆕
+    """Binance WS Client"""
+    return get_service('binance_ws_client')
 # ============================================================
 # Database Providers 🆕
 # ============================================================
