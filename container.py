@@ -498,11 +498,14 @@ def start_services() -> None:
     try:
         binance_ws = container.get('binance_ws_client')
         if binance_ws and hasattr(binance_ws, 'start'):
-            binance_ws.start()
-            logger.info("✅ BinanceWSClient started")
+            result = binance_ws.start()
+            if result:
+                logger.info("✅ BinanceWSClient started")
+            else:
+                logger.warning("⚠️ BinanceWSClient start() returned False")
     except Exception as e:
         logger.error(f"❌ BinanceWSClient start failed: {e}")
-    
+      
     logger.info("✅ Background services started")
     
 
