@@ -278,9 +278,9 @@ def start_db_health_check() -> None:
 
 def _should_start_background() -> bool:
     """
-    🆕 فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه) سرویس‌ها را استارت بزن
+    فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه) سرویس‌ها را استارت بزن
     """
-    # اگه با gunicorn اجرا می‌شه، فقط worker اصلی
+    # اگه با Flask reloader اجرا می‌شه، فقط در پروسه‌ی اصلی
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         return False
     # اگه صریحاً گفته شده skip کن
