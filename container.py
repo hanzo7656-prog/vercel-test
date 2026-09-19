@@ -265,11 +265,15 @@ def register_services() -> None:
         client = _create(api_key)
         logger.info("FreeCryptoClient created")
         return client
-    
+
+    def get_binance_ws_client():
+        from infrastructure.api.binance_ws_client import binance_ws_client
+        return binance_ws_client
+        
     container.register('api_client', get_api_client, singleton=True)
     container.register('cache_manager', get_cache_manager, singleton=True)
     container.register('free_crypto_client', create_free_crypto_client, singleton=True)
-    
+    container.register('binance_ws_client', get_binance_ws_client, singleton=True)  # 🆕
     # ============================================================
     # ۲. Database
     # ============================================================
