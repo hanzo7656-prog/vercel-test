@@ -521,15 +521,14 @@ def stop_services() -> None:
     except Exception as e:
         logger.error(f"PriceManager stop failed: {e}")
 
-
     # ۲. Binance WS Client 🆕
     try:
         binance_ws = container.get('binance_ws_client')
         if binance_ws and hasattr(binance_ws, 'stop'):
             binance_ws.stop()
-            logger.info("✅ BinanceWSClient stopped")
+            print("[Container] ✅ BinanceWSClient stopped", flush=True)
     except Exception as e:
-        logger.error(f"❌ BinanceWSClient stop failed: {e}")
+        print(f"[Container] ❌ BinanceWSClient stop failed: {e}", flush=True)
  
     # ۳. FreeCryptoClient
     try:
