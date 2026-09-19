@@ -276,9 +276,25 @@ def start_db_health_check() -> None:
 # Start All
 # ============================================================
 
-start_metrics_scheduler()
-start_alert_system()
-start_db_health_check()
+def _should_start_background() -> bool:
+    """
+    🆕 فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه) سرویس‌ها را استارت بزن
+    """
+    # اگه با gunicorn اجرا می‌شه، فقط worker اصلی
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        return False
+    # اگه صریحاً گفته شده skip کن
+    if os.environ.get("SKIP_BACKGROUND", "").lower() == "true":
+        return False
+    return True
+
+
+if _should_start_background():
+    start_metrics_scheduler()
+    start_alert_system()
+    start_db_health_check()
+else:
+    logger.info("⏭️ Background services skipped (worker/reloader)")
 
 
 # ============================================================
