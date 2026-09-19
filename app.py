@@ -290,7 +290,7 @@ if _should_start_background():
     start_alert_system()
     start_db_health_check()
 else:
-    logger.info("⏭️ Background services skipped (worker/reloader)")w
+    logger.info("⏭️ Background services skipped (worker/reloader)")
 
 # ============================================================
 # Error Handlers
