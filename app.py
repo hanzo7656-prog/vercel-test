@@ -277,13 +277,9 @@ def start_db_health_check() -> None:
 # ============================================================
 
 def _should_start_background() -> bool:
-    """
-    فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه) سرویس‌ها را استارت بزن
-    """
-    # اگه با Flask reloader اجرا می‌شه، فقط در پروسه‌ی اصلی
+    """فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه)"""
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         return False
-    # اگه صریحاً گفته شده skip کن
     if os.environ.get("SKIP_BACKGROUND", "").lower() == "true":
         return False
     return True
@@ -294,8 +290,7 @@ if _should_start_background():
     start_alert_system()
     start_db_health_check()
 else:
-    logger.info("⏭️ Background services skipped (worker/reloader)")
-
+    logger.info("⏭️ Background services skipped (worker/reloader)")w
 
 # ============================================================
 # Error Handlers
