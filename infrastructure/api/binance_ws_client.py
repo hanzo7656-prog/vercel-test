@@ -16,6 +16,10 @@ from websockets.exceptions import ConnectionClosed
 from infrastructure.database import get_cache
 
 
+
+logger = logging.getLogger(__name__)
+
+
 class BinanceWSClient:
     """
     Binance WebSocket Client
