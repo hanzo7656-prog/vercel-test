@@ -505,7 +505,6 @@ def start_services() -> None:
                 logger.warning("⚠️ BinanceWSClient start() returned False")
     except Exception as e:
         logger.error(f"❌ BinanceWSClient start failed: {e}")
-      
     logger.info("✅ Background services started")
     
 
