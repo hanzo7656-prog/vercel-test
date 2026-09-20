@@ -13,8 +13,8 @@ from datetime import datetime
 from flask import Flask, jsonify
 
 from config.version import VERSION, APP_NAME
-from container import container
-from providers import init_container, shutdown_services, start_services
+from container import container, start_services
+from providers import init_container, shutdown_services
 logger = logging.getLogger(__name__)
 
 
@@ -429,18 +429,6 @@ def home():
             'status': 'running',
         })
 
-
-# ============================================================
-# Watchdog
-# ============================================================
-
-try:
-    if container.has('threading_manager'):
-        tm = container.get('threading_manager')
-        tm.start_watchdog(check_interval=10)
-        logger.info("✅ Watchdog started")
-except Exception as e:
-    logger.error(f"❌ Watchdog failed: {e}")
 
 
 # ============================================================
