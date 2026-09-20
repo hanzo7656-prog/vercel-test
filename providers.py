@@ -221,16 +221,6 @@ def init_container(app) -> None:
     except Exception as e:
         logger.warning(f"⚠️ Middlewares registration failed: {e}")
     
-    # شروع سرویس‌های پس‌زمینه
-    try:
-        start_services()
-        logger.info("✅ Background services started")
-    except Exception as e:
-        logger.error(f"❌ Failed to start services: {e}")
-    
-    logger.info("✅ Container initialized in Flask app")
-
-
 # ============================================================
 # Shutdown
 # ============================================================
