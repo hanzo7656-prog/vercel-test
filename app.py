@@ -14,8 +14,7 @@ from flask import Flask, jsonify
 
 from config.version import VERSION, APP_NAME
 from container import container
-from providers import init_container, shutdown_services
-
+from providers import init_container, shutdown_services, start_services
 logger = logging.getLogger(__name__)
 
 
@@ -299,25 +298,59 @@ def start_db_health_check() -> None:
 # Start All
 # ============================================================
 
-def _should_start_background() -> bool:
-    """فقط در پروسه‌ی اصلی (نه reloader، نه worker اضافه)"""
+# ============================================================
+# Start All — فقط در Worker (اولین request)
+# ============================================================
+
+@app.before_request
+def _lazy_start_services():
+    """
+    🆕 سرویس‌های پس‌زمینه را فقط در Worker شروع کن
+
+    چرا: اگر در import time صدا زده شوند، در Master ساخته می‌شوند
+    و بعد از fork، threadها در Worker نیستند.
+    """
+    if getattr(app, '_services_started', False):
+        return
+    app._services_started = True
+
+    import os
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        return False
+        return
     if os.environ.get("SKIP_BACKGROUND", "").lower() == "true":
-        return False
-    return True
+        return
 
+    logger.info("🚀 [Worker] Starting background services...")
 
-if _should_start_background():
-    logger.info("🚀 Starting background services...")
-    start_metrics_scheduler()
-    start_alert_system()
-    start_db_health_check()
-    logger.info("✅ Background services started")
-else:
-    logger.info("⏭️ Background services skipped (worker/reloader)")
+    # ۱. Container services (Binance WS, PriceManager, ...)
+    try:
+        from providers import start_services
+        start_services()
+        logger.info("✅ [Worker] Container services started")
+    except Exception as e:
+        logger.error(f"❌ [Worker] start_services failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
+    # ۲. Metrics Scheduler
+    try:
+        start_metrics_scheduler()
+    except Exception as e:
+        logger.error(f"❌ [Worker] metrics_scheduler failed: {e}")
 
+    # ۳. Alert System
+    try:
+        start_alert_system()
+    except Exception as e:
+        logger.error(f"❌ [Worker] alert_system failed: {e}")
+
+    # ۴. DB Health Check
+    try:
+        start_db_health_check()
+    except Exception as e:
+        logger.error(f"❌ [Worker] db_health_check failed: {e}")
+
+    logger.info("✅ [Worker] All background services started")
 # ============================================================
 # Error Handlers
 # ============================================================
