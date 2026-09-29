@@ -1,7 +1,7 @@
 # container.py
 # ============================================================
 # Container - مدیریت وابستگی‌ها (Dependency Injection)
-# نسخه ۳.۱ - Repository + Database + Lifecycle + Convenience
+# نسخه ۴.۰ - RuleEngine + ScanMarketUseCase
 # ============================================================
 
 import os
@@ -44,7 +44,7 @@ class Container:
             return
         self._initialized = True
         self._init_time = datetime.now()
-        logger.info("Container v3.1 initialized")
+        logger.info("Container v4.0 initialized")
     
     # ============================================================
     # Register
@@ -124,7 +124,7 @@ class Container:
         }
     
     # ============================================================
-    # Convenience Methods (برای سازگاری با api_routes.py)
+    # Convenience Methods
     # ============================================================
     
     def api_client(self) -> Any:
@@ -215,6 +215,10 @@ class Container:
         """دریافت PredictionRepository"""
         return self.get('prediction_repository')
     
+    def rule_config_repository(self) -> Any:
+        """دریافت RuleConfigRepository (🆕)"""
+        return self.get('rule_config_repository')
+    
     def predict_use_case(self) -> Any:
         """دریافت PredictUseCase"""
         return self.get('predict_use_case')
@@ -223,17 +227,21 @@ class Container:
         """دریافت TrainUseCase"""
         return self.get('train_use_case')
     
+    def scan_market_use_case(self) -> Any:
+        """دریافت ScanMarketUseCase (🆕)"""
+        return self.get('scan_market_use_case')
+    
     def health_use_case(self) -> Any:
         """دریافت HealthUseCase"""
         return self.get('health_use_case')
     
     def __repr__(self) -> str:
         return f"<Container services={len(self.list_services())}>"
-
-
+    
     def binance_ws_client(self) -> Any:
         """دریافت Binance WS Client"""
         return self.get('binance_ws_client')
+
 
 # ============================================================
 # Singleton
@@ -277,7 +285,8 @@ def register_services() -> None:
     container.register('api_client', get_api_client, singleton=True)
     container.register('cache_manager', get_cache_manager, singleton=True)
     container.register('free_crypto_client', create_free_crypto_client, singleton=True)
-    container.register('binance_ws_client', get_binance_ws_client, singleton=True)  # 🆕
+    container.register('binance_ws_client', get_binance_ws_client, singleton=True)
+    
     # ============================================================
     # ۲. Database
     # ============================================================
@@ -319,9 +328,15 @@ def register_services() -> None:
         from infrastructure.repositories.init_repository import repo_container
         return repo_container.prediction
     
+    def get_rule_config_repository():
+        """🆕 RuleConfigRepository"""
+        from infrastructure.repositories.init_repository import repo_container
+        return repo_container.rule_config
+    
     container.register('repo_container', get_repo_container, singleton=True)
     container.register('model_repository', get_model_repository, singleton=True)
     container.register('prediction_repository', get_prediction_repository, singleton=True)
+    container.register('rule_config_repository', get_rule_config_repository, singleton=True)
     
     # ============================================================
     # ۴. Model
@@ -404,6 +419,17 @@ def register_services() -> None:
             trainer=container.get('trainer'),
         )
     
+    def get_scan_market_use_case():
+        """🆕 ScanMarketUseCase"""
+        from application.use_cases.scan_market import ScanMarketUseCase
+        from infrastructure.database import get_cache, get_primary
+        
+        return ScanMarketUseCase(
+            api_client=container.get('api_client'),
+            cache=get_cache(),
+            db=get_primary(),
+        )
+    
     def get_health_use_case():
         try:
             from application.use_cases.get_health import GetHealthUseCase
@@ -441,6 +467,7 @@ def register_services() -> None:
     
     container.register('predict_use_case', get_predict_use_case, singleton=True)
     container.register('train_use_case', get_train_use_case, singleton=True)
+    container.register('scan_market_use_case', get_scan_market_use_case, singleton=True)  # 🆕
     container.register('health_use_case', get_health_use_case, singleton=True)
     container.register('prediction_service', get_prediction_service, singleton=True)
     container.register('monitoring_service', get_monitoring_service, singleton=True)
@@ -494,7 +521,7 @@ def start_services() -> None:
     except Exception as e:
         logger.error(f"PriceManager start failed: {e}")
 
-    # ۳. Binance WS Client 🆕
+    # ۳. Binance WS Client
     try:
         binance_ws = container.get('binance_ws_client')
         if binance_ws and hasattr(binance_ws, 'start'):
@@ -505,6 +532,7 @@ def start_services() -> None:
                 logger.warning("⚠️ BinanceWSClient start() returned False")
     except Exception as e:
         logger.error(f"❌ BinanceWSClient start failed: {e}")
+    
     logger.info("✅ Background services started")
     
 
@@ -521,7 +549,7 @@ def stop_services() -> None:
     except Exception as e:
         logger.error(f"PriceManager stop failed: {e}")
 
-    # ۲. Binance WS Client 🆕
+    # ۲. Binance WS Client
     try:
         binance_ws = container.get('binance_ws_client')
         if binance_ws and hasattr(binance_ws, 'stop'):
