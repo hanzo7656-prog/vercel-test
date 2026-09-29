@@ -1,7 +1,7 @@
 # infrastructure/repositories/init_repository.py
 # ============================================================
-# راه‌انداز Repositoryها - نسخه ۲.۰
-# با SettingsRepository
+# راه‌انداز Repositoryها - نسخه ۲.۱
+# با SettingsRepository + RuleConfigRepository
 # ============================================================
 
 import logging
@@ -28,9 +28,10 @@ class RepositoryContainer:
         self._model_repository = None
         self._prediction_repository = None
         self._settings_repository = None      # 🆕
+        self._rule_config_repository = None   # 🆕
         self._init_count = 0
         
-        logger.info("✅ RepositoryContainer v2.0 initialized")
+        logger.info("✅ RepositoryContainer v2.1 initialized")
     
     @property
     def model(self):
@@ -54,13 +55,23 @@ class RepositoryContainer:
     
     @property
     def settings(self):
-        """SettingsRepository (🆕)"""
+        """SettingsRepository"""
         if self._settings_repository is None:
             from infrastructure.repositories.settings_repository import SettingsRepository
             self._settings_repository = SettingsRepository()
             self._init_count += 1
             logger.info("✅ SettingsRepository initialized")
         return self._settings_repository
+    
+    @property
+    def rule_config(self):
+        """RuleConfigRepository (🆕)"""
+        if self._rule_config_repository is None:
+            from infrastructure.repositories.rule_config_repository import RuleConfigRepository
+            self._rule_config_repository = RuleConfigRepository()
+            self._init_count += 1
+            logger.info("✅ RuleConfigRepository initialized")
+        return self._rule_config_repository
     
     def get(self, name: str):
         """دریافت Repository با نام"""
@@ -70,22 +81,25 @@ class RepositoryContainer:
             return self.prediction
         elif name == "settings":
             return self.settings
+        elif name == "rule_config":
+            return self.rule_config
         else:
             raise ValueError(f"Unknown repository: {name}")
     
     def has(self, name: str) -> bool:
         """بررسی وجود Repository"""
-        return name in ["model", "prediction", "settings"]
+        return name in ["model", "prediction", "settings", "rule_config"]
     
     def list_available(self) -> list:
         """لیست Repositoryهای موجود"""
-        return ["model", "prediction", "settings"]
+        return ["model", "prediction", "settings", "rule_config"]
     
     def reset(self) -> None:
         """ریست"""
         self._model_repository = None
         self._prediction_repository = None
         self._settings_repository = None
+        self._rule_config_repository = None
         logger.info("🔄 RepositoryContainer reset")
     
     def get_stats(self) -> Dict[str, Any]:
@@ -94,6 +108,7 @@ class RepositoryContainer:
             "model_initialized": self._model_repository is not None,
             "prediction_initialized": self._prediction_repository is not None,
             "settings_initialized": self._settings_repository is not None,
+            "rule_config_initialized": self._rule_config_repository is not None,
             "init_count": self._init_count,
             "available": self.list_available(),
         }
@@ -103,7 +118,8 @@ class RepositoryContainer:
             f"<RepositoryContainer "
             f"model={self._model_repository is not None} "
             f"prediction={self._prediction_repository is not None} "
-            f"settings={self._settings_repository is not None}>"
+            f"settings={self._settings_repository is not None} "
+            f"rule_config={self._rule_config_repository is not None}>"
         )
 
 
@@ -125,13 +141,23 @@ def get_prediction_repository():
 
 
 def get_settings_repository():
-    """SettingsRepository (🆕)"""
+    """SettingsRepository"""
     return repo_container.settings
+
+
+def get_rule_config_repository():
+    """RuleConfigRepository (🆕)"""
+    return repo_container.rule_config
 
 
 def init_all_repositories() -> Dict[str, Any]:
     """راه‌اندازی همه Repositoryها"""
-    result = {"model": False, "prediction": False, "settings": False}
+    result = {
+        "model": False,
+        "prediction": False,
+        "settings": False,
+        "rule_config": False,
+    }
     
     try:
         repo_container.model
@@ -151,6 +177,12 @@ def init_all_repositories() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ SettingsRepository init error: {e}")
     
+    try:
+        repo_container.rule_config
+        result["rule_config"] = True
+    except Exception as e:
+        logger.error(f"❌ RuleConfigRepository init error: {e}")
+    
     logger.info(f"✅ Repositories initialized: {result}")
     return result
 
@@ -166,9 +198,10 @@ __all__ = [
     "get_model_repository",
     "get_prediction_repository",
     "get_settings_repository",
+    "get_rule_config_repository",
     "init_all_repositories",
     "get_repository_stats",
 ]
 
 
-logger.info("✅ init_repository module loaded (v2.0 with Settings)")
+logger.info("✅ init_repository module loaded (v2.1 with RuleConfig)")
