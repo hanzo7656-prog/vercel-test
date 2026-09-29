@@ -1,28 +1,8 @@
 # models/manager/__init__.py
 # ============================================================
-# پکیج مدیریت مدل - نسخه ۲.۰
+# پکیج مدیریت مدل - نسخه ۳.۰
 # ============================================================
 
-from models.manager.model_manager import (
-    # Class اصلی
-    ModelManager,
-    
-    # Constants - Presets
-    TRAINING_PRESETS,
-    LEARNING_STRATEGIES,
-    HYPERPARAMETER_LIMITS,
-    DEFAULT_HYPERPARAMETERS,
-)
+from models.manager.model_manager import ModelManager
 
-__all__ = [
-    # Class
-    "ModelManager",
-    
-    # Presets & Strategies
-    "TRAINING_PRESETS",
-    "LEARNING_STRATEGIES",
-    
-    # Limits
-    "HYPERPARAMETER_LIMITS",
-    "DEFAULT_HYPERPARAMETERS",
-]
+__all__ = ["ModelManager"]
