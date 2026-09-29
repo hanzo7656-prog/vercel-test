@@ -87,6 +87,12 @@ def get_database_router():
 # Repository Providers 🆕
 # ============================================================
 
+# providers.py — اضافه کن بعد از get_rule_config_repository
+
+# ============================================================
+# Repository Providers
+# ============================================================
+
 def get_repo_container():
     """Repository Container"""
     return get_service('repo_container')
@@ -101,6 +107,10 @@ def get_prediction_repository():
     """Prediction Repository"""
     return get_service('prediction_repository')
 
+
+def get_rule_config_repository():
+    """RuleConfig Repository (🆕)"""
+    return get_service('rule_config_repository')
 
 # ============================================================
 # Model Providers
@@ -153,7 +163,10 @@ def get_train_use_case():
     """Train Use Case"""
     return get_service('train_use_case')
 
-
+def get_scan_market_use_case():
+    """ScanMarket Use Case"""
+    return get_service('scan_market_use_case')
+    
 def get_health_use_case():
     """Health Use Case"""
     return get_service('health_use_case')
