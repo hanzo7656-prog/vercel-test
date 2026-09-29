@@ -51,7 +51,10 @@ def __getattr__(name: str):
     if name == "GetHealthUseCase":
         from application.use_cases import GetHealthUseCase
         return GetHealthUseCase
-    
+
+    if name == "ScanMarketUseCase":     # 🆕 اضافه کن
+        from application.use_cases import ScanMarketUseCase
+        return ScanMarketUseCase
     # ============================================================
     # Services
     # ============================================================
@@ -96,7 +99,7 @@ __all__ = [
     "PredictCoinUseCase",
     "TrainModelUseCase",
     "GetHealthUseCase",
-    
+    "ScanMarketUseCase",
     # ===== Services =====
     "PredictionService",
     "MonitoringService",
