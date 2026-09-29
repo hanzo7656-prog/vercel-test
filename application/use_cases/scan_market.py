@@ -30,8 +30,7 @@ from core.rule_engine import (
     load_default_config,
 )
 from core.rule_engine.models import ScanResult
-from infrastructure.repositories.rule_config_repository import (
-    rule_config_repository,
+from infrastructure.repositories import repos,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,7 +72,7 @@ class ScanMarketUseCase:
         self.api_client = api_client
         self.cache = cache
         self.db = db
-        self.config_repo = rule_config_repository
+        self.config_repo = repos.rule_config
         
         logger.info("✅ ScanMarketUseCase initialized")
     
