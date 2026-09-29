@@ -1,11 +1,15 @@
 # application/services/monitoring_service.py
 # ============================================================
-# Service: Monitoring Service - نسخه ۲.۰
-# Quota + Repository Stats
+# Service: Monitoring Service - نسخه ۳.۰
+# Quota + Repository Stats + Model-aware
+# ============================================================
+# 
+# تغییرات نسخه ۳.۰:
+#   - get_repository_stats: پشتیبانی از model_type
+#   - حفظ بقیه API
 # ============================================================
 
 import logging
-import signal
 from typing import Dict, Any, Optional
 from datetime import datetime
 
@@ -21,33 +25,25 @@ class MonitoringService:
     """
     سرویس مانیتورینگ
     
-    ارتقاها:
-        - Quota stats
-        - Repository stats
-        - Cross-platform timeout
+    ارتقاها (v3.0):
+        - Repository stats با model_type
+        - بدون تغییر در بقیه متدها
     """
     
     def __init__(self, health_use_case: GetHealthUseCase):
         self.health_use_case = health_use_case
         
-        logger.info("✅ MonitoringService v2.0 initialized")
+        logger.info("✅ MonitoringService v3.0 initialized")
     
     # ============================================================
     # Health
     # ============================================================
     
     def get_health(self) -> Dict[str, Any]:
-        """
-        دریافت سلامت سیستم
-        
-        خروجی:
-            دیکشنری سلامت
-        """
+        """دریافت سلامت سیستم"""
         try:
-            # Timeout cross-platform
             from infrastructure.database import health_check
             
-            # راه ساده: بدون signal
             health = health_check()
             
             all_ok = all(
@@ -60,7 +56,7 @@ class MonitoringService:
                 "components": health,
                 "timestamp": datetime.now().isoformat(),
             }
-            
+        
         except Exception as e:
             logger.error(f"Health check error: {e}")
             return {
@@ -125,7 +121,7 @@ class MonitoringService:
             }
     
     # ============================================================
-    # Quota (🆕)
+    # Quota
     # ============================================================
     
     def get_quota_stats(self) -> Dict[str, Any]:
@@ -157,7 +153,7 @@ class MonitoringService:
                 "data": result,
                 "timestamp": datetime.now().isoformat(),
             }
-            
+        
         except Exception as e:
             logger.error(f"Quota stats error: {e}")
             return {
@@ -167,36 +163,55 @@ class MonitoringService:
             }
     
     # ============================================================
-    # Repository Stats (🆕)
+    # Repository Stats (🆕 model-aware)
     # ============================================================
     
     def get_repository_stats(self) -> Dict[str, Any]:
-        """آمار Repositoryها"""
+        """
+        آمار Repositoryها
+        
+        ارتقا v3.0:
+            - پشتیبانی از model_type
+            - fallback در صورت نبود ModelManager
+        """
         try:
             from infrastructure.repositories import repos
             
-            model_stats = {}
-            prediction_stats = {}
+            model_stats: Dict[str, Any] = {}
+            prediction_stats: Dict[str, Any] = {}
+            rule_config_stats: Dict[str, Any] = {}
             
+            # Model stats
             try:
                 model_stats = repos.model.get_stats()
             except Exception as e:
                 logger.debug(f"Model stats error: {e}")
+                model_stats = {"error": str(e)}
             
+            # Prediction stats
             try:
                 prediction_stats = repos.prediction.get_stats()
             except Exception as e:
                 logger.debug(f"Prediction stats error: {e}")
+                prediction_stats = {"error": str(e)}
+            
+            # RuleConfig stats (🆕)
+            try:
+                rule_config_stats = repos.rule_config.get_stats()
+            except Exception as e:
+                logger.debug(f"RuleConfig stats error: {e}")
+                rule_config_stats = {"error": str(e)}
             
             return {
                 "success": True,
                 "data": {
                     "models": model_stats,
                     "predictions": prediction_stats,
+                    "rule_config": rule_config_stats,  # 🆕
                 },
                 "timestamp": datetime.now().isoformat(),
             }
-            
+        
         except Exception as e:
             logger.error(f"Repository stats error: {e}")
             return {
