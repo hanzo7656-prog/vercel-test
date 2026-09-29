@@ -1,7 +1,7 @@
 # application/use_cases/__init__.py
 # ============================================================
-# Use Cases - موارد استفاده - نسخه ۲.۰
-# Lazy Import
+# Use Cases - موارد استفاده - نسخه ۲.۱
+# Lazy Import + ScanMarketUseCase
 # ============================================================
 
 from typing import TYPE_CHECKING
@@ -31,6 +31,11 @@ def __getattr__(name: str):
         from application.use_cases.get_health import GetHealthUseCase
         return GetHealthUseCase
     
+    # ===== Scan Market (🆕) =====
+    if name == "ScanMarketUseCase":
+        from application.use_cases.scan_market import ScanMarketUseCase
+        return ScanMarketUseCase
+    
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
     )
@@ -44,4 +49,5 @@ __all__ = [
     "PredictCoinUseCase",
     "TrainModelUseCase",
     "GetHealthUseCase",
+    "ScanMarketUseCase",
 ]
