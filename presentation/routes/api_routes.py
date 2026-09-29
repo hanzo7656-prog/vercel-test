@@ -2348,58 +2348,6 @@ def model_status():
         logger.error(f"Model status error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@api_bp.route('/model/train', methods=['POST'])
-@require_auth('admin')
-def model_train():
-    """
-    آموزش مدل جدید (با Profile support)
-    
-    Body:
-        {
-            "period": "1m",
-            "coins": ["bitcoin", "ethereum"],
-            "profile_name": "accurate",       // ← جدید
-            "profile": {...},                 // ← جدید
-            "strategy": "full",               // ← جدید
-            "save": true                      // ← جدید
-        }
-    """
-    try:
-        data = request.json or {}
-        
-        # اعتبارسنجی با DTO
-        from application.dto import TrainRequestDTO
-        
-        dto = TrainRequestDTO.from_dict(data)
-        valid, errors = dto.validate()
-        
-        if not valid:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid request',
-                'details': errors,
-            }), 400
-        
-        # اجرا
-        container = current_app.container
-        trainer = container.get('trainer')
-        
-        result = trainer.train_model(
-            period=dto.period,
-            coins=dto.coins,
-            profile_name=dto.profile_name,
-            profile=dto.profile,
-            strategy=dto.strategy,
-            save=dto.save,
-        )
-        
-        return jsonify(result), 200 if result.get('success') else 400
-        
-    except Exception as e:
-        logger.error(f"Model train error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @api_bp.route('/model/history', methods=['GET'])
 @require_auth()
 def model_history():
@@ -2709,48 +2657,6 @@ def model_performance():
         logger.error(f"Model performance error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@api_bp.route('/model/importance', methods=['GET'])
-@require_auth()
-def model_feature_importance():
-    """
-    دریافت اهمیت ویژگی‌های مدل XGBoost
-    """
-    try:
-        container = current_app.container
-        model_manager = container.get('model_manager')
-        
-        if not model_manager.current_model:
-            return jsonify({'success': False, 'error': 'No model loaded'}), 400
-        
-        # استخراج اهمیت ویژگی‌ها از XGBoost
-        importance = model_manager.current_model.get_score(importance_type='weight')
-        
-        if not importance:
-            return jsonify({'success': False, 'error': 'No feature importance available'}), 404
-        
-        # مرتب‌سازی نزولی
-        sorted_importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
-        
-        # نرمال‌سازی
-        total = sum(v for _, v in sorted_importance) or 1
-        
-        return jsonify({
-            'success': True,
-            'data': [
-                {
-                    'feature': k,
-                    'importance': v,
-                    'percentage': round((v / total) * 100, 2)
-                }
-                for k, v in sorted_importance
-            ],
-            'total_features': len(sorted_importance),
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Feature importance error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500   
-
 # ============================================================
 # TRAINING PROFILES
 # ============================================================
@@ -2803,18 +2709,6 @@ def get_learning_strategies():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-@api_bp.route('/model/profiles/hyperparameter-limits', methods=['GET'])
-@require_auth()
-def get_hyperparameter_limits():
-    """دریافت محدودیت‌های پارامترها (برای UI)"""
-    try:
-        container = current_app.container
-        mm = container.get('model_manager')
-        limits = mm.get_hyperparameter_limits()
-        return jsonify({'success': True, 'data': limits})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @api_bp.route('/model/profiles/current', methods=['GET'])
@@ -2919,135 +2813,6 @@ def delete_saved_profile(name):
 
 
 # ============================================================
-# TRAINING با Profile
-# ============================================================
-
-@api_bp.route('/model/train-with-profile', methods=['POST'])
-@require_auth('admin')
-def train_with_profile():
-    """
-    آموزش با پروفایل
-    
-    Body:
-        {
-            "period": "1m",
-            "coins": ["bitcoin", "ethereum"],
-            "profile": { ... }        // اگه نباشه، از پروفایل فعال استفاده می‌شه
-            OR
-            "profile_name": "fast"    // نام پروفایل ذخیره‌شده یا preset
-        }
-    """
-    try:
-        data = request.json or {}
-        period = data.get('period', '1m')
-        coins = data.get('coins')
-        profile = data.get('profile')
-        profile_name = data.get('profile_name')
-        
-        container = current_app.container
-        mm = container.get('model_manager')
-        
-        # اگه نام پروفایل داده شده
-        if profile_name and not profile:
-            load_result = mm.load_profile(profile_name)
-            if not load_result.get('success'):
-                return jsonify({
-                    'success': False,
-                    'error': f'Profile "{profile_name}" not found',
-                }), 404
-            profile = load_result['profile']
-        
-        # آموزش
-        result = mm.train(
-            period=period,
-            coins=coins,
-            profile=profile,
-            save=True,
-        )
-        
-        return jsonify(result), 200 if result.get('success') else 400
-        
-    except Exception as e:
-        logger.error(f"Train with profile error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@api_bp.route('/model/analyze-training', methods=['POST'])
-@require_auth()
-def analyze_training_endpoint():
-    """
-    تحلیل آموزش بدون اجرا (تخمین زمان، حجم، فضا)
-    
-    Body:
-        {
-            "profile": { ... },           // پروفایل آموزش
-            "coins_count": 5,             // تعداد ارزها
-            "period": "1m"                // بازه داده
-        }
-        OR
-        {
-            "profile_name": "accurate",   // نام پروفایل ذخیره‌شده
-            "coins_count": 5,
-            "period": "1m"
-        }
-    
-    خروجی:
-        {
-            "success": true,
-            "data": {
-                "valid": true,
-                "estimated_time_seconds": 45.5,
-                "estimated_time_formatted": "45.5 ثانیه",
-                "estimated_model_size_mb": 3.2,
-                "available_mb": 350.5,
-                "can_proceed": true,
-                "strategy": "full",
-                "hyperparameters": {...},
-                "warning": null
-            }
-        }
-    """
-    try:
-        data = request.json or {}
-        period = data.get('period', '1m')
-        coins_count = data.get('coins_count', 2)
-        profile = data.get('profile')
-        profile_name = data.get('profile_name')
-        
-        container = current_app.container
-        mm = container.get('model_manager')
-        
-        # اگه نام پروفایل داده شده
-        if profile_name and not profile:
-            load_result = mm.load_profile(profile_name)
-            if not load_result.get('success'):
-                return jsonify({
-                    'success': False,
-                    'error': f'Profile "{profile_name}" not found',
-                }), 404
-            profile = load_result['profile']
-        
-        # اگه هیچ پروفایلی ندادی، از فعال استفاده کن
-        if not profile:
-            profile = mm.get_current_profile()
-        
-        # تحلیل
-        result = mm.analyze_training(
-            profile=profile,
-            coins_count=coins_count,
-            period=period,
-        )
-        
-        return jsonify({
-            'success': True,
-            'data': result,
-            'timestamp': datetime.now().isoformat(),
-        }), 200 if result.get('valid') else 400
-        
-    except Exception as e:
-        logger.error(f"Analyze training error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-# ============================================================
 # ۱۰. زمان‌بندی (SCHEDULE) برای auto_trainer.py / manual_trainer.py
 # ============================================================
 @api_bp.route('/schedule/status', methods=['GET'])
@@ -3140,66 +2905,6 @@ def schedule_start():
         
     except Exception as e:
         logger.error(f"Schedule start error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@api_bp.route('/model/train-batch', methods=['POST'])
-@require_auth('admin')
-def train_batch_endpoint():
-    """
-    آموزش با چند پروفایل (A/B Testing)
-    
-    Body:
-        {
-            "profiles": ["fast", "balanced", "accurate"],
-            "period": "1m",
-            "coins": ["bitcoin", "ethereum"]
-        }
-    
-    خروجی:
-        {
-            "success": true,
-            "data": {
-                "best_profile": "accurate",
-                "best_accuracy": 0.78,
-                "results": {
-                    "fast": {...},
-                    "balanced": {...},
-                    "accurate": {...}
-                },
-                "final_model": {...},
-                "summary": {...}
-            }
-        }
-    """
-    try:
-        data = request.json or {}
-        profiles = data.get('profiles', [])
-        period = data.get('period', '1m')
-        coins = data.get('coins')
-        
-        if not profiles or len(profiles) < 2:
-            return jsonify({
-                'success': False,
-                'error': 'At least 2 profiles required for A/B testing',
-            }), 400
-        
-        container = current_app.container
-        trainer = container.get('trainer')
-        
-        result = trainer.train_batch(
-            profiles=profiles,
-            period=period,
-            coins=coins,
-        )
-        
-        return jsonify({
-            'success': result.get('success', False),
-            'data': result,
-            'timestamp': datetime.now().isoformat(),
-        }), 200 if result.get('success') else 400
-        
-    except Exception as e:
-        logger.error(f"Train batch error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
