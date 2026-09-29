@@ -1,32 +1,17 @@
 # models/trainer/__init__.py
 # ============================================================
-# پکیج آموزش‌دهنده‌ها - نسخه ۲.۰
+# پکیج آموزش‌دهنده‌ها - نسخه ۳.۰
 # ============================================================
 
-from typing import TYPE_CHECKING
-
-# Lazy import برای جلوگیری از circular dependency
-# (چون AutoTrainer به ModelManager وابسته‌ست)
-
-
 def __getattr__(name):
-    """
-    Lazy import
-    
-    این تابع باعث می‌شه import ها فقط وقتی صدا زده بشن، اجرا بشن.
-    """
+    """Lazy import"""
     if name == "AutoTrainer":
         from models.trainer.auto_trainer import AutoTrainer
         return AutoTrainer
     
-    if name == "ManualTrainer":
-        from models.trainer.manual_trainer import main as manual_main
-        # ManualTrainer یه CLI هست، پس فقط main رو export می‌کنیم
-        return manual_main
-    
-    if name == "manual_trainer":
-        from models.trainer import manual_trainer as module
-        return module
+    if name == "CALIBRATION_PROFILES":
+        from models.trainer.auto_trainer import CALIBRATION_PROFILES
+        return CALIBRATION_PROFILES
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
@@ -35,6 +20,5 @@ def __getattr__(name):
 
 __all__ = [
     "AutoTrainer",
-    "ManualTrainer",
-    "manual_trainer",
+    "CALIBRATION_PROFILES",
 ]
