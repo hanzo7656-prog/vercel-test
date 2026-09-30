@@ -35,7 +35,6 @@ from pathlib import Path
 from application.dto.prediction_dto import PredictionRequestDTO
 from application.services.prediction_service import PredictionService
 from application.services.monitoring_service import MonitoringService
-from application.use_cases.train_model import TrainModelUseCase
 from infrastructure.auth.auth_manager import require_auth
 from infrastructure.external.alerter import alerter
 from infrastructure.database import (
