@@ -1,6 +1,6 @@
 // ============================================================
-// api.js - Unified API Client v11.0
-// کاملاً هماهنگ با اندپوینت‌های جدید backend
+// api.js - Unified API Client v12.0
+// هماهنگ با api_routes.py + model_routes.py
 // ============================================================
 
 class ApiClient {
@@ -77,7 +77,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۳. Quota Management (🆕)
+    // ۳. Quota Management
     // ============================================================
 
     getAllQuotas() {
@@ -123,7 +123,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۴. دیتابیس - PostgreSQL (🆕 Multi-DB)
+    // ۴. دیتابیس - PostgreSQL
     // ============================================================
 
     getPostgreSQLTables(dbName = 'primary') {
@@ -209,7 +209,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۶. دیتابیس - Archive (🆕 جایگزین SQLite)
+    // ۶. دیتابیس - Archive
     // ============================================================
 
     getArchiveTables() {
@@ -247,7 +247,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۷. دیتابیس - Health & Status (🆕)
+    // ۷. دیتابیس - Health & Status
     // ============================================================
 
     getHealthSummary() {
@@ -284,7 +284,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۸. دیتابیس - Router & Registry (🆕)
+    // ۸. دیتابیس - Router & Registry
     // ============================================================
 
     getRouterStats() {
@@ -300,7 +300,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۹. دیتابیس - Maintenance (🆕)
+    // ۹. دیتابیس - Maintenance
     // ============================================================
 
     vacuumDatabase(dbName, full = false, analyze = true) {
@@ -378,191 +378,316 @@ class ApiClient {
     }
 
     getDatabaseHealth() {
-        return this.request('/api/db/health/summary');  // جایگزین
+        return this.request('/api/db/health/summary');
     }
 
     // ============================================================
-    // ۱۱. مدل (MODEL)
+    // ۱۱. دیتابیس - Schema & Migration (🆕 v12.0)
     // ============================================================
+
+    getSchemaStatus() {
+        return this.request('/api/db/schema-status');
+    }
+
+    migrateDatabases() {
+        return this.request('/api/db/migrate', {
+            method: 'POST'
+        });
+    }
+
+    migrateExisting() {
+        return this.request('/api/db/migrate-existing', {
+            method: 'POST'
+        });
+    }
+
+    initAllDatabases() {
+        return this.request('/api/db/init-all', {
+            method: 'POST'
+        });
+    }
+
+    // ============================================================
+    // ۱۲. OHLCV Repository (🆕 v12.0)
+    // ============================================================
+
+    getOHLCVStats() {
+        return this.request('/api/db/ohlcv/stats');
+    }
+
+    cleanupOHLCV(data) {
+        return this.request('/api/db/ohlcv/cleanup', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ============================================================
+    // ۱۳. مدل - Status & Info (MODEL)
+    // ============================================================
+
+    getModelHome() {
+        return this.request('/api/model/');
+    }
 
     getModelStatus() {
         return this.request('/api/model/status');
+    }
+
+    getModelStats() {
+        return this.request('/api/model/stats');
     }
 
     getTrainerStats() {
         return this.request('/api/model/trainer-stats');
     }
 
-    getModelHistory(limit = 20) {
-        return this.request(`/api/model/history?limit=${limit}`);
+    // ============================================================
+    // ۱۴. مدل - Rules (🆕 v12.0)
+    // ============================================================
+
+    getModelRules() {
+        return this.request('/api/model/rules');
     }
 
-    getModelFeatures() {
-        return this.request('/api/model/features');
-    }
-
-    getModelData() {
-        return this.request('/api/model/data');
-    }
-
-    getModelImportance() {
-        return this.request('/api/model/importance');
-    }
-
-    getModelPerformance() {
-        return this.request('/api/model/performance');
-    }
-
-    getModelAnalyticsStats(days = 30) {
-        return this.request(`/api/model/analytics-stats?days=${days}`);
-    }
-
-    trainModel(options = {}) {
-        const { period = '1m', coins = ['bitcoin', 'ethereum'], incremental = false, profile_name = null, strategy = null, save = true } = options;
-        return this.request('/api/model/train', {
-            method: 'POST',
-            body: JSON.stringify({ period, coins, incremental, profile_name, strategy, save })
-        });
-    }
-
-    trainBatch(options = {}) {
-        const { profiles, period = '1m', coins = null } = options;
-        return this.request('/api/model/train-batch', {
-            method: 'POST',
-            body: JSON.stringify({ profiles, period, coins })
-        });
-    }
-
-    analyzeTraining(data) {
-        return this.request('/api/model/analyze-training', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    exportModel(version = null) {
-        const url = version ? `/api/model/export?version=${version}` : '/api/model/export';
-        window.open(url, '_blank');
-    }
-
-    importModel(file, accuracy = 0.5, period = '1m') {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('accuracy', accuracy);
-        formData.append('period', period);
-
-        return fetch('/api/model/import', {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-        }).then(res => res.json());
-    }
-
-    activateModel(version) {
-        return this.request('/api/model/activate', {
-            method: 'POST',
-            body: JSON.stringify({ version })
-        });
-    }
-
-    deleteModel(version) {
-        return this.request('/api/model/delete', {
-            method: 'DELETE',
-            body: JSON.stringify({ version })
-        });
-    }
-
-    getLatestReport() {
-        return this.request('/api/model/latest-report');
-    }
-
-    getReportByVersion(version) {
-        return this.request(`/api/model/report/${version}`);
+    getModelRule(name) {
+        return this.request(`/api/model/rules/${encodeURIComponent(name)}`);
     }
 
     // ============================================================
-    // ۱۲. Model Profiles (🆕)
+    // ۱۵. مدل - Config (🆕 v12.0)
     // ============================================================
 
-    getTrainingPresets() {
-        return this.request('/api/model/profiles/presets');
+    getModelConfig() {
+        return this.request('/api/model/config');
     }
 
-    getTrainingPreset(presetId) {
-        return this.request(`/api/model/profiles/presets/${presetId}`);
-    }
-
-    getLearningStrategies() {
-        return this.request('/api/model/profiles/strategies');
-    }
-
-    getHyperparameterLimits() {
-        return this.request('/api/model/profiles/hyperparameter-limits');
-    }
-
-    getCurrentProfile() {
-        return this.request('/api/model/profiles/current');
-    }
-
-    setCurrentProfile(data) {
-        return this.request('/api/model/profiles/current', {
+    updateModelConfig(data) {
+        return this.request('/api/model/config', {
             method: 'POST',
             body: JSON.stringify(data)
         });
     }
 
-    validateProfile(data) {
-        return this.request('/api/model/profiles/validate', {
-            method: 'POST',
+    updateRuntimeConfig(data) {
+        return this.request('/api/model/config/runtime', {
+            method: 'PATCH',
             body: JSON.stringify(data)
         });
     }
 
-    listSavedProfiles() {
-        return this.request('/api/model/profiles/saved');
-    }
-
-    saveProfile(data) {
-        return this.request('/api/model/profiles/saved', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    loadProfile(name) {
-        return this.request(`/api/model/profiles/saved/${name}`);
-    }
-
-    deleteProfile(name) {
-        return this.request(`/api/model/profiles/saved/${name}`, {
+    resetRuntimeConfig() {
+        return this.request('/api/model/config/runtime', {
             method: 'DELETE'
         });
     }
 
+    validateConfig(data) {
+        return this.request('/api/model/config/validate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
     // ============================================================
-    // ۱۳. زمان‌بندی (SCHEDULE)
+    // ۱۶. مدل - Calibration (🆕 v12.0)
+    // ============================================================
+
+    getCalibrationProfiles() {
+        return this.request('/api/model/calibrate/profiles');
+    }
+
+    calibrateModel(data = {}) {
+        return this.request('/api/model/calibrate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    forceCalibrate(data = {}) {
+        return this.request('/api/model/calibrate/force', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    getCalibrationHistory(options = {}) {
+        const { limit = 20, period = '' } = options;
+        const params = new URLSearchParams({ limit });
+        if (period) params.append('period', period);
+        return this.request(`/api/model/calibrate/history?${params}`);
+    }
+
+    // ============================================================
+    // ۱۷. مدل - Versions (🆕 v12.0)
+    // ============================================================
+
+    getVersions(options = {}) {
+        const { limit = 50, model_type = 'rule_config' } = options;
+        const params = new URLSearchParams({ limit, model_type });
+        return this.request(`/api/model/versions?${params}`);
+    }
+
+    getVersionDetail(version) {
+        return this.request(`/api/model/versions/${encodeURIComponent(version)}`);
+    }
+
+    activateVersion(version) {
+        return this.request(`/api/model/versions/${encodeURIComponent(version)}/activate`, {
+            method: 'POST'
+        });
+    }
+
+    deleteVersion(version) {
+        return this.request(`/api/model/versions/${encodeURIComponent(version)}`, {
+            method: 'DELETE'
+        });
+    }
+
+    exportVersion(version, download = false) {
+        const params = download ? '?download=true' : '';
+        if (download) {
+            window.open(`/api/model/export/${encodeURIComponent(version)}${params}`, '_blank');
+            return Promise.resolve({ success: true, message: 'Download started' });
+        }
+        return this.request(`/api/model/export/${encodeURIComponent(version)}${params}`);
+    }
+
+    // ============================================================
+    // ۱۸. مدل - Schedule (🆕 v12.0)
     // ============================================================
 
     getScheduleStatus() {
-        return this.request('/api/schedule/status');
+        return this.request('/api/model/schedule/status');
     }
 
     startSchedule(options = {}) {
-        const { interval = 6, period = '1m', coins = ['bitcoin', 'ethereum'], profile_name = 'balanced', incremental = false } = options;
-        return this.request('/api/schedule/start', {
+        const {
+            interval_hours = 6,
+            period = '1m',
+            profile_name = 'balanced',
+            coins = null
+        } = options;
+        return this.request('/api/model/schedule/start', {
             method: 'POST',
-            body: JSON.stringify({ interval, period, coins, profile_name, incremental })
+            body: JSON.stringify({ interval_hours, period, profile_name, coins })
         });
     }
 
     stopSchedule() {
-        return this.request('/api/schedule/stop', {
+        return this.request('/api/model/schedule/stop', {
             method: 'POST'
         });
     }
 
     // ============================================================
-    // ۱۴. پیش‌بینی (PREDICTIONS)
+    // ۱۹. مدل - Screener (🆕 v12.0)
+    // ============================================================
+
+    screenerScan(data = {}) {
+        return this.request('/api/model/screener/scan', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    screenerLatest() {
+        return this.request('/api/model/screener/scan/latest');
+    }
+
+    screenerResult(scanId) {
+        return this.request(`/api/model/screener/scan/${encodeURIComponent(scanId)}`);
+    }
+
+    screenerSingle(data) {
+        return this.request('/api/model/screener/scan/single', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    screenerHistory(options = {}) {
+        const { limit = 20 } = options;
+        return this.request(`/api/model/screener/history?limit=${limit}`);
+    }
+
+    screenerHistoryStats() {
+        return this.request('/api/model/screener/history/stats');
+    }
+
+    screenerConfig() {
+        return this.request('/api/model/screener/config');
+    }
+
+    updateScreenerConfig(data) {
+        return this.request('/api/model/screener/config', {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        });
+    }
+
+    validateScreenerConfig(data) {
+        return this.request('/api/model/screener/config/validate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ============================================================
+    // ۲۰. مدل - State Machine (🆕 v12.0)
+    // ============================================================
+
+    stateHome() {
+        return this.request('/api/model/state/');
+    }
+
+    stateSummary(symbols = null) {
+        const params = symbols ? `?symbols=${symbols.join(',')}` : '';
+        return this.request(`/api/model/state/summary${params}`);
+    }
+
+    stateTransitions(options = {}) {
+        const { limit = 50, from_state = '', to_state = '' } = options;
+        const params = new URLSearchParams({ limit });
+        if (from_state) params.append('from_state', from_state);
+        if (to_state) params.append('to_state', to_state);
+        return this.request(`/api/model/state/transitions?${params}`);
+    }
+
+    stateSnapshots(limit = 100) {
+        return this.request(`/api/model/state/snapshots?limit=${limit}`);
+    }
+
+    stateSymbol(symbol) {
+        return this.request(`/api/model/state/${encodeURIComponent(symbol)}`);
+    }
+
+    stateSymbolTransitions(symbol, limit = 50) {
+        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/transitions?limit=${limit}`);
+    }
+
+    stateSymbolReset(symbol) {
+        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/reset`, {
+            method: 'POST'
+        });
+    }
+
+    stateSymbolActivate(symbol, data = {}) {
+        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/activate`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    stateSymbolCooling(symbol, data = {}) {
+        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/cooling`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    // ============================================================
+    // ۲۱. پیش‌بینی (PREDICTIONS)
     // ============================================================
 
     predictSingle(coin, period = '24h') {
@@ -576,10 +701,6 @@ class ApiClient {
         });
     }
 
-    predictExplain(coin) {
-        return this.request(`/api/predict/explain?coin=${encodeURIComponent(coin)}`);
-    }
-
     getPredictionHistory(limit = 50, coin = null) {
         const params = new URLSearchParams({ limit });
         if (coin) params.append('coin', coin);
@@ -591,7 +712,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۵. کوین‌استتس (COINSTATS)
+    // ۲۲. کوین‌استتس (COINSTATS)
     // ============================================================
 
     getCoinsList(options = {}) {
@@ -626,7 +747,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۶. قیمت‌های لحظه‌ای (CRYPTO)
+    // ۲۳. قیمت‌های لحظه‌ای (CRYPTO)
     // ============================================================
 
     getRealtimePrices(symbols = null) {
@@ -650,7 +771,6 @@ class ApiClient {
             method: 'POST'
         });
     }
-
 
     // ============================================================
     // ۲۴. Binance WebSocket Real-time
@@ -686,8 +806,9 @@ class ApiClient {
             body: JSON.stringify({ symbol })
         });
     }
+
     // ============================================================
-    // ۱۷. هشدارها (ALERTS)
+    // ۲۵. هشدارها (ALERTS)
     // ============================================================
 
     getAlerts(options = {}) {
@@ -713,7 +834,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۸. کاربر (USER)
+    // ۲۶. کاربر (USER)
     // ============================================================
 
     getUserInfo() {
@@ -725,7 +846,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۹. احراز هویت (AUTH)
+    // ۲۷. احراز هویت (AUTH)
     // ============================================================
 
     login(username, password) {
@@ -740,7 +861,72 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲۰. دیباگ (DEBUG)
+    // ۲۸. تنظیمات (SETTINGS)
+    // ============================================================
+
+    getSettings() {
+        return this.request('/api/settings');
+    }
+
+    getSettingsCategories() {
+        return this.request('/api/settings/categories');
+    }
+
+    getSettingsCategory(category) {
+        return this.request(`/api/settings/${category}`);
+    }
+
+    saveSettingsCategory(category, data) {
+        return this.request(`/api/settings/${category}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    resetSettingsCategory(category) {
+        return this.request(`/api/settings/${category}`, {
+            method: 'DELETE'
+        });
+    }
+
+    resetAllSettings() {
+        return this.request('/api/settings/reset', {
+            method: 'POST'
+        });
+    }
+
+    changePassword(currentPassword, newPassword) {
+        return this.request('/api/user/change-password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+    }
+
+    // ============================================================
+    // ۲۹. Self-Healing
+    // ============================================================
+
+    getHealingStatus() {
+        return this.request('/api/healing/status');
+    }
+
+    triggerHealing() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST'
+        });
+    }
+
+    resetHealing() {
+        return this.request('/api/healing/reset', {
+            method: 'POST'
+        });
+    }
+
+    // ============================================================
+    // ۳۰. دیباگ (DEBUG)
     // ============================================================
 
     getDebugStatus() {
@@ -806,76 +992,6 @@ class ApiClient {
         });
     }
 
-    // ============================================================
-    // ۲۱. Self-Healing
-    // ============================================================
-
-    getHealingStatus() {
-        return this.request('/api/healing/status');
-    }
-
-    triggerHealing() {
-        return this.request('/api/healing/trigger', {
-            method: 'POST'
-        });
-    }
-
-    resetHealing() {
-        return this.request('/api/healing/reset', {
-            method: 'POST'
-        });
-    }
-
-    // در ApiClient class اضافه کن:
-
-// ============================================================
-// ۲۳. تنظیمات (SETTINGS)
-// ============================================================
-
-    getSettings() {
-        return this.request('/api/settings');
-    }
-
-    getSettingsCategories() {
-        return this.request('/api/settings/categories');
-    }
-
-    getSettingsCategory(category) {
-        return this.request(`/api/settings/${category}`);
-    }
-
-    saveSettingsCategory(category, data) {
-        return this.request(`/api/settings/${category}`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    resetSettingsCategory(category) {
-        return this.request(`/api/settings/${category}`, {
-            method: 'DELETE'
-        });
-    }
-
-    resetAllSettings() {
-        return this.request('/api/settings/reset', {
-            method: 'POST'
-        });
-    }
-
-    changePassword(currentPassword, newPassword) {
-        return this.request('/api/user/change-password', {
-            method: 'POST',
-            body: JSON.stringify({
-                current_password: currentPassword,
-                new_password: newPassword
-            })
-        });
-    }
-    // ============================================================
-    // ۲۲. Debug - جدید (🆕)
-    // ============================================================
-
     getDebugEnv() {
         return this.request('/api/debug/env');
     }
@@ -893,4 +1009,4 @@ class ApiClient {
 const api = new ApiClient();
 window.api = api;
 
-console.log('✅ API Client v11.0 loaded');
+console.log('✅ API Client v12.0 loaded');
