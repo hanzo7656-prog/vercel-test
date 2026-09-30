@@ -1,22 +1,12 @@
 # application/services/self_healer.py
 # ============================================================
-# سیستم خودترمیمی - نسخه ۶.۰
-# Recalibrate جای Retrain + Quota Healing
-# ============================================================
-# 
-# تغییرات نسخه ۶.۰:
-#   - _retrain_model → _recalibrate_weights
-#   - _should_retrain → _should_recalibrate
-#   - حذف منطق XGBoost
-#   - اتکا به AutoTrainer.calibrate()
-#   - منطق RuleEngine-specific در detect مشکل
+# SelfHealer - نسخه ۷.۰
+# OHLCV-aware + لاگ کامل + Recalibrate
 # ============================================================
 
-import os
-import time
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from domain.interfaces.api_client import APIClient
 from models.manager.model_manager import ModelManager
@@ -26,25 +16,35 @@ from infrastructure.database import get_cache, get_primary
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
-# SelfHealer v6.0
-# ============================================================
-
 class SelfHealer:
     """
-    سیستم خودترمیمی
+    سیستم خودترمیمی - نسخه ۷.۰
     
-    مسئولیت‌ها:
-        ۱. تشخیص مشکل (مدل، cache، DB، API)
-        ۲. اقدام ترمیمی مناسب
-        ۳. کالیبراسیون مجدد وزن‌ها (اگه لازم)
-        ۴. پاک‌سازی quota
-    
-    تغییرات نسبت به نسخه ۵.۰:
-        - retrain → recalibrate
-        - بدون XGBoost
-        - منطق RuleEngine
+    تغییرات نسبت به ۶.۰:
+        - لاگ کامل هر اقدام
+        - Rate limit برای recalibrate (جلوگیری از loop)
+        - تشخیص دقیق‌تر مشکل OHLCV
+        - Disable موقت در صورت خطای مکرر
     """
+    
+    # ============================================================
+    # Constants
+    # ============================================================
+    
+    # حداکثر تلاش
+    MAX_ATTEMPTS: int = 3
+    
+    # Cooldown بین تلاش‌ها (دقیقه)
+    COOLDOWN_MINUTES: int = 30
+    
+    # Cooldown برای recalibrate (سخت‌گیرانه‌تر — ۲ ساعت)
+    RECALIBRATE_COOLDOWN_MINUTES: int = 120
+    
+    # حداقل دقت قابل قبول
+    MIN_ACCEPTABLE_ACCURACY: float = 0.45
+    
+    # اگه accuracy = 0 → احتمالاً engine load نشده
+    ZERO_ACCURACY_GRACE_PERIOD: int = 60  # ثانیه
     
     def __init__(
         self,
@@ -58,17 +58,23 @@ class SelfHealer:
         
         # آمار healing
         self.healing_attempts: Dict[str, Dict[str, Union[int, str]]] = {}
-        self.max_attempts: int = 3
-        self.cooldown_minutes: int = 30
+        self.max_attempts: int = self.MAX_ATTEMPTS
+        self.cooldown_minutes: int = self.COOLDOWN_MINUTES
         
-        logger.info("✅ SelfHealer v6.0 initialized")
+        # Track startup time
+        self._startup_time: datetime = datetime.now()
+        
+        # قفل ساده برای جلوگیری از loop
+        self._is_healing: bool = False
+        
+        logger.info("✅ SelfHealer v7.0 initialized")
     
     # ============================================================
-    # Metrics (Lazy)
+    # Metrics
     # ============================================================
     
     def _get_metrics_from_scheduler(self) -> Dict[str, Any]:
-        """دریافت متریک‌ها (lazy)"""
+        """دریافت متریک‌ها"""
         try:
             from core.metrics import metrics_scheduler
             return metrics_scheduler.get_alert_metrics()
@@ -76,7 +82,7 @@ class SelfHealer:
             logger.debug("⚠️ Metrics Scheduler not available")
             return self._get_fallback_metrics()
         except Exception as e:
-            logger.error(f"Metrics error: {e}")
+            logger.error(f"❌ Metrics error: {e}")
             return self._get_fallback_metrics()
     
     def _get_fallback_metrics(self) -> Dict[str, Any]:
@@ -102,58 +108,69 @@ class SelfHealer:
         """
         بررسی و خودترمیمی
         
-        Args:
-            metrics: متریک‌ها (اگه None، از Scheduler)
-        
-        Returns:
-            اقدامات انجام شده
+        لاگ کامل + جلوگیری از loop
         """
-        if metrics is None:
-            metrics = self._get_metrics_from_scheduler()
+        # جلوگیری از اجرای همزمان
+        if self._is_healing:
+            logger.debug("⏭️ Self-healing already in progress, skipping")
+            return {"skipped": True, "reason": "already_healing"}
         
-        actions: Dict[str, Any] = {
-            "engine_reloaded": False,
-            "weights_recalibrated": False,
-            "cache_cleared": False,
-            "modules_restarted": [],
-            "quota_cleaned": False,
-            "config_reset": False,
-        }
+        self._is_healing = True
         
-        # ۱. Engine — اگه بارگذاری نشده یا score افتاده
-        if self._should_reload_engine(metrics):
-            actions["engine_reloaded"] = self._reload_engine()
+        try:
+            if metrics is None:
+                metrics = self._get_metrics_from_scheduler()
+            
+            logger.debug("🔍 Self-healing check started")
+            
+            actions: Dict[str, Any] = {
+                "engine_reloaded": False,
+                "weights_recalibrated": False,
+                "cache_cleared": False,
+                "modules_restarted": [],
+                "quota_cleaned": False,
+                "config_reset": False,
+            }
+            
+            # ۱. Engine
+            if self._should_reload_engine(metrics):
+                actions["engine_reloaded"] = self._reload_engine()
+            
+            # ۲. Recalibrate
+            if self._should_recalibrate(metrics):
+                actions["weights_recalibrated"] = self._recalibrate_weights()
+            
+            # ۳. Cache
+            if self._should_clear_cache(metrics):
+                actions["cache_cleared"] = self._clear_cache()
+            
+            # ۴. Modules
+            restarted = self._restart_modules(metrics)
+            if restarted:
+                actions["modules_restarted"] = restarted
+            
+            # ۵. Quota
+            if self._should_clean_quota(metrics):
+                actions["quota_cleaned"] = self._clean_quota()
+            
+            # ۶. Config
+            if self._should_reset_config(metrics):
+                actions["config_reset"] = self._reset_runtime_config()
+            
+            # لاگ
+            has_action = any(self._has_action(v) for v in actions.values())
+            if has_action:
+                logger.warning(f"🔄 Self-healing actions: {actions}")
+            else:
+                logger.debug("✅ Self-healing: no action needed")
+            
+            return actions
         
-        # ۲. کالیبراسیون مجدد (اگه score افتاده)
-        if self._should_recalibrate(metrics):
-            actions["weights_recalibrated"] = self._recalibrate_weights()
-        
-        # ۳. Cache
-        if self._should_clear_cache(metrics):
-            actions["cache_cleared"] = self._clear_cache()
-        
-        # ۴. ماژول‌ها (API، DB)
-        restarted = self._restart_modules(metrics)
-        if restarted:
-            actions["modules_restarted"] = restarted
-        
-        # ۵. Quota
-        if self._should_clean_quota(metrics):
-            actions["quota_cleaned"] = self._clean_quota()
-        
-        # ۶. Config (اگه runtime_config مشکلی ایجاد کرده)
-        if self._should_reset_config(metrics):
-            actions["config_reset"] = self._reset_runtime_config()
-        
-        # لاگ
-        if any(self._has_action(v) for v in actions.values()):
-            logger.info(f"🔄 Self-healing actions: {actions}")
-        
-        return actions
+        finally:
+            self._is_healing = False
     
     @staticmethod
     def _has_action(value: Any) -> bool:
-        """آیا action انجام شده؟"""
         if isinstance(value, bool):
             return value
         if isinstance(value, list):
@@ -166,17 +183,10 @@ class SelfHealer:
     
     def _should_reload_engine(self, metrics: Dict[str, Any]) -> bool:
         """آیا engine باید reload بشه؟"""
-        # اگه engine بارگذاری نشده ولی version فعال داریم
         engine_loaded = self.model_manager.engine is not None
-        has_version = self.model_manager.current_version is not None
         
-        if not engine_loaded and has_version:
-            return self._check_attempts("engine_reload")
-        
-        # اگه model_loaded از metrics False ولی ما engine داریم
-        metrics_loaded = metrics.get("model_loaded", True)
-        if not metrics_loaded and engine_loaded:
-            # تناقض — احتمالاً engine مرده
+        # اگه engine نیست ولی version داریم → reload
+        if not engine_loaded and self.model_manager.current_version:
             return self._check_attempts("engine_reload")
         
         return False
@@ -184,75 +194,80 @@ class SelfHealer:
     def _reload_engine(self) -> bool:
         """بارگذاری مجدد RuleEngine"""
         try:
-            logger.warning("🔄 Reloading RuleEngine...")
+            logger.warning("🔄 Self-heal: Reloading RuleEngine...")
             
             self.model_manager._initialize_engine()
             
             if self.model_manager.engine is not None:
-                logger.info("✅ RuleEngine reloaded")
+                rule_count = len(self.model_manager.engine.rules)
+                logger.info(f"✅ Self-heal: RuleEngine reloaded ({rule_count} rules)")
                 self._mark_attempt("engine_reload")
                 return True
             
-            logger.error("❌ RuleEngine reload failed")
+            logger.error("❌ Self-heal: RuleEngine reload failed")
             return False
         
         except Exception as e:
-            logger.error(f"❌ Engine reload error: {e}", exc_info=True)
+            logger.error(f"❌ Self-heal engine reload error: {e}", exc_info=True)
             return False
     
     # ============================================================
-    # Recalibrate (جای Retrain)
+    # Recalibrate
     # ============================================================
     
     def _should_recalibrate(self, metrics: Dict[str, Any]) -> bool:
         """
         آیا کالیبراسیون مجدد لازمه؟
         
-        معیارها:
-            - score < threshold
-            - یا engine بارگذاری نشده
+        فقط اگه:
+            - engine بارگذاری شده
+            - از startup حداقل ۵ دقیقه گذشته
+            - accuracy صفر نیست یا اگه صفر شد ولی OHLCV کار می‌کنه
+            - cooldown ۲ ساعته گذشته
         """
-        engine_loaded = self.model_manager.engine is not None
-        
-        # اگه engine نیست، نمی‌تونیم calibrate کنیم
-        if not engine_loaded:
+        # ۱. engine باید باشه
+        if self.model_manager.engine is None:
             return False
         
-        # چک improvement افتضاح
+        # ۲. اگه از startup کمتر از ۵ دقیقه گذشته، صبر کن
+        time_since_startup = (datetime.now() - self._startup_time).total_seconds()
+        if time_since_startup < 300:  # ۵ دقیقه
+            logger.debug(
+                f"⏳ Recalibrate skipped (startup grace: "
+                f"{int(time_since_startup)}s < 300s)"
+            )
+            return False
+        
+        # ۳. چک accuracy
         accuracy = metrics.get("model_accuracy")
         
-        if accuracy is not None:
-            # اگه accuracy < 0.45 (خیلی افتضاح)
-            if accuracy < 0.45:
-                return self._check_attempts("recalibrate")
+        if accuracy is None:
+            return False
         
-        # چک آخرین کالیبراسیون (اگه خیلی قدیمیه)
-        try:
-            stats = self.trainer.get_stats()
-            inner = stats.get("stats", {})
-            last = inner.get("last_calibration")
+        # ۴. اگه accuracy = 0 → شاید مشکل DB یا engine
+        if accuracy == 0.0:
+            # اگه بار اوله، صبر کن
+            key = "recalibrate_zero_accuracy"
+            if not self._check_attempts(key, cooldown_minutes=60):
+                return False
             
-            if last:
-                try:
-                    last_dt = datetime.fromisoformat(last)
-                    # اگه بیش از ۷ روز گذشته
-                    if datetime.now() - last_dt > timedelta(days=7):
-                        return self._check_attempts("recalibrate")
-                except (ValueError, TypeError):
-                    pass
-        except Exception as e:
-            logger.debug(f"Could not check last calibration: {e}")
+            logger.warning(
+                "⚠️ accuracy=0 detected, might need recalibration"
+            )
         
-        return False
+        elif accuracy >= self.MIN_ACCEPTABLE_ACCURACY:
+            return False
+        
+        # ۵. چک cooldown (سخت‌گیرانه: ۲ ساعت)
+        return self._check_attempts(
+            "recalibrate",
+            cooldown_minutes=self.RECALIBRATE_COOLDOWN_MINUTES,
+        )
     
     def _recalibrate_weights(self) -> bool:
-        """
-        کالیبراسیون مجدد وزن‌ها
-        
-        با profile="fast" برای سرعت
-        """
+        """کالیبراسیون مجدد"""
         try:
-            logger.warning("🔄 Recalibrating weights (fast profile)...")
+            logger.warning("🔄 Self-heal: Starting recalibration (fast profile)...")
             
             result = self.trainer.calibrate(
                 period="1m",
@@ -261,19 +276,26 @@ class SelfHealer:
             )
             
             if result.get("success"):
+                best_score = result.get("best_score", 0)
+                improvement = result.get("improvement", 0)
+                
                 logger.info(
-                    f"✅ Weights recalibrated: "
-                    f"score={result.get('best_score', 0):.3f}, "
-                    f"improvement={result.get('improvement', 0):+.3f}"
+                    f"✅ Self-heal: Recalibration succeeded "
+                    f"(score={best_score:.4f}, improvement={improvement:+.4f})"
                 )
+                
                 self._mark_attempt("recalibrate")
                 return True
             
-            logger.error(f"❌ Recalibration failed: {result.get('error')}")
+            error = result.get("error", "unknown")
+            logger.error(f"❌ Self-heal: Recalibration failed: {error}")
+            
+            self._mark_attempt("recalibrate")
             return False
         
         except Exception as e:
-            logger.error(f"❌ Recalibrate error: {e}", exc_info=True)
+            logger.error(f"❌ Self-heal recalibrate error: {e}", exc_info=True)
+            self._mark_attempt("recalibrate")
             return False
     
     # ============================================================
@@ -292,19 +314,19 @@ class SelfHealer:
     def _clear_cache(self) -> bool:
         """پاک کردن cache"""
         try:
-            logger.warning("🧹 Clearing cache...")
+            logger.warning("🧹 Self-heal: Clearing cache...")
             
             cache = get_cache()
             if cache and cache.is_connected():
                 cache.flush()
-                logger.info("✅ Cache cleared")
+                logger.info("✅ Self-heal: Cache cleared")
                 self._mark_attempt("cache_clear")
                 return True
             
             return False
         
         except Exception as e:
-            logger.error(f"❌ Cache clear error: {e}")
+            logger.error(f"❌ Self-heal cache clear error: {e}")
             return False
     
     # ============================================================
@@ -312,13 +334,13 @@ class SelfHealer:
     # ============================================================
     
     def _restart_modules(self, metrics: Dict[str, Any]) -> List[str]:
-        """ری‌استارت ماژول‌های مشکل‌دار"""
+        """ری‌استارت ماژول‌ها"""
         restarted: List[str] = []
         
         # API
         if metrics.get("api_status") in ["error", "unhealthy"]:
             restarted.append("api_handler")
-            logger.info("🔄 Restarting API handler...")
+            logger.info("🔄 Self-heal: Restarting API handler...")
             
             if self.api_client and hasattr(self.api_client, "session"):
                 try:
@@ -326,7 +348,6 @@ class SelfHealer:
                     self.api_client.session.close()
                     self.api_client.session = requests.Session()
                     
-                    # API key از config
                     api_key = getattr(self.api_client, "api_key", None)
                     if api_key:
                         self.api_client.session.headers.update({
@@ -335,9 +356,9 @@ class SelfHealer:
                             "Accept": "application/json",
                         })
                     
-                    logger.info("✅ API session recreated")
+                    logger.info("✅ Self-heal: API session recreated")
                 except Exception as e:
-                    logger.error(f"❌ API restart error: {e}")
+                    logger.error(f"❌ Self-heal API restart error: {e}")
         
         # Databases
         databases = metrics.get("databases", {})
@@ -348,9 +369,9 @@ class SelfHealer:
                     from infrastructure.database.database_factory import db_factory
                     result = db_factory.force_reconnect(name)
                     if result.get(name, False):
-                        logger.info(f"✅ Database {name} reconnected")
+                        logger.info(f"✅ Self-heal: DB {name} reconnected")
                 except Exception as e:
-                    logger.error(f"❌ DB {name} restart error: {e}")
+                    logger.error(f"❌ Self-heal DB {name} error: {e}")
         
         return restarted
     
@@ -376,22 +397,21 @@ class SelfHealer:
     def _clean_quota(self) -> bool:
         """پاک کردن رکوردهای قدیمی"""
         try:
-            logger.warning("🧹 Cleaning old records for quota...")
+            logger.warning("🧹 Self-heal: Cleaning old records...")
             
             from infrastructure.repositories import repos
             
-            # حذف پیش‌بینی‌های قدیمی
             deleted = repos.prediction.delete_old(retention_days=30)
             
             if deleted > 0:
-                logger.info(f"✅ Deleted {deleted} old predictions")
+                logger.info(f"✅ Self-heal: Deleted {deleted} old predictions")
                 self._mark_attempt("quota_clean")
                 return True
             
             return False
         
         except Exception as e:
-            logger.error(f"❌ Quota clean error: {e}")
+            logger.error(f"❌ Self-heal quota clean error: {e}")
             return False
     
     # ============================================================
@@ -399,13 +419,7 @@ class SelfHealer:
     # ============================================================
     
     def _should_reset_config(self, metrics: Dict[str, Any]) -> bool:
-        """
-        آیا runtime_config باید reset بشه؟
-        
-        اگه:
-            - runtime_config فعاله
-            - و score افت کرده
-        """
+        """آیا runtime config باید reset بشه؟"""
         try:
             has_runtime = bool(self.model_manager.runtime_config)
         except Exception:
@@ -426,19 +440,19 @@ class SelfHealer:
     def _reset_runtime_config(self) -> bool:
         """پاک کردن runtime_config"""
         try:
-            logger.warning("🔄 Resetting runtime config...")
+            logger.warning("🔄 Self-heal: Resetting runtime config...")
             
             result = self.model_manager.reset_runtime_config()
             
             if result.get("success"):
-                logger.info("✅ Runtime config reset")
+                logger.info("✅ Self-heal: Runtime config reset")
                 self._mark_attempt("config_reset")
                 return True
             
             return False
         
         except Exception as e:
-            logger.error(f"❌ Reset config error: {e}")
+            logger.error(f"❌ Self-heal reset config error: {e}")
             return False
     
     # ============================================================
@@ -450,27 +464,27 @@ class SelfHealer:
         key: str,
         cooldown_minutes: Optional[int] = None,
     ) -> bool:
-        """
-        بررسی اینکه آیا می‌تونیم دوباره تلاش کنیم
-        
-        Returns:
-            True اگه:
-                - تعداد attempts < max
-                - و از آخرین تلاش، cooldown گذشته
-        """
+        """بررسی امکان تلاش مجدد"""
         cooldown = cooldown_minutes or self.cooldown_minutes
         
         entry = self.healing_attempts.get(key, {})
         count = entry.get("count", 0)
         
         if count >= self.max_attempts:
+            logger.debug(f"⏭️ {key}: max attempts reached ({count})")
             return False
         
         last = entry.get("last_attempt")
         if last:
             try:
                 last_dt = datetime.fromisoformat(last)
-                if datetime.now() < last_dt + timedelta(minutes=cooldown):
+                next_attempt = last_dt + timedelta(minutes=cooldown)
+                
+                if datetime.now() < next_attempt:
+                    remaining = (next_attempt - datetime.now()).total_seconds()
+                    logger.debug(
+                        f"⏭️ {key}: cooldown ({int(remaining)}s remaining)"
+                    )
                     return False
             except (ValueError, TypeError):
                 pass
@@ -478,7 +492,7 @@ class SelfHealer:
         return True
     
     def _mark_attempt(self, key: str) -> None:
-        """ثبت یک تلاش"""
+        """ثبت تلاش"""
         if key not in self.healing_attempts:
             self.healing_attempts[key] = {"count": 0}
         
@@ -493,7 +507,6 @@ class SelfHealer:
     
     def get_healing_status(self) -> Dict[str, Any]:
         """وضعیت خودترمیمی"""
-        # آمار Trainer
         trainer_stats = {}
         try:
             stats = self.trainer.get_stats()
@@ -509,7 +522,6 @@ class SelfHealer:
         except Exception as e:
             logger.debug(f"Trainer stats error: {e}")
         
-        # آمار ModelManager
         model_stats = {}
         try:
             engine = self.model_manager.engine
@@ -526,6 +538,8 @@ class SelfHealer:
             "attempts": self.healing_attempts,
             "max_attempts": self.max_attempts,
             "cooldown_minutes": self.cooldown_minutes,
+            "recalibrate_cooldown_minutes": self.RECALIBRATE_COOLDOWN_MINUTES,
+            "startup_time": self._startup_time.isoformat(),
             "trainer": trainer_stats,
             "model": model_stats,
             "timestamp": datetime.now().isoformat(),
@@ -534,10 +548,11 @@ class SelfHealer:
     def reset_attempts(self) -> None:
         """بازنشانی تلاش‌ها"""
         self.healing_attempts.clear()
-        logger.info("✅ Healing attempts reset")
+        self._startup_time = datetime.now()
+        logger.info("✅ Self-heal: All attempts reset")
     
     # ============================================================
-    # Manual Healing
+    # Manual Healing (API)
     # ============================================================
     
     def force_recalibrate(
@@ -545,23 +560,15 @@ class SelfHealer:
         profile_name: str = "fast",
         period: str = "1m",
     ) -> Dict[str, Any]:
-        """
-        کالیبراسیون اجباری (برای API)
-        
-        Args:
-            profile_name: profile (fast/balanced/accurate)
-            period: بازه
-        
-        Returns:
-            نتیجه کالیبراسیون
-        """
-        logger.info(
-            f"🔄 Force recalibrate requested "
+        """کالیبراسیون اجباری"""
+        logger.warning(
+            f"🔄 Self-heal: Force recalibrate requested "
             f"(profile={profile_name}, period={period})"
         )
         
-        # ریست attempts تا بتونیم
+        # reset attempts
         self.healing_attempts.pop("recalibrate", None)
+        self.healing_attempts.pop("recalibrate_zero_accuracy", None)
         
         result = self.trainer.calibrate(
             period=period,
@@ -571,22 +578,38 @@ class SelfHealer:
         
         if result.get("success"):
             self._mark_attempt("recalibrate")
+            logger.info(
+                f"✅ Self-heal: Force recalibrate succeeded "
+                f"(score={result.get('best_score', 0):.4f})"
+            )
+        else:
+            logger.error(
+                f"❌ Self-heal: Force recalibrate failed: "
+                f"{result.get('error', 'unknown')}"
+            )
         
         return result
     
     def force_reload_engine(self) -> Dict[str, Any]:
         """بارگذاری اجباری engine"""
-        logger.info("🔄 Force engine reload requested")
+        logger.warning("🔄 Self-heal: Force engine reload requested")
         
         self.healing_attempts.pop("engine_reload", None)
         
         success = self._reload_engine()
         
-        return {
+        result = {
             "success": success,
             "engine_loaded": self.model_manager.engine is not None,
             "version": self.model_manager.current_version,
         }
+        
+        if success:
+            logger.info("✅ Self-heal: Force reload succeeded")
+        else:
+            logger.error("❌ Self-heal: Force reload failed")
+        
+        return result
 
 
 __all__ = ["SelfHealer"]
