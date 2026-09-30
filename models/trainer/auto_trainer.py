@@ -1,19 +1,10 @@
 # models/trainer/auto_trainer.py
 # ============================================================
-# AutoTrainer → WeightCalibrator - نسخه ۵.۰
-# کالیبراسیون وزن‌های RuleEngine از طریق Backtest
-# ============================================================
-# 
-# تغییرات نسخه ۵.۰:
-#   - جایگزینی کامل XGBoost با Weight Calibration
-#   - حذف _fetch_*، extract_features_for_training، train_model
-#   - اضافه calibrate() با grid search
-#   - اضافه evaluate_config() برای backtest
-#   - حفظ start_auto_train، stop_auto_train، get_stats
+# AutoTrainer → WeightCalibrator - نسخه ۶.۰
+# OHLCV واقعی + لاگ کامل + خطایابی دقیق
 # ============================================================
 
 import itertools
-import json
 import logging
 import random
 import threading
@@ -42,19 +33,49 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Calibration Profiles (جایگزین TRAINING_PRESETS سابق)
+# Constants
+# ============================================================
+
+# period → interval (برای OHLCV)
+PERIOD_TO_INTERVAL: Dict[str, str] = {
+    "24h": "1h",
+    "1w":  "4h",
+    "1m":  "4h",
+    "3m":  "1d",
+    "6m":  "1d",
+}
+
+# profile → range (بازه داده تاریخی برای کالیبراسیون)
+PROFILE_TO_RANGE: Dict[str, str] = {
+    "fast":     "3mo",
+    "balanced": "6mo",
+    "accurate": "1y",
+    "hill_climb": "6mo",
+    "random":   "6mo",
+}
+
+# حداقل کندل لازم
+MIN_CANDLES = 100
+
+# حداکثر coin برای کالیبراسیون
+MAX_CALIBRATION_COINS = 5
+
+
+# ============================================================
+# Calibration Profiles
 # ============================================================
 
 CALIBRATION_PROFILES: Dict[str, Dict[str, Any]] = {
     "fast": {
         "name": "سریع",
-        "description": "Grid Search کوچک — برای تست",
+        "description": "Grid Search کوچک",
         "icon": "🚀",
         "color": "#f59e0b",
         "strategy": "grid",
         "max_iterations": 20,
         "weight_step": 0.10,
         "estimated_time_seconds": 30,
+        "range": "3mo",
     },
     "balanced": {
         "name": "متعادل",
@@ -65,69 +86,56 @@ CALIBRATION_PROFILES: Dict[str, Dict[str, Any]] = {
         "max_iterations": 100,
         "weight_step": 0.05,
         "estimated_time_seconds": 120,
+        "range": "6mo",
     },
     "accurate": {
         "name": "دقیق",
-        "description": "Grid Search دقیق — زمان بیشتر",
+        "description": "Grid Search دقیق",
         "icon": "🎯",
         "color": "#8b5cf6",
         "strategy": "grid",
         "max_iterations": 500,
         "weight_step": 0.025,
         "estimated_time_seconds": 600,
+        "range": "1y",
     },
     "hill_climb": {
         "name": "تپه‌نوردی",
-        "description": "بهینه‌سازی تکاملی — هوشمندتر",
+        "description": "بهینه‌سازی تکاملی",
         "icon": "🏔️",
         "color": "#22d3ee",
         "strategy": "hill_climb",
         "max_iterations": 80,
         "weight_step": 0.05,
         "estimated_time_seconds": 240,
+        "range": "6mo",
     },
     "random": {
         "name": "تصادفی",
-        "description": "جستجوی تصادفی — تنوع بالا",
+        "description": "جستجوی تصادفی",
         "icon": "🎲",
         "color": "#ec4899",
         "strategy": "random",
         "max_iterations": 150,
         "weight_step": 0.05,
         "estimated_time_seconds": 300,
+        "range": "6mo",
     },
 }
 
 
 # ============================================================
-# AutoTrainer (WeightCalibrator)
+# AutoTrainer
 # ============================================================
 
 class AutoTrainer:
     """
     AutoTrainer → WeightCalibrator
     
-    نقش جدید:
-        - Backtest روی داده تاریخی
-        - Grid/Random/Hill-Climb برای یافتن بهترین وزن‌ها
-        - ذخیره بهترین config در DB
-        - زمان‌بندی خودکار (همون API سابق)
-    
-    نکته:
-        متدهای train_model, incremental_train, train_batch حذف شدن.
-        به‌جاشون calibrate, evaluate_config اضافه شدن.
+    کالیبراسیون وزن‌های RuleEngine از طریق Backtest OHLCV واقعی
     """
     
-    # ============================================================
-    # Init
-    # ============================================================
-    
     def __init__(self, api: Any, model_manager: Any) -> None:
-        """
-        Args:
-            api: کلاینت API (CoinStatsClient یا مشابه)
-            model_manager: ModelManager instance
-        """
         self.api: Any = api
         self.model_manager: Any = model_manager
         self.db: Any = get_primary()
@@ -146,8 +154,8 @@ class AutoTrainer:
         
         # State
         self.is_running: bool = False
-        self.is_training: bool = False  # ← حفظ اسم قدیمی (سازگاری)
-        self.is_calibrating: bool = False  # ← اسم جدید
+        self.is_training: bool = False
+        self.is_calibrating: bool = False
         self.stop_event: threading.Event = threading.Event()
         self.thread: Optional[threading.Thread] = None
         self._lock: threading.Lock = threading.Lock()
@@ -157,20 +165,17 @@ class AutoTrainer:
         
         # ارزها
         self.coins: List[str] = self.auto_trainer_config.get(
-            "coins", ["bitcoin", "ethereum"]
-        )
+            "coins", ["bitcoin", "ethereum", "solana"]
+        )[:MAX_CALIBRATION_COINS]
         
-        # آمار (حفظ ساختار قدیمی برای سازگاری)
+        # آمار
         self.stats: Dict[str, Any] = {
-            # وضعیت
             "is_running": False,
             "is_training": False,
             "is_calibrating": False,
-            
-            # کالیبراسیون
-            "total_trainings": 0,       # ← حفظ اسم قدیمی
-            "successful_trainings": 0,   # ← حفظ اسم قدیمی
-            "failed_trainings": 0,       # ← حفظ اسم قدیمی
+            "total_trainings": 0,
+            "successful_trainings": 0,
+            "failed_trainings": 0,
             "total_calibrations": 0,
             "successful_calibrations": 0,
             "failed_calibrations": 0,
@@ -181,50 +186,51 @@ class AutoTrainer:
             "last_improvement": None,
             "data_points_used": 0,
             "training_period": self.auto_trainer_config.get("period", "1m"),
-            
-            # API
             "api_status": "unknown",
             "credits_remaining": 0,
             "api_calls": 0,
             "api_errors": 0,
-            
-            # حالت
             "mode": "RULE_ENGINE",
-            
-            # Points config
-            "points_used": {
-                "fear_greed": self.historical_points_config["fear_greed"],
-                "btc_dominance": self.historical_points_config["btc_dominance"],
-                "global_market": self.historical_points_config["global_market"],
-                "chart": self.historical_points_config["chart"],
-            },
+            "coins_used": [],
+            "total_candles_fetched": 0,
         }
         
-        # ثبت در scheduler
         self._register_with_scheduler()
         
-        # وضعیت از ModelManager
+        # ============================================================
+        # لاگ راه‌اندازی
+        # ============================================================
+        
+        self._add_log("=" * 60)
+        self._add_log("🚀 AutoTrainer v6.0 (WeightCalibrator) راه‌اندازی شد")
+        self._add_log(f"🪙 ارزهای فعال: {self.coins}")
+        self._add_log(f"📅 بازه پیش‌فرض: {self.stats['training_period']}")
+        
         if model_manager and model_manager.engine is not None:
-            self.stats["mode"] = "RULE_ENGINE"
+            rule_count = len(model_manager.engine.rules) if model_manager.engine else 0
             self._add_log(
-                f"✅ RuleEngine موجود است - "
-                f"نسخه: {model_manager.current_version or 'default'}"
+                f"✅ RuleEngine موجود "
+                f"(نسخه: {model_manager.current_version or 'default'}, "
+                f"{rule_count} rule)"
             )
         else:
-            self._add_log("📦 RuleEngine بارگذاری نشده")
+            self._add_log("⚠️ RuleEngine بارگذاری نشده")
         
-        self._add_log(f"✅ AutoTrainer v5.0 (WeightCalibrator) راه‌اندازی شد")
-        self._add_log(f"🪙 ارزهای فعال: {self.coins}")
+        self._add_log("=" * 60)
+        
+        logger.info(
+            f"✅ AutoTrainer v6.0 initialized "
+            f"(coins={self.coins})"
+        )
     
     # ============================================================
     # Scheduler Registration
     # ============================================================
     
     def _register_with_scheduler(self) -> None:
-        """ثبت در Scheduler"""
         try:
             from core.metrics import metrics_scheduler
-            logger.info("✅ AutoTrainer registered with Metrics Scheduler")
+            logger.debug("AutoTrainer registered with Metrics Scheduler")
         except ImportError:
             pass
         except Exception as e:
@@ -240,18 +246,22 @@ class AutoTrainer:
         log_entry = f"[{timestamp}] {message}"
         self.logs.append(log_entry)
         
-        if len(self.logs) > 200:
-            self.logs = self.logs[-200:]
+        if len(self.logs) > 300:
+            self.logs = self.logs[-300:]
         
-        logger.info(message)
+        # لاگ به logging هم بره
+        if "❌" in message or "ERROR" in message.upper():
+            logger.error(message)
+        elif "⚠️" in message:
+            logger.warning(message)
+        else:
+            logger.info(message)
     
     def clear_logs(self) -> None:
-        """پاک کردن لاگ‌ها"""
         self.logs = []
         self._add_log("🗑️ لاگ‌ها پاک شدند")
     
     def get_logs(self) -> List[str]:
-        """دریافت لاگ‌ها"""
         return self.logs
     
     # ============================================================
@@ -270,16 +280,13 @@ class AutoTrainer:
             if credits and "remainingCredits" in credits:
                 remaining = credits.get("remainingCredits", 0)
                 self.stats["credits_remaining"] = remaining
-                
-                if remaining < 100:
-                    self._add_log(f"⚠️ اعتبار کم: {remaining}")
             
             self.stats["api_status"] = "ok" if api_ok else "error"
             
             return {
                 "api_status": "ok" if api_ok else "error",
                 "credits_remaining": remaining,
-                "can_proceed": api_ok and remaining > 100,
+                "can_proceed": api_ok and remaining > 50,
                 "message": "API سالم است" if api_ok else "API در دسترس نیست",
             }
         except Exception as e:
@@ -308,34 +315,21 @@ class AutoTrainer:
         """
         کالیبراسیون وزن‌های RuleEngine
         
-        Args:
-            period: بازه داده تاریخی
-            coins: لیست ارزها
-            profile_name: نام profile (fast/balanced/accurate/hill_climb/random)
-            strategy: استراتژی override
-            config_override: config شروع (اگه None، از default)
-            save: ذخیره در DB؟
-        
-        Returns:
-            {
-                success,
-                version,
-                best_weights,
-                best_score,
-                improvement,
-                iterations,
-                duration_seconds,
-                ...
-            }
+        لاگ کامل + خطایابی دقیق
         """
+        # ============================================================
+        # چک وضعیت
+        # ============================================================
+        
         if self.is_calibrating:
+            self._add_log("⚠️ کالیبراسیون قبلاً در حال انجامه")
             return {
                 "success": False,
                 "message": "کالیبراسیون در حال انجام است",
             }
         
         self.is_calibrating = True
-        self.is_training = True  # ← حفظ سازگاری
+        self.is_training = True
         self.stats["is_calibrating"] = True
         self.stats["is_training"] = True
         self.stats["total_trainings"] += 1
@@ -344,95 +338,147 @@ class AutoTrainer:
         
         start_time = time.time()
         
+        self._add_log("")
+        self._add_log("=" * 60)
+        self._add_log(f"🎯 شروع کالیبراسیون (profile={profile_name or 'balanced'})")
+        self._add_log(f"   period={period}, strategy={strategy or 'auto'}")
+        
         try:
             # ============================================================
             # ۱. چک API
             # ============================================================
+            
+            self._add_log("🔍 مرحله ۱: بررسی API...")
             status = self.check_api_status()
+            
             if not status["can_proceed"]:
-                self._mark_failed(status["message"])
+                msg = status["message"]
+                self._add_log(f"❌ مرحله ۱ ناموفق: {msg}")
+                self._mark_failed(msg)
                 return {
                     "success": False,
-                    "message": status["message"],
+                    "message": msg,
                     "api_status": status["api_status"],
                 }
+            
+            self._add_log(
+                f"✅ مرحله ۱ موفق: API سالم، "
+                f"credits={status['credits_remaining']}"
+            )
             
             # ============================================================
             # ۲. Profile
             # ============================================================
+            
+            self._add_log("🔍 مرحله ۲: بارگذاری profile...")
             profile = self._resolve_profile(profile_name, strategy)
+            
             if profile is None:
+                self._add_log(f"❌ مرحله ۲ ناموفق: profile یافت نشد")
                 self._mark_failed("Profile not found")
                 return {
                     "success": False,
                     "error": f"Profile '{profile_name}' not found",
                 }
             
+            profile_range = profile.get("range", "6mo")
             self._add_log(
-                f"🎯 شروع کالیبراسیون "
-                f"(profile={profile_name or 'balanced'}, "
-                f"strategy={profile['strategy']}, "
-                f"period={period})"
+                f"✅ مرحله ۲ موفق: profile={profile_name or 'balanced'}, "
+                f"strategy={profile['strategy']}, range={profile_range}"
             )
             
             # ============================================================
-            # ۳. config پایه
+            # ۳. Config پایه
             # ============================================================
-            base_config = (
-                config_override
-                or self._get_current_config()
-            )
+            
+            self._add_log("🔍 مرحله ۳: دریافت config فعلی...")
+            base_config = config_override or self._get_current_config()
+            rule_count = len(base_config.get("rules", {}))
+            self._add_log(f"✅ مرحله ۳ موفق: {rule_count} rule در config")
             
             # ============================================================
-            # ۴. دریافت داده تاریخی
+            # ۴. Fetch داده تاریخی OHLCV
             # ============================================================
+            
             coins_list = coins or self.coins
-            data_map = self._fetch_historical_data(coins_list, period)
+            interval = PERIOD_TO_INTERVAL.get(period, "4h")
+            
+            self._add_log(
+                f"🔍 مرحله ۴: دریافت داده تاریخی "
+                f"({len(coins_list)} coin, interval={interval}, range={profile_range})"
+            )
+            
+            data_map = self._fetch_historical_data(
+                coins=coins_list,
+                interval=interval,
+                data_range=profile_range,
+            )
             
             if not data_map:
-                self._mark_failed("No historical data")
+                msg = "داده تاریخی دریافت نشد"
+                self._add_log(f"❌ مرحله ۴ ناموفق: {msg}")
+                self._mark_failed(msg)
                 return {
                     "success": False,
-                    "error": "داده تاریخی دریافت نشد",
+                    "error": msg,
                 }
             
+            total_candles = sum(len(df) for df in data_map.values())
+            self.stats["total_candles_fetched"] = total_candles
+            self.stats["coins_used"] = list(data_map.keys())
+            
             self._add_log(
-                f"📊 داده: {len(data_map)} symbol، "
-                f"{sum(len(df) for df in data_map.values())} کندل"
+                f"✅ مرحله ۴ موفق: {len(data_map)} symbol, "
+                f"{total_candles} کندل"
+            )
+            for symbol, df in data_map.items():
+                self._add_log(f"   • {symbol}: {len(df)} کندل")
+            
+            # ============================================================
+            # ۵. ارزیابی baseline
+            # ============================================================
+            
+            self._add_log("🔍 مرحله ۵: ارزیابی baseline...")
+            baseline_score = self._evaluate_config(base_config, data_map)
+            self._add_log(f"✅ مرحله ۵ موفق: baseline score={baseline_score:.4f}")
+            
+            # ============================================================
+            # ۶. اجرای استراتژی
+            # ============================================================
+            
+            self._add_log(
+                f"🔍 مرحله ۶: اجرای کالیبراسیون "
+                f"(strategy={profile['strategy']})..."
+            )
+            
+            if profile["strategy"] == "grid":
+                result = self._calibrate_grid(base_config, data_map, profile)
+            elif profile["strategy"] == "random":
+                result = self._calibrate_random(base_config, data_map, profile)
+            elif profile["strategy"] == "hill_climb":
+                result = self._calibrate_hill_climb(base_config, data_map, profile)
+            else:
+                msg = f"Unknown strategy: {profile['strategy']}"
+                self._add_log(f"❌ مرحله ۶ ناموفق: {msg}")
+                self._mark_failed(msg)
+                return {"success": False, "error": msg}
+            
+            if not result.get("success"):
+                msg = result.get("error", "Unknown calibration error")
+                self._add_log(f"❌ مرحله ۶ ناموفق: {msg}")
+                self._mark_failed(msg)
+                return result
+            
+            evaluations = result.get("evaluations", 0)
+            self._add_log(
+                f"✅ مرحله ۶ موفق: {evaluations} ارزیابی انجام شد، "
+                f"best score={result['best_score']:.4f}"
             )
             
             # ============================================================
-            # ۵. اجرای استراتژی
+            # ۷. محاسبه improvement
             # ============================================================
-            if profile["strategy"] == "grid":
-                result = self._calibrate_grid(
-                    base_config=base_config,
-                    data_map=data_map,
-                    profile=profile,
-                )
-            elif profile["strategy"] == "random":
-                result = self._calibrate_random(
-                    base_config=base_config,
-                    data_map=data_map,
-                    profile=profile,
-                )
-            elif profile["strategy"] == "hill_climb":
-                result = self._calibrate_hill_climb(
-                    base_config=base_config,
-                    data_map=data_map,
-                    profile=profile,
-                )
-            else:
-                self._mark_failed(f"Unknown strategy: {profile['strategy']}")
-                return {
-                    "success": False,
-                    "error": f"Strategy '{profile['strategy']}' not implemented",
-                }
             
-            # ============================================================
-            # ۶. محاسبه improvement
-            # ============================================================
-            baseline_score = self._evaluate_config(base_config, data_map)
             improvement = result["best_score"] - baseline_score
             
             result["baseline_score"] = round(baseline_score, 4)
@@ -442,10 +488,17 @@ class AutoTrainer:
                 if baseline_score > 0 else 0
             )
             
+            self._add_log(
+                f"📊 بهبود: {improvement:+.4f} "
+                f"({result['improvement_percent']:+.2f}%)"
+            )
+            
             # ============================================================
-            # ۷. ذخیره در DB
+            # ۸. ذخیره در DB
             # ============================================================
+            
             if save and result.get("best_config"):
+                self._add_log("🔍 مرحله ۷: ذخیره در DB...")
                 save_result = self._save_best_config(
                     config=result["best_config"],
                     accuracy=result["best_score"],
@@ -453,13 +506,25 @@ class AutoTrainer:
                 )
                 result["save_result"] = save_result
                 result["version"] = save_result.get("version")
+                
+                if save_result.get("success"):
+                    self._add_log(
+                        f"✅ مرحله ۷ موفق: نسخه {save_result.get('version')}"
+                    )
+                else:
+                    self._add_log(
+                        f"⚠️ مرحله ۷: ذخیره ناموفق — "
+                        f"{save_result.get('error', 'unknown')}"
+                    )
             else:
                 result["save_result"] = {"success": False, "reason": "save=False"}
                 result["version"] = None
+                self._add_log("⏭️ مرحله ۷ رد شد (save=False)")
             
             # ============================================================
-            # ۸. آمار نهایی
+            # ۹. آمار نهایی
             # ============================================================
+            
             duration = time.time() - start_time
             result["duration_seconds"] = round(duration, 2)
             
@@ -469,22 +534,34 @@ class AutoTrainer:
                 data_points=result.get("evaluations", 0),
             )
             
-            self._add_log(
-                f"✅ کالیبراسیون موفق "
-                f"(best_score={result['best_score']:.4f}, "
-                f"improvement={improvement:+.4f}, "
-                f"{duration:.1f}s)"
-            )
+            self._add_log("")
+            self._add_log("=" * 60)
+            self._add_log("🎉 کالیبراسیون با موفقیت انجام شد!")
+            self._add_log(f"   profile: {profile_name or 'balanced'}")
+            self._add_log(f"   best_score: {result['best_score']:.4f}")
+            self._add_log(f"   baseline: {baseline_score:.4f}")
+            self._add_log(f"   improvement: {improvement:+.4f}")
+            self._add_log(f"   version: {result.get('version', 'N/A')}")
+            self._add_log(f"   duration: {duration:.1f}s")
+            self._add_log("=" * 60)
+            self._add_log("")
             
             return result
         
         except Exception as e:
-            logger.error(f"❌ Calibrate error: {e}", exc_info=True)
+            duration = time.time() - start_time
+            self._add_log(f"❌ کالیبراسیون با خطا متوقف شد ({duration:.1f}s)")
+            self._add_log(f"   error: {type(e).__name__}: {str(e)}")
+            
+            logger.error(f"Calibrate error: {e}", exc_info=True)
             self._mark_failed(str(e))
+            
             return {
                 "success": False,
                 "error": str(e),
+                "duration_seconds": round(duration, 2),
             }
+        
         finally:
             self.is_calibrating = False
             self.is_training = False
@@ -501,21 +578,16 @@ class AutoTrainer:
         data_map: Dict[str, pd.DataFrame],
         profile: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """
-        Grid Search روی وزن‌ها
-        
-        برای هر rule، مقادیر weight رو در گام‌های مشخص امتحان می‌کنه
-        """
+        """Grid Search روی وزن‌ها"""
         rules = list(base_config.get("rules", {}).keys())
         step = profile.get("weight_step", 0.05)
         max_iter = profile.get("max_iterations", 100)
         
-        # ساخت مقادیر ممکن برای هر weight
-        weight_values = np.arange(0.0, 1.01, step).tolist()
+        weight_values = [round(i * step, 4) for i in range(int(1 / step) + 1)]
         
         self._add_log(
-            f"🔍 Grid Search: {len(rules)} rules, "
-            f"step={step}, max_iter={max_iter}"
+            f"   🔍 Grid: {len(rules)} rules, step={step}, "
+            f"max_iter={max_iter}, total_combos={len(weight_values) ** len(rules)}"
         )
         
         best_score = -1.0
@@ -524,18 +596,16 @@ class AutoTrainer:
         
         iterations = 0
         evaluations = 0
-        
-        # اگه rules کمه، همه ترکیب‌ها
-        # اگه زیاده، نمونه‌گیری
         total_combinations = len(weight_values) ** len(rules)
         
         if total_combinations <= max_iter:
-            # کامل
             for weights in itertools.product(weight_values, repeat=len(rules)):
                 if iterations >= max_iter:
                     break
                 
-                config = self._apply_weights(base_config, dict(zip(rules, weights)))
+                config = self._apply_weights(
+                    base_config, dict(zip(rules, weights))
+                )
                 score = self._evaluate_config(config, data_map)
                 evaluations += 1
                 iterations += 1
@@ -545,15 +615,15 @@ class AutoTrainer:
                     best_weights = dict(zip(rules, weights))
                     best_config = config
         else:
-            # نمونه‌گیری تصادفی
             self._add_log(
-                f"⚠️ ترکیبات زیاد ({total_combinations}), "
-                f"نمونه‌گیری تصادفی"
+                f"   ⚠️ ترکیبات زیاد، نمونه‌گیری تصادفی از {max_iter}"
             )
             
             for _ in range(max_iter):
                 weights = [random.choice(weight_values) for _ in rules]
-                config = self._apply_weights(base_config, dict(zip(rules, weights)))
+                config = self._apply_weights(
+                    base_config, dict(zip(rules, weights))
+                )
                 score = self._evaluate_config(config, data_map)
                 evaluations += 1
                 iterations += 1
@@ -583,16 +653,15 @@ class AutoTrainer:
         rules = list(base_config.get("rules", {}).keys())
         max_iter = profile.get("max_iterations", 100)
         
-        self._add_log(f"🎲 Random Search: {max_iter} iterations")
+        self._add_log(f"   🎲 Random: {max_iter} iterations")
         
         best_score = -1.0
         best_weights: Dict[str, float] = {}
         best_config: Optional[Dict[str, Any]] = None
         
         for i in range(max_iter):
-            # وزن‌های تصادفی که مجموعشون ۱ بشه
             weights_raw = [random.random() for _ in rules]
-            total = sum(weights_raw)
+            total = sum(weights_raw) or 1.0
             weights = [w / total for w in weights_raw]
             
             config = self._apply_weights(base_config, dict(zip(rules, weights)))
@@ -619,14 +688,13 @@ class AutoTrainer:
         data_map: Dict[str, pd.DataFrame],
         profile: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """تپه‌نوردی (تکاملی ساده)"""
+        """تپه‌نوردی"""
         rules = list(base_config.get("rules", {}).keys())
         max_iter = profile.get("max_iterations", 80)
         step = profile.get("weight_step", 0.05)
         
-        self._add_log(f"🏔️ Hill Climb: {max_iter} iterations")
+        self._add_log(f"   🏔️ Hill Climb: {max_iter} iterations, step={step}")
         
-        # نقطه شروع
         current_weights = {
             r: float(base_config.get("rules", {}).get(r, {}).get("weight", 0.25))
             for r in rules
@@ -640,9 +708,9 @@ class AutoTrainer:
         best_config = current_config
         
         evaluations = 1
+        i = 0
         
         for i in range(max_iter):
-            # برای هر rule، یه کم تغییر بده
             improved = False
             
             for rule_name in rules:
@@ -655,7 +723,6 @@ class AutoTrainer:
                     
                     candidate[rule_name] = new_val
                     
-                    # نرمالایز
                     total = sum(candidate.values())
                     if total > 0:
                         candidate = {k: v / total for k, v in candidate.items()}
@@ -674,14 +741,12 @@ class AutoTrainer:
                             best_score = score
                             best_weights = candidate.copy()
                             best_config = config
-                        
                         break
                 
                 if improved:
                     break
             
             if not improved:
-                # کاهش step
                 step = step * 0.7
                 if step < 0.01:
                     break
@@ -706,23 +771,19 @@ class AutoTrainer:
         data_map: Dict[str, pd.DataFrame],
     ) -> float:
         """
-        ارزیابی یک config روی داده تاریخی
+        ارزیابی config روی داده تاریخی
         
         معیار: Sharpe-like ratio
         
         منطق:
-            ۱. برای هر symbol، RuleEngine رو روی آخرین کندل اجرا کن
-            ۲. اگه pass شد، «سیگنال» بگیر
-            ۳. سیگنال رو با بازده کندل بعدی مقایسه کن
-            ۴. Sharpe = mean(returns) / std(returns)
-        
-        Returns:
-            امتیاز ۰-۱ (بالاتر = بهتر)
+            ۱. برای هر symbol، RuleEngine رو روی چند نقطه اجرا کن
+            ۲. اگه pass شد، بازده بعدی رو حساب کن
+            ۳. Sharpe = mean(returns) / std(returns)
+            ۴. Normalize به ۰-۱
         """
         try:
-            # ساخت engine موقت
             temp_sm = StateMachine(
-                cache=None,  # بدون state در backtest
+                cache=None,
                 db=None,
                 config={"enable_db_history": False},
             )
@@ -733,16 +794,16 @@ class AutoTrainer:
                 state_machine=temp_sm,
             )
             
-            # جمع‌آوری سیگنال‌ها
             signal_returns: List[float] = []
             
             for symbol, df in data_map.items():
                 if df is None or len(df) < 50:
                     continue
                 
-                # آخرین کندل‌ها رو امتحان کن (شبیه‌سازی historical)
-                # از چند نقطه مختلف
-                for i in range(30, len(df), max(1, len(df) // 10)):
+                # نمونه‌گیری: هر N کندل یه نقطه
+                step = max(1, len(df) // 30)
+                
+                for i in range(30, len(df) - 1, step):
                     df_slice = df.iloc[:i + 1]
                     
                     try:
@@ -756,32 +817,28 @@ class AutoTrainer:
                         if prediction is None:
                             continue
                         
-                        # اگه pass شد، بازده بعدی رو حساب کن
                         if prediction.score >= engine.min_pass_score:
-                            if i + 1 < len(df):
-                                close_now = df["Close"].iloc[i]
-                                close_next = df["Close"].iloc[i + 1]
+                            close_now = df["Close"].iloc[i]
+                            close_next = df["Close"].iloc[i + 1]
+                            
+                            if close_now > 0:
                                 ret = (close_next - close_now) / close_now
                                 signal_returns.append(ret)
                     
                     except Exception:
                         continue
             
-            # محاسبه Sharpe
-            if len(signal_returns) < 3:
+            if len(signal_returns) < 5:
                 return 0.0
             
             returns_arr = np.array(signal_returns)
-            mean_ret = np.mean(returns_arr)
-            std_ret = np.std(returns_arr)
+            mean_ret = float(np.mean(returns_arr))
+            std_ret = float(np.std(returns_arr))
             
             if std_ret < 1e-6:
                 return 0.0
             
             sharpe = mean_ret / std_ret
-            
-            # نرمالایز به ۰-۱
-            # sharpe از -3 تا +3 → ۰ تا ۱
             normalized = (sharpe + 3.0) / 6.0
             return float(np.clip(normalized, 0.0, 1.0))
         
@@ -790,16 +847,17 @@ class AutoTrainer:
             return 0.0
     
     # ============================================================
-    # Data Fetching
+    # Data Fetching (OHLCV واقعی)
     # ============================================================
     
     def _fetch_historical_data(
         self,
         coins: List[str],
-        period: str,
+        interval: str,
+        data_range: str,
     ) -> Dict[str, pd.DataFrame]:
         """
-        دریافت داده تاریخی برای کالیبراسیون
+        دریافت داده OHLCV واقعی از CoinStats /ohlcv/candles
         
         Returns:
             {symbol: DataFrame}
@@ -807,84 +865,99 @@ class AutoTrainer:
         data_map: Dict[str, pd.DataFrame] = {}
         
         for coin in coins:
-            self._add_log(f"📥 دریافت {coin} ({period})")
+            # تبدیل coin_id → pair
+            pair = self.api.coin_id_to_pair(coin) if hasattr(
+                self.api, "coin_id_to_pair"
+            ) else None
+            
+            if not pair:
+                self._add_log(f"   ⚠️ نمی‌توان '{coin}' را به pair تبدیل کرد")
+                continue
+            
+            self._add_log(f"   📥 دریافت {pair} ({interval}, {data_range})...")
             
             try:
-                chart_data = self._fetch_with_retry(coin, period)
-                if not chart_data:
-                    self._add_log(f"   ⚠️ داده‌ای برای {coin} نیست")
+                result = self.api.get_ohlcv_candles(
+                    exchange="Binance",
+                    pair=pair,
+                    interval=interval,
+                    range=data_range,
+                    use_cache=True,
+                )
+                
+                self.stats["api_calls"] += 1
+                
+                if not result or "candles" not in result:
+                    err = result.get("error") if result else "no response"
+                    self._add_log(f"   ❌ {pair}: {err}")
+                    self.stats["api_errors"] += 1
                     continue
                 
-                df = self._list_to_dataframe(chart_data)
-                if df is not None and len(df) >= 50:
-                    symbol = f"{coin.upper()}/USDT"
-                    data_map[symbol] = df
-                    self._add_log(f"   ✅ {len(df)} کندل از {coin}")
-                else:
-                    self._add_log(f"   ⚠️ داده کافی نیست برای {coin}")
+                candles = result["candles"]
+                
+                # هشدار cap
+                if result.get("warning"):
+                    self._add_log(f"   ⚠️ {result['warning']}")
+                
+                df = self._candles_to_dataframe(candles)
+                
+                if df is None or len(df) < MIN_CANDLES:
+                    df_len = len(df) if df is not None else 0
+                    self._add_log(
+                        f"   ⚠️ {pair}: داده کافی نیست "
+                        f"({df_len} < {MIN_CANDLES})"
+                    )
+                    continue
+                
+                data_map[pair] = df
+                self._add_log(f"   ✅ {pair}: {len(df)} کندل")
             
             except Exception as e:
-                logger.warning(f"Fetch error for {coin}: {e}")
+                self.stats["api_errors"] += 1
+                self._add_log(f"   ❌ {pair}: {type(e).__name__}: {str(e)[:80]}")
+                logger.error(f"Fetch error for {coin}: {e}", exc_info=True)
         
         return data_map
     
-    def _fetch_with_retry(
-        self,
-        coin: str,
-        period: str,
-        max_attempts: int = 3,
-    ) -> Optional[List]:
-        """دریافت با retry"""
-        for attempt in range(max_attempts):
-            try:
-                data = self.api.get_chart(coin, period)
-                self.stats["api_calls"] += 1
-                
-                if data and isinstance(data, list) and len(data) > 0:
-                    return data
-                
-                if isinstance(data, dict) and "error" in data:
-                    logger.warning(
-                        f"API error for {coin} (attempt {attempt + 1}): "
-                        f"{data.get('error')}"
-                    )
-            except Exception as e:
-                logger.warning(f"Fetch error (attempt {attempt + 1}): {e}")
-            
-            self.stats["api_errors"] += 1
-            
-            if attempt < max_attempts - 1:
-                time.sleep(2 ** attempt)
-        
-        return None
-    
     @staticmethod
-    def _list_to_dataframe(data: List) -> Optional[pd.DataFrame]:
-        """تبدیل لیست به DataFrame OHLCV"""
-        if not data:
+    def _candles_to_dataframe(candles: List) -> Optional[pd.DataFrame]:
+        """
+        تبدیل candles به DataFrame OHLCV
+        
+        ساختار candle: [timestampMs, open, high, low, close, volume]
+        """
+        if not candles:
             return None
         
         rows = []
-        for point in data:
-            if isinstance(point, (list, tuple)) and len(point) >= 2:
-                ts = point[0]
-                price = float(point[1])
+        for c in candles:
+            if not isinstance(c, (list, tuple)) or len(c) < 6:
+                continue
+            
+            try:
+                ts = pd.to_datetime(c[0], unit="ms", errors="coerce")
+                if pd.isna(ts):
+                    continue
+                
+                volume = float(c[5]) if c[5] is not None else 0.0
                 
                 rows.append({
-                    "timestamp": pd.to_datetime(ts, unit="ms", errors="coerce"),
-                    "Open": price,
-                    "High": price,
-                    "Low": price,
-                    "Close": price,
-                    "Volume": 1.0,
+                    "timestamp": ts,
+                    "Open": float(c[1]),
+                    "High": float(c[2]),
+                    "Low": float(c[3]),
+                    "Close": float(c[4]),
+                    "Volume": volume,
                 })
+            except (ValueError, TypeError, IndexError):
+                continue
         
         if not rows:
             return None
         
         df = pd.DataFrame(rows).set_index("timestamp").sort_index().dropna()
         
-        if len(df) < 30:
+        if len(df) < MIN_CANDLES:
             return None
         
         return df
@@ -904,27 +977,21 @@ class AutoTrainer:
         if name in CALIBRATION_PROFILES:
             profile = CALIBRATION_PROFILES[name].copy()
         else:
-            # از DB
-            result = self.model_manager.load_profile(name) if hasattr(
-                self.model_manager, "load_profile"
-            ) else None
-            
-            if not result or not result.get("success"):
-                # fallback به balanced
-                profile = CALIBRATION_PROFILES["balanced"].copy()
-            else:
-                profile = result["profile"]
+            # fallback
+            profile = CALIBRATION_PROFILES["balanced"].copy()
+            profile["name"] = name
         
-        # override strategy
         if strategy:
             profile["strategy"] = strategy
         
         return profile
     
     def _get_current_config(self) -> Dict[str, Any]:
-        """دریافت config فعلی"""
+        """config فعلی"""
         try:
-            if self.model_manager and hasattr(self.model_manager, "get_active_config"):
+            if self.model_manager and hasattr(
+                self.model_manager, "get_active_config"
+            ):
                 return self.model_manager.get_active_config()
         except Exception:
             pass
@@ -952,7 +1019,7 @@ class AutoTrainer:
         accuracy: float,
         description: str,
     ) -> Dict[str, Any]:
-        """ذخیره best config در DB"""
+        """ذخیره best config"""
         try:
             if self.model_manager and hasattr(
                 self.model_manager, "save_config_version"
@@ -982,8 +1049,9 @@ class AutoTrainer:
         """ثبت موفقیت"""
         self.stats["successful_trainings"] += 1
         self.stats["successful_calibrations"] += 1
-        self.stats["last_training"] = datetime.now().isoformat()
-        self.stats["last_calibration"] = datetime.now().isoformat()
+        now_iso = datetime.now().isoformat()
+        self.stats["last_training"] = now_iso
+        self.stats["last_calibration"] = now_iso
         self.stats["last_error"] = None
         self.stats["last_score"] = float(score)
         self.stats["last_improvement"] = (
@@ -1009,11 +1077,7 @@ class AutoTrainer:
         incremental: bool = False,
         coins: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """
-        شروع کالیبراسیون خودکار
-        
-        (حفظ API قدیمی — ولی حالا calibrate صدا می‌زنه)
-        """
+        """شروع کالیبراسیون خودکار"""
         if self.is_running:
             return {"success": False, "message": "سیستم در حال اجراست"}
         
@@ -1032,8 +1096,7 @@ class AutoTrainer:
         def run() -> None:
             self._add_log(
                 f"🔄 کالیبراسیون خودکار شروع شد "
-                f"(فاصله: {interval_hours}h, بازه: {period}, "
-                f"profile: {profile_name})"
+                f"(هر {interval_hours}h, profile={profile_name})"
             )
             
             while not self.stop_event.is_set():
@@ -1045,17 +1108,20 @@ class AutoTrainer:
                         save=True,
                     )
                     
-                    self._add_log(
-                        f"📊 نتیجه: "
-                        f"{'✅' if result.get('success') else '❌'} "
-                        f"{result.get('best_score', 'N/A')}"
-                    )
+                    if result.get("success"):
+                        self._add_log(
+                            f"✅ چرخه موفق: score={result.get('best_score', 0):.4f}"
+                        )
+                    else:
+                        self._add_log(
+                            f"❌ چرخه ناموفق: {result.get('error', 'unknown')}"
+                        )
+                
                 except Exception as e:
-                    self._add_log(f"❌ خطا: {e}")
+                    self._add_log(f"❌ خطای چرخه: {e}")
                     logger.error(f"Auto calibrate cycle error: {e}", exc_info=True)
                 
-                wait_seconds = interval_hours * 3600
-                self.stop_event.wait(wait_seconds)
+                self.stop_event.wait(interval_hours * 3600)
             
             self.is_running = False
             self.stats["is_running"] = False
@@ -1063,6 +1129,11 @@ class AutoTrainer:
         
         self.thread = threading.Thread(target=run, daemon=True)
         self.thread.start()
+        
+        self._add_log(
+            f"✅ کالیبراسیون خودکار فعال شد "
+            f"(هر {interval_hours} ساعت, profile={profile_name})"
+        )
         
         return {
             "success": True,
@@ -1089,16 +1160,12 @@ class AutoTrainer:
         return {"success": True, "message": "کالیبراسیون متوقف شد"}
     
     # ============================================================
-    # Legacy Compatibility (بازگردانده‌شده با خطا)
+    # Legacy Compatibility
     # ============================================================
     
     def train_model(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        سازگاری: به calibrate redirect می‌کنه
-        
-        ⚠️ در نسخه ۵.۰، train_model معنی نداره.
-        """
-        logger.warning("⚠️ train_model called — redirecting to calibrate()")
+        """سازگاری: redirect به calibrate"""
+        logger.warning("⚠️ train_model called → redirecting to calibrate()")
         
         period = kwargs.get("period", "1m")
         coins = kwargs.get("coins")
@@ -1120,9 +1187,7 @@ class AutoTrainer:
         period: str = "1m",
         coins: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """
-        سازگاری: آموزش با چند profile (A/B Testing کالیبراسیون)
-        """
+        """A/B Testing کالیبراسیون"""
         self._add_log(f"🧪 A/B Calibration: {profiles}")
         
         results: Dict[str, Any] = {}
@@ -1144,7 +1209,6 @@ class AutoTrainer:
                     best_score = score
                     best_profile = profile_name
         
-        # ذخیره بهترین
         if best_profile:
             final = self.calibrate(
                 period=period,
@@ -1161,17 +1225,10 @@ class AutoTrainer:
             "best_accuracy": best_score,
             "results": results,
             "final_model": final,
-            "summary": {
-                "profiles_tested": len(profiles),
-                "profiles_successful": sum(
-                    1 for r in results.values() if r.get("success")
-                ),
-            },
         }
     
     def incremental_train(self, *args, **kwargs) -> Dict[str, Any]:
         """سازگاری: کار نمی‌کنه"""
-        logger.warning("⚠️ incremental_train called — not supported")
         return {
             "success": False,
             "error": "incremental_train is not supported. Use calibrate().",
@@ -1208,6 +1265,8 @@ class AutoTrainer:
                 "last_score": self.stats.get("last_score"),
                 "last_improvement": self.stats.get("last_improvement"),
                 "training_period": self.stats.get("training_period"),
+                "coins_used": self.stats.get("coins_used", []),
+                "total_candles_fetched": self.stats.get("total_candles_fetched", 0),
             },
             
             "api_status": status,
@@ -1220,7 +1279,7 @@ class AutoTrainer:
             ),
             
             "quota": quota,
-            "logs": self.logs[-30:],
+            "logs": self.logs[-50:],
             "points_config": self.historical_points_config,
             "timestamp": datetime.now().isoformat(),
         }
@@ -1273,11 +1332,11 @@ class AutoTrainer:
             return []
     
     # ============================================================
-    # Calibration Profiles API
+    # Profile API
     # ============================================================
     
     def get_presets(self) -> List[Dict[str, Any]]:
-        """لیست profileهای کالیبراسیون"""
+        """لیست profileها"""
         presets = []
         for key, profile in CALIBRATION_PROFILES.items():
             presets.append({
@@ -1287,6 +1346,7 @@ class AutoTrainer:
                 "icon": profile["icon"],
                 "color": profile["color"],
                 "strategy": profile["strategy"],
+                "range": profile.get("range", "6mo"),
                 "estimated_time_seconds": profile.get("estimated_time_seconds", 120),
                 "is_preset": True,
             })
