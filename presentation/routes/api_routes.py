@@ -1421,42 +1421,10 @@ def db_migrate():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/db/migrate-existing', methods=['POST'])
-@require_auth('admin')
-def db_migrate_existing():
-    """
-    اضافه کردن ستون‌های جدید به جداول موجود
-    
-    - models.model_type
-    - و هر ALTER TABLE دیگه
-    """
-    try:
-        import subprocess
-        import os
-        
-        project_path = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-        
-        result = subprocess.run(
-            ['python', 'scripts/manage_databases.py', '--action=migrate-existing'],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=project_path,
-        )
-        
-        return jsonify({
-            'success': result.returncode == 0,
-            'output': result.stdout,
-            'error': result.stderr if result.stderr else None,
-            'returncode': result.returncode,
-        })
-    except subprocess.TimeoutExpired:
-        return jsonify({'success': False, 'error': 'Migration timed out'}), 408
-    except Exception as e:
-        logger.error(f"Migration existing error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================
+# OHLCV & SCHEMA ENDPOINTS (🆕)
+# ============================================================
 
 @api_bp.route('/db/schema-status', methods=['GET'])
 @require_auth('admin')
@@ -1465,15 +1433,19 @@ def db_schema_status():
     وضعیت schema (کدوم جداول وجود دارن)
     """
     try:
-        from infrastructure.database import get_primary, get_backup, get_analytics, get_logs_db, get_archive
+        from infrastructure.database import (
+            get_primary, get_backup, get_analytics,
+            get_logs_db, get_archive,
+        )
         
         expected_tables = {
             "primary": [
                 "models", "predictions", "state_transitions",
                 "scan_history", "rule_config_overrides",
-                "model_training_history", "fear_greed_history",
-                "btc_dominance_history", "global_market_history",
-                "users", "commands_log", "app_settings", "cache",
+                "model_training_history", "ohlcv_history",
+                "fear_greed_history", "btc_dominance_history",
+                "global_market_history", "users", "commands_log",
+                "app_settings", "cache",
             ],
             "backup": [
                 "models_backup", "predictions_backup",
@@ -1511,7 +1483,6 @@ def db_schema_status():
                 continue
             
             try:
-                # لیست جداول موجود
                 if db_name == "archive":
                     query_result = db.execute(
                         "SELECT name FROM sqlite_master "
@@ -1549,16 +1520,43 @@ def db_schema_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/db/migrate-existing', methods=['POST'])
+@require_auth('admin')
+def db_migrate_existing():
+    """اضافه کردن ستون‌های جدید به جداول موجود"""
+    try:
+        import subprocess
+        import os
+        
+        project_path = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        
+        result = subprocess.run(
+            ['python', 'scripts/manage_databases.py', '--action=migrate-existing'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=project_path,
+        )
+        
+        return jsonify({
+            'success': result.returncode == 0,
+            'output': result.stdout,
+            'error': result.stderr if result.stderr else None,
+            'returncode': result.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Migration timed out'}), 408
+    except Exception as e:
+        logger.error(f"Migration existing error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/db/init-all', methods=['POST'])
 @require_auth('admin')
 def db_init_all():
-    """
-    راه‌اندازی کامل دیتابیس
-    
-    ۱. ساخت جداول (migrate)
-    ۲. اضافه کردن columns (migrate-existing)
-    ۳. داده اولیه (seed)
-    """
+    """راه‌اندازی کامل دیتابیس (migrate + seed)"""
     try:
         import subprocess
         import os
@@ -1569,47 +1567,19 @@ def db_init_all():
         
         results = {}
         
-        # ۱. migrate
-        r1 = subprocess.run(
-            ['python', 'scripts/manage_databases.py', '--action=migrate'],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=project_path,
-        )
-        results['migrate'] = {
-            'success': r1.returncode == 0,
-            'output': r1.stdout[-1000:] if r1.stdout else None,
-            'error': r1.stderr[-500:] if r1.stderr else None,
-        }
-        
-        # ۲. migrate-existing
-        r2 = subprocess.run(
-            ['python', 'scripts/manage_databases.py', '--action=migrate-existing'],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=project_path,
-        )
-        results['migrate_existing'] = {
-            'success': r2.returncode == 0,
-            'output': r2.stdout[-1000:] if r2.stdout else None,
-            'error': r2.stderr[-500:] if r2.stderr else None,
-        }
-        
-        # ۳. seed
-        r3 = subprocess.run(
-            ['python', 'scripts/manage_databases.py', '--action=seed'],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=project_path,
-        )
-        results['seed'] = {
-            'success': r3.returncode == 0,
-            'output': r3.stdout[-1000:] if r3.stdout else None,
-            'error': r3.stderr[-500:] if r3.stderr else None,
-        }
+        for action in ['migrate', 'seed']:
+            r = subprocess.run(
+                ['python', 'scripts/manage_databases.py', f'--action={action}'],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=project_path,
+            )
+            results[action] = {
+                'success': r.returncode == 0,
+                'output': r.stdout[-1000:] if r.stdout else None,
+                'error': r.stderr[-500:] if r.stderr else None,
+            }
         
         all_success = all(r['success'] for r in results.values())
         
@@ -1623,7 +1593,42 @@ def db_init_all():
     except Exception as e:
         logger.error(f"Init all error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/ohlcv/stats', methods=['GET'])
+@require_auth()
+def db_ohlcv_stats():
+    """آمار OHLCV Repository"""
+    try:
+        from infrastructure.repositories import repos
+        stats = repos.ohlcv.get_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/ohlcv/cleanup', methods=['POST'])
+@require_auth('admin')
+def db_ohlcv_cleanup():
+    """پاک کردن رکوردهای قدیمی OHLCV"""
+    try:
+        data = request.json or {}
+        retention_days = data.get('retention_days', 90)
+        interval = data.get('interval')
         
+        from infrastructure.repositories import repos
+        remaining = repos.ohlcv.cleanup_old(
+            retention_days=retention_days,
+            interval=interval,
+        )
+        
+        return jsonify({
+            'success': True,
+            'remaining': remaining,
+            'retention_days': retention_days,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500a
 # ============================================================
 # ۸. دیتابیس - عمومی
 # ============================================================
