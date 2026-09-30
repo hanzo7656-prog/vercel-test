@@ -1,37 +1,17 @@
 # application/use_cases/__init__.py
 # ============================================================
-# Use Cases - موارد استفاده - نسخه ۲.۱
-# Lazy Import + ScanMarketUseCase
-# ============================================================
-
-from typing import TYPE_CHECKING
-
-
-# ============================================================
-# Lazy Import
+# Use Cases - نسخه ۳.۰
 # ============================================================
 
 def __getattr__(name: str):
-    """
-    Lazy loading برای Use Caseها
-    """
-    
-    # ===== Predict =====
     if name == "PredictCoinUseCase":
         from application.use_cases.predict_coin import PredictCoinUseCase
         return PredictCoinUseCase
     
-    # ===== Train =====
-    if name == "TrainModelUseCase":
-        from application.use_cases.train_model import TrainModelUseCase
-        return TrainModelUseCase
-    
-    # ===== Health =====
     if name == "GetHealthUseCase":
         from application.use_cases.get_health import GetHealthUseCase
         return GetHealthUseCase
     
-    # ===== Scan Market (🆕) =====
     if name == "ScanMarketUseCase":
         from application.use_cases.scan_market import ScanMarketUseCase
         return ScanMarketUseCase
@@ -41,13 +21,8 @@ def __getattr__(name: str):
     )
 
 
-# ============================================================
-# Export
-# ============================================================
-
 __all__ = [
     "PredictCoinUseCase",
-    "TrainModelUseCase",
     "GetHealthUseCase",
     "ScanMarketUseCase",
 ]
