@@ -1,7 +1,13 @@
 # application/services/command_system.py
 # ============================================================
-# سیستم دستوری - نسخه ۵.۰
-# Model Commands + Profile Support
+# سیستم دستوری - نسخه ۶.۰
+# RuleEngine Commands + Calibration + Screener + State
+# ============================================================
+# 
+# تغییرات نسخه ۶.۰:
+#   - حذف /model, /profile, /profiles, /train (XGBoost-specific)
+#   - اضافه /rules, /config, /calibrate, /scan, /state
+#   - اضافه /versions, /schedule
 # ============================================================
 
 import logging
@@ -18,10 +24,12 @@ class CommandSystem:
     """
     سیستم پردازش دستورات متنی
     
-    ارتقاها:
-        - Model commands (train, profile)
-        - Repository stats
-        - Better help
+    ارتقاها (v6.0):
+        - RuleEngine commands (rules, config)
+        - Calibration commands
+        - Screener commands (scan)
+        - State commands
+        - بدون XGBoost
     """
     
     def __init__(self, analyzer: NumericAnalyzer) -> None:
@@ -45,11 +53,20 @@ class CommandSystem:
             "/resistance": self._cmd_resistance,
             "/volatility": self._cmd_volatility,
             
-            # ===== مدل =====
+            # ===== مدل (RuleEngine) =====
             "/model": self._cmd_model,
-            "/profile": self._cmd_profile,
+            "/rules": self._cmd_rules,
+            "/config": self._cmd_config,
+            "/versions": self._cmd_versions,
+            
+            # ===== کالیبراسیون =====
+            "/calibrate": self._cmd_calibrate,
             "/profiles": self._cmd_profiles_list,
-            "/train": self._cmd_train,
+            "/schedule": self._cmd_schedule,
+            
+            # ===== اسکن =====
+            "/scan": self._cmd_scan,
+            "/state": self._cmd_state,
             
             # ===== سیستم =====
             "/history": self._cmd_history,
@@ -71,14 +88,20 @@ class CommandSystem:
             "سیگنال": "/signal",
             "روند": "/trend",
             "مدل": "/model",
-            "پروفایل": "/profile",
-            "آموزش": "/train",
+            "قوانین": "/rules",
+            "تنظیمات": "/config",
+            "نسخه‌ها": "/versions",
+            "کالیبراسیون": "/calibrate",
+            "پروفایل": "/profiles",
+            "زمان‌بندی": "/schedule",
+            "اسکن": "/scan",
+            "وضعیت": "/state",
             "help": "/help",
             "راهنما": "/help",
-            "وضعیت": "/status",
+            "وضعیت_سیستم": "/status",
         }
         
-        logger.info("✅ CommandSystem v5.0 initialized")
+        logger.info("✅ CommandSystem v6.0 initialized")
     
     # ============================================================
     # Process
@@ -89,16 +112,7 @@ class CommandSystem:
         command: str,
         user_id: Optional[str] = None,
     ) -> str:
-        """
-        پردازش دستور
-        
-        پارامترها:
-            command: دستور
-            user_id: شناسه کاربر
-        
-        خروجی:
-            پاسخ
-        """
+        """پردازش دستور"""
         if not command or not command.strip():
             return "❌ دستور وارد نشده"
         
@@ -172,10 +186,10 @@ class CommandSystem:
     def _cmd_signal(self, coin: str) -> str:
         coin = coin or self.default_coin
         data = self.analyzer.analyze_coin(coin)
-        if "xgboost_signal" in data:
+        if "signal" in data:
             return (
-                f"🧠 سیگنال {coin}: {data['xgboost_signal']} "
-                f"({data['xgboost_confidence']}%)"
+                f"🧠 سیگنال {coin}: {data['signal']} "
+                f"({data.get('confidence', 0)}%)"
             )
         return f"❌ سیگنالی برای {coin} نیست"
     
@@ -211,7 +225,7 @@ class CommandSystem:
         return f"📊 نوسان {coin}: {data.get('volatility', 'N/A')}"
     
     # ============================================================
-    # Model Commands
+    # Model Commands (RuleEngine)
     # ============================================================
     
     def _cmd_model(self, _: str) -> str:
@@ -220,86 +234,299 @@ class CommandSystem:
             from container import container
             mm = container.get("model_manager")
             
-            loaded = mm.current_model is not None
-            version = mm.current_version or "N/A"
+            loaded = mm.engine is not None
+            version = mm.current_version or "default"
             stats = mm.get_stats()
+            engine_stats = stats.get("engine", {})
             
             return (
-                f"🧠 **وضعیت مدل**\n"
+                f"🧠 **وضعیت مدل (RuleEngine)**\n"
                 f"📦 بارگذاری: {'✅' if loaded else '❌'}\n"
                 f"🏷️ نسخه: {version}\n"
-                f"🎯 دقت: {stats.get('max_accuracy', 0):.2%}\n"
+                f"📋 تعداد قوانین: {stats.get('rule_count', 0)}\n"
+                f"🎯 آستانه قبولی: {engine_stats.get('min_pass_score', 0.55):.2f}\n"
+                f"⚙️ ترکیب: {engine_stats.get('aggregation', 'weighted_sum')}\n"
                 f"📊 کل نسخه‌ها: {stats.get('total_versions', 0)}\n"
-                f"⚙️ پروفایل فعال: {stats.get('active_profile', 'N/A')}"
+                f"🔧 Runtime config: {'✅' if stats.get('runtime_config_active') else '❌'}"
             )
         except Exception as e:
             return f"❌ خطا: {e}"
     
-    def _cmd_profile(self, args: str) -> str:
-        """اطلاعات پروفایل"""
+    def _cmd_rules(self, _: str) -> str:
+        """لیست قوانین فعال"""
         try:
             from container import container
             mm = container.get("model_manager")
             
-            if args:
-                result = mm.load_profile(args.strip())
-                if not result.get("success"):
-                    return f"❌ پروفایل '{args}' یافت نشد"
-                profile = result["profile"]
-            else:
-                profile = mm.get_current_profile()
+            if mm.engine is None:
+                return "❌ RuleEngine بارگذاری نشده"
             
-            hp = profile.get("hyperparameters", {})
+            response = "📋 **قوانین فعال:**\n\n"
+            for rule in mm.engine.rules:
+                status = "✅" if rule.enabled else "❌"
+                response += (
+                    f"{status} **{rule.name}** — وزن: {rule.weight:.2f}\n"
+                )
+                # پارامترهای کلیدی
+                cfg = rule.config
+                if rule.name == "rsi":
+                    response += f"   RSI بازه: [{cfg.get('min', 25)}, {cfg.get('max', 60)}]\n"
+                elif rule.name == "volume":
+                    response += f"   ضریب: {cfg.get('multiplier', 1.2)}x\n"
+                elif rule.name == "trend":
+                    response += f"   MA: {cfg.get('ma_column', 'MA50')} ({cfg.get('vs_ma', 'above')})\n"
+                elif rule.name == "momentum":
+                    response += f"   MACD: {cfg.get('macd_positive', 'neutral')}\n"
+            
+            return response
+        except Exception as e:
+            return f"❌ خطا: {e}"
+    
+    def _cmd_config(self, _: str) -> str:
+        """config فعلی"""
+        try:
+            from container import container
+            mm = container.get("model_manager")
+            config = mm.get_active_config()
+            
+            scoring = config.get("scoring", {})
+            batch = config.get("batch", {})
+            symbols = config.get("symbols", {})
             
             return (
-                f"⚙️ **پروفایل: {profile.get('name', 'custom')}**\n"
-                f"📝 {profile.get('description', '')}\n"
-                f"🔄 استراتژی: {profile.get('learning_strategy', 'full')}\n"
-                f"🌲 n_estimators: {hp.get('n_estimators', 'N/A')}\n"
-                f"📏 max_depth: {hp.get('max_depth', 'N/A')}\n"
-                f"📚 learning_rate: {hp.get('learning_rate', 'N/A')}"
+                f"⚙️ **تنظیمات فعلی**\n\n"
+                f"📊 **Scoring:**\n"
+                f"   Min pass: {scoring.get('min_pass_score', 0.55)}\n"
+                f"   Aggregation: {scoring.get('aggregation', 'weighted_sum')}\n\n"
+                f"🔍 **Batch:**\n"
+                f"   Batch size: {batch.get('batch_size', 30)}\n"
+                f"   Timeframe: {batch.get('timeframe', '4h')}\n\n"
+                f"🪙 **Symbols:**\n"
+                f"   Count: {symbols.get('count', 30)}\n"
+                f"   Exclude stables: {symbols.get('exclude_stablecoins', True)}"
             )
         except Exception as e:
             return f"❌ خطا: {e}"
     
-    def _cmd_profiles_list(self, _: str) -> str:
-        """لیست پروفایل‌ها"""
+    def _cmd_versions(self, args: str) -> str:
+        """لیست نسخه‌ها"""
         try:
             from container import container
             mm = container.get("model_manager")
             
-            presets = mm.get_presets()
+            limit = 10
+            if args:
+                try:
+                    limit = int(args.strip())
+                except ValueError:
+                    pass
             
-            result = "📋 **پروفایل‌های آماده:**\n"
-            for p in presets:
-                result += f"  {p.get('icon', '•')} {p['id']}: {p.get('description', '')}\n"
+            versions = mm.get_version_history(limit=limit)
             
-            return result
+            if not versions:
+                return "📋 هیچ نسخه‌ای ثبت نشده"
+            
+            response = f"📋 **آخرین {len(versions)} نسخه:**\n\n"
+            for v in versions:
+                active = "🟢" if v.get("is_active") else "⚪"
+                acc = v.get("accuracy", 0) or 0
+                version = v.get("version", "N/A")
+                date = str(v.get("training_date", ""))[:19]
+                response += f"{active} **{version}** — دقت: {acc:.2%} ({date})\n"
+            
+            return response
         except Exception as e:
             return f"❌ خطا: {e}"
     
-    def _cmd_train(self, args: str) -> str:
-        """آموزش مدل"""
+    # ============================================================
+    # Calibration Commands
+    # ============================================================
+    
+    def _cmd_calibrate(self, args: str) -> str:
+        """کالیبراسیون وزن‌ها"""
         try:
             from container import container
             trainer = container.get("trainer")
             
             profile_name = args.strip() if args else "balanced"
             
-            result = trainer.train_model(
+            response = f"🔄 **شروع کالیبراسیون ({profile_name})...**\n"
+            result = trainer.calibrate(
                 period="1m",
                 profile_name=profile_name,
+                save=True,
             )
             
             if result.get("success"):
                 return (
-                    f"✅ **آموزش موفق**\n"
-                    f"🏷️ نسخه: {result.get('version')}\n"
-                    f"🎯 دقت: {result.get('accuracy', 0):.2%}\n"
+                    f"✅ **کالیبراسیون موفق**\n"
+                    f"🏷️ نسخه: {result.get('version', 'N/A')}\n"
+                    f"🎯 بهترین امتیاز: {result.get('best_score', 0):.4f}\n"
+                    f"📈 بهبود: {result.get('improvement', 0):+.4f}\n"
+                    f"⏱️ زمان: {result.get('duration_seconds', 0):.1f}s\n"
                     f"⚙️ پروفایل: {profile_name}"
                 )
             else:
-                return f"❌ آموزش ناموفق: {result.get('error')}"
+                return f"❌ کالیبراسیون ناموفق: {result.get('error')}"
+        except Exception as e:
+            return f"❌ خطا: {e}"
+    
+    def _cmd_profiles_list(self, _: str) -> str:
+        """لیست پروفایل‌های کالیبراسیون"""
+        try:
+            from container import container
+            trainer = container.get("trainer")
+            
+            if hasattr(trainer, 'get_presets'):
+                presets = trainer.get_presets()
+            else:
+                from models.trainer.auto_trainer import CALIBRATION_PROFILES
+                presets = [
+                    {'id': k, **v}
+                    for k, v in CALIBRATION_PROFILES.items()
+                ]
+            
+            response = "📋 **پروفایل‌های کالیبراسیون:**\n\n"
+            for p in presets:
+                icon = p.get('icon', '•')
+                pid = p.get('id', '?')
+                desc = p.get('description', '')
+                est = p.get('estimated_time_seconds', '?')
+                response += f"  {icon} **{pid}** — {desc} (~{est}s)\n"
+            
+            return response
+        except Exception as e:
+            return f"❌ خطا: {e}"
+    
+    def _cmd_schedule(self, _: str) -> str:
+        """وضعیت زمان‌بندی کالیبراسیون"""
+        try:
+            from container import container
+            trainer = container.get("trainer")
+            
+            stats = trainer.get_stats()
+            inner = stats.get("stats", {})
+            
+            is_running = stats.get("is_running", False)
+            status_icon = "🟢" if is_running else "⚪"
+            
+            return (
+                f"⏰ **زمان‌بندی کالیبراسیون**\n\n"
+                f"{status_icon} وضعیت: {'فعال' if is_running else 'غیرفعال'}\n"
+                f"🔄 در حال کالیبراسیون: {'✅' if stats.get('is_calibrating') else '❌'}\n"
+                f"📅 بازه: هر {inner.get('interval_hours', 6)} ساعت\n"
+                f"📊 بازه داده: {inner.get('training_period', '1m')}\n"
+                f"⚙️ پروفایل: {inner.get('profile_name', 'balanced')}\n\n"
+                f"📈 آمار:\n"
+                f"   کل: {inner.get('total_calibrations', 0)}\n"
+                f"   موفق: {inner.get('successful_calibrations', 0)}\n"
+                f"   ناموفق: {inner.get('failed_calibrations', 0)}\n"
+                f"   آخرین: {inner.get('last_calibration', 'N/A')}"
+            )
+        except Exception as e:
+            return f"❌ خطا: {e}"
+    
+    # ============================================================
+    # Screener Commands
+    # ============================================================
+    
+    def _cmd_scan(self, args: str) -> str:
+        """اسکن بازار"""
+        try:
+            from container import container
+            use_case = container.get("scan_market_use_case")
+            
+            # پارامترها
+            top_n = 30
+            max_results = 10
+            
+            if args:
+                parts = args.split()
+                for i, p in enumerate(parts):
+                    if p == "--top" and i + 1 < len(parts):
+                        try:
+                            top_n = int(parts[i + 1])
+                        except ValueError:
+                            pass
+                    elif p == "--max" and i + 1 < len(parts):
+                        try:
+                            max_results = int(parts[i + 1])
+                        except ValueError:
+                            pass
+            
+            result = use_case.execute(
+                top_n=top_n,
+                max_results=max_results,
+                update_state=True,
+            )
+            
+            if not result.results:
+                return (
+                    f"🔍 **اسکن کامل شد**\n"
+                    f"📊 اسکن‌شده: {result.total_scanned}\n"
+                    f"❌ هیچ ارزی از فیلتر رد نشد"
+                )
+            
+            response = (
+                f"🔍 **نتایج اسکن** (ID: {result.scan_id})\n"
+                f"📊 اسکن‌شده: {result.total_scanned} | "
+                f"قبول: {result.passed_count} | "
+                f"⏱️ {result.duration_seconds:.1f}s\n\n"
+            )
+            
+            for pred in result.results[:max_results]:
+                rank_icon = "🥇" if pred.rank == 1 else "🥈" if pred.rank == 2 else "🥉" if pred.rank == 3 else "•"
+                state_icon = {
+                    "SETUP": "🎯",
+                    "WATCHING": "👀",
+                    "ACTIVE": "🔥",
+                    "COOLING": "❄️",
+                    "IDLE": "💤",
+                }.get(pred.state.value, "•")
+                
+                response += (
+                    f"{rank_icon} **{pred.symbol}** — "
+                    f"امتیاز: {pred.score:.3f} {state_icon} {pred.state.value}\n"
+                )
+            
+            return response
+        except Exception as e:
+            return f"❌ خطا: {e}"
+    
+    def _cmd_state(self, args: str) -> str:
+        """وضعیت state"""
+        try:
+            from container import container
+            mm = container.get("model_manager")
+            sm = mm.state_machine
+            
+            if sm is None:
+                return "❌ StateMachine در دسترس نیست"
+            
+            # اگه symbol داده شده
+            if args:
+                symbol = args.strip().upper()
+                # BTC → BTC/USDT
+                if "/" not in symbol:
+                    if not symbol.endswith("USDT"):
+                        symbol = f"{symbol}USDT"
+                    symbol = f"{symbol[:-4]}/USDT"
+                
+                snapshot = sm.get_state(symbol)
+                
+                return (
+                    f"📍 **{symbol}**\n"
+                    f"🎯 State: **{snapshot.state.value}**\n"
+                    f"📅 ورود: {snapshot.entered_at.strftime('%Y-%m-%d %H:%M')}\n"
+                    f"🔔 تعداد سیگنال: {snapshot.signal_count}"
+                )
+            
+            # خلاصه
+            response = "📍 **وضعیت State Machine**\n\n"
+            response += "برای دیدن جزئیات: `/state BTCUSDT`\n"
+            response += "برای خلاصه: از API استفاده کن"
+            
+            return response
         except Exception as e:
             return f"❌ خطا: {e}"
     
@@ -410,11 +637,20 @@ class CommandSystem:
   /resistance [coin] مقاومت
   /volatility [coin] نوسان
 
-🧠 **مدل**
+🧠 **مدل (RuleEngine)**
   /model             وضعیت مدل
-  /profile [name]    اطلاعات پروفایل
+  /rules             لیست قوانین فعال
+  /config            تنظیمات فعلی
+  /versions [n]      آخرین نسخه‌ها
+
+⚙️ **کالیبراسیون**
+  /calibrate [prof]  کالیبراسیون وزن‌ها
   /profiles          لیست پروفایل‌ها
-  /train [profile]   آموزش
+  /schedule          وضعیت کالیبراسیون خودکار
+
+🔍 **اسکن و State**
+  /scan [--top N]    اسکن بازار
+  /state [symbol]    وضعیت یک symbol
 
 📊 **سیستم**
   /status            وضعیت
@@ -428,6 +664,7 @@ class CommandSystem:
 
 🔹 پیش‌فرض ارز: bitcoin
 🔹 مثال: /price ethereum
+🔹 مثال: /scan --top 20 --max 5
 """
     
     # ============================================================
