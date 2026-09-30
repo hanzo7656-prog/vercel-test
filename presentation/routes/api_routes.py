@@ -1628,7 +1628,7 @@ def db_ohlcv_cleanup():
             'retention_days': retention_days,
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500a
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ============================================================
 # ۸. دیتابیس - عمومی
 # ============================================================
