@@ -1,43 +1,33 @@
 # models/__init__.py
 # ============================================================
-# پکیج مدل - نسخه ۲.۰
+# پکیج مدل - نسخه ۳.۰
+# RuleEngine-based
 # ============================================================
 
 from typing import TYPE_CHECKING
 
 # ============================================================
-# Import مستقیم (بدون circular dependency)
+# Import مستقیم
 # ============================================================
 
-from models.manager import (
-    ModelManager,
-    TRAINING_PRESETS,
-    LEARNING_STRATEGIES,
-    HYPERPARAMETER_LIMITS,
-    DEFAULT_HYPERPARAMETERS,
-)
+from models.manager import ModelManager
 
 
 # ============================================================
-# Lazy Import برای Trainerها
+# Lazy Import برای Trainer
 # ============================================================
 
 def __getattr__(name):
     """
-    Lazy import برای Trainerها
-    
-    این تابع باعث می‌شه AutoTrainer و ManualTrainer فقط
-    وقتی واقعاً استفاده بشن، import بشن. اینطوری circular
-    dependency پیش نمیاد.
+    Lazy import برای AutoTrainer (WeightCalibrator)
     """
     if name == "AutoTrainer":
         from models.trainer.auto_trainer import AutoTrainer
         return AutoTrainer
     
-    if name == "ManualTrainer":
-        # ManualTrainer یه CLI هست، پس ماژول رو برمی‌گردونیم
-        from models.trainer import manual_trainer
-        return manual_trainer
+    if name == "CALIBRATION_PROFILES":
+        from models.trainer.auto_trainer import CALIBRATION_PROFILES
+        return CALIBRATION_PROFILES
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
@@ -49,16 +39,7 @@ def __getattr__(name):
 # ============================================================
 
 __all__ = [
-    # Manager
     "ModelManager",
-    
-    # Trainerها (lazy)
     "AutoTrainer",
-    "ManualTrainer",
-    
-    # Constants
-    "TRAINING_PRESETS",
-    "LEARNING_STRATEGIES",
-    "HYPERPARAMETER_LIMITS",
-    "DEFAULT_HYPERPARAMETERS",
+    "CALIBRATION_PROFILES",
 ]
