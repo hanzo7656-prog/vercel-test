@@ -1,6 +1,6 @@
 // ============================================================
-// app.js - Core Application v12.0
-// State غنی + Scheduler پویا + Event Bus + Settings + Cache
+// app.js - Core Application v13.0
+// RuleEngine Aware + OHLCV + Screener + State + Calibration
 // ============================================================
 
 (function() {
@@ -72,13 +72,38 @@
                 appStats: null,
                 dbHealth: null,
                 health: null,
+                schemaStatus: null,           // 🆕
+                ohlcvStats: null,             // 🆕
                 
-                // مدل
+                // مدل (RuleEngine)
                 modelStatus: null,
+                modelStats: null,             // 🆕
                 trainerStats: null,
-                currentProfile: null,
-                trainingPresets: [],
-                learningStrategies: [],
+                modelRules: [],               // 🆕
+                modelConfig: null,            // 🆕
+                runtimeConfigActive: false,   // 🆕
+                
+                // Calibration
+                calibrationProfiles: [],      // 🆕
+                calibrationHistory: [],       // 🆕
+                calibrationRunning: false,    // 🆕
+                
+                // Versions
+                versions: [],                 // 🆕
+                
+                // Schedule
+                scheduleStatus: null,         // 🆕
+                
+                // Screener
+                screenerLatest: null,         // 🆕
+                screenerHistory: [],          // 🆕
+                screenerConfig: null,         // 🆕
+                screenerRunning: false,       // 🆕
+                
+                // State Machine
+                stateSummary: null,           // 🆕
+                stateSnapshots: [],           // 🆕
+                stateTransitions: [],         // 🆕
                 
                 // دیتابیس
                 databases: {},
@@ -105,7 +130,7 @@
                 isInitialized: false,
                 isOnline: navigator.onLine,
                 
-                // تنظیمات - مقدار اولیه خالی (از API میان)
+                // تنظیمات
                 settings: {
                     scheduler: JSON.parse(JSON.stringify(DEFAULT_SCHEDULER)),
                     theme: JSON.parse(JSON.stringify(DEFAULT_THEME)),
@@ -116,7 +141,7 @@
             };
             
             // ============================================================
-            // Event Bus (mitt)
+            // Event Bus
             // ============================================================
             
             this.events = (typeof mitt !== 'undefined') 
@@ -149,10 +174,6 @@
                 lastRequestTime: null,
             };
             
-            // ============================================================
-            // Listeners
-            // ============================================================
-            
             this.listeners = [];
             
             // ============================================================
@@ -166,9 +187,6 @@
         // Settings System - API Based
         // ============================================================
 
-        /**
-         * بارگذاری تنظیمات از API
-         */
         async _loadSettingsFromAPI(category) {
             const defaults = {
                 scheduler: DEFAULT_SCHEDULER,
@@ -184,7 +202,6 @@
                 const data = await window.api.getSettingsCategory(category);
                 
                 if (data.success && data.data?.value) {
-                    // Deep merge با defaults
                     return this._deepMerge(defaults, data.data.value);
                 }
             } catch (e) {
@@ -194,9 +211,6 @@
             return JSON.parse(JSON.stringify(defaults));
         }
 
-        /**
-         * بارگذاری همه تنظیمات
-         */
         async _loadAllSettings() {
             const categories = ['scheduler', 'theme', 'cache', 'notifications', 'dashboard'];
             
@@ -232,17 +246,12 @@
             return this.state.settings[category];
         }
 
-        /**
-         * ذخیره تنظیمات در API
-         */
         async saveSettings(category, values) {
-            // Update local
             this.state.settings[category] = {
                 ...this.state.settings[category],
                 ...values,
             };
             
-            // Save to API
             try {
                 const result = await window.api.saveSettingsCategory(
                     category,
@@ -262,7 +271,6 @@
                 return false;
             }
             
-            // Apply
             this.applySettings(category);
             this.events.emit(`settings:${category}:changed`, this.state.settings[category]);
             this.notifyListeners();
@@ -270,9 +278,6 @@
             return true;
         }
 
-        /**
-         * ذخیره همه تنظیمات
-         */
         async saveAllSettings() {
             const categories = ['scheduler', 'theme', 'cache', 'notifications', 'dashboard'];
             
@@ -282,16 +287,11 @@
                 )
             );
             
-            const allSuccess = results.every(r => 
+            return results.every(r => 
                 r.status === 'fulfilled' && r.value.success
             );
-            
-            return allSuccess;
         }
 
-        /**
-         * ریست تنظیمات یک دسته
-         */
         async resetSettings(category) {
             const defaults = {
                 scheduler: DEFAULT_SCHEDULER,
@@ -313,9 +313,6 @@
             }
         }
 
-        /**
-         * ریست همه تنظیمات
-         */
         async resetAllSettings() {
             try {
                 await window.api.resetAllSettings();
@@ -351,7 +348,6 @@
         _applySchedulerSettings() {
             const { scheduler } = this.state.settings;
             
-            // لغو همه
             for (const name of this._tasks.keys()) {
                 this._unscheduleTask(name);
             }
@@ -476,36 +472,43 @@
         async init() {
             if (this.state.isInitialized) return;
 
-            console.log('🚀 App initializing...');
+            console.log('🚀 App v13.0 initializing...');
 
             try {
-                // ۱. بارگذاری تنظیمات از API
+                // ۱. تنظیمات
                 await this._loadAllSettings();
-                
-                // ۲. اعمال تم
                 this.applyTheme(this.state.settings.theme.mode);
-                
-                // ۳. اعمال Scheduler
                 this._applySchedulerSettings();
                 
-                // ۴. Setup listeners
+                // ۲. Listeners
                 this._setupVisibilityListeners();
                 this._setupOnlineListeners();
                 this._setupErrorHandlers();
                 
-                // ۵. دریافت اطلاعات
+                // ۳. اطلاعات پایه
                 await this.loadUser();
                 await this.loadMetrics();
                 await this.loadAppStats();
                 await this.loadDatabaseHealth();
                 await this.loadAlerts();
                 
+                // ۴. مدل (RuleEngine-aware)
+                await this.loadModelStatus();
+                await this.loadModelRules();
+                await this.loadModelConfig();
+                await this.loadCalibrationProfiles();
+                await this.loadVersions();
+                
+                // ۵. Schema & OHLCV
+                await this.loadSchemaStatus();
+                await this.loadOHLCVStats();
+                
                 // ۶. علامت‌گذاری
                 this.state.isInitialized = true;
                 this.notifyListeners();
                 this.events.emit('app:ready', this.state);
                 
-                console.log('✅ App initialized successfully');
+                console.log('✅ App v13.0 initialized successfully');
             } catch (err) {
                 console.error('❌ App initialization failed:', err);
                 this.events.emit('app:error', err);
@@ -615,10 +618,6 @@
             };
         }
 
-        // ============================================================
-        // Track API metrics
-        // ============================================================
-
         _trackRequest(startTime, success) {
             const elapsed = Date.now() - startTime;
             this._appMetrics.totalRequests++;
@@ -635,7 +634,7 @@
         }
 
         // ============================================================
-        // API Calls
+        // API Calls - User & System
         // ============================================================
 
         async loadUser() {
@@ -734,14 +733,17 @@
         }
 
         // ============================================================
-        // Model Loaders
+        // Model Loaders (RuleEngine)
         // ============================================================
 
         async loadModelStatus() {
             try {
                 const data = await window.api.getModelStatus();
                 if (data.success) {
-                    this.setState({ modelStatus: data.data });
+                    this.setState({
+                        modelStatus: data.data,
+                        runtimeConfigActive: data.data?.runtime_config_active || false,
+                    });
                     this.events.emit('model:status', data.data);
                     return data.data;
                 }
@@ -751,34 +753,572 @@
             return null;
         }
 
-        async loadProfiles() {
+        async loadModelStats() {
             try {
-                const [presetsRes, strategiesRes, currentRes] = await Promise.allSettled([
-                    window.api.getTrainingPresets(),
-                    window.api.getLearningStrategies(),
-                    window.api.getCurrentProfile(),
-                ]);
-                
-                const updates = {};
-                if (presetsRes.status === 'fulfilled' && presetsRes.value.success) {
-                    updates.trainingPresets = presetsRes.value.data;
+                const data = await window.api.getModelStats();
+                if (data.success) {
+                    this.setState({ modelStats: data.data });
+                    this.events.emit('model:stats', data.data);
+                    return data.data;
                 }
-                if (strategiesRes.status === 'fulfilled' && strategiesRes.value.success) {
-                    updates.learningStrategies = strategiesRes.value.data;
-                }
-                if (currentRes.status === 'fulfilled' && currentRes.value.success) {
-                    updates.currentProfile = currentRes.value.data;
-                }
-                
-                if (Object.keys(updates).length > 0) {
-                    this.setState(updates);
-                    this.events.emit('profiles:loaded', updates);
-                }
-                return updates;
             } catch (err) {
-                console.error('Failed to load profiles:', err);
+                console.error('Failed to load model stats:', err);
             }
-            return {};
+            return null;
+        }
+
+        async loadTrainerStats() {
+            try {
+                const data = await window.api.getTrainerStats();
+                if (data.success) {
+                    this.setState({ trainerStats: data.data });
+                    this.events.emit('trainer:stats', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load trainer stats:', err);
+            }
+            return null;
+        }
+
+        async loadModelRules() {
+            try {
+                const data = await window.api.getModelRules();
+                if (data.success) {
+                    this.setState({ modelRules: data.data || [] });
+                    this.events.emit('model:rules', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load model rules:', err);
+            }
+            return [];
+        }
+
+        async loadModelConfig() {
+            try {
+                const data = await window.api.getModelConfig();
+                if (data.success) {
+                    this.setState({ modelConfig: data.data });
+                    this.events.emit('model:config', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load model config:', err);
+            }
+            return null;
+        }
+
+        async updateModelConfig(updates) {
+            try {
+                const data = await window.api.updateModelConfig(updates);
+                if (data.success) {
+                    await this.loadModelConfig();
+                    await this.loadModelRules();
+                    this.events.emit('model:configUpdated', data.data);
+                    return data;
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to update model config:', err);
+                throw err;
+            }
+        }
+
+        async updateRuntimeConfig(updates) {
+            try {
+                const data = await window.api.updateRuntimeConfig(updates);
+                if (data.success) {
+                    await this.loadModelConfig();
+                    await this.loadModelRules();
+                    this.setState({ runtimeConfigActive: true });
+                    this.events.emit('model:runtimeConfigUpdated', data.data);
+                    return data;
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to update runtime config:', err);
+                throw err;
+            }
+        }
+
+        async resetRuntimeConfig() {
+            try {
+                const data = await window.api.resetRuntimeConfig();
+                if (data.success) {
+                    await this.loadModelConfig();
+                    await this.loadModelRules();
+                    this.setState({ runtimeConfigActive: false });
+                    this.events.emit('model:runtimeConfigReset');
+                    return data;
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to reset runtime config:', err);
+                throw err;
+            }
+        }
+
+        async validateConfig(data) {
+            try {
+                const result = await window.api.validateConfig(data);
+                return result;
+            } catch (err) {
+                console.error('Failed to validate config:', err);
+                throw err;
+            }
+        }
+
+        // ============================================================
+        // Calibration Loaders
+        // ============================================================
+
+        async loadCalibrationProfiles() {
+            try {
+                const data = await window.api.getCalibrationProfiles();
+                if (data.success) {
+                    this.setState({ calibrationProfiles: data.data || [] });
+                    this.events.emit('calibration:profiles', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load calibration profiles:', err);
+            }
+            return [];
+        }
+
+        async loadCalibrationHistory(options = {}) {
+            try {
+                const data = await window.api.getCalibrationHistory(options);
+                if (data.success) {
+                    this.setState({ calibrationHistory: data.data || [] });
+                    this.events.emit('calibration:history', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load calibration history:', err);
+            }
+            return [];
+        }
+
+        async calibrate(data = {}) {
+            this.setState({ calibrationRunning: true });
+            this.events.emit('calibration:started', data);
+            
+            try {
+                const result = await window.api.calibrateModel(data);
+                
+                if (result.success) {
+                    await this.loadModelStatus();
+                    await this.loadVersions();
+                    await this.loadCalibrationHistory();
+                    this.events.emit('calibration:completed', result.data);
+                    window.showToast?.('🎉 کالیبراسیون با موفقیت انجام شد', 'success', 4000);
+                } else {
+                    this.events.emit('calibration:failed', result);
+                    window.showToast?.(`❌ کالیبراسیون ناموفق: ${result.error}`, 'error', 5000);
+                }
+                
+                return result;
+            } catch (err) {
+                console.error('Calibration error:', err);
+                this.events.emit('calibration:failed', err);
+                window.showToast?.('❌ خطا در کالیبراسیون', 'error', 5000);
+                throw err;
+            } finally {
+                this.setState({ calibrationRunning: false });
+            }
+        }
+
+        async forceCalibrate(data = {}) {
+            this.setState({ calibrationRunning: true });
+            this.events.emit('calibration:started', data);
+            
+            try {
+                const result = await window.api.forceCalibrate(data);
+                
+                if (result.success) {
+                    await this.loadModelStatus();
+                    await this.loadVersions();
+                    this.events.emit('calibration:completed', result.data);
+                    window.showToast?.('⚡ کالیبراسیون اجباری انجام شد', 'success', 4000);
+                } else {
+                    window.showToast?.(`❌ ${result.error}`, 'error', 5000);
+                }
+                
+                return result;
+            } catch (err) {
+                console.error('Force calibration error:', err);
+                window.showToast?.('❌ خطا در کالیبراسیون اجباری', 'error', 5000);
+                throw err;
+            } finally {
+                this.setState({ calibrationRunning: false });
+            }
+        }
+
+        // ============================================================
+        // Versions Loaders
+        // ============================================================
+
+        async loadVersions(options = {}) {
+            try {
+                const data = await window.api.getVersions(options);
+                if (data.success) {
+                    this.setState({ versions: data.data || [] });
+                    this.events.emit('versions:loaded', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load versions:', err);
+            }
+            return [];
+        }
+
+        async activateVersion(version) {
+            try {
+                const data = await window.api.activateVersion(version);
+                if (data.success) {
+                    await this.loadModelStatus();
+                    await this.loadVersions();
+                    await this.loadModelConfig();
+                    await this.loadModelRules();
+                    this.events.emit('version:activated', version);
+                    window.showToast?.(`✅ نسخه ${version} فعال شد`, 'success');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to activate version:', err);
+                window.showToast?.('❌ خطا در فعال‌سازی نسخه', 'error');
+                throw err;
+            }
+        }
+
+        async deleteVersion(version) {
+            try {
+                const data = await window.api.deleteVersion(version);
+                if (data.success) {
+                    await this.loadVersions();
+                    this.events.emit('version:deleted', version);
+                    window.showToast?.(`🗑️ نسخه ${version} حذف شد`, 'success');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to delete version:', err);
+                window.showToast?.('❌ خطا در حذف نسخه', 'error');
+                throw err;
+            }
+        }
+
+        // ============================================================
+        // Schedule Loaders
+        // ============================================================
+
+        async loadScheduleStatus() {
+            try {
+                const data = await window.api.getScheduleStatus();
+                if (data.success) {
+                    this.setState({ scheduleStatus: data.data });
+                    this.events.emit('schedule:status', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load schedule status:', err);
+            }
+            return null;
+        }
+
+        async startSchedule(options = {}) {
+            try {
+                const data = await window.api.startSchedule(options);
+                if (data.success) {
+                    await this.loadScheduleStatus();
+                    this.events.emit('schedule:started', data);
+                    window.showToast?.('⏰ کالیبراسیون خودکار فعال شد', 'success');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to start schedule:', err);
+                window.showToast?.('❌ خطا در شروع زمان‌بندی', 'error');
+                throw err;
+            }
+        }
+
+        async stopSchedule() {
+            try {
+                const data = await window.api.stopSchedule();
+                if (data.success) {
+                    await this.loadScheduleStatus();
+                    this.events.emit('schedule:stopped');
+                    window.showToast?.('⏹️ کالیبراسیون خودکار متوقف شد', 'info');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to stop schedule:', err);
+                window.showToast?.('❌ خطا در توقف زمان‌بندی', 'error');
+                throw err;
+            }
+        }
+
+        // ============================================================
+        // Screener Loaders (🆕)
+        // ============================================================
+
+        async loadScreenerLatest() {
+            try {
+                const data = await window.api.screenerLatest();
+                if (data.success) {
+                    this.setState({ screenerLatest: data.data });
+                    this.events.emit('screener:latest', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                // اگه هنوز اسکنی انجام نشده، خطا نمی‌دیم
+                if (!err.message?.includes('No recent scan')) {
+                    console.error('Failed to load latest scan:', err);
+                }
+            }
+            return null;
+        }
+
+        async loadScreenerHistory(options = {}) {
+            try {
+                const data = await window.api.screenerHistory(options);
+                if (data.success) {
+                    this.setState({ screenerHistory: data.data || [] });
+                    this.events.emit('screener:history', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load scan history:', err);
+            }
+            return [];
+        }
+
+        async loadScreenerConfig() {
+            try {
+                const data = await window.api.screenerConfig();
+                if (data.success) {
+                    this.setState({ screenerConfig: data.data });
+                    this.events.emit('screener:config', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load screener config:', err);
+            }
+            return null;
+        }
+
+        async runScreenerScan(options = {}) {
+            this.setState({ screenerRunning: true });
+            this.events.emit('screener:started', options);
+            
+            try {
+                const data = await window.api.screenerScan(options);
+                
+                if (data.success) {
+                    this.setState({ screenerLatest: data.data });
+                    await this.loadScreenerHistory({ limit: 20 });
+                    this.events.emit('screener:completed', data.data);
+                    window.showToast?.(
+                        `🎯 اسکن کامل شد: ${data.data?.passed_count || 0} از ${data.data?.total_scanned || 0}`,
+                        'success',
+                        4000
+                    );
+                } else {
+                    window.showToast?.(`❌ ${data.error}`, 'error', 5000);
+                }
+                
+                return data;
+            } catch (err) {
+                console.error('Screener scan error:', err);
+                window.showToast?.('❌ خطا در اسکن', 'error', 5000);
+                throw err;
+            } finally {
+                this.setState({ screenerRunning: false });
+            }
+        }
+
+        async runScreenerSingle(coinId, period = '24h') {
+            try {
+                const data = await window.api.screenerSingle({
+                    coin_id: coinId,
+                    period,
+                });
+                return data;
+            } catch (err) {
+                console.error('Screener single error:', err);
+                throw err;
+            }
+        }
+
+        async updateScreenerConfig(updates) {
+            try {
+                const data = await window.api.updateScreenerConfig(updates);
+                if (data.success) {
+                    await this.loadScreenerConfig();
+                    this.events.emit('screener:configUpdated', data);
+                    return data;
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to update screener config:', err);
+                throw err;
+            }
+        }
+
+        // ============================================================
+        // State Machine Loaders (🆕)
+        // ============================================================
+
+        async loadStateSummary(symbols = null) {
+            try {
+                const data = await window.api.stateSummary(symbols);
+                if (data.success) {
+                    this.setState({ stateSummary: data.data });
+                    this.events.emit('state:summary', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load state summary:', err);
+            }
+            return null;
+        }
+
+        async loadStateSnapshots(limit = 100) {
+            try {
+                const data = await window.api.stateSnapshots(limit);
+                if (data.success) {
+                    this.setState({ stateSnapshots: data.data || [] });
+                    this.events.emit('state:snapshots', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load state snapshots:', err);
+            }
+            return [];
+        }
+
+        async loadStateTransitions(options = {}) {
+            try {
+                const data = await window.api.stateTransitions(options);
+                if (data.success) {
+                    this.setState({ stateTransitions: data.data || [] });
+                    this.events.emit('state:transitions', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load state transitions:', err);
+            }
+            return [];
+        }
+
+        async getStateSymbol(symbol) {
+            try {
+                const data = await window.api.stateSymbol(symbol);
+                return data;
+            } catch (err) {
+                console.error('Failed to get symbol state:', err);
+                throw err;
+            }
+        }
+
+        async resetStateSymbol(symbol) {
+            try {
+                const data = await window.api.stateSymbolReset(symbol);
+                if (data.success) {
+                    await this.loadStateSummary();
+                    this.events.emit('state:symbolReset', symbol);
+                    window.showToast?.(`🔄 State ${symbol} ریست شد`, 'info');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to reset symbol state:', err);
+                throw err;
+            }
+        }
+
+        async activateStateSymbol(symbol, context = {}) {
+            try {
+                const data = await window.api.stateSymbolActivate(symbol, context);
+                if (data.success) {
+                    await this.loadStateSummary();
+                    this.events.emit('state:symbolActivated', { symbol, context });
+                    window.showToast?.(`🔥 ${symbol} → ACTIVE`, 'success');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to activate symbol:', err);
+                throw err;
+            }
+        }
+
+        async coolingStateSymbol(symbol, context = {}) {
+            try {
+                const data = await window.api.stateSymbolCooling(symbol, context);
+                if (data.success) {
+                    await this.loadStateSummary();
+                    this.events.emit('state:symbolCooling', { symbol, context });
+                    window.showToast?.(`❄️ ${symbol} → COOLING`, 'info');
+                }
+                return data;
+            } catch (err) {
+                console.error('Failed to cool symbol:', err);
+                throw err;
+            }
+        }
+
+        // ============================================================
+        // Schema & OHLCV Loaders (🆕)
+        // ============================================================
+
+        async loadSchemaStatus() {
+            try {
+                const data = await window.api.getSchemaStatus();
+                if (data.success) {
+                    this.setState({ schemaStatus: data.data });
+                    this.events.emit('schema:status', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load schema status:', err);
+            }
+            return null;
+        }
+
+        async loadOHLCVStats() {
+            try {
+                const data = await window.api.getOHLCVStats();
+                if (data.success) {
+                    this.setState({ ohlcvStats: data.data });
+                    this.events.emit('ohlcv:stats', data.data);
+                    return data.data;
+                }
+            } catch (err) {
+                console.error('Failed to load OHLCV stats:', err);
+            }
+            return null;
+        }
+
+        async initAllDatabases() {
+            window.showToast?.('🔄 راه‌اندازی دیتابیس‌ها...', 'info', 5000);
+            
+            try {
+                const data = await window.api.initAllDatabases();
+                
+                if (data.success) {
+                    await this.loadSchemaStatus();
+                    await this.loadDatabaseHealth();
+                    window.showToast?.('✅ همه دیتابیس‌ها راه‌اندازی شدند', 'success', 4000);
+                } else {
+                    window.showToast?.('⚠️ برخی دیتابیس‌ها راه‌اندازی نشدند', 'warning', 5000);
+                }
+                
+                return data;
+            } catch (err) {
+                console.error('Failed to init databases:', err);
+                window.showToast?.('❌ خطا در راه‌اندازی دیتابیس‌ها', 'error', 5000);
+                throw err;
+            }
         }
 
         // ============================================================
@@ -827,6 +1367,10 @@
                     this.loadAppStats(),
                     this.loadDatabaseHealth(),
                     this.loadAlerts(),
+                    this.loadModelStatus(),
+                    this.loadModelRules(),
+                    this.loadModelConfig(),
+                    this.loadVersions(),
                 ]);
                 window.showToast?.('✅ بروزرسانی شد', 'success', 1500);
                 this.events.emit('app:refreshed');
@@ -941,7 +1485,10 @@
     window.toggleTheme = () => app.toggleTheme();
     window.refreshApp = () => app.refresh();
 
-    // App methods
+    // ============================================================
+    // Settings API
+    // ============================================================
+
     window.appSettings = {
         get: (cat) => app.getSettings(cat),
         save: (cat, vals) => app.saveSettings(cat, vals),
@@ -949,6 +1496,10 @@
         reset: (cat) => app.resetSettings(cat),
         resetAll: () => app.resetAllSettings(),
     };
+
+    // ============================================================
+    // Cache API
+    // ============================================================
 
     window.appCache = {
         set: (key, val, ttl) => app.cacheSet(key, val, ttl),
@@ -958,11 +1509,19 @@
         stats: () => app.cacheStats(),
     };
 
+    // ============================================================
+    // Events API
+    // ============================================================
+
     window.appEvents = {
         on: (event, handler) => app.on(event, handler),
         off: (event, handler) => app.off(event, handler),
         emit: (event, data) => app.emit(event, data),
     };
+
+    // ============================================================
+    // Tasks API
+    // ============================================================
 
     window.appTasks = {
         status: () => app.getTasksStatus(),
@@ -970,9 +1529,87 @@
         resume: () => app.resumeAllTasks(),
     };
 
+    // ============================================================
+    // Metrics API
+    // ============================================================
+
     window.appMetrics = {
         get: () => app.getAppMetrics(),
     };
 
-    console.log('✅ App v12.0 loaded');
+    // ============================================================
+    // 🆕 Model API (RuleEngine)
+    // ============================================================
+
+    window.appModel = {
+        // Status
+        status: () => app.loadModelStatus(),
+        stats: () => app.loadModelStats(),
+        trainerStats: () => app.loadTrainerStats(),
+        
+        // Rules
+        rules: () => app.loadModelRules(),
+        
+        // Config
+        config: () => app.loadModelConfig(),
+        updateConfig: (updates) => app.updateModelConfig(updates),
+        updateRuntime: (updates) => app.updateRuntimeConfig(updates),
+        resetRuntime: () => app.resetRuntimeConfig(),
+        validateConfig: (data) => app.validateConfig(data),
+        
+        // Calibration
+        profiles: () => app.loadCalibrationProfiles(),
+        calibrate: (data) => app.calibrate(data),
+        forceCalibrate: (data) => app.forceCalibrate(data),
+        calibrationHistory: (opts) => app.loadCalibrationHistory(opts),
+        
+        // Versions
+        versions: (opts) => app.loadVersions(opts),
+        activateVersion: (v) => app.activateVersion(v),
+        deleteVersion: (v) => app.deleteVersion(v),
+        
+        // Schedule
+        scheduleStatus: () => app.loadScheduleStatus(),
+        startSchedule: (opts) => app.startSchedule(opts),
+        stopSchedule: () => app.stopSchedule(),
+    };
+
+    // ============================================================
+    // 🆕 Screener API
+    // ============================================================
+
+    window.appScreener = {
+        latest: () => app.loadScreenerLatest(),
+        history: (opts) => app.loadScreenerHistory(opts),
+        config: () => app.loadScreenerConfig(),
+        updateConfig: (updates) => app.updateScreenerConfig(updates),
+        scan: (opts) => app.runScreenerScan(opts),
+        scanSingle: (coinId, period) => app.runScreenerSingle(coinId, period),
+    };
+
+    // ============================================================
+    // 🆕 State API
+    // ============================================================
+
+    window.appStateMachine = {
+        summary: (symbols) => app.loadStateSummary(symbols),
+        snapshots: (limit) => app.loadStateSnapshots(limit),
+        transitions: (opts) => app.loadStateTransitions(opts),
+        getSymbol: (symbol) => app.getStateSymbol(symbol),
+        resetSymbol: (symbol) => app.resetStateSymbol(symbol),
+        activateSymbol: (symbol, ctx) => app.activateStateSymbol(symbol, ctx),
+        coolingSymbol: (symbol, ctx) => app.coolingStateSymbol(symbol, ctx),
+    };
+
+    // ============================================================
+    // 🆕 Schema & OHLCV API
+    // ============================================================
+
+    window.appSchema = {
+        status: () => app.loadSchemaStatus(),
+        initAll: () => app.initAllDatabases(),
+        ohlcvStats: () => app.loadOHLCVStats(),
+    };
+
+    console.log('✅ App v13.0 loaded');
 })();
