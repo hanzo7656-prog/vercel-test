@@ -158,11 +158,6 @@ def get_predict_use_case():
     """Predict Use Case"""
     return get_service('predict_use_case')
 
-
-def get_train_use_case():
-    """Train Use Case"""
-    return get_service('train_use_case')
-
 def get_scan_market_use_case():
     """ScanMarket Use Case"""
     return get_service('scan_market_use_case')
@@ -170,7 +165,6 @@ def get_scan_market_use_case():
 def get_health_use_case():
     """Health Use Case"""
     return get_service('health_use_case')
-
 
 def get_prediction_service():
     """Prediction Service"""
