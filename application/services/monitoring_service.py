@@ -1,17 +1,12 @@
 # application/services/monitoring_service.py
 # ============================================================
-# Service: Monitoring Service - نسخه ۳.۰
-# Quota + Repository Stats + Model-aware
-# ============================================================
-# 
-# تغییرات نسخه ۳.۰:
-#   - get_repository_stats: پشتیبانی از model_type
-#   - حفظ بقیه API
+# Service: Monitoring Service - نسخه ۴.۰
+# OHLCV-aware + RuleEngine stats + لاگ کامل
 # ============================================================
 
 import logging
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Dict, Any, Optional
 
 from domain.interfaces.api_client import APIClient
 from application.use_cases.get_health import GetHealthUseCase
@@ -23,26 +18,29 @@ logger = logging.getLogger(__name__)
 
 class MonitoringService:
     """
-    سرویس مانیتورینگ
+    سرویس مانیتورینگ - نسخه ۴.۰
     
-    ارتقاها (v3.0):
-        - Repository stats با model_type
-        - بدون تغییر در بقیه متدها
+    تغییرات:
+        - OHLCV stats از api_client
+        - RuleEngine-aware repository stats
+        - لاگ کامل
     """
     
     def __init__(self, health_use_case: GetHealthUseCase):
         self.health_use_case = health_use_case
         
-        logger.info("✅ MonitoringService v3.0 initialized")
+        logger.info("✅ MonitoringService v4.0 initialized")
     
     # ============================================================
     # Health
     # ============================================================
     
     def get_health(self) -> Dict[str, Any]:
-        """دریافت سلامت سیستم"""
+        """سلامت سیستم"""
         try:
             from infrastructure.database import health_check
+            
+            logger.debug("🔍 Monitoring: health check started")
             
             health = health_check()
             
@@ -51,14 +49,17 @@ class MonitoringService:
                 for info in health.values()
             )
             
+            status = "ok" if all_ok else "degraded"
+            logger.debug(f"✅ Monitoring: health check done ({status})")
+            
             return {
-                "status": "ok" if all_ok else "degraded",
+                "status": status,
                 "components": health,
                 "timestamp": datetime.now().isoformat(),
             }
         
         except Exception as e:
-            logger.error(f"Health check error: {e}")
+            logger.error(f"❌ Monitoring health error: {e}", exc_info=True)
             return {
                 "status": "error",
                 "error": str(e),
@@ -70,7 +71,7 @@ class MonitoringService:
     # ============================================================
     
     def get_metrics(self) -> Dict[str, Any]:
-        """دریافت متریک‌های لحظه‌ای"""
+        """متریک‌های لحظه‌ای"""
         try:
             metrics = metrics_scheduler.get_metrics()
             return {
@@ -79,7 +80,7 @@ class MonitoringService:
                 "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            logger.error(f"Metrics error: {e}")
+            logger.error(f"❌ Monitoring metrics error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -96,7 +97,7 @@ class MonitoringService:
                 "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            logger.error(f"Metrics summary error: {e}")
+            logger.error(f"❌ Monitoring metrics summary error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -113,7 +114,7 @@ class MonitoringService:
                 "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            logger.error(f"Dashboard metrics error: {e}")
+            logger.error(f"❌ Monitoring dashboard metrics error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -125,7 +126,7 @@ class MonitoringService:
     # ============================================================
     
     def get_quota_stats(self) -> Dict[str, Any]:
-        """آمار Quota همه دیتابیس‌ها"""
+        """آمار Quota"""
         try:
             from infrastructure.database import get_all_quotas, get_db
             
@@ -155,7 +156,7 @@ class MonitoringService:
             }
         
         except Exception as e:
-            logger.error(f"Quota stats error: {e}")
+            logger.error(f"❌ Monitoring quota stats error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -163,57 +164,91 @@ class MonitoringService:
             }
     
     # ============================================================
-    # Repository Stats (🆕 model-aware)
+    # Repository Stats (RuleEngine-aware)
     # ============================================================
     
     def get_repository_stats(self) -> Dict[str, Any]:
-        """
-        آمار Repositoryها
-        
-        ارتقا v3.0:
-            - پشتیبانی از model_type
-            - fallback در صورت نبود ModelManager
-        """
+        """آمار Repositoryها"""
         try:
             from infrastructure.repositories import repos
+            
+            logger.debug("🔍 Monitoring: repository stats started")
             
             model_stats: Dict[str, Any] = {}
             prediction_stats: Dict[str, Any] = {}
             rule_config_stats: Dict[str, Any] = {}
             
-            # Model stats
             try:
                 model_stats = repos.model.get_stats()
             except Exception as e:
                 logger.debug(f"Model stats error: {e}")
                 model_stats = {"error": str(e)}
             
-            # Prediction stats
             try:
                 prediction_stats = repos.prediction.get_stats()
             except Exception as e:
                 logger.debug(f"Prediction stats error: {e}")
                 prediction_stats = {"error": str(e)}
             
-            # RuleConfig stats (🆕)
             try:
                 rule_config_stats = repos.rule_config.get_stats()
             except Exception as e:
                 logger.debug(f"RuleConfig stats error: {e}")
                 rule_config_stats = {"error": str(e)}
             
+            logger.debug("✅ Monitoring: repository stats done")
+            
             return {
                 "success": True,
                 "data": {
                     "models": model_stats,
                     "predictions": prediction_stats,
-                    "rule_config": rule_config_stats,  # 🆕
+                    "rule_config": rule_config_stats,
                 },
                 "timestamp": datetime.now().isoformat(),
             }
         
         except Exception as e:
-            logger.error(f"Repository stats error: {e}")
+            logger.error(f"❌ Monitoring repository stats error: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+    
+    # ============================================================
+    # API Stats (🆕 OHLCV-aware)
+    # ============================================================
+    
+    def get_api_stats(self, api_client: APIClient) -> Dict[str, Any]:
+        """
+        آمار API client
+        
+        شامل OHLCV stats جدید
+        """
+        try:
+            stats = api_client.get_stats()
+            
+            # اضافه کردن OHLCV به‌صورت جداگانه اگه هست
+            ohlcv_stats = {}
+            if "ohlcv_requests" in stats:
+                ohlcv_stats = {
+                    "ohlcv_requests": stats.get("ohlcv_requests", 0),
+                    "ohlcv_candles_total": stats.get("ohlcv_candles_total", 0),
+                    "ohlcv_range_caps": stats.get("ohlcv_range_caps", 0),
+                    "symbol_map_cached": stats.get("symbol_map_cached", False),
+                }
+            
+            return {
+                "success": True,
+                "data": {
+                    **stats,
+                    "ohlcv": ohlcv_stats,
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error(f"❌ Monitoring API stats error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -234,7 +269,7 @@ class MonitoringService:
                 "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            logger.error(f"Thread status error: {e}")
+            logger.error(f"❌ Monitoring thread status error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -242,22 +277,57 @@ class MonitoringService:
             }
     
     # ============================================================
-    # API
+    # OHLCV Health (🆕)
     # ============================================================
     
-    def get_api_stats(self, api_client: APIClient) -> Dict[str, Any]:
-        """آمار API"""
+    def check_ohlcv_health(self, api_client: APIClient) -> Dict[str, Any]:
+        """
+        بررسی سلامت endpoint OHLCV
+        
+        تست ساده: BTC/USDT 4h
+        """
         try:
-            stats = api_client.get_stats()
-            return {
-                "success": True,
-                "data": stats,
-                "timestamp": datetime.now().isoformat(),
-            }
-        except Exception as e:
-            logger.error(f"API stats error: {e}")
+            logger.debug("🔍 Monitoring: OHLCV health check started")
+            
+            if not hasattr(api_client, "get_ohlcv_candles"):
+                return {
+                    "success": False,
+                    "status": "unavailable",
+                    "error": "get_ohlcv_candles not available",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            
+            result = api_client.get_ohlcv_candles(
+                exchange="Binance",
+                pair="BTC/USDT",
+                interval="4h",
+                range="1w",
+                use_cache=True,
+            )
+            
+            if result and "candles" in result:
+                candle_count = len(result.get("candles", []))
+                return {
+                    "success": True,
+                    "status": "healthy",
+                    "candle_count": candle_count,
+                    "pair": "BTC/USDT",
+                    "interval": "4h",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            
             return {
                 "success": False,
+                "status": "unhealthy",
+                "error": result.get("error") if result else "no response",
+                "timestamp": datetime.now().isoformat(),
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ Monitoring OHLCV health error: {e}")
+            return {
+                "success": False,
+                "status": "error",
                 "error": str(e),
                 "timestamp": datetime.now().isoformat(),
             }
