@@ -1,22 +1,20 @@
 # infrastructure/repositories/model_repository.py
 # ============================================================
-# Repository: Model - نسخه ۴.۰
-# Polymorphic (XGBoost → Rule Config) + Transaction + Cache
+# Repository: Model - نسخه ۴.۱
+# Polymorphic (Rule Config) + Auto Schema + Transaction + Cache
 # ============================================================
 # 
-# تغییرات نسخه ۴.۰:
-#   - پشتیبانی از model_type (rule_config / xgboost)
-#   - save_rule_config و load_rule_config اضافه شد
-#   - _detect_model_type برای تشخیص خودکار
-#   - حفظ سازگاری با XGBoost (برای rollback)
+# تغییرات نسخه ۴.۱:
+#   - اصلاح default model_type (rule_config جای xgboost)
+#   - اضافه ensure_schema خودکار (CREATE TABLE IF NOT EXISTS)
+#   - حذف کد XGBoost (save_model, load_model)
+#   - حفظ export_model_file (برای Rule Config)
 # ============================================================
 
 import json
 import logging
-import tempfile
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple, Union
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 from domain.interfaces.repository import Repository
 from infrastructure.database import (
@@ -33,31 +31,26 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 MODEL_TYPE_RULE_CONFIG = "rule_config"
-MODEL_TYPE_XGBOOST = "xgboost"
 
+
+# ============================================================
+# ModelRepository
+# ============================================================
 
 class ModelRepository(Repository):
     """
-    Repository برای مدیریت مدل‌ها (Rule Config + XGBoost)
+    Repository برای مدیریت Rule Configها
     
-    ویژگی‌ها:
-        - Polymorphic: پشتیبانی از دو نوع مدل
-        - Transaction support
-        - Bulk operations
-        - Redis Cache برای مدل‌های فعال
-        - Version comparison
-        - Auto-cleanup نسخه‌های قدیمی
+    نسخه ۴.۱:
+        - فقط Rule Config (XGBoost حذف شد)
+        - ensure_schema خودکار
+        - model_type همیشه 'rule_config'
     """
-    
-    # ============================================================
-    # Constants
-    # ============================================================
     
     TABLE_NAME = "models"
     HISTORY_TABLE = "model_training_history"
     CACHE_PREFIX = "model:active"
     CACHE_TTL = 300  # ۵ دقیقه
-    MODELS_DIR = Path("models/")
     
     # ============================================================
     # Init
@@ -66,9 +59,9 @@ class ModelRepository(Repository):
     def __init__(self) -> None:
         self._db = None
         self._cache = None
-        self.MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        self._schema_ensured: bool = False
         
-        logger.info("✅ ModelRepository v4.0 initialized")
+        logger.info("✅ ModelRepository v4.1 initialized")
     
     # ============================================================
     # Lazy properties
@@ -76,80 +69,154 @@ class ModelRepository(Repository):
     
     @property
     def db(self):
-        """دریافت دیتابیس primary"""
+        """دیتابیس primary"""
         if self._db is None or not self._db.is_connected():
             self._db = get_primary()
         return self._db
     
     @property
     def cache(self):
-        """دریافت cache"""
+        """cache"""
         if self._cache is None or not self._cache.is_connected():
             self._cache = get_cache()
         return self._cache
     
     def _ensure_db(self) -> bool:
-        """اطمینان از اتصال دیتابیس"""
+        """اطمینان از اتصال DB"""
         if self._db is None or not self._db.is_connected():
             self._db = get_primary()
-        
         return self._db is not None and self._db.is_connected()
     
-    def _ensure_model_type_column(self) -> None:
+    # ============================================================
+    # Schema Ensure (خودکار)
+    # ============================================================
+    
+    def _ensure_schema(self) -> None:
         """
-        اطمینان از وجود ستون model_type
+        ساخت جدول models اگه نبود
         
-        این migration رو در runtime انجام می‌ده
-        (بدون نیاز به Alembic)
+        این تابع یه‌بار صدا زده می‌شه (کش می‌شه با _schema_ensured)
         """
+        if self._schema_ensured:
+            return
+        
         if not self._ensure_db():
             return
         
         try:
+            # ============================================================
+            # جدول models
+            # ============================================================
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS models (
+                    id SERIAL PRIMARY KEY,
+                    version VARCHAR(50) UNIQUE NOT NULL,
+                    model_data BYTEA NOT NULL,
+                    accuracy FLOAT NOT NULL DEFAULT 0,
+                    training_samples INTEGER DEFAULT 0,
+                    period VARCHAR(30) DEFAULT 'rule_config',
+                    coins TEXT[] DEFAULT ARRAY['bitcoin', 'ethereum'],
+                    features TEXT[] DEFAULT ARRAY[]::TEXT[],
+                    is_active BOOLEAN DEFAULT FALSE,
+                    model_type VARCHAR(50) DEFAULT 'rule_config',
+                    training_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata JSONB DEFAULT '{}'::jsonb
+                )
+            """)
+            
+            # ایندکس‌ها
             self.db.execute(
-                """
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                        WHERE table_name = 'models'
-                        AND column_name = 'model_type'
-                    ) THEN
-                        ALTER TABLE models
-                        ADD COLUMN model_type VARCHAR(50)
-                        DEFAULT 'xgboost';
-                    END IF;
-                END $$;
-                """
+                "CREATE INDEX IF NOT EXISTS idx_models_version ON models(version)"
             )
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_models_active ON models(is_active)"
+            )
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_models_type ON models(model_type)"
+            )
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_models_accuracy ON models(accuracy DESC)"
+            )
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_models_training_date ON models(training_date DESC)"
+            )
+            
+            # ============================================================
+            # جدول model_training_history
+            # ============================================================
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS model_training_history (
+                    id SERIAL PRIMARY KEY,
+                    model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+                    action VARCHAR(50) NOT NULL,
+                    old_accuracy FLOAT,
+                    new_accuracy FLOAT,
+                    improvement_percent FLOAT,
+                    samples_used INTEGER,
+                    training_time_seconds FLOAT,
+                    reason TEXT,
+                    status VARCHAR(20) DEFAULT 'success',
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP
+                )
+            """)
+            
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_mth_model_id ON model_training_history(model_id)"
+            )
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_mth_created_at ON model_training_history(created_at DESC)"
+            )
+            
+            # ============================================================
+            # Migration: اضافه کردن model_type اگه جدول قدیمی بود
+            # ============================================================
+            try:
+                self.db.execute("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'models'
+                            AND column_name = 'model_type'
+                        ) THEN
+                            ALTER TABLE models
+                            ADD COLUMN model_type VARCHAR(50)
+                            DEFAULT 'rule_config';
+                        END IF;
+                    END $$;
+                """)
+            except Exception as e:
+                logger.debug(f"model_type column check: {e}")
+            
+            self._schema_ensured = True
+            logger.info("✅ ModelRepository: schema ensured")
+        
         except Exception as e:
-            logger.debug(f"model_type column check: {e}")
+            logger.warning(f"⚠️ Schema ensure failed: {e}")
+            # ولی _schema_ensured رو ست نمی‌کنیم تا دوباره تلاش بشه
     
     # ============================================================
     # Cache helpers
     # ============================================================
     
-    def _get_active_model_cache_key(self) -> str:
-        """کلید cache برای مدل فعال"""
+    def _get_active_cache_key(self) -> str:
         return f"{self.CACHE_PREFIX}:current"
     
-    def _get_version_cache_key(self, version: str) -> str:
-        """کلید cache برای نسخه خاص"""
-        return f"{self.CACHE_PREFIX}:version:{version}"
-    
     def _invalidate_cache(self) -> None:
-        """پاک کردن cache مدل"""
         try:
             if self.cache and self.cache.is_connected():
                 keys = self.cache.scan_keys(f"{self.CACHE_PREFIX}:*")
                 if keys:
                     self.cache.delete_many(keys)
-                    logger.debug(f"✅ Invalidated {len(keys)} cache keys")
         except Exception as e:
-            logger.warning(f"⚠️ Cache invalidation error: {e}")
+            logger.debug(f"Cache invalidation error: {e}")
     
     # ============================================================
-    # SAVE: Rule Config (جدید - اصلی)
+    # SAVE RULE CONFIG (اصلی)
     # ============================================================
     
     def save_rule_config(
@@ -167,10 +234,10 @@ class ModelRepository(Repository):
         
         Args:
             config: دیکشنری کامل config
-            version: نسخه (مثلاً v2026.09.29_1430)
-            accuracy: دقت (بعد از backtest)
+            version: نسخه (v2026.09.30_1200)
+            accuracy: دقت (از backtest)
             coins: لیست ارزها
-            training_samples: تعداد نمونه‌ها (۰ برای Rule Config)
+            training_samples: تعداد نمونه‌های backtest
             is_active: فعال باشه؟
             metadata: اطلاعات اضافی
         
@@ -180,11 +247,16 @@ class ModelRepository(Repository):
         if not self._ensure_db():
             return {"success": False, "error": "Database not connected"}
         
-        self._ensure_model_type_column()
+        # اطمینان از جدول
+        self._ensure_schema()
         
         try:
-            # Serialize config
+            # Serialize config به JSON bytes
             config_json = json.dumps(config, ensure_ascii=False)
+            config_bytes = config_json.encode("utf-8")
+            
+            # لیست rule names
+            rule_names = list(config.get("rules", {}).keys())
             
             with primary_transaction() as db:
                 # درج
@@ -192,24 +264,25 @@ class ModelRepository(Repository):
                     INSERT INTO models (
                         version, model_data, accuracy, training_samples,
                         period, coins, features, is_active, created_at,
-                        model_type
+                        model_type, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     RETURNING id, version, accuracy, created_at
                 """
                 
                 result = db.execute(query, (
                     version,
-                    config_json.encode("utf-8"),  # به‌عنوان bytes برای سازگاری
+                    config_bytes,
                     accuracy,
                     training_samples,
-                    "rule_config",
+                    MODEL_TYPE_RULE_CONFIG,           # period
                     coins or [],
-                    list(config.get("rules", {}).keys()),
+                    rule_names,                        # features = rule names
                     is_active,
                     datetime.now(),
-                    MODEL_TYPE_RULE_CONFIG,
+                    MODEL_TYPE_RULE_CONFIG,           # model_type
+                    json.dumps(metadata or {}),       # metadata
                 ))
                 
                 if not result:
@@ -231,14 +304,21 @@ class ModelRepository(Repository):
                     (model_id, action, new_accuracy, samples_used, created_at)
                     VALUES (%s, %s, %s, %s, %s)
                     """,
-                    (model_id, "save_rule_config", accuracy, training_samples, datetime.now()),
+                    (
+                        model_id,
+                        "save_rule_config",
+                        accuracy,
+                        training_samples,
+                        datetime.now(),
+                    ),
                 )
             
             self._invalidate_cache()
             
             logger.info(
                 f"✅ Rule config saved: version={version}, "
-                f"accuracy={accuracy:.3f}, id={model_id}"
+                f"accuracy={accuracy:.3f}, id={model_id}, "
+                f"rules={len(rule_names)}"
             )
             
             return {
@@ -254,13 +334,12 @@ class ModelRepository(Repository):
             logger.error(f"❌ Save rule config error: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
     
+    # ============================================================
+    # LOAD RULE CONFIG
+    # ============================================================
+    
     def load_rule_config(self, version: str) -> Optional[Dict[str, Any]]:
-        """
-        بارگذاری یک Rule Config با نسخه
-        
-        Returns:
-            دیکشنری config یا None
-        """
+        """بارگذاری یک Rule Config با نسخه"""
         if not self._ensure_db():
             return None
         
@@ -280,14 +359,6 @@ class ModelRepository(Repository):
             
             row = result[0]
             
-            # اگه XGBoost باشه، رد کن
-            model_type = row.get("model_type", MODEL_TYPE_XGBOOST)
-            if model_type != MODEL_TYPE_RULE_CONFIG:
-                logger.warning(
-                    f"⚠️ Version '{version}' is {model_type}, not rule_config"
-                )
-                return None
-            
             # Decode
             model_data = row["model_data"]
             if isinstance(model_data, bytes):
@@ -305,14 +376,16 @@ class ModelRepository(Repository):
         بارگذاری آخرین Rule Config فعال
         
         Returns:
-            {config, version, accuracy, ...} یا None
+            {config, version, accuracy, model_id, model_type}
         """
         if not self._ensure_db():
             return None
         
+        self._ensure_schema()
+        
         try:
             # از cache
-            cache_key = self._get_active_model_cache_key()
+            cache_key = self._get_active_cache_key()
             if self.cache and self.cache.is_connected():
                 cached = self.cache.get(cache_key)
                 if cached and isinstance(cached, dict):
@@ -333,7 +406,7 @@ class ModelRepository(Repository):
                 SELECT id, version, accuracy, model_data, model_type
                 FROM models
                 WHERE is_active = TRUE
-                  AND model_type = %s
+                  AND (model_type = %s OR model_type IS NULL)
                 ORDER BY id DESC
                 LIMIT 1
                 """,
@@ -378,199 +451,20 @@ class ModelRepository(Repository):
             return None
     
     # ============================================================
-    # SAVE: Legacy XGBoost (نگه‌داشته برای rollback)
-    # ============================================================
-    
-    def save_model(
-        self,
-        model: Any,
-        accuracy: float,
-        version: str,
-        period: str = "1m",
-        coins: Optional[List[str]] = None,
-        features: Optional[List[str]] = None,
-        training_samples: int = 0,
-        is_active: bool = True,
-    ) -> Dict[str, Any]:
-        """
-        ذخیره مدل XGBoost (legacy — نگه‌داشته برای rollback)
-        
-        برای Rule Config، از save_rule_config استفاده کن.
-        """
-        if not self._ensure_db():
-            return {"success": False, "error": "Database not connected"}
-        
-        self._ensure_model_type_column()
-        
-        temp_path: Optional[Path] = None
-        
-        try:
-            # تبدیل مدل به binary
-            temp_path = self.MODELS_DIR / f"temp_{version}.xgb"
-            model.save_model(str(temp_path), format="json")
-            
-            with open(temp_path, "rb") as f:
-                model_data: bytes = f.read()
-            
-            coins = coins or ["bitcoin", "ethereum"]
-            features = features or []
-            
-            with primary_transaction() as db:
-                query = """
-                    INSERT INTO models (
-                        version, model_data, accuracy, training_samples,
-                        period, coins, features, is_active, created_at,
-                        model_type
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                    )
-                    RETURNING id, version, accuracy, created_at
-                """
-                
-                result = db.execute(query, (
-                    version,
-                    model_data,
-                    accuracy,
-                    training_samples,
-                    period,
-                    coins,
-                    features,
-                    is_active,
-                    datetime.now(),
-                    MODEL_TYPE_XGBOOST,
-                ))
-                
-                if not result:
-                    raise RuntimeError("Insert returned no result")
-                
-                model_id = result[0]["id"]
-                
-                if is_active:
-                    db.execute(
-                        "UPDATE models SET is_active = FALSE WHERE id != %s",
-                        (model_id,),
-                    )
-                
-                db.execute(
-                    """
-                    INSERT INTO model_training_history
-                    (model_id, action, new_accuracy, samples_used, created_at)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (model_id, "train", accuracy, training_samples, datetime.now()),
-                )
-            
-            self._invalidate_cache()
-            
-            logger.info(
-                f"✅ XGBoost model saved: version={version}, "
-                f"accuracy={accuracy:.3f}"
-            )
-            
-            return {
-                "success": True,
-                "model_id": model_id,
-                "version": version,
-                "accuracy": accuracy,
-                "model_type": MODEL_TYPE_XGBOOST,
-                "is_active": is_active,
-            }
-        
-        except Exception as e:
-            logger.error(f"❌ Save XGBoost model error: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
-        
-        finally:
-            if temp_path and temp_path.exists():
-                try:
-                    temp_path.unlink()
-                except Exception:
-                    pass
-    
-    def load_model(self, version: str) -> Optional[Any]:
-        """
-        بارگذاری مدل XGBoost (legacy)
-        
-        برای Rule Config از load_rule_config استفاده کن.
-        """
-        if not self._ensure_db():
-            return None
-        
-        try:
-            import xgboost as xgb
-        except ImportError:
-            logger.error("❌ XGBoost not installed")
-            return None
-        
-        temp_path: Optional[Path] = None
-        
-        try:
-            result = self.db.execute(
-                """
-                SELECT model_data, model_type
-                FROM models
-                WHERE version = %s
-                """,
-                (version,),
-            )
-            
-            if not result:
-                logger.warning(f"⚠️ Model '{version}' not found")
-                return None
-            
-            row = result[0]
-            model_type = row.get("model_type", MODEL_TYPE_XGBOOST)
-            
-            if model_type != MODEL_TYPE_XGBOOST:
-                logger.warning(
-                    f"⚠️ Version '{version}' is {model_type}, not xgboost"
-                )
-                return None
-            
-            model_data: bytes = row["model_data"]
-            
-            temp_path = self.MODELS_DIR / f"load_{version}.xgb"
-            with open(temp_path, "wb") as f:
-                f.write(model_data)
-            
-            model = xgb.Booster()
-            model.load_model(str(temp_path))
-            
-            return model
-        
-        except Exception as e:
-            logger.error(f"❌ Load XGBoost error: {e}")
-            return None
-        
-        finally:
-            if temp_path and temp_path.exists():
-                try:
-                    temp_path.unlink()
-                except Exception:
-                    pass
-    
-    # ============================================================
-    # HISTORY & VERSIONS
+    # VERSION MANAGEMENT
     # ============================================================
     
     def get_version_history(
         self,
         limit: int = 10,
         include_inactive: bool = True,
-        model_type: Optional[str] = None,
+        model_type: Optional[str] = MODEL_TYPE_RULE_CONFIG,
     ) -> List[Dict[str, Any]]:
-        """
-        دریافت تاریخچه نسخه‌ها
-        
-        Args:
-            limit: تعداد
-            include_inactive: شامل غیرفعال‌ها
-            model_type: فیلتر بر اساس نوع (اختیاری)
-        """
+        """دریافت تاریخچه نسخه‌ها"""
         if not self._ensure_db():
             return []
         
-        self._ensure_model_type_column()
+        self._ensure_schema()
         
         try:
             conditions = []
@@ -580,7 +474,7 @@ class ModelRepository(Repository):
                 conditions.append("is_active = TRUE")
             
             if model_type:
-                conditions.append("model_type = %s")
+                conditions.append("(model_type = %s OR model_type IS NULL)")
                 params.append(model_type)
             
             where_clause = " AND ".join(conditions) if conditions else "1=1"
@@ -588,7 +482,7 @@ class ModelRepository(Repository):
             query = f"""
                 SELECT id, version, accuracy, period, coins, features,
                        training_samples, training_date, is_active,
-                       is_ensemble, created_at, model_type
+                       created_at, model_type
                 FROM models
                 WHERE {where_clause}
                 ORDER BY id DESC
@@ -606,10 +500,9 @@ class ModelRepository(Repository):
     
     def get_best_version(
         self,
-        metric: str = "accuracy",
-        model_type: Optional[str] = None,
+        model_type: Optional[str] = MODEL_TYPE_RULE_CONFIG,
     ) -> Optional[Dict[str, Any]]:
-        """دریافت بهترین نسخه"""
+        """بهترین نسخه از نظر دقت"""
         if not self._ensure_db():
             return None
         
@@ -619,7 +512,7 @@ class ModelRepository(Repository):
                     """
                     SELECT id, version, accuracy, period, training_date, model_type
                     FROM models
-                    WHERE model_type = %s
+                    WHERE model_type = %s OR model_type IS NULL
                     ORDER BY accuracy DESC
                     LIMIT 1
                     """,
@@ -701,9 +594,11 @@ class ModelRepository(Repository):
     # ============================================================
     
     def set_active(self, version: str) -> bool:
-        """تنظیم یک نسخه به‌عنوان فعال"""
+        """فعال‌سازی یک نسخه"""
         if not self._ensure_db():
             return False
+        
+        self._ensure_schema()
         
         try:
             with primary_transaction() as db:
@@ -742,7 +637,7 @@ class ModelRepository(Repository):
     # ============================================================
     
     def delete(self, entity_id: int) -> bool:
-        """حذف مدل با ID"""
+        """حذف با ID"""
         if not self._ensure_db():
             return False
         
@@ -824,7 +719,6 @@ class ModelRepository(Repository):
                 )
             
             self._invalidate_cache()
-            
             logger.info(f"✅ Cleaned up {len(ids_to_delete)} old versions")
             return len(ids_to_delete)
         
@@ -837,7 +731,7 @@ class ModelRepository(Repository):
     # ============================================================
     
     def find_by_id(self, entity_id: int) -> Optional[Dict[str, Any]]:
-        """پیدا کردن با ID (بدون model_data)"""
+        """پیدا کردن با ID"""
         if not self._ensure_db():
             return None
         
@@ -846,7 +740,7 @@ class ModelRepository(Repository):
                 """
                 SELECT id, version, accuracy, period, coins, features,
                        training_samples, training_date, is_active,
-                       is_ensemble, created_at, model_type
+                       created_at, model_type
                 FROM models
                 WHERE id = %s
                 """,
@@ -867,7 +761,7 @@ class ModelRepository(Repository):
                 """
                 SELECT id, version, accuracy, period, coins, features,
                        training_samples, training_date, is_active,
-                       is_ensemble, created_at, model_type
+                       created_at, model_type
                 FROM models
                 WHERE version = %s
                 """,
@@ -883,7 +777,7 @@ class ModelRepository(Repository):
         limit: int = 100,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        """دریافت همه مدل‌ها"""
+        """همه مدل‌ها"""
         if not self._ensure_db():
             return []
         
@@ -891,7 +785,7 @@ class ModelRepository(Repository):
             result = self.db.execute(
                 """
                 SELECT id, version, accuracy, period, training_date,
-                       is_active, is_ensemble, model_type
+                       is_active, model_type
                 FROM models
                 ORDER BY id DESC
                 LIMIT %s OFFSET %s
@@ -945,7 +839,7 @@ class ModelRepository(Repository):
             query = f"""
                 SELECT id, version, accuracy, period, coins, features,
                        training_samples, training_date, is_active,
-                       is_ensemble, created_at, model_type
+                       created_at, model_type
                 FROM models
                 WHERE {where_clause}
                 ORDER BY accuracy DESC
@@ -953,7 +847,6 @@ class ModelRepository(Repository):
             """
             
             params.append(limit)
-            
             return self.db.execute(query, tuple(params)) or []
         
         except Exception as e:
@@ -981,10 +874,9 @@ class ModelRepository(Repository):
         if not self._ensure_db():
             return {}
         
-        self._ensure_model_type_column()
+        self._ensure_schema()
         
         try:
-            # آمار کلی
             result = self.db.execute(
                 """
                 SELECT
@@ -1058,10 +950,9 @@ class ModelRepository(Repository):
     
     def export_model_file(self, version: str) -> Optional[bytes]:
         """
-        دریافت فایل مدل به‌صورت bytes
+        خروجی config به‌صورت bytes (JSON)
         
-        برای XGBoost: فایل binary
-        برای Rule Config: JSON
+        برای Rule Config: JSON bytes
         """
         if not self._ensure_db():
             return None
@@ -1088,5 +979,8 @@ class ModelRepository(Repository):
     def save(self, entity: Any) -> Any:
         """ذخیره Entity (الزامی)"""
         raise NotImplementedError(
-            "Use save_rule_config or save_model instead"
+            "Use save_rule_config instead"
         )
+
+
+__all__ = ["ModelRepository", "MODEL_TYPE_RULE_CONFIG"]
