@@ -1,42 +1,39 @@
 #!/usr/bin/env python3
 # scripts/manage_databases.py
 # ============================================================
-# مدیریت دیتابیس‌ها - Migration + Seed + Reset + Status
-# نسخه ۴.۰ - ادغام کامل schema قدیم و جدید + Idempotent
+# مدیریت دیتابیس‌ها - نسخه ۵.۰
+# RuleEngine + OHLCV Ready Schema
 # ============================================================
 
 """
 مدیریت کامل دیتابیس‌های سیستم (۵ دیتابیس)
 
+نسخه ۵.۰:
+    - RuleEngine-aware schema
+    - حذف XGBoost-specific (is_ensemble, training_profiles)
+    - اضافه rule_config_overrides
+    - اضافه state_transitions
+    - اضافه scan_history
+    - مدل: model_type
+
 استفاده:
-    # اجرای همه کارها (migrate + seed + status)
     python scripts/manage_databases.py --action=all
-    
-    # فقط migration
     python scripts/manage_databases.py --action=migrate
-    
-    # فقط seed
     python scripts/manage_databases.py --action=seed
-    
-    # فقط status
     python scripts/manage_databases.py --action=status
-    
-    # reset (احتیاط!)
+    python scripts/manage_databases.py --action=verify
+    python scripts/manage_databases.py --action=tables
     python scripts/manage_databases.py --action=reset --confirm
-    
-    # با لاگ دقیق
-    python scripts/manage_databases.py --action=all --verbose
 """
 
 import os
 import sys
 import logging
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-# اضافه کردن مسیر پروژه
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from infrastructure.database import (
@@ -47,19 +44,16 @@ from infrastructure.database import (
     get_archive,
     get_cache,
 )
-from infrastructure.database.quota_manager import quota_manager
 
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Logging Setup
+# Logging
 # ============================================================
 
 def setup_logging(verbose: bool = False) -> None:
-    """راه‌اندازی logging"""
     level = logging.DEBUG if verbose else logging.INFO
-    
     logging.basicConfig(
         level=level,
         format='%(asctime)s | %(levelname)-8s | %(message)s',
@@ -68,14 +62,11 @@ def setup_logging(verbose: bool = False) -> None:
 
 
 # ============================================================
-# Schema Definitions
+# PRIMARY Schema (Neon #1)
 # ============================================================
 
-# ------------------------------------------------------------
-# PRIMARY (Neon #1) - دیتابیس اصلی
-# ------------------------------------------------------------
 SCHEMA_PRIMARY = {
-    # --------- جدول مدل‌ها ---------
+    # --------- جدول مدل‌ها (RuleEngine-aware) ---------
     "models": """
         CREATE TABLE IF NOT EXISTS models (
             id SERIAL PRIMARY KEY,
@@ -83,15 +74,11 @@ SCHEMA_PRIMARY = {
             model_data BYTEA NOT NULL,
             accuracy FLOAT NOT NULL DEFAULT 0,
             training_samples INTEGER DEFAULT 0,
-            period VARCHAR(10) DEFAULT '1m',
+            period VARCHAR(30) DEFAULT 'rule_config',
             coins TEXT[] DEFAULT ARRAY['bitcoin', 'ethereum'],
-            features TEXT[] DEFAULT ARRAY[
-                'return_1','return_3','return_5','return_10',
-                'sma_5','sma_10','sma_20','volatility',
-                'fear_greed','trend_5','trend_10','trend_20','r2'
-            ],
+            features TEXT[] DEFAULT ARRAY[]::TEXT[],
             is_active BOOLEAN DEFAULT FALSE,
-            is_ensemble BOOLEAN DEFAULT FALSE,
+            model_type VARCHAR(50) DEFAULT 'rule_config',
             training_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -99,11 +86,12 @@ SCHEMA_PRIMARY = {
         );
         CREATE INDEX IF NOT EXISTS idx_models_version ON models(version);
         CREATE INDEX IF NOT EXISTS idx_models_active ON models(is_active);
+        CREATE INDEX IF NOT EXISTS idx_models_type ON models(model_type);
         CREATE INDEX IF NOT EXISTS idx_models_accuracy ON models(accuracy DESC);
         CREATE INDEX IF NOT EXISTS idx_models_training_date ON models(training_date DESC);
     """,
     
-    # --------- تاریخچه آموزش ---------
+    # --------- تاریخچه آموزش/کالیبراسیون ---------
     "model_training_history": """
         CREATE TABLE IF NOT EXISTS model_training_history (
             id SERIAL PRIMARY KEY,
@@ -136,7 +124,7 @@ SCHEMA_PRIMARY = {
             confidence INTEGER DEFAULT 50,
             prediction_score FLOAT DEFAULT 0.5,
             period VARCHAR(10) DEFAULT '24h',
-            model_mode VARCHAR(20) DEFAULT 'DEMO',
+            model_mode VARCHAR(30) DEFAULT 'RULE_ENGINE',
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             processing_time_ms FLOAT DEFAULT 0,
             data_points INTEGER DEFAULT 0,
@@ -149,6 +137,51 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_pred_confidence ON predictions(confidence DESC);
     """,
     
+    # --------- 🆕 Rule Config Overrides ---------
+    "rule_config_overrides": """
+        CREATE TABLE IF NOT EXISTS rule_config_overrides (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            config JSONB NOT NULL,
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_by VARCHAR(100)
+        );
+        CREATE INDEX IF NOT EXISTS idx_rco_name ON rule_config_overrides(name);
+        CREATE INDEX IF NOT EXISTS idx_rco_updated_at ON rule_config_overrides(updated_at DESC);
+    """,
+    
+    # --------- 🆕 State Transitions ---------
+    "state_transitions": """
+        CREATE TABLE IF NOT EXISTS state_transitions (
+            id SERIAL PRIMARY KEY,
+            symbol VARCHAR(50) NOT NULL,
+            from_state VARCHAR(20) NOT NULL,
+            to_state VARCHAR(20) NOT NULL,
+            score REAL NOT NULL,
+            context JSONB,
+            changed_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_st_symbol_time ON state_transitions(symbol, changed_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_st_changed_at ON state_transitions(changed_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_st_to_state ON state_transitions(to_state);
+    """,
+    
+    # --------- 🆕 Scan History ---------
+    "scan_history": """
+        CREATE TABLE IF NOT EXISTS scan_history (
+            id SERIAL PRIMARY KEY,
+            scan_id VARCHAR(100) NOT NULL UNIQUE,
+            total_scanned INTEGER NOT NULL,
+            passed_count INTEGER NOT NULL,
+            top_symbols TEXT[],
+            duration_seconds REAL,
+            config_used JSONB,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_sh_scan_id ON scan_history(scan_id);
+        CREATE INDEX IF NOT EXISTS idx_sh_created_at ON scan_history(created_at DESC);
+    """,
+    
     # --------- ترس و طمع ---------
     "fear_greed_history": """
         CREATE TABLE IF NOT EXISTS fear_greed_history (
@@ -159,7 +192,6 @@ SCHEMA_PRIMARY = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_fg_timestamp ON fear_greed_history(timestamp DESC);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_fg_unique_time ON fear_greed_history(timestamp);
     """,
     
     # --------- سلطه بیت‌کوین ---------
@@ -204,23 +236,6 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
         CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
     """,
-
-    "training_profiles": """
-        CREATE TABLE IF NOT EXISTS training_profiles (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) UNIQUE NOT NULL,
-            description TEXT,
-            icon VARCHAR(10) DEFAULT '⚙️',
-            color VARCHAR(20) DEFAULT '#94a3b8',
-            learning_strategy VARCHAR(50) DEFAULT 'full',
-            hyperparameters JSONB NOT NULL,
-            data_config JSONB DEFAULT '{}'::jsonb,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_tp_name ON training_profiles(name);
-        CREATE INDEX IF NOT EXISTS idx_tp_strategy ON training_profiles(learning_strategy);
-    """,
     
     # --------- لاگ دستورات ---------
     "commands_log": """
@@ -236,22 +251,23 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_cl_created_at ON commands_log(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_cl_status ON commands_log(status);
     """,
-
-    # ------------ تنظیمات ---------------
+    
+    # --------- تنظیمات اپ ---------
     "app_settings": """
-    CREATE TABLE IF NOT EXISTS app_settings (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        category VARCHAR(50) NOT NULL,
-        value JSONB NOT NULL DEFAULT '{}'::jsonb,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS idx_settings_user_category 
-        ON app_settings(user_id, category);
-    CREATE INDEX IF NOT EXISTS idx_settings_user 
-        ON app_settings(user_id);
-""",
+        CREATE TABLE IF NOT EXISTS app_settings (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            category VARCHAR(50) NOT NULL,
+            value JSONB NOT NULL DEFAULT '{}'::jsonb,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_settings_user_category 
+            ON app_settings(user_id, category);
+        CREATE INDEX IF NOT EXISTS idx_settings_user 
+            ON app_settings(user_id);
+    """,
+    
     # --------- کش fallback ---------
     "cache": """
         CREATE TABLE IF NOT EXISTS cache (
@@ -265,9 +281,10 @@ SCHEMA_PRIMARY = {
 }
 
 
-# ------------------------------------------------------------
-# BACKUP (Neon #2) - نسخه پشتیبان
-# ------------------------------------------------------------
+# ============================================================
+# BACKUP Schema (Neon #2)
+# ============================================================
+
 SCHEMA_BACKUP = {
     "models_backup": """
         CREATE TABLE IF NOT EXISTS models_backup (
@@ -276,8 +293,9 @@ SCHEMA_BACKUP = {
             version VARCHAR(50) NOT NULL,
             model_data BYTEA,
             accuracy FLOAT,
-            period VARCHAR(10),
+            period VARCHAR(30),
             coins TEXT[],
+            model_type VARCHAR(50),
             backup_reason VARCHAR(100),
             backup_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -341,9 +359,10 @@ SCHEMA_BACKUP = {
 }
 
 
-# ------------------------------------------------------------
-# ANALYTICS (Neon #3) - تحلیل و آمار
-# ------------------------------------------------------------
+# ============================================================
+# ANALYTICS Schema (Neon #3)
+# ============================================================
+
 SCHEMA_ANALYTICS = {
     "predictions_analytics": """
         CREATE TABLE IF NOT EXISTS predictions_analytics (
@@ -447,9 +466,10 @@ SCHEMA_ANALYTICS = {
 }
 
 
-# ------------------------------------------------------------
-# LOGS (Neon #4) - لاگ‌ها
-# ------------------------------------------------------------
+# ============================================================
+# LOGS Schema (Neon #4)
+# ============================================================
+
 SCHEMA_LOGS = {
     "system_logs": """
         CREATE TABLE IF NOT EXISTS system_logs (
@@ -517,9 +537,10 @@ SCHEMA_LOGS = {
 }
 
 
-# ------------------------------------------------------------
-# ARCHIVE (Layerbase SQLite) - آرشیو
-# ------------------------------------------------------------
+# ============================================================
+# ARCHIVE Schema (Layerbase SQLite)
+# ============================================================
+
 SCHEMA_ARCHIVE = {
     "predictions_archive": """
         CREATE TABLE IF NOT EXISTS predictions_archive (
@@ -532,7 +553,7 @@ SCHEMA_ARCHIVE = {
             confidence INTEGER,
             prediction_score REAL,
             period VARCHAR(10),
-            model_mode VARCHAR(20),
+            model_mode VARCHAR(30),
             timestamp TEXT,
             archived_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -547,8 +568,9 @@ SCHEMA_ARCHIVE = {
             original_id INTEGER,
             version VARCHAR(50) NOT NULL,
             accuracy REAL,
-            period VARCHAR(10),
+            period VARCHAR(30),
             coins TEXT,
+            model_type VARCHAR(50),
             archived_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_mar_version ON models_archive(version);
@@ -594,21 +616,7 @@ def execute_schema(
     schema: Dict[str, str],
     db_name: str,
 ) -> Dict[str, Any]:
-    """
-    اجرای schema روی یک دیتابیس
-    
-    پارامترها:
-        db: نمونه دیتابیس
-        schema: دیکشنری {table_name: CREATE statement}
-        db_name: نام دیتابیس (برای لاگ)
-    
-    خروجی:
-        دیکشنری نتیجه شامل:
-            - success: bool
-            - tables: لیست جداول ساخته شده
-            - errors: لیست خطاها
-            - skipped: لیست جداول رد شده
-    """
+    """اجرای schema روی یک دیتابیس"""
     if db is None:
         logger.warning(f"⚠️ Database '{db_name}' not available")
         return {
@@ -640,14 +648,12 @@ def execute_schema(
     
     for table_name, create_sql in schema.items():
         try:
-            # اجرای CREATE TABLE IF NOT EXISTS
             db.execute(create_sql)
             results["tables"].append(table_name)
             logger.debug(f"  ✅ {table_name}")
         except Exception as e:
             error_msg = str(e)
             
-            # اگه جدول از قبل وجود داشت، skip کن
             if "already exists" in error_msg.lower():
                 results["skipped"].append(table_name)
                 logger.debug(f"  ⏭️ {table_name} (already exists)")
@@ -668,14 +674,9 @@ def execute_schema(
 
 
 def run_migrations() -> Dict[str, Any]:
-    """
-    اجرای همه migrations روی ۵ دیتابیس
-    
-    خروجی:
-        دیکشنری نتیجه شامل نتایج هر دیتابیس
-    """
+    """اجرای همه migrations"""
     logger.info("=" * 70)
-    logger.info("🚀 Starting Database Migration")
+    logger.info("🚀 Starting Database Migration (v5.0 - RuleEngine)")
     logger.info(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info("=" * 70)
     
@@ -687,62 +688,51 @@ def run_migrations() -> Dict[str, Any]:
         "archive": None,
     }
     
-    # ---------- ۱. Primary ----------
-    logger.info("\n📦 [1/5] Primary Database (Neon #1)")
+    logger.info("\n📦 [1/5] Primary Database")
     results["primary"] = execute_schema(
         get_primary(),
         SCHEMA_PRIMARY,
         "primary",
     )
     
-    # ---------- ۲. Backup ----------
-    logger.info("\n📦 [2/5] Backup Database (Neon #2)")
+    logger.info("\n📦 [2/5] Backup Database")
     results["backup"] = execute_schema(
         get_backup(),
         SCHEMA_BACKUP,
         "backup",
     )
     
-    # ---------- ۳. Analytics ----------
-    logger.info("\n📦 [3/5] Analytics Database (Neon #3)")
+    logger.info("\n📦 [3/5] Analytics Database")
     results["analytics"] = execute_schema(
         get_analytics(),
         SCHEMA_ANALYTICS,
         "analytics",
     )
     
-    # ---------- ۴. Logs ----------
-    logger.info("\n📦 [4/5] Logs Database (Neon #4)")
+    logger.info("\n📦 [4/5] Logs Database")
     results["logs"] = execute_schema(
         get_logs_db(),
         SCHEMA_LOGS,
         "logs",
     )
     
-    # ---------- ۵. Archive ----------
-    logger.info("\n📦 [5/5] Archive Database (Layerbase SQLite)")
+    logger.info("\n📦 [5/5] Archive Database")
     results["archive"] = execute_schema(
         get_archive(),
         SCHEMA_ARCHIVE,
         "archive",
     )
     
-    # ---------- خلاصه ----------
-    total_created = sum(
-        len(r["tables"]) for r in results.values() if r
-    )
-    total_skipped = sum(
-        len(r["skipped"]) for r in results.values() if r
-    )
-    total_errors = sum(
-        len(r["errors"]) for r in results.values() if r
-    )
+    # خلاصه
+    total_created = sum(len(r["tables"]) for r in results.values() if r)
+    total_skipped = sum(len(r["skipped"]) for r in results.values() if r)
+    total_errors = sum(len(r["errors"]) for r in results.values() if r)
     
     logger.info("\n" + "=" * 70)
     logger.info("📊 Migration Summary")
     logger.info("=" * 70)
     logger.info(f"  ✅ Created: {total_created} tables")
-    logger.info(f"  ⏭️  Skipped: {total_skipped} tables (already existed)")
+    logger.info(f"  ⏭️  Skipped: {total_skipped} tables")
     logger.info(f"  ❌ Errors:  {total_errors}")
     logger.info("=" * 70)
     
@@ -750,16 +740,11 @@ def run_migrations() -> Dict[str, Any]:
 
 
 # ============================================================
-# Seed Data
+# Seed
 # ============================================================
 
 def seed_data() -> Dict[str, Any]:
-    """
-    داده اولیه
-    
-    خروجی:
-        دیکشنری نتیجه
-    """
+    """داده اولیه"""
     logger.info("\n🌱 Seeding initial data...")
     
     results = {
@@ -771,11 +756,11 @@ def seed_data() -> Dict[str, Any]:
     
     db = get_primary()
     if db is None or not db.is_connected():
-        logger.error("❌ Primary database not available for seeding")
+        logger.error("❌ Primary database not available")
         results["errors"].append("primary: not connected")
         return results
     
-    # ---------- ۱. کاربران پیش‌فرض ----------
+    # کاربران
     try:
         existing = db.execute("SELECT COUNT(*) as count FROM users")
         
@@ -795,15 +780,12 @@ def seed_data() -> Dict[str, Any]:
             results["users"] = 2
             logger.info("  ✅ Created 2 default users (admin, user)")
         else:
-            logger.info(
-                f"  ⏭️  Users already exist "
-                f"({existing[0]['count']} found)"
-            )
+            logger.info(f"  ⏭️  Users already exist ({existing[0]['count']})")
     except Exception as e:
         results["errors"].append(f"users: {e}")
         logger.error(f"  ❌ users: {e}")
     
-    # ---------- ۲. Cache seed ----------
+    # Cache
     try:
         db.execute(
             """
@@ -819,7 +801,7 @@ def seed_data() -> Dict[str, Any]:
         results["errors"].append(f"cache: {e}")
         logger.error(f"  ❌ cache: {e}")
     
-    # ---------- ۳. System State (Backup) ----------
+    # System state
     try:
         backup_db = get_backup()
         if backup_db and backup_db.is_connected():
@@ -848,19 +830,13 @@ def seed_data() -> Dict[str, Any]:
 
 
 # ============================================================
-# Reset (حذف همه جداول)
+# Reset
 # ============================================================
 
 def reset_databases(confirm: bool = False) -> None:
-    """
-    حذف همه جداول (احتیاط!)
-    
-    پارامترها:
-        confirm: تأیید صریح
-    """
+    """حذف همه جداول"""
     if not confirm:
         logger.error("❌ Reset requires --confirm flag")
-        logger.error("   Usage: python manage_databases.py --action=reset --confirm")
         return
     
     logger.warning("=" * 70)
@@ -885,10 +861,7 @@ def reset_databases(confirm: bool = False) -> None:
         
         logger.info(f"🗑️  Dropping tables from '{db_name}'...")
         
-        # ترتیب معکوس (FK constraints)
-        tables = list(schema.keys())
-        
-        for table_name in reversed(tables):
+        for table_name in reversed(list(schema.keys())):
             try:
                 db.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE")
                 total_dropped += 1
@@ -899,9 +872,7 @@ def reset_databases(confirm: bool = False) -> None:
     
     logger.warning("=" * 70)
     logger.warning(
-        f"✅ Reset complete: "
-        f"{total_dropped} tables dropped, "
-        f"{total_errors} errors"
+        f"✅ Reset complete: {total_dropped} dropped, {total_errors} errors"
     )
     logger.warning("=" * 70)
 
@@ -911,7 +882,7 @@ def reset_databases(confirm: bool = False) -> None:
 # ============================================================
 
 def show_status() -> None:
-    """نمایش وضعیت دیتابیس‌ها"""
+    """وضعیت دیتابیس‌ها"""
     logger.info("=" * 70)
     logger.info("📊 Database Status")
     logger.info(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -926,16 +897,11 @@ def show_status() -> None:
     }
     
     for db_name, (db, schema, db_type) in databases.items():
-        if db is None:
-            logger.info(f"❌ {db_name:10s} | NOT AVAILABLE")
-            continue
-        
-        if not db.is_connected():
+        if db is None or not db.is_connected():
             logger.info(f"❌ {db_name:10s} | NOT CONNECTED")
             continue
         
         try:
-            # شمارش جداول
             if db_type == "sqlite":
                 result = db.execute(
                     "SELECT COUNT(*) as count FROM sqlite_master "
@@ -950,35 +916,26 @@ def show_status() -> None:
             table_count = result[0]["count"] if result else 0
             expected = len(schema)
             
-            # وضعیت
             if table_count >= expected:
-                emoji = "✅"
-                status = "OK"
+                emoji, status = "✅", "OK"
             elif table_count > 0:
-                emoji = "⚠️"
-                status = "PARTIAL"
+                emoji, status = "⚠️", "PARTIAL"
             else:
-                emoji = "❌"
-                status = "EMPTY"
+                emoji, status = "❌", "EMPTY"
             
             logger.info(
                 f"{emoji} {db_name:10s} | "
-                f"{table_count:2d}/{expected:2d} tables | "
-                f"{status}"
+                f"{table_count:2d}/{expected:2d} tables | {status}"
             )
-            
+        
         except Exception as e:
             logger.info(f"⚠️  {db_name:10s} | ERROR: {str(e)[:60]}")
     
     logger.info("=" * 70)
 
 
-# ============================================================
-# Info (جداول دقیق)
-# ============================================================
-
 def show_tables_info() -> None:
-    """نمایش اطلاعات دقیق جداول"""
+    """اطلاعات دقیق جداول"""
     logger.info("\n" + "=" * 70)
     logger.info("📋 Tables Info")
     logger.info("=" * 70)
@@ -1000,12 +957,10 @@ def show_tables_info() -> None:
         
         for table_name in schema.keys():
             try:
-                # شمارش رکوردها
                 count_result = db.execute(
                     f"SELECT COUNT(*) as count FROM {table_name}"
                 )
                 count = count_result[0]["count"] if count_result else 0
-                
                 logger.info(f"  • {table_name:30s} | {count:>10,} rows")
             except Exception as e:
                 logger.info(f"  • {table_name:30s} | ❌ {str(e)[:30]}")
@@ -1013,17 +968,8 @@ def show_tables_info() -> None:
     logger.info("\n" + "=" * 70)
 
 
-# ============================================================
-# Verify
-# ============================================================
-
 def verify_schemas() -> Dict[str, Any]:
-    """
-    بررسی کامل همه جداول
-    
-    خروجی:
-        دیکشنری نتیجه
-    """
+    """بررسی کامل جداول"""
     logger.info("\n🔍 Verifying schemas...")
     
     databases = {
@@ -1049,7 +995,6 @@ def verify_schemas() -> Dict[str, Any]:
         results["total_expected"] += len(expected_tables)
         
         try:
-            # دریافت جداول موجود
             if db_name == "archive":
                 result = db.execute(
                     "SELECT name FROM sqlite_master "
@@ -1079,12 +1024,10 @@ def verify_schemas() -> Dict[str, Any]:
                 results["extra_tables"].append(f"{db_name}.{table}")
             
             if missing:
-                logger.warning(
-                    f"  ⚠️  {db_name}: missing {len(missing)} tables"
-                )
+                logger.warning(f"  ⚠️  {db_name}: missing {len(missing)} tables")
             else:
                 logger.info(f"  ✅ {db_name}: all {len(expected_tables)} tables present")
-            
+        
         except Exception as e:
             logger.error(f"  ❌ {db_name}: {e}")
     
@@ -1103,11 +1046,56 @@ def verify_schemas() -> Dict[str, Any]:
 
 
 # ============================================================
+# Migrate existing tables (add columns)
+# ============================================================
+
+def migrate_existing_tables() -> Dict[str, Any]:
+    """
+    Migration برای جداول موجود (اضافه کردن ستون‌های جدید)
+    
+    برای مواردی که جدول از قبل هست ولی ستون جدید لازم داره
+    """
+    logger.info("\n🔧 Migrating existing tables...")
+    
+    results = {"migrations": [], "errors": []}
+    
+    db = get_primary()
+    if db is None or not db.is_connected():
+        return results
+    
+    # --------- اضافه کردن model_type به models ---------
+    try:
+        db.execute("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'models'
+                    AND column_name = 'model_type'
+                ) THEN
+                    ALTER TABLE models
+                    ADD COLUMN model_type VARCHAR(50)
+                    DEFAULT 'rule_config';
+                END IF;
+            END $$;
+        """)
+        results["migrations"].append("models.model_type")
+        logger.info("  ✅ models.model_type")
+    except Exception as e:
+        results["errors"].append(f"models.model_type: {e}")
+        logger.warning(f"  ⚠️  models.model_type: {e}")
+    
+    # --------- حذف is_ensemble اگه هست (اختیاری) ---------
+    # نگه می‌داریم تا در آینده تصمیم بگیریم
+    
+    return results
+
+
+# ============================================================
 # Main
 # ============================================================
 
 def main():
-    """ورودی اصلی"""
     parser = argparse.ArgumentParser(
         description="Database initialization and management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1118,6 +1106,7 @@ Examples:
   python manage_databases.py --action=status
   python manage_databases.py --action=tables
   python manage_databases.py --action=verify
+  python manage_databases.py --action=migrate-existing
   python manage_databases.py --action=all
   python manage_databases.py --action=reset --confirm
         """,
@@ -1127,6 +1116,7 @@ Examples:
         "--action",
         choices=[
             "migrate",
+            "migrate-existing",
             "seed",
             "reset",
             "status",
@@ -1138,23 +1128,13 @@ Examples:
         help="Action to perform (default: migrate)",
     )
     
-    parser.add_argument(
-        "--confirm",
-        action="store_true",
-        help="Confirm destructive actions (required for reset)",
-    )
-    
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose (DEBUG) logging",
-    )
+    parser.add_argument("--confirm", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
     
     args = parser.parse_args()
     
     setup_logging(args.verbose)
     
-    # ---------- Dispatch ----------
     if args.action == "status":
         show_status()
     
@@ -1168,6 +1148,9 @@ Examples:
         run_migrations()
         show_status()
     
+    elif args.action == "migrate-existing":
+        migrate_existing_tables()
+    
     elif args.action == "seed":
         seed_data()
     
@@ -1178,16 +1161,10 @@ Examples:
         logger.info("🚀 Running full initialization...")
         logger.info("")
         
-        # ۱. Migration
         run_migrations()
-        
-        # ۲. Seed
+        migrate_existing_tables()
         seed_data()
-        
-        # ۳. Verify
         verify_schemas()
-        
-        # ۴. Status
         show_status()
         
         logger.info("\n" + "=" * 70)
