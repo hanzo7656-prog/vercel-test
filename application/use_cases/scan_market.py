@@ -1,16 +1,7 @@
 # application/use_cases/scan_market.py
 # ============================================================
-# Use Case: Scan Market
-# نسخه ۱.۰
-# ============================================================
-# 
-# نقش:
-#   - Orchestrate کل فرآیند اسکن بازار
-#   - اتصال RuleEngine + BatchProcessor + StateMachine
-#   - ذخیره نتایج در Redis (کش) و DB (تاریخچه)
-# 
-# این Use Case جایگزین PredictCoinUseCase قدیمی می‌شه
-# (البته PredictCoinUseCase برای تک‌ارز باقی می‌مونه)
+# Use Case: Scan Market - نسخه ۲.۰
+# OHLCV واقعی + لاگ کامل + خطایابی
 # ============================================================
 
 import json
@@ -30,32 +21,48 @@ from core.rule_engine import (
     load_default_config,
 )
 from core.rule_engine.models import ScanResult
-from infrastructure.repositories import repos,
+from infrastructure.repositories.rule_config_repository import (
+    rule_config_repository,
 )
 
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# ScanMarketUseCase
+# Constants
+# ============================================================
+
+# نگاشت timeframe → interval (برای get_ohlcv_candles)
+TIMEFRAME_TO_INTERVAL: Dict[str, str] = {
+    "1m":  "1m",
+    "5m":  "5m",
+    "15m": "15m",
+    "1h":  "1h",
+    "4h":  "4h",
+    "1d":  "1d",
+}
+
+# cache TTL برای نتایج اسکن (۱ ساعت)
+SCAN_CACHE_TTL = 3600
+
+# حداقل کندل لازم برای اسکن
+MIN_CANDLES = 30
+
+
+# ============================================================
+# ScanMarketUseCase v2.0
 # ============================================================
 
 class ScanMarketUseCase:
     """
     Use Case اسکن بازار
     
-    مسئولیت‌ها:
-        ۱. بارگذاری config (default + override)
-        ۲. ساخت RuleEngine
-        ۳. ساخت BatchProcessor
-        ۴. دریافت symbolها
-        ۵. اجرای اسکن
-        ۶. ذخیره نتایج
-        ۷. برگرداندن ScanResult
+    تغییرات نسخه ۲.۰:
+        - OHLCV واقعی از get_ohlcv_candles
+        - لاگ کامل هر مرحله
+        - Smart interval mapping
+        - حذف OHLCV قلابی
     """
-    
-    # Cache TTL برای نتایج اسکن (۱ ساعت)
-    SCAN_CACHE_TTL = 3600
     
     def __init__(
         self,
@@ -63,18 +70,12 @@ class ScanMarketUseCase:
         cache: Any,
         db: Any,
     ) -> None:
-        """
-        Args:
-            api_client: coinstats_client یا مشابه
-            cache: Redis client (get_cache())
-            db: PostgreSQL client (get_primary())
-        """
         self.api_client = api_client
         self.cache = cache
         self.db = db
-        self.config_repo = repos.rule_config
+        self.config_repo = rule_config_repository
         
-        logger.info("✅ ScanMarketUseCase initialized")
+        logger.info("✅ ScanMarketUseCase v2.0 initialized")
     
     # ============================================================
     # Main Execute
@@ -90,40 +91,50 @@ class ScanMarketUseCase:
         use_cache: bool = True,
     ) -> ScanResult:
         """
-        اجرای اسکن کامل
+        اجرای اسکن کامل بازار
         
-        Args:
-            symbols: لیست symbolها (اگه None، از config می‌گیریم)
-            top_n: تعداد symbolها (وقتی symbols داده نشه)
-            timeframe: تایم‌فریم (اگه None، از config)
-            max_results: حداکثر نتیجه نهایی
-            update_state: آپدیت State Machine؟
-            use_cache: استفاده از cache برای نتایج؟
-        
-        Returns:
-            ScanResult
+        لاگ کامل:
+            🎯 Scan START
+            ✅ Config loaded
+            ✅ Symbols fetched
+            ✅ Engine built
+            ✅ Batch done
+            🎉 Scan SUCCESS
         """
         start_time = time.time()
-        scan_id = f"scan-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
-        
-        logger.info(f"🔍 Scan started: {scan_id}")
+        scan_id = (
+            f"scan-{datetime.now().strftime('%Y%m%d-%H%M%S')}-"
+            f"{uuid.uuid4().hex[:6]}"
+        )
         
         # ============================================================
-        # ۱. بارگذاری config
+        # لاگ شروع
+        # ============================================================
+        
+        logger.info("=" * 60)
+        logger.info(f"🎯 Scan START: {scan_id}")
+        logger.info(
+            f"   top_n={top_n}, timeframe={timeframe or 'default'}, "
+            f"max_results={max_results}"
+        )
+        logger.info("=" * 60)
+        
+        # ============================================================
+        # ۱. Config
         # ============================================================
         
         try:
             config = self._load_config()
+            logger.info("✅ Scan STEP-1 OK: config loaded")
         except Exception as e:
-            logger.error(f"❌ Config load failed: {e}")
+            logger.error(f"❌ Scan FAILED (STEP-1): config load error: {e}")
             return self._error_result(scan_id, f"Config error: {e}", start_time)
         
-        # اعمال overrideها
         if timeframe:
             config.setdefault("batch", {})["timeframe"] = timeframe
         
         # ============================================================
-        # ۲. دریافت symbolها
+        # ۲. Symbols
         # ============================================================
         
         try:
@@ -133,29 +144,33 @@ class ScanMarketUseCase:
                 config=config,
             )
         except Exception as e:
-            logger.error(f"❌ Symbol fetch failed: {e}")
+            logger.error(f"❌ Scan FAILED (STEP-2): symbol fetch error: {e}")
             return self._error_result(scan_id, f"Symbol error: {e}", start_time)
         
         if not symbol_items:
+            logger.error("❌ Scan FAILED (STEP-2): no symbols")
             return self._error_result(
                 scan_id, "No symbols to scan", start_time
             )
         
         total_symbols = len(symbol_items)
-        logger.info(f"📊 Scanning {total_symbols} symbols")
+        logger.info(f"✅ Scan STEP-2 OK: {total_symbols} symbols")
         
         # ============================================================
-        # ۳. ساخت StateMachine
+        # ۳. StateMachine
         # ============================================================
         
         try:
             state_machine = self._create_state_machine(config)
+            logger.info("✅ Scan STEP-3 OK: StateMachine created")
         except Exception as e:
-            logger.error(f"❌ StateMachine failed: {e}")
-            return self._error_result(scan_id, f"StateMachine error: {e}", start_time)
+            logger.error(f"❌ Scan FAILED (STEP-3): StateMachine error: {e}")
+            return self._error_result(
+                scan_id, f"StateMachine error: {e}", start_time
+            )
         
         # ============================================================
-        # ۴. ساخت RuleEngine
+        # ۴. RuleEngine
         # ============================================================
         
         try:
@@ -164,12 +179,18 @@ class ScanMarketUseCase:
                 scoring_config=config.get("scoring", {}),
                 state_machine=state_machine,
             )
+            logger.info(
+                f"✅ Scan STEP-4 OK: RuleEngine built "
+                f"({len(engine.rules)} rules)"
+            )
         except Exception as e:
-            logger.error(f"❌ RuleEngine build failed: {e}")
-            return self._error_result(scan_id, f"Engine error: {e}", start_time)
+            logger.error(f"❌ Scan FAILED (STEP-4): Engine build error: {e}")
+            return self._error_result(
+                scan_id, f"Engine error: {e}", start_time
+            )
         
         # ============================================================
-        # ۵. ساخت BatchProcessor
+        # ۵. BatchProcessor
         # ============================================================
         
         batch_config = config.get("batch", {})
@@ -185,34 +206,48 @@ class ScanMarketUseCase:
                 timeframe=batch_config.get("timeframe", "4h"),
                 candle_limit=batch_config.get("candle_limit", 100),
             )
+            logger.info(
+                f"✅ Scan STEP-5 OK: BatchProcessor "
+                f"(batch_size={batch_config.get('batch_size', 30)}, "
+                f"timeframe={batch_config.get('timeframe', '4h')})"
+            )
         except Exception as e:
-            logger.error(f"❌ BatchProcessor build failed: {e}")
+            logger.error(f"❌ Scan FAILED (STEP-5): Processor error: {e}")
             return self._error_result(
                 scan_id, f"BatchProcessor error: {e}", start_time
             )
         
         # ============================================================
-        # ۶. اجرای اسکن
+        # ۶. اجرا
         # ============================================================
+        
+        logger.info(f"🔄 Scan STEP-6: Running batch scan...")
         
         try:
             predictions = processor.process(
                 symbols=symbol_items,
                 update_state=update_state,
             )
+            
+            logger.info(
+                f"✅ Scan STEP-6 OK: {len(predictions)} passed "
+                f"from {total_symbols}"
+            )
         except Exception as e:
-            logger.error(f"❌ Scan execution failed: {e}", exc_info=True)
+            logger.error(
+                f"❌ Scan FAILED (STEP-6): execution error: {e}",
+                exc_info=True,
+            )
             return self._error_result(scan_id, f"Scan error: {e}", start_time)
         
         # ============================================================
-        # ۷. فیلتر نهایی
+        # ۷. Filter نهایی
         # ============================================================
         
-        # فقط top max_results
         predictions = predictions[:max_results]
         
         # ============================================================
-        # ۸. ساخت ScanResult
+        # ۸. ScanResult
         # ============================================================
         
         finished_at = datetime.now()
@@ -231,31 +266,38 @@ class ScanMarketUseCase:
         )
         
         # ============================================================
-        # ۹. ذخیره در cache
+        # ۹. Cache
         # ============================================================
         
         if use_cache:
             self._save_to_cache(result)
+            logger.debug(f"💾 Scan result cached: {scan_id}")
         
         # ============================================================
-        # ۱۰. ثبت در DB (اختیاری)
+        # ۱۰. History
         # ============================================================
         
         try:
             self._record_scan_history(result)
         except Exception as e:
-            logger.warning(f"⚠️ Scan history record failed: {e}")
+            logger.warning(f"⚠️ Scan history failed: {e}")
         
-        logger.info(
-            f"✅ Scan completed: {scan_id} — "
-            f"{len(predictions)} passed from {total_symbols} "
-            f"({duration:.2f}s)"
-        )
+        # ============================================================
+        # ✅ لاگ موفقیت
+        # ============================================================
+        
+        logger.info("=" * 60)
+        logger.info(f"🎉 Scan SUCCESS: {scan_id}")
+        logger.info(f"   scanned: {total_symbols}")
+        logger.info(f"   passed:  {len(predictions)}")
+        logger.info(f"   top:     {[p.symbol for p in predictions[:5]]}")
+        logger.info(f"   duration: {duration:.2f}s")
+        logger.info("=" * 60)
         
         return result
     
     # ============================================================
-    # Execute Single (برای PredictCoinUseCase)
+    # Execute Single
     # ============================================================
     
     def execute_single(
@@ -263,43 +305,32 @@ class ScanMarketUseCase:
         coin_id: str,
         period: str = "24h",
     ) -> Optional[Dict[str, Any]]:
-        """
-        اسکن یک symbol واحد
+        """اسکن یک symbol واحد"""
+        logger.info(f"🎯 Scan SINGLE START: coin_id={coin_id}, period={period}")
         
-        برای سازگاری با PredictCoinUseCase قدیمی
-        
-        Args:
-            coin_id: مثل "bitcoin"
-            period: بازه داده
-        
-        Returns:
-            دیکشنری با prediction
-        """
         try:
             # symbol از coin_id
             symbol = self._coin_to_symbol(coin_id)
             
-            # config
             config = self._load_config()
-            
-            # state machine
             state_machine = self._create_state_machine(config)
             
-            # engine
             engine = create_engine_from_config(
                 rules_config=config["rules"],
                 scoring_config=config.get("scoring", {}),
                 state_machine=state_machine,
             )
             
-            # fetch داده
-            fetch = self._make_data_fetcher()
-            df = fetch(symbol=symbol, timeframe=config["batch"]["timeframe"])
+            # OHLCV
+            df = self._fetch_ohlcv_for_symbol(
+                symbol=symbol,
+                timeframe=config["batch"]["timeframe"],
+            )
             
             if df is None or df.empty:
+                logger.error(f"❌ Scan SINGLE FAILED: no data for {symbol}")
                 return None
             
-            # ارزیابی
             prediction = engine.evaluate(
                 symbol=symbol,
                 coin_id=coin_id,
@@ -308,11 +339,22 @@ class ScanMarketUseCase:
             )
             
             if prediction is None:
+                logger.error(f"❌ Scan SINGLE FAILED: prediction None")
                 return None
             
+            logger.info(
+                f"🎉 Scan SINGLE SUCCESS: {symbol} → "
+                f"score={prediction.score:.4f}, "
+                f"state={prediction.state.value}"
+            )
+            
             return prediction.to_dict()
+        
         except Exception as e:
-            logger.error(f"❌ Single scan failed for {coin_id}: {e}", exc_info=True)
+            logger.error(
+                f"❌ Scan SINGLE FAILED for {coin_id}: {e}",
+                exc_info=True,
+            )
             return None
     
     # ============================================================
@@ -320,22 +362,18 @@ class ScanMarketUseCase:
     # ============================================================
     
     def _load_config(self) -> Dict[str, Any]:
-        """
-        بارگذاری config نهایی (default + override)
-        """
+        """بارگذاری config نهایی"""
         default_config = load_default_config()
         
         try:
             effective = self.config_repo.get_effective_config(default_config)
             return effective
         except Exception as e:
-            logger.warning(f"⚠️ Override merge failed, using default: {e}")
+            logger.warning(f"⚠️ Override merge failed: {e}")
             return default_config
     
     def reload_config(self) -> Dict[str, Any]:
-        """
-        بارگذاری مجدد config (برای API)
-        """
+        """بارگذاری مجدد config"""
         return self._load_config()
     
     # ============================================================
@@ -348,27 +386,20 @@ class ScanMarketUseCase:
         top_n: int,
         config: Dict[str, Any],
     ) -> List[Dict[str, str]]:
-        """
-        دریافت لیست symbolها
-        
-        اگه symbols داده شده → مستقیم
-        وگرنه → از API top n
-        """
+        """دریافت لیست symbolها"""
         if symbols:
             return [
                 {"symbol": s, "coin_id": self._symbol_to_coin(s)}
                 for s in symbols
             ]
         
-        # از config
         symbol_config = config.get("symbols", {})
         exclude_stables = symbol_config.get("exclude_stablecoins", True)
         
-        # از API top volume
         try:
             if hasattr(self.api_client, "get_coins_list"):
                 coins = self.api_client.get_coins_list(
-                    limit=top_n * 2,  # کمی بیشتر برای فیلتر
+                    limit=top_n * 2,
                     page=1,
                 )
                 
@@ -401,11 +432,10 @@ class ScanMarketUseCase:
         except Exception as e:
             logger.warning(f"⚠️ API symbol fetch failed: {e}")
         
-        # Fallback: پیش‌فرض
         return self._default_symbols(top_n)
     
     def _default_symbols(self, count: int) -> List[Dict[str, str]]:
-        """لیست پیش‌فرض symbolها (fallback)"""
+        """لیست پیش‌فرض"""
         defaults = [
             ("bitcoin", "BTC"),
             ("ethereum", "ETH"),
@@ -431,7 +461,7 @@ class ScanMarketUseCase:
     
     @staticmethod
     def _symbol_to_coin(symbol: str) -> str:
-        """BTC/USDT → bitcoin (تقریبی)"""
+        """BTC/USDT → bitcoin"""
         base = symbol.split("/")[0].lower()
         mapping = {
             "btc": "bitcoin",
@@ -449,7 +479,7 @@ class ScanMarketUseCase:
     
     @staticmethod
     def _coin_to_symbol(coin_id: str) -> str:
-        """bitcoin → BTC/USDT (تقریبی)"""
+        """bitcoin → BTC/USDT"""
         mapping = {
             "bitcoin": "BTC/USDT",
             "ethereum": "ETH/USDT",
@@ -465,106 +495,116 @@ class ScanMarketUseCase:
         cid = coin_id.lower()
         if cid in mapping:
             return mapping[cid]
-        # fallback: از خود coin_id بساز
         return f"{coin_id.upper()}/USDT"
     
     # ============================================================
-    # Data Fetcher
+    # Data Fetcher (OHLCV واقعی)
     # ============================================================
     
     def _make_data_fetcher(self):
-        """
-        ساخت تابع fetch داده برای BatchProcessor
-        
-        Returns:
-            callable(symbol, timeframe) → DataFrame
-        """
+        """ساخت تابع fetch داده"""
         def fetch(symbol: str, timeframe: str = "4h") -> Optional[pd.DataFrame]:
             try:
-                return self._fetch_ohlcv(symbol, timeframe)
+                return self._fetch_ohlcv_for_symbol(symbol, timeframe)
             except Exception as e:
                 logger.debug(f"Fetch failed for {symbol}: {e}")
                 return None
         
         return fetch
     
-    def _fetch_ohlcv(
+    def _fetch_ohlcv_for_symbol(
         self,
         symbol: str,
         timeframe: str = "4h",
     ) -> Optional[pd.DataFrame]:
         """
-        دریافت OHLCV از API
+        دریافت OHLCV واقعی برای یک symbol
         
-        چالش: CoinStats API از symbol پشتیبانی نمی‌کنه
-        راه‌حل: از coin_id استفاده کن
+        Args:
+            symbol: "BTC/USDT"
+            timeframe: "4h", "1h", ...
         """
-        # استخراج coin_id از symbol
-        coin_id = self._symbol_to_coin(symbol)
+        # چک get_ohlcv_candles
+        if not hasattr(self.api_client, "get_ohlcv_candles"):
+            logger.error("❌ get_ohlcv_candles not available on api_client")
+            return None
         
-        # نگاشت timeframe به period مورد قبول API
-        period_map = {
-            "1h": "24h",
-            "4h": "1w",
-            "1d": "1m",
-            "1w": "3m",
+        # interval
+        interval = TIMEFRAME_TO_INTERVAL.get(timeframe, "4h")
+        
+        # range مناسب برای timeframe
+        range_map = {
+            "1m": "1d",
+            "5m": "1w",
+            "15m": "1w",
+            "1h": "1mo",
+            "4h": "3mo",
+            "1d": "6mo",
         }
-        period = period_map.get(timeframe, "1m")
+        data_range = range_map.get(timeframe, "3mo")
         
         try:
-            # تلاش از coinstats_client
-            if hasattr(self.api_client, "get_chart"):
-                data = self.api_client.get_chart(coin_id, period)
-                
-                if not data or not isinstance(data, list):
-                    return None
-                
-                # تبدیل به DataFrame
-                df = self._list_to_dataframe(data)
-                return df
-        except Exception as e:
-            logger.debug(f"API fetch failed for {coin_id}: {e}")
+            result = self.api_client.get_ohlcv_candles(
+                exchange="Binance",
+                pair=symbol,
+                interval=interval,
+                range=data_range,
+                use_cache=True,
+            )
+            
+            if not result or "candles" not in result:
+                return None
+            
+            # هشدار cap
+            if result.get("warning"):
+                logger.debug(f"⚠️ {symbol}: {result['warning']}")
+            
+            candles = result["candles"]
+            
+            df = self._candles_to_dataframe(candles)
+            
+            if df is None or len(df) < MIN_CANDLES:
+                return None
+            
+            return df
         
-        return None
+        except Exception as e:
+            logger.debug(f"OHLCV fetch error for {symbol}: {e}")
+            return None
     
     @staticmethod
-    def _list_to_dataframe(data: List) -> pd.DataFrame:
-        """
-        تبدیل خروجی API به DataFrame OHLCV
-        
-        ساختار API: [[timestamp, price], ...]
-        ولی ما OHLCV نیاز داریم. از price برای همه استفاده می‌کنیم.
-        """
-        if not data:
-            return pd.DataFrame()
+    def _candles_to_dataframe(candles: List) -> Optional[pd.DataFrame]:
+        """تبدیل candles به DataFrame"""
+        if not candles:
+            return None
         
         rows = []
-        for point in data:
-            if isinstance(point, (list, tuple)) and len(point) >= 2:
-                ts = point[0]
-                price = float(point[1])
+        for c in candles:
+            if not isinstance(c, (list, tuple)) or len(c) < 6:
+                continue
+            
+            try:
+                ts = pd.to_datetime(c[0], unit="ms", errors="coerce")
+                if pd.isna(ts):
+                    continue
                 
-                # حجم و OHLC رو نداریم → تقریب
+                volume = float(c[5]) if c[5] is not None else 0.0
+                
                 rows.append({
-                    "timestamp": pd.to_datetime(ts, unit="ms", errors="coerce"),
-                    "Open": price,
-                    "High": price,
-                    "Low": price,
-                    "Close": price,
-                    "Volume": 1.0,  # placeholder
+                    "timestamp": ts,
+                    "Open": float(c[1]),
+                    "High": float(c[2]),
+                    "Low": float(c[3]),
+                    "Close": float(c[4]),
+                    "Volume": volume,
                 })
+            except (ValueError, TypeError, IndexError):
+                continue
         
         if not rows:
-            return pd.DataFrame()
+            return None
         
-        df = pd.DataFrame(rows)
-        df = df.set_index("timestamp").sort_index()
-        df = df.dropna()
-        
-        # فیلتر: حداقل ۳۰ ردیف
-        if len(df) < 30:
-            return pd.DataFrame()
-        
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index().dropna()
         return df
     
     # ============================================================
@@ -572,7 +612,7 @@ class ScanMarketUseCase:
     # ============================================================
     
     def _create_state_machine(self, config: Dict[str, Any]) -> StateMachine:
-        """ساخت StateMachine از config"""
+        """ساخت StateMachine"""
         sm_config = config.get("state_machine", {})
         
         return StateMachine(
@@ -592,28 +632,19 @@ class ScanMarketUseCase:
         
         try:
             key = f"scan:{result.scan_id}"
-            self.cache.set(
-                key,
-                result.to_dict(),
-                ttl=self.SCAN_CACHE_TTL,
-            )
+            self.cache.set(key, result.to_dict(), ttl=SCAN_CACHE_TTL)
             
             # آخرین اسکن
             self.cache.set(
                 "scan:latest",
                 result.scan_id,
-                ttl=self.SCAN_CACHE_TTL,
+                ttl=SCAN_CACHE_TTL,
             )
         except Exception as e:
             logger.warning(f"⚠️ Cache save failed: {e}")
     
     def get_cached_scan(self, scan_id: str) -> Optional[Dict[str, Any]]:
-        """
-        بازیابی اسکن از cache
-        
-        Args:
-            scan_id: شناسه اسکن ("latest" برای آخرین)
-        """
+        """بازیابی اسکن از cache"""
         if not self.cache or not self.cache.is_connected():
             return None
         
@@ -633,17 +664,11 @@ class ScanMarketUseCase:
     # ============================================================
     
     def _record_scan_history(self, result: ScanResult) -> None:
-        """
-        ثبت اسکن در DB
-        
-        جدول: scan_history
-        (خودکار ساخته می‌شه)
-        """
+        """ثبت اسکن در DB"""
         if not self.db or not self.db.is_connected():
             return
         
         try:
-            # ساخت جدول
             self.db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scan_history (
@@ -659,7 +684,6 @@ class ScanMarketUseCase:
                 """
             )
             
-            # ثبت
             top_symbols = [p.symbol for p in result.results[:10]]
             
             self.db.execute(
@@ -713,10 +737,9 @@ class ScanMarketUseCase:
     
     @staticmethod
     def _sanitize_config(config: Dict[str, Any]) -> Dict[str, Any]:
-        """پاک‌سازی config برای ذخیره (حذف داده‌های حساس)"""
+        """پاک‌سازی config"""
         import copy
         sanitized = copy.deepcopy(config)
-        # حذف کلیدهای حساس اگه هستن
         for key in ["api_key", "secret", "password"]:
             sanitized.pop(key, None)
         return sanitized
@@ -753,6 +776,7 @@ class ScanMarketUseCase:
                 self.db is not None and self.db.is_connected()
             ),
             "config_repo": self.config_repo.get_stats(),
+            "timeframe_to_interval": TIMEFRAME_TO_INTERVAL,
         }
 
 
