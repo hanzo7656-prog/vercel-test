@@ -181,6 +181,28 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_sh_scan_id ON scan_history(scan_id);
         CREATE INDEX IF NOT EXISTS idx_sh_created_at ON scan_history(created_at DESC);
     """,
+
+    # --------- 🆕 OHLCV History ---------
+    "ohlcv_history": """
+        CREATE TABLE IF NOT EXISTS ohlcv_history (
+            id BIGSERIAL PRIMARY KEY,
+            symbol VARCHAR(50) NOT NULL,
+            interval VARCHAR(10) NOT NULL,
+            timestamp TIMESTAMP NOT NULL,
+            open DECIMAL(20, 8) NOT NULL,
+            high DECIMAL(20, 8) NOT NULL,
+            low DECIMAL(20, 8) NOT NULL,
+            close DECIMAL(20, 8) NOT NULL,
+            volume DECIMAL(30, 8) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_ohlcv_unique
+            ON ohlcv_history (symbol, interval, timestamp);
+        CREATE INDEX IF NOT EXISTS idx_ohlcv_symbol_interval
+            ON ohlcv_history (symbol, interval, timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_ohlcv_created
+            ON ohlcv_history (created_at DESC);
+    """,
     
     # --------- ترس و طمع ---------
     "fear_greed_history": """
