@@ -1,7 +1,7 @@
 # infrastructure/repositories/__init__.py
 # ============================================================
-# Repositories - مخازن داده - نسخه ۳.۱
-# Export کامل + RepositoryContainer + SettingsRepository + RuleConfig
+# Repositories - نسخه ۳.۲
+# OHLCV Repository اضافه شد
 # ============================================================
 
 import logging
@@ -11,133 +11,78 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Lazy Imports (جلوگیری از Circular Import)
+# Lazy Imports
 # ============================================================
 
 def _get_model_repository_class():
-    """Lazy import ModelRepository"""
     from infrastructure.repositories.model_repository import ModelRepository
     return ModelRepository
 
 
 def _get_prediction_repository_class():
-    """Lazy import PredictionRepository"""
     from infrastructure.repositories.prediction_repository import PredictionRepository
     return PredictionRepository
 
 
 def _get_settings_repository_class():
-    """Lazy import SettingsRepository"""
     from infrastructure.repositories.settings_repository import SettingsRepository
     return SettingsRepository
 
 
 def _get_rule_config_repository_class():
-    """Lazy import RuleConfigRepository (🆕)"""
     from infrastructure.repositories.rule_config_repository import RuleConfigRepository
     return RuleConfigRepository
 
 
+def _get_ohlcv_repository_class():
+    """🆕 OHLCVRepository"""
+    from infrastructure.repositories.ohlcv_repository import OHLCVRepository
+    return OHLCVRepository
+
+
 def _get_container():
-    """Lazy import RepositoryContainer"""
     from infrastructure.repositories.init_repository import repo_container
     return repo_container
 
 
 # ============================================================
-# Direct Access (ساخت نمونه جدید)
+# Direct Access
 # ============================================================
 
 def get_model_repository():
-    """
-    دریافت ModelRepository (نمونه جدید)
-    
-    خروجی:
-        ModelRepository instance
-    
-    توجه:
-        برای استفاده از singleton، از repo_container استفاده کن
-    """
-    ModelRepository = _get_model_repository_class()
-    return ModelRepository()
+    return _get_model_repository_class()()
 
 
 def get_prediction_repository():
-    """
-    دریافت PredictionRepository (نمونه جدید)
-    
-    خروجی:
-        PredictionRepository instance
-    
-    توجه:
-        برای استفاده از singleton، از repo_container استفاده کن
-    """
-    PredictionRepository = _get_prediction_repository_class()
-    return PredictionRepository()
+    return _get_prediction_repository_class()()
 
 
 def get_settings_repository():
-    """
-    دریافت SettingsRepository (نمونه جدید)
-    
-    خروجی:
-        SettingsRepository instance
-    
-    توجه:
-        برای استفاده از singleton، از repo_container استفاده کن
-    """
-    SettingsRepository = _get_settings_repository_class()
-    return SettingsRepository()
+    return _get_settings_repository_class()()
 
 
 def get_rule_config_repository():
-    """
-    دریافت RuleConfigRepository (نمونه جدید) (🆕)
-    
-    خروجی:
-        RuleConfigRepository instance
-    
-    توجه:
-        برای استفاده از singleton، از repo_container استفاده کن
-    """
-    RuleConfigRepository = _get_rule_config_repository_class()
-    return RuleConfigRepository()
+    return _get_rule_config_repository_class()()
+
+
+def get_ohlcv_repository():
+    """🆕"""
+    return _get_ohlcv_repository_class()()
 
 
 # ============================================================
-# Container Access (Singleton)
+# Container Access
 # ============================================================
 
 def get_container():
-    """
-    دریافت RepositoryContainer
-    
-    خروجی:
-        RepositoryContainer instance (singleton)
-    """
     return _get_container()
 
 
 def get_repository(name: str):
-    """
-    دریافت Repository با نام از Container
-    
-    پارامترها:
-        name: نام Repository (model, prediction, settings, rule_config)
-    
-    خروجی:
-        Repository instance
-    """
     return _get_container().get(name)
 
 
 def init_all_repositories() -> Dict[str, bool]:
-    """
-    راه‌اندازی همه Repositoryها
-    
-    خروجی:
-        دیکشنری وضعیت
-    """
     from infrastructure.repositories.init_repository import (
         init_all_repositories as _init
     )
@@ -145,12 +90,6 @@ def init_all_repositories() -> Dict[str, bool]:
 
 
 def get_repository_stats() -> Dict[str, Any]:
-    """
-    دریافت آمار Repositoryها
-    
-    خروجی:
-        دیکشنری آمار
-    """
     from infrastructure.repositories.init_repository import (
         get_repository_stats as _stats
     )
@@ -158,60 +97,46 @@ def get_repository_stats() -> Dict[str, Any]:
 
 
 # ============================================================
-# Properties (Singleton Access)
+# Singleton Access
 # ============================================================
 
 class Repositories:
-    """
-    دسترسی سریع به Repositoryها (Singleton)
-    
-    استفاده:
-        from infrastructure.repositories import repos
-        
-        repos.model.save_model(...)
-        repos.prediction.save(...)
-        repos.settings.get_all(...)
-        repos.rule_config.get_effective_config(...)   # 🆕
-    """
+    """دسترسی سریع به Repositoryها"""
     
     @property
     def model(self):
-        """ModelRepository (singleton)"""
         return _get_container().model
     
     @property
     def prediction(self):
-        """PredictionRepository (singleton)"""
         return _get_container().prediction
     
     @property
     def settings(self):
-        """SettingsRepository (singleton)"""
         return _get_container().settings
     
     @property
     def rule_config(self):
-        """RuleConfigRepository (singleton) (🆕)"""
         return _get_container().rule_config
     
+    @property
+    def ohlcv(self):
+        """🆕 OHLCVRepository"""
+        return _get_container().ohlcv
+    
     def get(self, name: str):
-        """دریافت Repository با نام"""
         return _get_container().get(name)
     
     def list_available(self) -> List[str]:
-        """لیست Repositoryهای موجود"""
         return _get_container().list_available()
     
     def get_stats(self) -> Dict[str, Any]:
-        """آمار Container"""
         return _get_container().get_stats()
     
     def reset(self) -> None:
-        """ریست Container"""
         _get_container().reset()
 
 
-# Singleton instance
 repos = Repositories()
 
 
@@ -220,42 +145,33 @@ repos = Repositories()
 # ============================================================
 
 __all__ = [
-    # Classes
     "ModelRepository",
     "PredictionRepository",
     "SettingsRepository",
     "RuleConfigRepository",
+    "OHLCVRepository",
     "RepositoryContainer",
     
-    # Direct access
     "get_model_repository",
     "get_prediction_repository",
     "get_settings_repository",
     "get_rule_config_repository",
+    "get_ohlcv_repository",
     
-    # Container
     "get_container",
     "get_repository",
     "init_all_repositories",
     "get_repository_stats",
     
-    # Singleton
     "repos",
 ]
 
 
 # ============================================================
-# Lazy Class Access (برای Import مستقیم)
+# Lazy Class Access
 # ============================================================
 
 def __getattr__(name: str):
-    """
-    Lazy loading برای کلاس‌ها
-    
-    این تابع باعث می‌شود که:
-        from infrastructure.repositories import ModelRepository
-    کار کند، ولی فقط وقتی که واقعاً استفاده شود، import انجام شود.
-    """
     if name == "ModelRepository":
         return _get_model_repository_class()
     elif name == "PredictionRepository":
@@ -264,10 +180,10 @@ def __getattr__(name: str):
         return _get_settings_repository_class()
     elif name == "RuleConfigRepository":
         return _get_rule_config_repository_class()
+    elif name == "OHLCVRepository":
+        return _get_ohlcv_repository_class()
     elif name == "RepositoryContainer":
-        from infrastructure.repositories.init_repository import (
-            RepositoryContainer
-        )
+        from infrastructure.repositories.init_repository import RepositoryContainer
         return RepositoryContainer
     
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
