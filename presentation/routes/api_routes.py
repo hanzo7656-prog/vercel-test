@@ -1419,6 +1419,210 @@ def db_migrate():
     except Exception as e:
         logger.error(f"Migration error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/migrate-existing', methods=['POST'])
+@require_auth('admin')
+def db_migrate_existing():
+    """
+    اضافه کردن ستون‌های جدید به جداول موجود
+    
+    - models.model_type
+    - و هر ALTER TABLE دیگه
+    """
+    try:
+        import subprocess
+        import os
+        
+        project_path = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        
+        result = subprocess.run(
+            ['python', 'scripts/manage_databases.py', '--action=migrate-existing'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=project_path,
+        )
+        
+        return jsonify({
+            'success': result.returncode == 0,
+            'output': result.stdout,
+            'error': result.stderr if result.stderr else None,
+            'returncode': result.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Migration timed out'}), 408
+    except Exception as e:
+        logger.error(f"Migration existing error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/db/schema-status', methods=['GET'])
+@require_auth('admin')
+def db_schema_status():
+    """
+    وضعیت schema (کدوم جداول وجود دارن)
+    """
+    try:
+        from infrastructure.database import get_primary, get_backup, get_analytics, get_logs_db, get_archive
+        
+        expected_tables = {
+            "primary": [
+                "models", "predictions", "state_transitions",
+                "scan_history", "rule_config_overrides",
+                "model_training_history", "fear_greed_history",
+                "btc_dominance_history", "global_market_history",
+                "users", "commands_log", "app_settings", "cache",
+            ],
+            "backup": [
+                "models_backup", "predictions_backup",
+                "system_state", "backup_metadata",
+            ],
+            "analytics": [
+                "predictions_analytics", "model_performance",
+                "market_analytics", "signal_statistics",
+                "daily_summary",
+            ],
+            "logs": [
+                "system_logs", "error_logs",
+                "api_logs", "audit_logs",
+            ],
+            "archive": [
+                "predictions_archive", "models_archive",
+                "logs_archive", "backup_snapshots",
+            ],
+        }
+        
+        getters = {
+            "primary": get_primary,
+            "backup": get_backup,
+            "analytics": get_analytics,
+            "logs": get_logs_db,
+            "archive": get_archive,
+        }
+        
+        result = {}
+        
+        for db_name, tables in expected_tables.items():
+            db = getters[db_name]()
+            if not db or not db.is_connected():
+                result[db_name] = {"connected": False}
+                continue
+            
+            try:
+                # لیست جداول موجود
+                if db_name == "archive":
+                    query_result = db.execute(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                    )
+                    existing = {r.get("name") for r in query_result}
+                else:
+                    query_result = db.execute(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema = 'public'"
+                    )
+                    existing = {r.get("table_name") for r in query_result}
+                
+                expected_set = set(tables)
+                found = expected_set & existing
+                missing = expected_set - existing
+                
+                result[db_name] = {
+                    "connected": True,
+                    "expected": len(expected_set),
+                    "found": len(found),
+                    "missing": list(missing),
+                    "complete": len(missing) == 0,
+                }
+            except Exception as e:
+                result[db_name] = {"connected": True, "error": str(e)}
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Schema status error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/db/init-all', methods=['POST'])
+@require_auth('admin')
+def db_init_all():
+    """
+    راه‌اندازی کامل دیتابیس
+    
+    ۱. ساخت جداول (migrate)
+    ۲. اضافه کردن columns (migrate-existing)
+    ۳. داده اولیه (seed)
+    """
+    try:
+        import subprocess
+        import os
+        
+        project_path = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        
+        results = {}
+        
+        # ۱. migrate
+        r1 = subprocess.run(
+            ['python', 'scripts/manage_databases.py', '--action=migrate'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=project_path,
+        )
+        results['migrate'] = {
+            'success': r1.returncode == 0,
+            'output': r1.stdout[-1000:] if r1.stdout else None,
+            'error': r1.stderr[-500:] if r1.stderr else None,
+        }
+        
+        # ۲. migrate-existing
+        r2 = subprocess.run(
+            ['python', 'scripts/manage_databases.py', '--action=migrate-existing'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=project_path,
+        )
+        results['migrate_existing'] = {
+            'success': r2.returncode == 0,
+            'output': r2.stdout[-1000:] if r2.stdout else None,
+            'error': r2.stderr[-500:] if r2.stderr else None,
+        }
+        
+        # ۳. seed
+        r3 = subprocess.run(
+            ['python', 'scripts/manage_databases.py', '--action=seed'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=project_path,
+        )
+        results['seed'] = {
+            'success': r3.returncode == 0,
+            'output': r3.stdout[-1000:] if r3.stdout else None,
+            'error': r3.stderr[-500:] if r3.stderr else None,
+        }
+        
+        all_success = all(r['success'] for r in results.values())
+        
+        return jsonify({
+            'success': all_success,
+            'results': results,
+            'timestamp': datetime.now().isoformat(),
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Init timed out'}), 408
+    except Exception as e:
+        logger.error(f"Init all error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
         
 # ============================================================
 # ۸. دیتابیس - عمومی
