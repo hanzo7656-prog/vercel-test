@@ -1,12 +1,19 @@
 # application/dto/prediction_dto.py
 # ============================================================
-# DTO: Prediction - نسخه ۲.۰
-# Validation + Profile support
+# DTO: Prediction - نسخه ۳.۰
+# Validation + RuleEngine Support
+# ============================================================
+# 
+# تغییرات نسخه ۳.۰:
+#   - حذف TrainRequestDTO (XGBoost-specific)
+#   - حذف BatchTrainRequestDTO (XGBoost-specific)
+#   - اضافه CalibrateRequestDTO (برای WeightCalibrator)
+#   - اضافه ScanRequestDTO (برای Screener)
 # ============================================================
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List, ClassVar
+from typing import Optional, Dict, Any, List
 
 from domain.entities.prediction import Prediction, SignalType
 
@@ -16,11 +23,16 @@ from domain.entities.prediction import Prediction, SignalType
 # ============================================================
 
 VALID_PERIODS: List[str] = ["24h", "1w", "1m", "3m", "6m"]
+VALID_TRAIN_PERIODS: List[str] = ["1w", "1m", "3m", "6m"]
 VALID_SIGNAL_TYPES: List[str] = ["BUY", "SELL", "NEUTRAL", "ERROR", "DEMO"]
+VALID_CALIBRATION_PROFILES: List[str] = [
+    "fast", "balanced", "accurate", "hill_climb", "random"
+]
+VALID_TIMEFRAMES: List[str] = ["1m", "5m", "15m", "1h", "4h", "1d"]
 
 
 # ============================================================
-# Request DTO
+# Prediction Request DTO
 # ============================================================
 
 @dataclass
@@ -43,12 +55,7 @@ class PredictionRequestDTO:
     # ============================================================
     
     def validate(self) -> tuple[bool, List[str]]:
-        """
-        اعتبارسنجی
-        
-        خروجی:
-            (valid: bool, errors: List[str])
-        """
+        """اعتبارسنجی"""
         errors = []
         
         # Period
@@ -61,7 +68,7 @@ class PredictionRequestDTO:
         if not self.coin or not self.coin.strip():
             errors.append("coin نمی‌تونه خالی باشه")
         
-        # Coins (اگه هست)
+        # Coins
         if self.coins is not None:
             if not isinstance(self.coins, list):
                 errors.append("coins باید لیست باشه")
@@ -85,7 +92,7 @@ class PredictionRequestDTO:
     
     @classmethod
     def from_query(cls, args: Any) -> 'PredictionRequestDTO':
-        """ایجاد از query params (Flask request.args)"""
+        """ایجاد از query params"""
         coins_param = args.get("coins", "")
         coins = None
         
@@ -111,7 +118,7 @@ class PredictionRequestDTO:
         return self.coins is not None and len(self.coins) > 0
     
     def normalized(self) -> 'PredictionRequestDTO':
-        """نرمال‌سازی (lowercase, strip)"""
+        """نرمال‌سازی"""
         return PredictionRequestDTO(
             coin=self.coin.strip().lower() if self.coin else "bitcoin",
             period=self.period.strip().lower() if self.period else "24h",
@@ -120,20 +127,13 @@ class PredictionRequestDTO:
 
 
 # ============================================================
-# Response DTO
+# Prediction Response DTO
 # ============================================================
 
 @dataclass
 class PredictionDTO:
     """
     DTO پاسخ پیش‌بینی
-    
-    ویژگی‌ها:
-        success: موفقیت عملیات
-        data: داده‌های پیش‌بینی
-        error: پیام خطا
-        count: تعداد نتایج
-        timestamp: زمان پاسخ
     """
     
     success: bool
@@ -173,10 +173,6 @@ class PredictionDTO:
             count=count,
         )
     
-    # ============================================================
-    # Serialization
-    # ============================================================
-    
     def to_dict(self) -> Dict[str, Any]:
         """تبدیل به دیکشنری"""
         return {
@@ -189,28 +185,26 @@ class PredictionDTO:
 
 
 # ============================================================
-# Trainer DTO (🆕)
+# Calibrate Request DTO (🆕 - جایگزین TrainRequestDTO)
 # ============================================================
 
 @dataclass
-class TrainRequestDTO:
+class CalibrateRequestDTO:
     """
-    DTO درخواست آموزش (🆕)
+    DTO درخواست کالیبراسیون وزن‌ها
     
     ویژگی‌ها:
-        period: بازه داده
+        period: بازه داده تاریخی
+        profile_name: نام پروفایل (fast/balanced/accurate/hill_climb/random)
+        strategy: استراتژی (override)
         coins: لیست ارزها
-        profile_name: نام پروفایل
-        profile: پروفایل مستقیم
-        strategy: استراتژی آموزش
-        save: ذخیره بشه؟
+        save: ذخیره در DB؟
     """
     
     period: str = "1m"
-    coins: Optional[List[str]] = None
-    profile_name: Optional[str] = None
-    profile: Optional[Dict[str, Any]] = None
+    profile_name: str = "balanced"
     strategy: Optional[str] = None
+    coins: Optional[List[str]] = None
     save: bool = True
     
     # ============================================================
@@ -221,20 +215,26 @@ class TrainRequestDTO:
         """اعتبارسنجی"""
         errors = []
         
-        valid_train_periods = ["1w", "1m", "3m", "6m"]
-        
-        if self.period not in valid_train_periods:
+        # Period
+        if self.period not in VALID_TRAIN_PERIODS:
             errors.append(
-                f"period باید یکی از {valid_train_periods} باشه"
+                f"period باید یکی از {VALID_TRAIN_PERIODS} باشه"
             )
         
-        if self.profile_name is not None and not isinstance(self.profile_name, str):
-            errors.append("profile_name باید string باشه")
+        # Profile name
+        if self.profile_name:
+            if not isinstance(self.profile_name, str):
+                errors.append("profile_name باید string باشه")
         
-        valid_strategies = ["full", "incremental", "transfer", "fine_tune", "ensemble"]
-        if self.strategy is not None and self.strategy not in valid_strategies:
-            errors.append(f"strategy باید یکی از {valid_strategies} باشه")
+        # Strategy
+        if self.strategy is not None:
+            valid_strategies = ["grid", "random", "hill_climb"]
+            if self.strategy not in valid_strategies:
+                errors.append(
+                    f"strategy باید یکی از {valid_strategies} باشه"
+                )
         
+        # Coins
         if self.coins is not None:
             if not isinstance(self.coins, list):
                 errors.append("coins باید لیست باشه")
@@ -244,14 +244,13 @@ class TrainRequestDTO:
         return len(errors) == 0, errors
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TrainRequestDTO':
+    def from_dict(cls, data: Dict[str, Any]) -> 'CalibrateRequestDTO':
         """ایجاد از دیکشنری"""
         return cls(
             period=data.get("period", "1m"),
-            coins=data.get("coins"),
-            profile_name=data.get("profile_name"),
-            profile=data.get("profile"),
+            profile_name=data.get("profile_name", "balanced"),
             strategy=data.get("strategy"),
+            coins=data.get("coins"),
             save=data.get("save", True),
         )
     
@@ -259,59 +258,89 @@ class TrainRequestDTO:
         """تبدیل به دیکشنری"""
         return {
             "period": self.period,
-            "coins": self.coins,
             "profile_name": self.profile_name,
-            "profile": self.profile,
             "strategy": self.strategy,
+            "coins": self.coins,
             "save": self.save,
         }
 
 
 # ============================================================
-# Batch DTO (🆕)
+# Scan Request DTO (🆕)
 # ============================================================
 
 @dataclass
-class BatchTrainRequestDTO:
+class ScanRequestDTO:
     """
-    DTO برای A/B Testing (🆕)
+    DTO درخواست اسکن بازار
     
     ویژگی‌ها:
-        profiles: لیست نام پروفایل‌ها
-        period: بازه
-        coins: ارزها
+        symbols: لیست نمادها (اگه None، از config)
+        top_n: تعداد symbolها
+        timeframe: تایم‌فریم
+        max_results: حداکثر نتایج
+        update_state: آپدیت state؟
+        use_cache: استفاده از cache؟
     """
     
-    profiles: List[str] = field(default_factory=list)
-    period: str = "1m"
-    coins: Optional[List[str]] = None
+    symbols: Optional[List[str]] = None
+    top_n: int = 30
+    timeframe: Optional[str] = None
+    max_results: int = 10
+    update_state: bool = True
+    use_cache: bool = True
+    
+    # ============================================================
+    # Validation
+    # ============================================================
     
     def validate(self) -> tuple[bool, List[str]]:
         """اعتبارسنجی"""
         errors = []
         
-        if not self.profiles or len(self.profiles) < 2:
-            errors.append("برای A/B Testing حداقل ۲ پروفایل لازمه")
+        # Symbols
+        if self.symbols is not None:
+            if not isinstance(self.symbols, list):
+                errors.append("symbols باید لیست باشه")
+            elif len(self.symbols) == 0:
+                errors.append("symbols نمی‌تونه خالی باشه")
         
-        valid_periods = ["1w", "1m", "3m", "6m"]
-        if self.period not in valid_periods:
-            errors.append(f"period باید یکی از {valid_periods} باشه")
+        # top_n
+        if not (1 <= self.top_n <= 500):
+            errors.append("top_n باید بین ۱ تا ۵۰۰ باشه")
+        
+        # max_results
+        if not (1 <= self.max_results <= 100):
+            errors.append("max_results باید بین ۱ تا ۱۰۰ باشه")
+        
+        # timeframe
+        if self.timeframe is not None:
+            if self.timeframe not in VALID_TIMEFRAMES:
+                errors.append(
+                    f"timeframe باید یکی از {VALID_TIMEFRAMES} باشه"
+                )
         
         return len(errors) == 0, errors
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BatchTrainRequestDTO':
+    def from_dict(cls, data: Dict[str, Any]) -> 'ScanRequestDTO':
         """ایجاد از دیکشنری"""
         return cls(
-            profiles=data.get("profiles", []),
-            period=data.get("period", "1m"),
-            coins=data.get("coins"),
+            symbols=data.get("symbols"),
+            top_n=data.get("top_n", 30),
+            timeframe=data.get("timeframe"),
+            max_results=data.get("max_results", 10),
+            update_state=data.get("update_state", True),
+            use_cache=data.get("use_cache", True),
         )
     
     def to_dict(self) -> Dict[str, Any]:
         """تبدیل به دیکشنری"""
         return {
-            "profiles": self.profiles,
-            "period": self.period,
-            "coins": self.coins,
+            "symbols": self.symbols,
+            "top_n": self.top_n,
+            "timeframe": self.timeframe,
+            "max_results": self.max_results,
+            "update_state": self.update_state,
+            "use_cache": self.use_cache,
         }
