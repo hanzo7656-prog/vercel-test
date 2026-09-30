@@ -1,6 +1,7 @@
 # infrastructure/api/coinstats_client.py
 # ============================================================
-# کلاینت API کوین‌استیتس - نسخه ۴.۰
+# کلاینت API کوین‌استیتس - نسخه ۵.۱
+# OHLCV Candles + Interval Cap + Smart Pair Mapping
 # ============================================================
 
 import os
@@ -10,17 +11,122 @@ import logging
 from typing import Dict, Any, Optional, List, Union
 
 from domain.interfaces.api_client import APIClient
-
-# ✅ Import مستقیم از cache_manager (نه از __init__)
 from infrastructure.api.cache_manager import cache_manager
 
 logger = logging.getLogger(__name__)
 
 
+# ============================================================
+# Constants
+# ============================================================
+
+# ============================================================
+# ۱. Hard-coded mapping برای top coins (سریع، صفر credit)
+# ============================================================
+# این لیست فقط برای سرعت هست
+# fallback به API برای بقیه داریم
+COIN_TO_PAIR: Dict[str, str] = {
+    # Top 20
+    "bitcoin": "BTC/USDT",
+    "ethereum": "ETH/USDT",
+    "tether": "USDT/USD",
+    "binancecoin": "BNB/USDT",
+    "solana": "SOL/USDT",
+    "usd-coin": "USDC/USD",
+    "ripple": "XRP/USDT",
+    "dogecoin": "DOGE/USDT",
+    "cardano": "ADA/USDT",
+    "tron": "TRX/USDT",
+    "avalanche-2": "AVAX/USDT",
+    "shiba-inu": "SHIB/USDT",
+    "polkadot": "DOT/USDT",
+    "chainlink": "LINK/USDT",
+    "polygon": "MATIC/USDT",
+    "litecoin": "LTC/USDT",
+    "uniswap": "UNI/USDT",
+    "bitcoin-cash": "BCH/USDT",
+    "stellar": "XLM/USDT",
+    "near": "NEAR/USDT",
+    
+    # Top 21-50
+    "aptos": "APT/USDT",
+    "arbitrum": "ARB/USDT",
+    "optimism": "OP/USDT",
+    "filecoin": "FIL/USDT",
+    "hedera-hashgraph": "HBAR/USDT",
+    "internet-computer": "ICP/USDT",
+    "cosmos": "ATOM/USDT",
+    "immutable-x": "IMX/USDT",
+    "injective-protocol": "INJ/USDT",
+    "render-token": "RENDER/USDT",
+    "vechain": "VET/USDT",
+    "algorand": "ALGO/USDT",
+    "fantom": "FTM/USDT",
+    "the-graph": "GRT/USDT",
+    "decentraland": "MANA/USDT",
+    "sandbox": "SAND/USDT",
+    "aave": "AAVE/USDT",
+    "maker": "MKR/USDT",
+    "curve-dao-token": "CRV/USDT",
+    "the-open-network": "TON/USDT",
+    "pepe": "PEPE/USDT",
+    "bonk": "BONK/USDT",
+    "sei-network": "SEI/USDT",
+    "sui": "SUI/USDT",
+    "celestia": "TIA/USDT",
+    "jupiter-exchange-solana": "JUP/USDT",
+    "pyth-network": "PYTH/USDT",
+    "stacks": "STX/USDT",
+    "thorchain": "RUNE/USDT",
+    "dydx": "DYDX/USDT",
+}
+
+
+# ============================================================
+# ۲. محدودیت interval → max range (100k candles limit)
+# ============================================================
+# CoinStats: max 100,000 candles per request
+# اگه range بزرگ‌تر باشه → 400 error
+# این جدول بزرگ‌ترین range امن رو نگه می‌داره
+INTERVAL_MAX_RANGE: Dict[str, str] = {
+    "5m":  "6mo",    # ~۵۲k کندل
+    "15m": "1y",     # ~۳۵k کندل
+    "30m": "1y",     # ~۱۷k کندل
+    "1h":  "1y",     # ~۸.۷k کندل
+    "4h":  "all",    # کاملاً امن (چون تاریخچه Binance از ۲۰۱۷)
+    "1d":  "all",    # کاملاً امن
+    "1w":  "all",    # کاملاً امن
+}
+
+# ترتیب range از کوچیک به بزرگ
+RANGE_ORDER: List[str] = [
+    "1h", "6h", "24h", "1w", "1mo", "3mo", "6mo", "1y", "all"
+]
+
+# TTL بر اساس interval (ثانیه)
+OHLCV_TTL_MAP: Dict[str, int] = {
+    "5m": 60,
+    "15m": 300,
+    "30m": 600,
+    "1h": 1800,
+    "4h": 3600,
+    "1d": 7200,
+    "1w": 86400,
+}
+
+
+# ============================================================
+# CoinStatsClient
+# ============================================================
+
 class CoinStatsClient(APIClient):
     """
     کلاینت رسمی API کوین‌استیتس
-    پیاده‌سازی Interface APIClient
+    
+    نسخه ۵.۱:
+        - get_ohlcv_candles برای OHLCV واقعی
+        - interval cap خودکار (100k limit)
+        - smart pair mapping (hard-coded + API fallback)
     """
     
     def __init__(self, api_key: Optional[str] = None) -> None:
@@ -41,15 +147,31 @@ class CoinStatsClient(APIClient):
             "error_count": 0,
             "cache_hits": 0,
             "cache_misses": 0,
-            "start_time": time.time()
+            "start_time": time.time(),
+            "ohlcv_requests": 0,
+            "ohlcv_candles_total": 0,
+            "ohlcv_range_caps": 0,
         }
         
         self.rate_limit_remaining: int = 30
         self.rate_limit_reset: float = time.time()
         
-        logger.info("✅ CoinStatsClient v4.0 initialized")
+        # cache داخلی برای symbol mapping
+        self._symbol_map_cache: Optional[Dict[str, str]] = None
+        
+        logger.info("✅ CoinStatsClient v5.1 initialized")
     
-    def _request(self, method: str, endpoint: str, params: Optional[Dict] = None, retries: int = 2) -> Dict:
+    # ============================================================
+    # Internal Request
+    # ============================================================
+    
+    def _request(
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[Dict] = None,
+        retries: int = 2,
+    ) -> Dict:
         """ارسال درخواست با مدیریت Retry"""
         url: str = f"{self.base_url}{endpoint}"
         self._stats["total_requests"] += 1
@@ -64,14 +186,17 @@ class CoinStatsClient(APIClient):
                 method,
                 url,
                 params=params,
-                timeout=15
+                timeout=30,  # ← بیشتر برای OHLCV سنگین
             )
             
-            self.rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 30))
+            self.rate_limit_remaining = int(
+                response.headers.get('X-RateLimit-Remaining', 30)
+            )
             reset_time: Optional[str] = response.headers.get('X-RateLimit-Reset')
             if reset_time:
                 self.rate_limit_reset = float(reset_time)
             
+            # Rate limit
             if response.status_code == 429:
                 self._stats["error_count"] += 1
                 if retries > 0:
@@ -79,8 +204,20 @@ class CoinStatsClient(APIClient):
                     logger.info(f"⏳ Rate Limit! waiting {wait_time}s...")
                     time.sleep(wait_time)
                     return self._request(method, endpoint, params, retries - 1)
-                else:
-                    return {"error": "Rate Limit exceeded"}
+                return {"error": "Rate Limit exceeded"}
+            
+            # Interval too small
+            if response.status_code == 422:
+                return {"error": "Interval too small for this pair"}
+            
+            # Bad request (100k limit violation)
+            if response.status_code == 400:
+                try:
+                    err_data = response.json()
+                    msg = err_data.get("message", "Bad Request")
+                except Exception:
+                    msg = "Bad Request"
+                return {"error": msg}
             
             response.raise_for_status()
             return response.json()
@@ -106,11 +243,285 @@ class CoinStatsClient(APIClient):
             return {"error": str(e)}
     
     # ============================================================
-    # متدهای اصلی API
+    # OHLCV Candles
     # ============================================================
     
-    def get_chart(self, coin_id: str, period: str = "24h", currency: str = "USD") -> Union[List[List], Dict]:
-        """دریافت داده‌های تاریخی (TTL: ۱ ساعت)"""
+    def get_ohlcv_candles(
+        self,
+        exchange: str = "Binance",
+        pair: str = "BTC/USDT",
+        interval: str = "4h",
+        range: Optional[str] = None,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        use_cache: bool = True,
+        auto_cap: bool = True,
+    ) -> Optional[Dict]:
+        """
+        دریافت OHLCV واقعی از صرافی
+        
+        Args:
+            exchange: نام صرافی
+            pair: جفت معاملاتی (BTC/USDT)
+            interval: بازه (5m, 15m, 30m, 1h, 4h, 1d, 1w)
+            range: بازه رولینگ
+            start: تاریخ شروع ISO 8601 (با end)
+            end: تاریخ پایان ISO 8601 (با start)
+            use_cache: استفاده از cache
+            auto_cap: خودکار range رو cap کنه اگه از ۱۰۰k بگذره
+        
+        Returns:
+            dict پاسخ یا None در صورت خطا
+        """
+        # ============================================================
+        # اعتبارسنجی
+        # ============================================================
+        
+        valid_intervals = ["5m", "15m", "30m", "1h", "4h", "1d", "1w"]
+        if interval not in valid_intervals:
+            logger.error(f"❌ Invalid interval: {interval}")
+            return None
+        
+        # تعیین mode
+        if not range and not (start and end):
+            range = "1mo"  # پیش‌فرض
+        
+        if range and (start or end):
+            logger.warning("Both range and start/end given; using range")
+            start = None
+            end = None
+        
+        # ============================================================
+        # Auto Cap Range (مهم!)
+        # ============================================================
+        
+        original_range = range
+        was_capped = False
+        
+        if range and auto_cap:
+            range, was_capped = self._cap_range(interval, range)
+            
+            if was_capped:
+                self._stats["ohlcv_range_caps"] += 1
+                logger.warning(
+                    f"⚠️ Range capped: '{original_range}' → '{range}' "
+                    f"(interval={interval}, 100k limit)"
+                )
+        
+        # ============================================================
+        # Cache key
+        # ============================================================
+        
+        pair_key = pair.replace("/", "_")
+        cache_parts = ["ohlcv", exchange, pair_key, interval]
+        
+        if range:
+            cache_parts.append(f"r_{range}")
+        else:
+            start_date = start[:10] if start else "?"
+            end_date = end[:10] if end else "?"
+            cache_parts.append(f"s_{start_date}_e_{end_date}")
+        
+        cache_key = "_".join(cache_parts)
+        
+        # ============================================================
+        # Cache check
+        # ============================================================
+        
+        if use_cache:
+            cached = cache_manager.get(cache_key)
+            if cached is not None and isinstance(cached, dict):
+                self._stats["cache_hits"] += 1
+                logger.debug(f"⚡ OHLCV from cache: {pair} {interval}")
+                
+                # اگه cap شده، توی پاسخ cache شده هم علامت بزن
+                if was_capped:
+                    cached = dict(cached)
+                    cached["warning"] = (
+                        f"Range capped from '{original_range}' to '{range}'"
+                    )
+                    cached["original_range"] = original_range
+                
+                return cached
+        
+        self._stats["cache_misses"] += 1
+        
+        # ============================================================
+        # Request
+        # ============================================================
+        
+        params: Dict[str, Any] = {
+            "exchange": exchange,
+            "pair": pair,
+            "interval": interval,
+        }
+        
+        if range:
+            params["range"] = range
+        else:
+            params["start"] = start
+            params["end"] = end
+        
+        self._stats["ohlcv_requests"] += 1
+        
+        result = self._request("GET", "/v1/ohlcv/candles", params)
+        
+        # ============================================================
+        # Handle response
+        # ============================================================
+        
+        if not result or "error" in result:
+            logger.warning(
+                f"⚠️ OHLCV failed for {pair} {interval}: "
+                f"{result.get('error') if result else 'no response'}"
+            )
+            return None
+        
+        candles = result.get("candles", [])
+        if not candles:
+            logger.warning(f"⚠️ OHLCV empty for {pair} {interval}")
+            return None
+        
+        # آمار
+        self._stats["ohlcv_candles_total"] += len(candles)
+        
+        # اضافه کردن warning اگه cap شده
+        if was_capped:
+            result["warning"] = (
+                f"Range capped from '{original_range}' to '{range}' "
+                f"due to 100k candle limit"
+            )
+            result["original_range"] = original_range
+        
+        # Cache
+        if use_cache:
+            ttl = OHLCV_TTL_MAP.get(interval, 3600)
+            cache_manager.set(cache_key, result, ttl)
+        
+        logger.info(
+            f"✅ OHLCV: {pair} {interval} "
+            f"({len(candles)} candles, range={range or 'custom'}"
+            f"{', capped' if was_capped else ''})"
+        )
+        
+        return result
+    
+    # ============================================================
+    # Auto Cap Helper
+    # ============================================================
+    
+    def _cap_range(
+        self,
+        interval: str,
+        range: str,
+    ) -> tuple[str, bool]:
+        """
+        Cap range اگه از ۱۰۰k کندل بگذره
+        
+        Returns:
+            (final_range, was_capped)
+        """
+        if interval not in INTERVAL_MAX_RANGE:
+            return range, False
+        
+        max_safe = INTERVAL_MAX_RANGE[interval]
+        
+        # اگه range ناشناخته‌ست، دست نزن
+        if range not in RANGE_ORDER or max_safe not in RANGE_ORDER:
+            return range, False
+        
+        range_idx = RANGE_ORDER.index(range)
+        max_idx = RANGE_ORDER.index(max_safe)
+        
+        if range_idx > max_idx:
+            return max_safe, True
+        
+        return range, False
+    
+    # ============================================================
+    # Pair Mapping (smart)
+    # ============================================================
+    
+    def coin_id_to_pair(self, coin_id: str) -> Optional[str]:
+        """
+        تبدیل coin_id به pair با smart mapping
+        
+        استراتژی:
+            ۱. hard-coded (سریع)
+            ۲. از coins_list API (cache ۲۴h)
+            ۳. fallback با uppercase
+        
+        Args:
+            coin_id: "bitcoin", "pepe", ...
+        
+        Returns:
+            "BTC/USDT" یا None
+        """
+        if not coin_id:
+            return None
+        
+        cid = coin_id.lower().strip()
+        
+        # ۱. hard-coded
+        if cid in COIN_TO_PAIR:
+            return COIN_TO_PAIR[cid]
+        
+        # ۲. از API
+        symbol = self._get_symbol_from_api(cid)
+        if symbol:
+            return f"{symbol}/USDT"
+        
+        # ۳. fallback: اگه coin_id کوتاهه (۲-۶ کاراکتر)، احتمالاً symbol هست
+        if 2 <= len(cid) <= 6 and cid.isalpha():
+            return f"{cid.upper()}/USDT"
+        
+        # نمی‌تونیم تشخیص بدیم
+        logger.warning(f"⚠️ Cannot map coin_id '{coin_id}' to pair")
+        return None
+    
+    def _get_symbol_from_api(self, coin_id: str) -> Optional[str]:
+        """
+        گرفتن symbol از coins_list (با cache)
+        """
+        # cache داخلی memory
+        if self._symbol_map_cache is None:
+            # تلاش از Redis
+            cache_key = "coinstats_symbol_map"
+            cached = cache_manager.get(cache_key)
+            
+            if cached and isinstance(cached, dict):
+                self._symbol_map_cache = cached
+                logger.debug("⚡ Symbol map from cache")
+            else:
+                # از API
+                logger.info("📥 Fetching coins list for symbol map...")
+                coins = self.get_coins_list(limit=500, page=1)
+                
+                if coins:
+                    mapping = {
+                        c.get("id", "").lower(): c.get("symbol", "").upper()
+                        for c in coins
+                        if c.get("id") and c.get("symbol")
+                    }
+                    self._symbol_map_cache = mapping
+                    cache_manager.set(cache_key, mapping, 86400)  # ۲۴ ساعت
+                    logger.info(f"✅ Symbol map built: {len(mapping)} coins")
+                else:
+                    self._symbol_map_cache = {}
+        
+        return self._symbol_map_cache.get(coin_id)
+    
+    # ============================================================
+    # متدهای قبلی (بدون تغییر)
+    # ============================================================
+    
+    def get_chart(
+        self,
+        coin_id: str,
+        period: str = "24h",
+        currency: str = "USD",
+    ) -> Union[List[List], Dict]:
+        """دریافت داده‌های تاریخی (فقط قیمت) — TTL: ۱ ساعت"""
         cache_key: str = f"chart_{coin_id}_{period}"
         
         cached = cache_manager.get(cache_key)
@@ -121,7 +532,7 @@ class CoinStatsClient(APIClient):
         self._stats["cache_misses"] += 1
         result: Dict = self._request("GET", f"/v1/coins/{coin_id}/charts", {
             "period": period,
-            "currency": currency
+            "currency": currency,
         })
         
         if result and isinstance(result, list) and len(result) > 0:
@@ -139,7 +550,9 @@ class CoinStatsClient(APIClient):
             return cached
         
         self._stats["cache_misses"] += 1
-        result: Dict = self._request("GET", f"/v1/coins/{coin_id}", {"currency": currency})
+        result: Dict = self._request(
+            "GET", f"/v1/coins/{coin_id}", {"currency": currency}
+        )
         
         if result and "error" not in result:
             cache_manager.set(cache_key, result, 60)
@@ -164,7 +577,11 @@ class CoinStatsClient(APIClient):
         
         return result
     
-    def get_btc_dominance(self, period: str = "24h", use_cache: bool = True) -> Optional[Dict]:
+    def get_btc_dominance(
+        self,
+        period: str = "24h",
+        use_cache: bool = True,
+    ) -> Optional[Dict]:
         """دریافت سلطه بیت‌کوین (TTL: ۵ دقیقه)"""
         cache_key: str = f"btc_dom_{period}"
         
@@ -175,7 +592,9 @@ class CoinStatsClient(APIClient):
                 return cached
         
         self._stats["cache_misses"] += 1
-        result: Dict = self._request("GET", "/v1/insights/btc-dominance", {"type": period})
+        result: Dict = self._request(
+            "GET", "/v1/insights/btc-dominance", {"type": period}
+        )
         
         if result and "error" not in result:
             cache_manager.set(cache_key, result, 300)
@@ -250,7 +669,13 @@ class CoinStatsClient(APIClient):
         
         return result
     
-    def get_coins_list(self, limit: int = 50, page: int = 1, currency: str = "USD", search: str = None) -> Optional[List[Dict]]:
+    def get_coins_list(
+        self,
+        limit: int = 50,
+        page: int = 1,
+        currency: str = "USD",
+        search: str = None,
+    ) -> Optional[List[Dict]]:
         """دریافت لیست ارزها (TTL: ۲۴ ساعت)"""
         cache_key: str = f"coins_list_{limit}_{page}_{currency}_{search}"
         
@@ -268,10 +693,14 @@ class CoinStatsClient(APIClient):
         
         if result and "result" in result:
             coins = result.get("result", [])
-            cache_manager.set(cache_key, coins, 86400)  # ۲۴ ساعت
+            cache_manager.set(cache_key, coins, 86400)
             return coins
         
         return None
+    
+    # ============================================================
+    # Stats
+    # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
         """دریافت آمار کلاینت"""
@@ -282,17 +711,22 @@ class CoinStatsClient(APIClient):
             "cache_hits": self._stats["cache_hits"],
             "cache_misses": self._stats["cache_misses"],
             "hit_ratio": round(
-                self._stats["cache_hits"] / max(self._stats["cache_hits"] + self._stats["cache_misses"], 1) * 100,
-                2
+                self._stats["cache_hits"] /
+                max(self._stats["cache_hits"] + self._stats["cache_misses"], 1) * 100,
+                2,
             ),
             "uptime_seconds": uptime,
             "rate_limit_remaining": self.rate_limit_remaining,
-            "cache_stats": cache_manager.get_stats()
+            "ohlcv_requests": self._stats.get("ohlcv_requests", 0),
+            "ohlcv_candles_total": self._stats.get("ohlcv_candles_total", 0),
+            "ohlcv_range_caps": self._stats.get("ohlcv_range_caps", 0),
+            "symbol_map_cached": self._symbol_map_cache is not None,
+            "cache_stats": cache_manager.get_stats(),
         }
 
 
 # ============================================================
-# نمونه Singleton
+# Singleton
 # ============================================================
 
 coinstats_client: CoinStatsClient = CoinStatsClient()
