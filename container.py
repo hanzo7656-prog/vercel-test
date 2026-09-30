@@ -223,10 +223,6 @@ class Container:
         """دریافت PredictUseCase"""
         return self.get('predict_use_case')
     
-    def train_use_case(self) -> Any:
-        """دریافت TrainUseCase"""
-        return self.get('train_use_case')
-    
     def scan_market_use_case(self) -> Any:
         """دریافت ScanMarketUseCase (🆕)"""
         return self.get('scan_market_use_case')
@@ -411,13 +407,6 @@ def register_services() -> None:
             feature_engineer=container.get('feature_engineer'),
         )
     
-    def get_train_use_case():
-        from application.use_cases.train_model import TrainModelUseCase
-        return TrainModelUseCase(
-            api_client=container.get('api_client'),
-            model_manager=container.get('model_manager'),
-            trainer=container.get('trainer'),
-        )
     
     def get_scan_market_use_case():
         """🆕 ScanMarketUseCase"""
@@ -466,7 +455,6 @@ def register_services() -> None:
         )
     
     container.register('predict_use_case', get_predict_use_case, singleton=True)
-    container.register('train_use_case', get_train_use_case, singleton=True)
     container.register('scan_market_use_case', get_scan_market_use_case, singleton=True)  # 🆕
     container.register('health_use_case', get_health_use_case, singleton=True)
     container.register('prediction_service', get_prediction_service, singleton=True)
