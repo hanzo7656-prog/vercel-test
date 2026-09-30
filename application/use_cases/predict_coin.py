@@ -1,20 +1,12 @@
 # application/use_cases/predict_coin.py
 # ============================================================
-# Use Case: Predict Coin - نسخه ۳.۰
-# RuleEngine Integration + Cache + Repository
-# ============================================================
-# 
-# تغییرات نسخه ۳.۰:
-#   - حذف _demo_predict (RuleEngine جایگزین شده)
-#   - حذف وابستگی به feature_engineer.extract_features
-#   - اتکا به model_manager.predict_full()
-#   - حفظ ساختار execute و execute_multiple
-#   - حفظ Cache و Repository integration
+# Use Case: Predict Coin - نسخه ۴.۰
+# OHLCV واقعی + لاگ کامل + خطایابی
 # ============================================================
 
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -30,56 +22,61 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# PredictCoinUseCase v3.0
+# Constants
+# ============================================================
+
+# period → interval (برای get_ohlcv_candles)
+PERIOD_TO_INTERVAL: Dict[str, str] = {
+    "24h": "1h",
+    "1w":  "4h",
+    "1m":  "4h",
+    "3m":  "1d",
+    "6m":  "1d",
+}
+
+# period → range (چند وقت داده)
+PERIOD_TO_RANGE: Dict[str, str] = {
+    "24h": "1w",
+    "1w":  "1mo",
+    "1m":  "3mo",
+    "3m":  "6mo",
+    "6m":  "1y",
+}
+
+# حداقل کندل لازم
+MIN_CANDLES = 50
+
+# Cache TTL
+CACHE_TTL = 300  # ۵ دقیقه
+
+# Periods معتبر
+VALID_PERIODS: List[str] = ["24h", "1w", "1m", "3m", "6m"]
+
+
+# ============================================================
+# PredictCoinUseCase v4.0
 # ============================================================
 
 class PredictCoinUseCase:
     """
     Use Case پیش‌بینی یک ارز
     
-    تغییرات نسخه ۳.۰:
-        - حذف feature_engineer.extract_features
-        - استفاده مستقیم از OHLCV
-        - model_manager.predict_full() → Prediction
-        - ذخیره در Repository حفظ شد
-        - Cache حفظ شد
-    
-    معماری:
-        ۱. Cache check
-        ۲. دریافت OHLCV از API
-        ۳. تبدیل به DataFrame
-        ۴. model_manager.predict_full()
-        ۵. ساخت Entity
-        ۶. ذخیره در DB
-        ۷. کش کردن
+    تغییرات نسخه ۴.۰:
+        - OHLCV واقعی از get_ohlcv_candles
+        - لاگ کامل هر مرحله
+        - حذف OHLCV قلابی
+        - Smart interval/range بر اساس period
     """
-    
-    # Cache TTL
-    CACHE_TTL = 300  # ۵ دقیقه
-    
-    # بازه‌های معتبر
-    VALID_PERIODS: List[str] = ["24h", "1w", "1m", "3m", "6m"]
-    
-    # حداقل کندل لازم
-    MIN_CANDLES = 50
     
     def __init__(
         self,
         api_client: APIClient,
         model_manager: ModelManager,
-        feature_engineer: Any = None,  # ← حفظ برای سازگاری (استفاده نمی‌شه)
+        feature_engineer: Any = None,
     ) -> None:
-        """
-        Args:
-            api_client: کلاینت API
-            model_manager: ModelManager
-            feature_engineer: (deprecated) حفظ برای سازگاری امضای قدیمی
-        """
         self.api_client = api_client
         self.model_manager = model_manager
-        self.feature_engineer = feature_engineer  # ← نگه داشته ولی استفاده نمی‌شه
-        
-        # Prediction Repository
+        self.feature_engineer = feature_engineer  # برای سازگاری
         self.prediction_repo = repos.prediction
         
         # Cache
@@ -89,7 +86,7 @@ class PredictCoinUseCase:
         except Exception:
             self.cache = None
         
-        logger.info("✅ PredictCoinUseCase v3.0 initialized")
+        logger.info("✅ PredictCoinUseCase v4.0 initialized")
     
     # ============================================================
     # Execute - Single
@@ -103,86 +100,92 @@ class PredictCoinUseCase:
         use_cache: bool = True,
     ) -> PredictionEntity:
         """
-        اجرای Use Case
+        اجرای Use Case پیش‌بینی
         
-        Args:
-            coin_id: شناسه ارز (bitcoin)
-            period: بازه زمانی
-            save: ذخیره در DB؟
-            use_cache: استفاده از cache؟
-        
-        Returns:
-            PredictionEntity
-        
-        Raises:
-            ValueError: بازه نامعتبر
-            RuntimeError: داده یا مدل در دسترس نیست
+        لاگ کامل:
+            ✅ Predict: شروع
+            ✅ مرحله ۱: cache
+            ✅ مرحله ۲: OHLCV fetch
+            ✅ مرحله ۳: predict
+            ✅ Predict: موفق
         """
         start_time = time.time()
         
         # ============================================================
+        # لاگ شروع
+        # ============================================================
+        
+        logger.info(
+            f"🎯 Predict START: coin_id={coin_id}, period={period}, "
+            f"save={save}"
+        )
+        
+        # ============================================================
         # ۱. اعتبارسنجی
         # ============================================================
-        if period not in self.VALID_PERIODS:
-            raise ValueError(
+        
+        if period not in VALID_PERIODS:
+            msg = (
                 f"Invalid period: {period}. "
-                f"Must be one of {self.VALID_PERIODS}"
+                f"Must be one of {VALID_PERIODS}"
             )
+            logger.error(f"❌ Predict FAILED: {msg}")
+            raise ValueError(msg)
         
         # ============================================================
         # ۲. Cache Check
         # ============================================================
+        
         cache_key = f"prediction:{coin_id}:{period}"
         
         if use_cache and self.cache and self.cache.is_connected():
-            cached = self.cache.get(cache_key)
-            if cached and isinstance(cached, dict):
-                logger.debug(f"⚡ Prediction from cache: {coin_id}")
-                return self._dict_to_prediction(cached)
+            try:
+                cached = self.cache.get(cache_key)
+                if cached and isinstance(cached, dict):
+                    logger.info(f"⚡ Predict CACHE HIT: {coin_id} ({period})")
+                    return self._dict_to_prediction(cached)
+            except Exception as e:
+                logger.debug(f"Cache read error: {e}")
         
         # ============================================================
-        # ۳. دریافت داده
+        # ۳. OHLCV Fetch
         # ============================================================
-        chart_data = self.api_client.get_chart(coin_id, period)
         
-        if not chart_data or (
-            isinstance(chart_data, dict) and "error" in chart_data
-        ):
-            error_msg = (
-                chart_data.get("error", "No data")
-                if isinstance(chart_data, dict) else "No data"
+        logger.info(f"📥 Predict STEP-2: Fetching OHLCV for {coin_id}...")
+        
+        df = self._fetch_ohlcv(coin_id, period)
+        
+        if df is None or len(df) < MIN_CANDLES:
+            df_len = len(df) if df is not None else 0
+            msg = (
+                f"Insufficient OHLCV data for {coin_id} "
+                f"(need {MIN_CANDLES}+ candles, got {df_len})"
             )
-            logger.error(f"Chart data failed for {coin_id}: {error_msg}")
-            raise RuntimeError(f"Failed to get chart data: {error_msg}")
+            logger.error(f"❌ Predict FAILED (STEP-2): {msg}")
+            raise RuntimeError(msg)
+        
+        logger.info(
+            f"✅ Predict STEP-2 OK: {coin_id} → {len(df)} candles "
+            f"({df.index[0].strftime('%Y-%m-%d')} to "
+            f"{df.index[-1].strftime('%Y-%m-%d')})"
+        )
         
         # ============================================================
-        # ۴. تبدیل به DataFrame
+        # ۴. Predict
         # ============================================================
-        df = self._list_to_dataframe(chart_data)
         
-        if df is None or len(df) < self.MIN_CANDLES:
-            raise RuntimeError(
-                f"Insufficient data for {coin_id} "
-                f"(need {self.MIN_CANDLES}+ candles, "
-                f"got {len(df) if df is not None else 0})"
-            )
+        logger.info(f"🔮 Predict STEP-3: Running RuleEngine...")
         
-        # ============================================================
-        # ۵. پیش‌بینی از ModelManager
-        # ============================================================
         if self.model_manager.engine is None:
             logger.warning(
-                f"⚠️ RuleEngine not loaded, using neutral score"
+                f"⚠️ Predict STEP-3: RuleEngine not loaded, using neutral score"
             )
-            # Fallback: neutral score
             prediction_score = 0.5
             prediction = None
             model_mode = "NEUTRAL"
         else:
-            # ساخت symbol از coin_id
             symbol = self._coin_to_symbol(coin_id)
             
-            # پیش‌بینی کامل
             prediction = self.model_manager.predict_full(
                 df=df,
                 symbol=symbol,
@@ -191,34 +194,52 @@ class PredictCoinUseCase:
             )
             
             if prediction is None:
+                logger.warning(
+                    f"⚠️ Predict STEP-3: predict_full returned None, using fallback"
+                )
                 prediction_score = 0.5
                 model_mode = "FALLBACK"
             else:
                 prediction_score = float(prediction.score)
                 model_mode = "RULE_ENGINE"
+                
+                logger.info(
+                    f"✅ Predict STEP-3 OK: score={prediction_score:.4f}, "
+                    f"state={prediction.state.value}, "
+                    f"rules_passed={sum(1 for r in prediction.rule_results if r.passed)}"
+                    f"/{len(prediction.rule_results)}"
+                )
         
         # ============================================================
-        # ۶. Signal
+        # ۵. Signal
         # ============================================================
+        
         signal = Signal.from_score(prediction_score)
         
         # ============================================================
-        # ۷. اطلاعات ارز
+        # ۶. Coin Info
         # ============================================================
-        coin_info = self.api_client.get_coin(coin_id)
-        current_price = coin_info.get("price", 0) if coin_info else 0
-        coin_name = coin_info.get("name", coin_id) if coin_info else coin_id
+        
+        try:
+            coin_info = self.api_client.get_coin(coin_id)
+            current_price = coin_info.get("price", 0) if coin_info else 0
+            coin_name = coin_info.get("name", coin_id) if coin_info else coin_id
+        except Exception as e:
+            logger.debug(f"Coin info fetch failed: {e}")
+            current_price = 0
+            coin_name = coin_id
         
         # ============================================================
-        # ۸. ساخت Entity
+        # ۷. ساخت Entity
         # ============================================================
+        
         processing_time = (time.time() - start_time) * 1000
         
-        # دلایل (اگه prediction داشتیم)
+        # دلایل
         reasons: List[str] = []
         if prediction and hasattr(prediction, "reasons"):
             reasons = prediction.reasons
-        elif not reasons:
+        if not reasons:
             reasons = [f"امتیاز: {prediction_score:.3f}"]
         
         # state
@@ -239,7 +260,7 @@ class PredictCoinUseCase:
             model_mode=model_mode,
             timestamp=datetime.now(),
             processing_time_ms=round(processing_time, 2),
-            data_points=len(df) if df is not None else 0,
+            data_points=len(df),
             extra={
                 "state": state,
                 "reasons": reasons,
@@ -247,41 +268,46 @@ class PredictCoinUseCase:
         )
         
         # ============================================================
-        # ۹. ذخیره در Repository
+        # ۸. Save
         # ============================================================
+        
         if save:
             try:
                 self.prediction_repo.save(entity)
                 logger.debug(
-                    f"✅ Prediction saved: {coin_id} "
-                    f"({signal.type.value}, score={prediction_score:.3f})"
+                    f"✅ Predict STEP-4: Saved to DB "
+                    f"(id={entity.id}, signal={signal.type.value})"
                 )
             except Exception as e:
-                logger.warning(f"⚠️ Could not save prediction: {e}")
+                logger.warning(f"⚠️ Predict STEP-4: Save failed: {e}")
         
         # ============================================================
-        # ۱۰. Cache
+        # ۹. Cache
         # ============================================================
+        
         if use_cache and self.cache and self.cache.is_connected():
             try:
-                self.cache.set(
-                    cache_key,
-                    entity.to_dict(),
-                    ttl=self.CACHE_TTL,
-                )
+                self.cache.set(cache_key, entity.to_dict(), ttl=CACHE_TTL)
             except Exception as e:
                 logger.debug(f"Cache set error: {e}")
         
+        # ============================================================
+        # ✅ لاگ موفقیت
+        # ============================================================
+        
         logger.info(
-            f"✅ Prediction for {coin_id}: "
-            f"{signal.type.value} ({signal.confidence}%) "
-            f"score={prediction_score:.3f} state={state}"
+            f"🎉 Predict SUCCESS: {coin_id} ({period}) — "
+            f"signal={signal.type.value}, "
+            f"confidence={signal.confidence}%, "
+            f"score={prediction_score:.4f}, "
+            f"state={state}, "
+            f"duration={processing_time:.0f}ms"
         )
         
         return entity
     
     # ============================================================
-    # Execute - Multiple
+    # Execute Multiple
     # ============================================================
     
     def execute_multiple(
@@ -290,32 +316,22 @@ class PredictCoinUseCase:
         period: str = "24h",
         save: bool = True,
     ) -> List[PredictionEntity]:
-        """
-        اجرای پیش‌بینی برای چند ارز
+        """پیش‌بینی چند ارز"""
+        logger.info(f"🎯 Predict MULTIPLE START: {len(coins)} coins, period={period}")
         
-        Args:
-            coins: لیست ارزها
-            period: بازه
-            save: ذخیره؟
-        
-        Returns:
-            لیست PredictionEntity
-        """
         predictions: List[PredictionEntity] = []
+        success = 0
+        failed = 0
         
         for coin in coins:
             try:
-                entity = self.execute(
-                    coin,
-                    period,
-                    save=save,
-                    use_cache=True,
-                )
+                entity = self.execute(coin, period, save=save, use_cache=True)
                 predictions.append(entity)
+                success += 1
             except Exception as e:
-                logger.error(f"Failed to predict {coin}: {e}")
+                failed += 1
+                logger.error(f"❌ Predict failed for {coin}: {e}")
                 
-                # Prediction خطا
                 predictions.append(PredictionEntity(
                     coin=coin,
                     coin_name=coin,
@@ -330,70 +346,131 @@ class PredictCoinUseCase:
                     timestamp=datetime.now(),
                     processing_time_ms=0,
                     data_points=0,
-                    extra={"error": str(e)},
+                    extra={"error": str(e)[:200]},
                 ))
+        
+        logger.info(
+            f"🎉 Predict MULTIPLE SUCCESS: "
+            f"{success} ok, {failed} failed, total={len(coins)}"
+        )
         
         return predictions
     
     # ============================================================
-    # Helpers - Data Conversion
+    # OHLCV Fetch (جدید v4.0)
     # ============================================================
     
+    def _fetch_ohlcv(
+        self,
+        coin_id: str,
+        period: str,
+    ) -> Optional[pd.DataFrame]:
+        """
+        دریافت OHLCV واقعی از CoinStats /ohlcv/candles
+        
+        Returns:
+            DataFrame یا None
+        """
+        # تبدیل coin_id → pair
+        try:
+            if hasattr(self.api_client, "coin_id_to_pair"):
+                pair = self.api_client.coin_id_to_pair(coin_id)
+            else:
+                pair = f"{coin_id.upper()}/USDT"
+            
+            if not pair:
+                logger.error(f"❌ Cannot map {coin_id} to pair")
+                return None
+        except Exception as e:
+            logger.error(f"❌ coin_id_to_pair error: {e}")
+            return None
+        
+        # interval و range
+        interval = PERIOD_TO_INTERVAL.get(period, "4h")
+        data_range = PERIOD_TO_RANGE.get(period, "3mo")
+        
+        logger.debug(
+            f"📥 Fetching OHLCV: pair={pair}, "
+            f"interval={interval}, range={data_range}"
+        )
+        
+        try:
+            result = self.api_client.get_ohlcv_candles(
+                exchange="Binance",
+                pair=pair,
+                interval=interval,
+                range=data_range,
+                use_cache=True,
+            )
+            
+            if not result or "candles" not in result:
+                err = result.get("error") if result else "no response"
+                logger.warning(f"⚠️ OHLCV failed for {pair}: {err}")
+                return None
+            
+            # هشدار cap
+            if result.get("warning"):
+                logger.warning(f"⚠️ {result['warning']}")
+            
+            candles = result["candles"]
+            
+            df = self._candles_to_dataframe(candles)
+            
+            if df is None or len(df) < MIN_CANDLES:
+                df_len = len(df) if df is not None else 0
+                logger.warning(
+                    f"⚠️ Insufficient candles for {pair}: "
+                    f"{df_len} < {MIN_CANDLES}"
+                )
+                return None
+            
+            return df
+        
+        except Exception as e:
+            logger.error(f"❌ OHLCV fetch error for {pair}: {e}", exc_info=True)
+            return None
+    
     @staticmethod
-    def _list_to_dataframe(data: List) -> Optional[pd.DataFrame]:
+    def _candles_to_dataframe(candles: List) -> Optional[pd.DataFrame]:
         """
-        تبدیل لیست API به DataFrame OHLCV
+        تبدیل candles به DataFrame OHLCV
         
-        ساختار API: [[timestamp, price], ...]
-        چون OHLCV کامل نداریم، از price برای همه ستون‌ها استفاده می‌کنیم.
-        
-        ⚠️ محدودیت: این یه تقریبه.
-        بعداً که Kline واقعی اضافه شد، این تابع رو replace می‌کنیم.
+        ساختار: [timestampMs, open, high, low, close, volume]
         """
-        if not data:
+        if not candles:
             return None
         
         rows = []
-        for point in data:
-            if isinstance(point, (list, tuple)) and len(point) >= 2:
-                try:
-                    ts = point[0]
-                    price = float(point[1])
-                    
-                    # اگه داده OHLCV کامل هست (۶ ستون)
-                    if len(point) >= 6:
-                        rows.append({
-                            "timestamp": pd.to_datetime(ts, unit="ms", errors="coerce"),
-                            "Open": float(point[1]),
-                            "High": float(point[2]),
-                            "Low": float(point[3]),
-                            "Close": float(point[4]),
-                            "Volume": float(point[5]),
-                        })
-                    else:
-                        # فقط price داریم
-                        rows.append({
-                            "timestamp": pd.to_datetime(ts, unit="ms", errors="coerce"),
-                            "Open": price,
-                            "High": price,
-                            "Low": price,
-                            "Close": price,
-                            "Volume": 1.0,
-                        })
-                except (ValueError, TypeError, IndexError):
+        for c in candles:
+            if not isinstance(c, (list, tuple)) or len(c) < 6:
+                continue
+            
+            try:
+                ts = pd.to_datetime(c[0], unit="ms", errors="coerce")
+                if pd.isna(ts):
                     continue
+                
+                volume = float(c[5]) if c[5] is not None else 0.0
+                
+                rows.append({
+                    "timestamp": ts,
+                    "Open": float(c[1]),
+                    "High": float(c[2]),
+                    "Low": float(c[3]),
+                    "Close": float(c[4]),
+                    "Volume": volume,
+                })
+            except (ValueError, TypeError, IndexError):
+                continue
         
         if not rows:
             return None
         
-        df = pd.DataFrame(rows)
-        df = df.set_index("timestamp").sort_index()
-        df = df.dropna()
-        
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index().dropna()
         return df
     
     # ============================================================
-    # Helpers - Symbol Mapping
+    # Symbol Mapping
     # ============================================================
     
     @staticmethod
@@ -422,11 +499,11 @@ class PredictCoinUseCase:
         return f"{coin_id.upper()}/USDT"
     
     # ============================================================
-    # Helpers - Cache
+    # Cache Helpers
     # ============================================================
     
     def _dict_to_prediction(self, data: Dict[str, Any]) -> PredictionEntity:
-        """تبدیل dict به PredictionEntity"""
+        """تبدیل dict به Entity"""
         signal_type_str = data.get("signal_type", "NEUTRAL")
         try:
             signal_type = SignalType(signal_type_str)
@@ -468,8 +545,10 @@ class PredictCoinUseCase:
             ),
             "model_loaded": self.model_manager.engine is not None,
             "model_version": self.model_manager.current_version or "default",
-            "valid_periods": self.VALID_PERIODS,
-            "min_candles": self.MIN_CANDLES,
+            "valid_periods": VALID_PERIODS,
+            "min_candles": MIN_CANDLES,
+            "period_to_interval": PERIOD_TO_INTERVAL,
+            "period_to_range": PERIOD_TO_RANGE,
         }
 
 
