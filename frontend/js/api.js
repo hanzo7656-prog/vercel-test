@@ -68,6 +68,9 @@ class ApiClient {
         return this.request('/api/metrics/dashboard');
     }
 
+    getHealthApis() {
+        return this.request('/api/health/apis');
+    }
     // ============================================================
     // ۲. آمار اپلیکیشن (APP STATS)
     // ============================================================
