@@ -1773,6 +1773,7 @@ function getPresetSteps() {
             id: 'health',
             nameKey: 'stepHealth',
             weight: 300,
+            timeout: 15000,
             critical: false,
             hint: 'hintChecking',
             check: async () => {
@@ -2267,7 +2268,7 @@ async function runStep(idx) {
 
     try {
         // Execute with timeout protection
-        const timeoutMs = (step.weight || 1000) * 6; // max 6x weight
+        const timeoutMs = step.timeout || (step.weight || 1000) * 6;
         const result = await Promise.race([
             step.check(progressCallback),
             new Promise((_, reject) =>
