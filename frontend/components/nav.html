@@ -269,10 +269,6 @@ body {
 /* ============================================================
    ANIMATIONS — Global Keyframes
    ============================================================ */
-@keyframes progressShine {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-}
 
 @keyframes borderGlow {
     0%, 100% { opacity: 0.3; }
@@ -335,19 +331,98 @@ body {
 /* ============================================================
    PROGRESS BAR
    ============================================================ */
+/* ============================================================
+   NEON PROGRESS BAR — Top Loading Indicator
+   ============================================================ */
 .progress-bar {
     position: fixed;
     top: 0;
     right: 0;
+    left: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--primary));
+    background: transparent;
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.progress-bar.active {
+    opacity: 1;
+}
+
+.progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(
+        90deg,
+        var(--success) 0%,
+        var(--info, #06b6d4) 33%,
+        var(--primary) 66%,
+        var(--primary-light) 100%
+    );
+    background-size: 300% 100%;
+    animation: progressBarFlow 1.6s linear infinite;
+    box-shadow:
+        0 0 10px var(--primary),
+        0 0 20px var(--primary),
+        0 0 30px rgba(var(--primary-rgb), 0.6);
+    border-radius: 0 0 4px 4px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        transparent 100%
+    );
     background-size: 200% 100%;
-    width: 0;
-    z-index: 9999;
-    transition: width 0.3s ease, opacity 0.3s ease;
-    box-shadow: 0 0 12px var(--primary), 0 0 4px var(--primary-light);
-    animation: progressShine 2s linear infinite;
-    border-radius: 0 0 3px 3px;
+    animation: progressBarShimmer 1.2s linear infinite;
+    border-radius: 0 0 4px 4px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    mix-blend-mode: overlay;
+}
+
+.progress-bar.set-width::before,
+.progress-bar.set-width::after {
+    width: var(--progress-width, 0%);
+}
+
+@keyframes progressBarFlow {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+@keyframes progressBarShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Progress State — Glow Effect */
+.progress-bar.glow::before {
+    box-shadow:
+        0 0 14px var(--primary),
+        0 0 28px var(--primary),
+        0 0 42px rgba(var(--primary-rgb), 0.8);
+}
+
+/* Success State */
+.progress-bar.success::before {
+    background: linear-gradient(90deg, var(--success), var(--success-dark));
+    animation: none;
+    box-shadow: 0 0 12px var(--success), 0 0 24px rgba(34, 197, 94, 0.5);
 }
 
 /* ============================================================
@@ -1656,8 +1731,8 @@ body.sidebar-open .mobile-toggle {
 <!-- ============================================================
      PROGRESS BAR
      ============================================================ -->
-<div class="progress-bar" id="progressBar"></div>
-
+<!-- Progress Bar (Neon Top Bar) -->
+<div class="progress-bar" id="progressBar" aria-hidden="true"></div>
 
 <!-- ============================================================
      MOBILE TOGGLE
@@ -2262,25 +2337,134 @@ function showToast(message, type = 'info', duration = 3000) {
 // ============================================================
 // PROGRESS BAR
 // ============================================================
-let progressTimeout;
-function showProgress(duration = 800) {
-    if (!progressBar) return;
-    clearTimeout(progressTimeout);
-    progressBar.style.opacity = '1';
-    progressBar.style.width = '0%';
-    requestAnimationFrame(() => {
-        progressBar.style.width = '40%';
-        setTimeout(() => { progressBar.style.width = '75%'; }, duration * 0.3);
-        setTimeout(() => {
-            progressBar.style.width = '100%';
-            progressTimeout = setTimeout(() => {
-                progressBar.style.opacity = '0';
-                setTimeout(() => { progressBar.style.width = '0%'; }, 300);
-            }, 200);
-        }, duration * 0.7);
-    });
+// ============================================================
+// PROGRESS BAR — Neon Top Bar
+// ============================================================
+const ProgressBar = {
+    el: null,
+    _timer: null,
+    _finishTimer: null,
+    _activeCount: 0,   // شمارنده برای عملیات همزمان
+
+    init() {
+        this.el = document.getElementById('progressBar');
+    },
+
+    /**
+     * شروع progress
+     * @param {Object} [opts]
+     * @param {number} [opts.duration] — مدت تخمینی (اگه null باشه، نامعین)
+     */
+    start(opts = {}) {
+        if (!this.el) return;
+        this._activeCount++;
+
+        // اگه اولین بار فعال می‌شه
+        if (this._activeCount === 1) {
+            this.el.classList.add('active', 'glow');
+            this.el.classList.remove('success');
+            this._setWidth(10);
+
+            // اگه duration داری، به صورت خودکار پیش برو
+            if (opts.duration) {
+                this._animateTo(opts.duration);
+            } else {
+                // نامعین — تا 85% برو و بمون
+                this._indeterminate();
+            }
+        }
+    },
+
+    /**
+     * اتمام progress
+     * @param {boolean} [success=true]
+     */
+    done(success = true) {
+        if (!this.el) return;
+        this._activeCount = Math.max(0, this._activeCount - 1);
+
+        if (this._activeCount === 0) {
+            this._clearTimers();
+
+            if (success) {
+                this.el.classList.add('success');
+                this._setWidth(100);
+            } else {
+                this._setWidth(100);
+            }
+
+            this._finishTimer = setTimeout(() => {
+                this.el.classList.remove('active', 'glow', 'success');
+                // reset width بعد از fade out
+                setTimeout(() => this._setWidth(0), 300);
+            }, 350);
+        }
+    },
+
+    /**
+     * ست کردن درصد
+     */
+    set(percent) {
+        if (!this.el) return;
+        this._setWidth(Math.max(0, Math.min(100, percent)));
+    },
+
+    _setWidth(pct) {
+        if (!this.el) return;
+        this.el.style.setProperty('--progress-width', pct + '%');
+        // trigger reflow
+        this.el.classList.add('set-width');
+    },
+
+    _animateTo(duration) {
+        const start = Date.now();
+        const tick = () => {
+            const elapsed = Date.now() - start;
+            const pct = Math.min((elapsed / duration) * 90, 90); // فقط تا 90%
+            this._setWidth(pct);
+            if (pct < 90 && this._activeCount > 0) {
+                this._timer = setTimeout(tick, 60);
+            }
+        };
+        tick();
+    },
+
+    _indeterminate() {
+        // برو تا 30%، بعد 60%، بعد 85% و بمون
+        this._setWidth(25);
+        setTimeout(() => { if (this._activeCount > 0) this._setWidth(55); }, 250);
+        setTimeout(() => { if (this._activeCount > 0) this._setWidth(80); }, 700);
+        setTimeout(() => { if (this._activeCount > 0) this._setWidth(88); }, 1400);
+    },
+
+    _clearTimers() {
+        if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+        if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
+    },
+};
+
+// سازگاری با کد قدیمی
+function showProgress(duration) {
+    ProgressBar.start({ duration });
 }
 
+// expose
+window.progressBar = ProgressBar;
+
+/**
+ * helper: wrap async function با progress
+ */
+window.withProgress = async function(promiseFn, opts = {}) {
+    ProgressBar.start(opts);
+    try {
+        const result = await (typeof promiseFn === 'function' ? promiseFn() : promiseFn);
+        ProgressBar.done(true);
+        return result;
+    } catch (err) {
+        ProgressBar.done(false);
+        throw err;
+    }
+};
 // ============================================================
 // THEME QUICK TOGGLE (فقط dark/light، بدون panel)
 // ============================================================
@@ -3195,7 +3379,10 @@ function exposeAPI() {
 // INIT
 // ============================================================
 function init() {
-    // Apply language first (updates all data-i18n)
+    // Progress Bar
+    ProgressBar.init();
+
+    // Apply language first
     applyLanguage(currentLang);
 
     // Apply theme UI (moon/sun icon)
