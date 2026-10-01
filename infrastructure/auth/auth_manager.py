@@ -390,67 +390,52 @@ def get_auth() -> AuthManager:
 def require_auth(role: str = None):
     """
     دکوراتور برای بررسی احراز هویت و نقش کاربر
-
-    پارامترها:
-        role: نقش مورد نیاز (admin, user, یا None)
     """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             session_id = request.cookies.get('session_id')
 
+            # ✅ چک اینکه آیا درخواست API هست یا صفحه
+            is_api_request = (
+                request.path.startswith('/api/') or
+                'application/json' in (request.headers.get('Accept') or '') or
+                'application/json' in (request.headers.get('Content-Type') or '')
+            )
+
             if not session_id:
-                logger.debug(
-                    f"🔒 require_auth: no session_id "
-                    f"({request.method} {request.path})"
-                )
-                if (
-                    request.headers.get('Content-Type') == 'application/json'
-                    or request.headers.get('Accept') == 'application/json'
-                ):
+                logger.debug(f"🔒 require_auth: no session_id ({request.method} {request.path})")
+                if is_api_request:
                     return jsonify({
                         'success': False,
                         'error': 'Authentication required',
                         'redirect': '/login'
                     }), 401
-                return redirect(url_for('web.login_page'))
+                return redirect('/login')  # ← ← ← مستقیم، بدون url_for
 
             auth = get_auth()
             session_data = auth.get_session(session_id)
 
             if not session_data:
-                logger.debug(
-                    f"🔒 require_auth: invalid session "
-                    f"({request.method} {request.path})"
-                )
-                if (
-                    request.headers.get('Content-Type') == 'application/json'
-                    or request.headers.get('Accept') == 'application/json'
-                ):
+                logger.debug(f"🔒 require_auth: invalid session ({request.method} {request.path})")
+                if is_api_request:
                     return jsonify({
                         'success': False,
                         'error': 'Invalid or expired session',
                         'redirect': '/login'
                     }), 401
-                return redirect(url_for('web.login_page'))
+                return redirect('/login')  # ← ← ← مستقیم
 
             if role:
                 user_role = session_data.get('role', 'guest')
                 if user_role != role and user_role != 'admin':
-                    logger.debug(
-                        f"🔒 require_auth: role mismatch "
-                        f"(need={role}, have={user_role}) "
-                        f"({request.method} {request.path})"
-                    )
-                    if (
-                        request.headers.get('Content-Type') == 'application/json'
-                        or request.headers.get('Accept') == 'application/json'
-                    ):
+                    logger.debug(f"🔒 require_auth: role mismatch")
+                    if is_api_request:
                         return jsonify({
                             'success': False,
                             'error': f'Role {role} required'
                         }), 403
-                    return redirect(url_for('web.page_403'))
+                    return redirect('/403')  # ← ← ← مستقیم
 
             request.user = {
                 'username': session_data.get('username'),
