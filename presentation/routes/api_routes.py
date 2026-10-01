@@ -278,6 +278,141 @@ def health_simple():
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
+@api_bp.route('/health/apis', methods=['GET'])
+def health_apis():
+    """
+    بررسی سلامت API های خارجی
+    
+    خروجی:
+        {
+            "success": true,
+            "status": "ok" | "degraded",
+            "apis": {
+                "binance": {
+                    "ok": true,
+                    "is_connected": true,
+                    "symbols_count": 5,
+                    "connected_symbols": 5,
+                    "messages": 1500
+                },
+                "coinstats": {
+                    "ok": true,
+                    "credits_remaining": 25,
+                    "cached_hit_ratio": 78.5
+                },
+                "freecrypto": {
+                    "ok": true,
+                    "is_connected": true,
+                    "symbols_count": 20,
+                    "cache_size": 20
+                }
+            },
+            "timestamp": "..."
+        }
+    """
+    import time
+    from flask import current_app
+    
+    container = current_app.container
+    result = {}
+    
+    # ═══════════════════════════════════════
+    # ۱. Binance (WebSocket)
+    # ═══════════════════════════════════════
+    try:
+        ws = container.get('binance_ws_client')
+        if ws:
+            stats = ws.get_stats()
+            is_ok = stats.get('is_running', False) and stats.get('connected_symbols_count', 0) > 0
+            result['binance'] = {
+                'ok': is_ok,
+                'is_running': stats.get('is_running', False),
+                'is_connected': stats.get('connected', False),
+                'symbols_count': stats.get('total_symbols', 0),
+                'connected_symbols': stats.get('connected_symbols_count', 0),
+                'messages': stats.get('total_messages', 0),
+                'reconnects': stats.get('reconnect_count', 0),
+            }
+        else:
+            result['binance'] = {'ok': False, 'error': 'client not available'}
+    except Exception as e:
+        logger.error(f"Binance health check error: {e}")
+        result['binance'] = {'ok': False, 'error': str(e)}
+    
+    # ═══════════════════════════════════════
+    # ۲. CoinStats (REST)
+    # ═══════════════════════════════════════
+    try:
+        start = time.time()
+        cs = container.get('coinstats_client')
+        if cs:
+            # چک با credits (سریع و ارزان)
+            credits = cs.get_credits()
+            latency_ms = round((time.time() - start) * 1000, 1)
+            
+            if credits and 'error' not in credits:
+                stats = cs.get_stats()
+                result['coinstats'] = {
+                    'ok': True,
+                    'latency_ms': latency_ms,
+                    'credits_remaining': credits.get('remainingCredits', 0),
+                    'total_requests': stats.get('total_requests', 0),
+                    'cache_hit_ratio': stats.get('hit_ratio', 0),
+                }
+            else:
+                result['coinstats'] = {
+                    'ok': False,
+                    'latency_ms': latency_ms,
+                    'error': credits.get('error') if credits else 'no response',
+                }
+        else:
+            result['coinstats'] = {'ok': False, 'error': 'client not available'}
+    except Exception as e:
+        logger.error(f"CoinStats health check error: {e}")
+        result['coinstats'] = {'ok': False, 'error': str(e)}
+    
+    # ═══════════════════════════════════════
+    # ۳. FreeCryptoAPI (REST Polling)
+    # ═══════════════════════════════════════
+    try:
+        fc = container.get('free_crypto_client')
+        if fc:
+            stats = fc.get_stats()
+            is_ok = stats.get('is_connected', False)
+            result['freecrypto'] = {
+                'ok': is_ok,
+                'is_connected': stats.get('is_connected', False),
+                'symbols_count': stats.get('symbols_count', 0),
+                'cache_size': stats.get('cache_size', 0),
+                'messages': stats.get('messages_received', 0),
+                'errors': stats.get('errors', 0),
+            }
+        else:
+            result['freecrypto'] = {'ok': False, 'error': 'client not available'}
+    except Exception as e:
+        logger.error(f"FreeCrypto health check error: {e}")
+        result['freecrypto'] = {'ok': False, 'error': str(e)}
+    
+    # ═══════════════════════════════════════
+    # وضعیت کلی
+    # ═══════════════════════════════════════
+    all_ok = all(v.get('ok', False) for v in result.values())
+    any_ok = any(v.get('ok', False) for v in result.values())
+    
+    if all_ok:
+        status = 'ok'
+    elif any_ok:
+        status = 'degraded'
+    else:
+        status = 'error'
+    
+    return jsonify({
+        'success': True,
+        'status': status,
+        'apis': result,
+        'timestamp': datetime.now().isoformat(),
+    }), 200
+    
 # ============================================================
 # ۳. متریک‌ها و آمار (METRICS & STATS)
 # ============================================================
