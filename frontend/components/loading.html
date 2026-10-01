@@ -1778,19 +1778,21 @@ function getPresetSteps() {
             check: async () => {
                 try {
                     const res = await fetch('/api/health/simple', {
-                        credentials: 'include',
-                    });
-                    const data = await res.json();
-                    if (res.ok && (data.status === 'ok' || data.status === 'degraded')) {
+                        method: 'GET',
+                        credentials: 'same-origin',  // ← ← ← به جای 'include'
+                        });
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log('[Health] OK:', data);
                         return data;
                     }
+                    console.warn('[Health] Non-OK status:', res.status);
                 } catch (e) {
-                    console.warn('[Health] check skipped:', e.message);
+                    console.warn('[Health] Failed:', e.message);
                 }
                 return { success: true, status: 'assumed_ok' };
             },
         },
-
         // ─────── ۲. دریافت اطلاعات کاربر ───────
         {
             id: 'user',
