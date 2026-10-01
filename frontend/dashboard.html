@@ -4549,8 +4549,9 @@ body {
 <!-- SCRIPT در پیام بعدی -->
 <script>
 // ============================================================
-// DASHBOARD v8.0 — JavaScript
-// Simple Loader + Cache-first + Nav from components
+// DASHBOARD v8.1 — JavaScript
+// Fixes: Timeframe, Colors, Cache, Watchlist, Progress Bar,
+//        Notifications, Heatmap
 // ============================================================
 
 (function() {
@@ -4678,6 +4679,8 @@ const I18N = {
         chartChange: 'تغییر',
         chartHigh: 'بالاترین',
         chartLow: 'پایین‌ترین',
+        chartLoading: 'در حال بارگذاری نمودار...',
+        chartNoData: 'داده‌ای برای نمایش نیست',
         watchlistTitle: 'واچ‌لیست',
         watchlistAdd: 'افزودن کوین',
         watchlistEmpty: 'لیست خالی است',
@@ -4838,6 +4841,8 @@ const I18N = {
         chartChange: 'Change',
         chartHigh: 'High',
         chartLow: 'Low',
+        chartLoading: 'Loading chart...',
+        chartNoData: 'No data to display',
         watchlistTitle: 'Watchlist',
         watchlistAdd: 'Add Coin',
         watchlistEmpty: 'List is empty',
@@ -5009,11 +5014,13 @@ const state = {
     tradePercent: 100,
     alertCondition: 'above',
     notifFilter: 'all',
+    heatFilter: '24h',
     confirmCallback: null,
     cmdSelectedIdx: 0,
     cmdFiltered: [],
     autoRefreshTimer: null,
     loaderProgressTimer: null,
+    _isReload: false,
 };
 
 function t(key) {
@@ -5037,6 +5044,44 @@ function applyI18n() {
         }
     });
 
+    document.documentElement.lang = state.lang;
+    document.documentElement.dir = state.lang === 'fa' ? 'rtl' : 'ltr';
+}
+
+
+// ============================================================
+// APPLY THEME / COLOR / DIRECTION (FIX رنگ‌ها)
+// ============================================================
+function applyThemeAndColor() {
+    // تم
+    const theme = Storage.get('app_theme', 'dark');
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+
+    // رنگ
+    const color = Storage.get('app_color', 'indigo');
+    state.color = color;
+    document.documentElement.setAttribute('data-color', color);
+
+    // Preset (اگه وجود داره)
+    const preset = Storage.get('app_preset', null);
+    if (preset && preset !== 'default') {
+        document.documentElement.setAttribute('data-preset', preset);
+    } else {
+        document.documentElement.removeAttribute('data-preset');
+    }
+
+    // Custom color (اگه color='custom')
+    if (color === 'custom') {
+        const customHex = Storage.get('app_customColor', '#6366f1');
+        if (customHex) {
+            document.documentElement.style.setProperty('--primary', customHex);
+        }
+    } else {
+        document.documentElement.style.removeProperty('--primary');
+    }
+
+    // زبان و جهت
     document.documentElement.lang = state.lang;
     document.documentElement.dir = state.lang === 'fa' ? 'rtl' : 'ltr';
 }
@@ -5071,7 +5116,33 @@ function showToast(message, type = 'info', duration = 3000) {
 
 
 // ============================================================
-// API WRAPPER
+// PROGRESS BAR HELPER
+// ============================================================
+function progressStart(duration) {
+    if (window.ProgressBar) {
+        window.ProgressBar.start({ duration });
+    }
+}
+function progressDone(success = true) {
+    if (window.ProgressBar) {
+        window.ProgressBar.done(success);
+    }
+}
+async function withProgress(promiseOrFn, opts = {}) {
+    progressStart(opts.duration);
+    try {
+        const result = typeof promiseOrFn === 'function' ? await promiseOrFn() : await promiseOrFn;
+        progressDone(true);
+        return result;
+    } catch (err) {
+        progressDone(false);
+        throw err;
+    }
+}
+
+
+// ============================================================
+// API WRAPPER (با Progress Bar خودکار)
 // ============================================================
 const API = {
     async request(url, options = {}) {
@@ -5089,7 +5160,7 @@ const API = {
             return { success: false, error: err.message };
         }
     },
-    async getChartData(coin, period = '1h') {
+    async getChartData(coin, period = '24h') {
         return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
     },
     async getFearGreed() {
@@ -5097,6 +5168,15 @@ const API = {
     },
     async getBTCDominance() {
         return this.request('/api/coinstats/btc-dominance');
+    },
+    async getCoins(limit = 50) {
+        return this.request(`/api/coinstats/coins?limit=${limit}`);
+    },
+    async getPrices() {
+        return this.request('/api/coinstats/prices');
+    },
+    async getAlerts(limit = 20, resolved = false) {
+        return this.request(`/api/alerts?limit=${limit}&resolved=${resolved}`);
     },
 };
 
@@ -5125,8 +5205,6 @@ const SimpleLoader = {
 
     show(durationMs = 1500) {
         if (!this.overlay) return;
-
-        // Reset
         this.overlay.classList.add('active');
         if (this.textEl)  this.textEl.textContent  = t('loaderText');
         if (this.subEl)   this.subEl.textContent   = t('loaderSub');
@@ -5134,37 +5212,27 @@ const SimpleLoader = {
         if (this.fillEl)  this.fillEl.style.width  = '0%';
         if (this.pctEl)   this.pctEl.textContent   = state.lang === 'fa' ? '۰٪' : '0%';
 
-        // Animate progress
         this._startTime = Date.now();
         const tick = () => {
             const elapsed = Date.now() - this._startTime;
             const pct = Math.min((elapsed / durationMs) * 100, 100);
-
             if (this.fillEl) this.fillEl.style.width = pct + '%';
             if (this.pctEl) {
                 const r = Math.round(pct);
                 this.pctEl.textContent = state.lang === 'fa' ? toPersian(r) + '٪' : r + '%';
             }
-
             if (pct < 100) {
                 this._timer = setTimeout(tick, 30);
             } else {
-                // End reached
                 setTimeout(() => this.hide(), 150);
             }
         };
-
         tick();
     },
 
     hide() {
-        if (this._timer) {
-            clearTimeout(this._timer);
-            this._timer = null;
-        }
-        if (this.overlay) {
-            this.overlay.classList.remove('active');
-        }
+        if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+        if (this.overlay) this.overlay.classList.remove('active');
     },
 };
 
@@ -5183,7 +5251,7 @@ async function loadNav() {
 
         container.innerHTML = html;
 
-        // Execute scripts manually
+        // اجرای script ها
         container.querySelectorAll('script').forEach(oldScript => {
             const newScript = document.createElement('script');
             Array.from(oldScript.attributes).forEach(attr => {
@@ -5199,7 +5267,7 @@ async function loadNav() {
 
 
 // ============================================================
-// LOAD DATA FROM CACHE (from sessionStorage)
+// LOAD DATA FROM CACHE
 // ============================================================
 function loadDataFromCache() {
     // User
@@ -5211,7 +5279,7 @@ function loadDataFromCache() {
         }
     } catch (e) {}
 
-    // Coins
+    // Coins — با priceChange1d و priceChange1w
     try {
         const raw = sessionStorage.getItem('coins_cache');
         if (raw) {
@@ -5223,7 +5291,9 @@ function loadDataFromCache() {
                         symbol: coin.symbol || '',
                         name: coin.name || coin.symbol || '',
                         price: parseFloat(coin.price) || 0,
+                        change_1h: parseFloat(coin.priceChange1h) || 0,
                         change_24h: parseFloat(coin.priceChange1d) || 0,
+                        change_7d: parseFloat(coin.priceChange1w) || 0,
                         market_cap: parseFloat(coin.marketCap) || 0,
                         volume_24h: parseFloat(coin.volume24h) || 0,
                         rank: coin.rank || 999,
@@ -5265,39 +5335,116 @@ function loadDataFromCache() {
 
 
 // ============================================================
-// FETCH MISSING DATA (only Fear&Greed + BTC Dominance)
+// FETCH MISSING DATA (همیشه چک می‌کنه، اگه نبود fetch)
 // ============================================================
-async function fetchMissingData() {
-    // Fear & Greed
-    if (!state.fearGreed) {
-        try {
-            const res = await API.getFearGreed();
-            if (res.success && res.data) {
-                state.fearGreed = {
-                    value: res.data.value || 50,
-                    classification: res.data.classification || 'Neutral',
-                };
-                try {
-                    sessionStorage.setItem('fear_greed_cache', JSON.stringify(state.fearGreed));
-                } catch (e) {}
-            }
-        } catch (e) {}
+async function fetchMissingData(opts = {}) {
+    const { force = false } = opts;
+    const tasks = [];
+
+    // ۱. Coins
+    if (force || Object.keys(state.coins).length === 0) {
+        tasks.push((async () => {
+            try {
+                const res = await API.getCoins(50);
+                if (res.success && Array.isArray(res.data)) {
+                    res.data.forEach(coin => {
+                        if (!coin.id) return;
+                        state.coins[coin.id] = {
+                            symbol: coin.symbol || '',
+                            name: coin.name || coin.symbol || '',
+                            price: parseFloat(coin.price) || 0,
+                            change_1h: parseFloat(coin.priceChange1h) || 0,
+                            change_24h: parseFloat(coin.priceChange1d) || 0,
+                            change_7d: parseFloat(coin.priceChange1w) || 0,
+                            market_cap: parseFloat(coin.marketCap) || 0,
+                            volume_24h: parseFloat(coin.volume24h) || 0,
+                            rank: coin.rank || 999,
+                        };
+                    });
+                    try {
+                        sessionStorage.setItem('coins_cache', JSON.stringify(res.data));
+                    } catch (e) {}
+                }
+            } catch (e) { console.warn('Coins fetch failed:', e); }
+        })());
     }
 
-    // BTC Dominance
-    if (!state.btcDominance) {
+    // ۲. Prices (BTC/ETH)
+    if (force || !state.coins.bitcoin || !state.coins.ethereum) {
+        tasks.push((async () => {
+            try {
+                const res = await API.getPrices();
+                if (res.success && res.data) {
+                    const { btc, eth } = res.data;
+                    if (btc && state.coins.bitcoin) {
+                        state.coins.bitcoin.price = parseFloat(btc.price) || state.coins.bitcoin.price;
+                        state.coins.bitcoin.change_24h = parseFloat(btc.change_24h) || state.coins.bitcoin.change_24h;
+                    }
+                    if (eth && state.coins.ethereum) {
+                        state.coins.ethereum.price = parseFloat(eth.price) || state.coins.ethereum.price;
+                        state.coins.ethereum.change_24h = parseFloat(eth.change_24h) || state.coins.ethereum.change_24h;
+                    }
+                    try {
+                        sessionStorage.setItem('prices_cache', JSON.stringify(res.data));
+                    } catch (e) {}
+                }
+            } catch (e) {}
+        })());
+    }
+
+    // ۳. Fear & Greed
+    if (force || !state.fearGreed) {
+        tasks.push((async () => {
+            try {
+                const res = await API.getFearGreed();
+                if (res.success && res.data) {
+                    state.fearGreed = {
+                        value: res.data.value || 50,
+                        classification: res.data.classification || 'Neutral',
+                    };
+                    try {
+                        sessionStorage.setItem('fear_greed_cache', JSON.stringify(state.fearGreed));
+                    } catch (e) {}
+                }
+            } catch (e) {}
+        })());
+    }
+
+    // ۴. BTC Dominance
+    if (force || !state.btcDominance) {
+        tasks.push((async () => {
+            try {
+                const res = await API.getBTCDominance();
+                if (res.success && res.data) {
+                    state.btcDominance = { value: parseFloat(res.data.value) || 50 };
+                    try {
+                        sessionStorage.setItem('btc_dominance_cache', JSON.stringify(state.btcDominance));
+                    } catch (e) {}
+                }
+            } catch (e) {}
+        })());
+    }
+
+    // ۵. Alerts → Notifications
+    tasks.push((async () => {
         try {
-            const res = await API.getBTCDominance();
-            if (res.success && res.data) {
-                state.btcDominance = {
-                    value: parseFloat(res.data.value) || 50,
-                };
-                try {
-                    sessionStorage.setItem('btc_dominance_cache', JSON.stringify(state.btcDominance));
-                } catch (e) {}
+            const res = await API.getAlerts(20, false);
+            if (res.success && Array.isArray(res.data)) {
+                const notifs = res.data.map(a => ({
+                    id: a.id || uid(),
+                    level: a.level || 'info',
+                    category: a.category || 'system',
+                    title: a.title || '',
+                    message: a.message || '',
+                    timestamp: a.timestamp ? new Date(a.timestamp).getTime() : Date.now(),
+                    read: a.read || false,
+                }));
+                Notifications.setAll(notifs);
             }
         } catch (e) {}
-    }
+    })());
+
+    await Promise.allSettled(tasks);
 }
 
 
@@ -5644,7 +5791,7 @@ function renderSparkline(canvasId, coinId) {
 
 
 // ============================================================
-// RENDER: PRICE CHART
+// RENDER: PRICE CHART (با Timeframe های جدید + تبدیل 4H)
 // ============================================================
 function getChartColors() {
     const style = getComputedStyle(document.documentElement);
@@ -5661,125 +5808,160 @@ async function renderPriceChart() {
     const canvas = $('#priceChart');
     if (!canvas || typeof Chart === 'undefined') return;
 
+    // نقشه: هر timeframe به CoinStats period
+    // نکته: 4H از 24h استخراج می‌شه (فیلتر ۴ ساعت آخر)
     const periodMap = {
-        '1H': '1h',
-        '24H': '1h',
-        '7D': '4h',
-        '30D': '1d',
+        '4H':  '24h',
+        '24H': '24h',
+        '7D':  '1w',
+        '30D': '1m',
     };
-    const period = periodMap[state.chartTimeframe] || '1h';
+    const period = periodMap[state.chartTimeframe] || '24h';
 
-    const res = await API.getChartData(state.chartCoin, period);
-    if (!res.success || !res.data || !res.data.prices || res.data.prices.length === 0) {
-        console.warn('No chart data');
-        return;
+    // نمایش وضعیت Loading روی چارت
+    if (state.priceChart) {
+        state.priceChart.destroy();
+        state.priceChart = null;
     }
+    const ctx0 = canvas.getContext('2d');
+    ctx0.clearRect(0, 0, canvas.width, canvas.height);
 
-    const prices = res.data.prices;
-    const timestamps = res.data.timestamps || prices.map((_, i) => Date.now() - (prices.length - i) * 3600000);
+    progressStart();
 
-    const labels = timestamps.map(ts => {
-        const d2 = new Date(ts);
-        if (state.chartTimeframe === '1H' || state.chartTimeframe === '24H') {
-            return d2.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    try {
+        const res = await API.getChartData(state.chartCoin, period);
+
+        if (!res.success || !res.data || !res.data.prices || res.data.prices.length === 0) {
+            console.warn('No chart data for', state.chartCoin, period);
+            progressDone(false);
+            return;
         }
-        return d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
 
-    const c = getChartColors();
-    const isUp = prices[prices.length - 1] >= prices[0];
-    const lineColor = isUp ? c.success : c.danger;
+        let prices = [...res.data.prices];
+        let timestamps = res.data.timestamps ? [...res.data.timestamps] : prices.map((_, i) => Date.now() - (prices.length - i) * 3600000);
 
-    if (state.priceChart) state.priceChart.destroy();
+        // 🆕 اگه 4H هست، از 24h فقط ۴ ساعت آخر رو نگه دار
+        if (state.chartTimeframe === '4H') {
+            const fourHoursAgo = Date.now() - (4 * 60 * 60 * 1000);
+            let startIdx = timestamps.findIndex(ts => ts >= fourHoursAgo);
+            if (startIdx > 0) {
+                prices = prices.slice(startIdx);
+                timestamps = timestamps.slice(startIdx);
+            } else {
+                // اگه timestamp ها قدیمی بودن، از آخر ۶-۸ نقطه نگه دار
+                const keepCount = Math.min(8, prices.length);
+                prices = prices.slice(-keepCount);
+                timestamps = timestamps.slice(-keepCount);
+            }
+        }
 
-    const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-    gradient.addColorStop(0, lineColor + '55');
-    gradient.addColorStop(0.5, lineColor + '20');
-    gradient.addColorStop(1, lineColor + '00');
+        // Labels
+        const labels = timestamps.map(ts => {
+            const d2 = new Date(ts);
+            if (state.chartTimeframe === '4H' || state.chartTimeframe === '24H') {
+                return d2.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            }
+            return d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
 
-    state.priceChart = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                data: prices,
-                borderColor: lineColor,
-                backgroundColor: gradient,
-                borderWidth: 2.2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHoverRadius: 5,
-                pointHoverBackgroundColor: lineColor,
-                pointHoverBorderColor: 'white',
-                pointHoverBorderWidth: 2,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 700, easing: 'easeOutQuart' },
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    rtl: state.lang === 'fa',
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    padding: 10,
-                    cornerRadius: 8,
-                    titleFont: { family: 'Vazirmatn, sans-serif', size: 11 },
-                    bodyFont: { family: 'JetBrains Mono, monospace', size: 12, weight: '700' },
-                    callbacks: {
-                        label: (ctx) => ' ' + formatCurrency(ctx.parsed.y),
+        const c = getChartColors();
+        const isUp = prices[prices.length - 1] >= prices[0];
+        const lineColor = isUp ? c.success : c.danger;
+
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+        gradient.addColorStop(0, lineColor + '55');
+        gradient.addColorStop(0.5, lineColor + '20');
+        gradient.addColorStop(1, lineColor + '00');
+
+        state.priceChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    data: prices,
+                    borderColor: lineColor,
+                    backgroundColor: gradient,
+                    borderWidth: 2.2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: lineColor,
+                    pointHoverBorderColor: 'white',
+                    pointHoverBorderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 700, easing: 'easeOutQuart' },
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        rtl: state.lang === 'fa',
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { family: 'Vazirmatn, sans-serif', size: 11 },
+                        bodyFont: { family: 'JetBrains Mono, monospace', size: 12, weight: '700' },
+                        callbacks: {
+                            label: (ctx) => ' ' + formatCurrency(ctx.parsed.y),
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: c.text,
+                            font: { size: 10, family: 'JetBrains Mono, monospace' },
+                            maxRotation: 0, autoSkip: true, maxTicksLimit: 8,
+                        },
+                    },
+                    y: {
+                        position: 'right',
+                        grid: { color: c.grid, drawBorder: false },
+                        ticks: {
+                            color: c.text,
+                            font: { size: 10, family: 'JetBrains Mono, monospace' },
+                            callback: (val) => '$' + formatNumber(val),
+                        },
                     },
                 },
             },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: {
-                        color: c.text,
-                        font: { size: 10, family: 'JetBrains Mono, monospace' },
-                        maxRotation: 0, autoSkip: true, maxTicksLimit: 8,
-                    },
-                },
-                y: {
-                    position: 'right',
-                    grid: { color: c.grid, drawBorder: false },
-                    ticks: {
-                        color: c.text,
-                        font: { size: 10, family: 'JetBrains Mono, monospace' },
-                        callback: (val) => '$' + formatNumber(val),
-                    },
-                },
-            },
-        },
-    });
+        });
 
-    // Stats
-    const current = prices[prices.length - 1];
-    const first = prices[0];
-    const change = ((current - first) / first) * 100;
-    const high = Math.max(...prices);
-    const low = Math.min(...prices);
+        // Chart stats
+        const current = prices[prices.length - 1];
+        const first = prices[0];
+        const change = ((current - first) / first) * 100;
+        const high = Math.max(...prices);
+        const low = Math.min(...prices);
 
-    const currentEl = $('#chartCurrent');
-    const changeEl = $('#chartChange');
-    const highEl = $('#chartHigh');
-    const lowEl = $('#chartLow');
+        const currentEl = $('#chartCurrent');
+        const changeEl = $('#chartChange');
+        const highEl = $('#chartHigh');
+        const lowEl = $('#chartLow');
 
-    if (currentEl) currentEl.textContent = formatCurrency(current);
-    if (changeEl) {
-        changeEl.textContent = formatPercent(change);
-        changeEl.className = 'chart-stat-value ' + (change >= 0 ? 'up' : 'down');
+        if (currentEl) currentEl.textContent = formatCurrency(current);
+        if (changeEl) {
+            changeEl.textContent = formatPercent(change);
+            changeEl.className = 'chart-stat-value ' + (change >= 0 ? 'up' : 'down');
+        }
+        if (highEl) highEl.textContent = formatCurrency(high);
+        if (lowEl) lowEl.textContent = formatCurrency(low);
+
+        const coin = state.coins[state.chartCoin];
+        const symbolEl = $('#chartSymbol');
+        if (symbolEl && coin) symbolEl.textContent = `${coin.symbol}/USD`;
+
+        progressDone(true);
+    } catch (e) {
+        console.error('Chart error:', e);
+        progressDone(false);
     }
-    if (highEl) highEl.textContent = formatCurrency(high);
-    if (lowEl) lowEl.textContent = formatCurrency(low);
-
-    const coin = state.coins[state.chartCoin];
-    const symbolEl = $('#chartSymbol');
-    if (symbolEl && coin) symbolEl.textContent = `${coin.symbol}/USD`;
 }
 
 
@@ -5845,27 +6027,50 @@ function renderWatchlist() {
     });
 }
 
+// 🆕 fix: update ستاره‌ها روی کارت‌ها
 function updateWatchlistUI() {
+    const watchlist = Watchlist.get();
     $$('.stat-watchlist').forEach(btn => {
         const coinId = btn.dataset.watchlist;
-        btn.classList.toggle('active', Watchlist.has(coinId));
+        const isActive = watchlist.includes(coinId);
+        btn.classList.toggle('active', isActive);
+
+        // تغییر رنگ ستاره
+        const svg = btn.querySelector('svg');
+        if (svg) {
+            const polygon = svg.querySelector('polygon');
+            if (polygon) {
+                if (isActive) {
+                    polygon.setAttribute('fill', 'currentColor');
+                    polygon.setAttribute('stroke', 'currentColor');
+                } else {
+                    polygon.setAttribute('fill', 'none');
+                    polygon.setAttribute('stroke', 'currentColor');
+                }
+            }
+        }
     });
 }
 
 
 // ============================================================
-// RENDER: HEATMAP
+// RENDER: HEATMAP (با فیلتر 24h/7d)
 // ============================================================
 function renderHeatmap() {
     const grid = $('#heatmapGrid');
     if (!grid) return;
+
     const coins = Object.entries(state.coins)
         .filter(([_, c]) => c.market_cap || c.price)
         .sort((a, b) => (b[1].market_cap || 0) - (a[1].market_cap || 0))
         .slice(0, 30);
 
     const cells = coins.map(([id, coin], idx) => {
-        const change = coin.change_24h || 0;
+        // انتخاب داده بر اساس فیلتر
+        const change = state.heatFilter === '7d' 
+            ? (coin.change_7d || 0)
+            : (coin.change_24h || 0);
+
         let level = 'neutral';
         if (change >= 8) level = 'strong-up';
         else if (change >= 3) level = 'up';
@@ -5873,8 +6078,10 @@ function renderHeatmap() {
         else if (change <= -8) level = 'strong-down';
         else if (change <= -3) level = 'down';
         else if (change < 0) level = 'slight-down';
+
         let sizeClass = '';
         if (idx < 2) sizeClass = 'size-lg';
+
         return `
             <div class="heatmap-cell ${level} ${sizeClass}"
                  data-coin-id="${escapeHtml(id)}"
@@ -5891,7 +6098,12 @@ function renderHeatmap() {
         cell.addEventListener('click', () => {
             const coinId = cell.dataset.coinId;
             const coin = state.coins[coinId];
-            if (coin) showToast(`${coin.symbol}: ${formatCurrency(coin.price)} (${formatPercent(coin.change_24h)})`, 'info', 2500);
+            if (coin) {
+                const change = state.heatFilter === '7d' 
+                    ? (coin.change_7d || 0)
+                    : (coin.change_24h || 0);
+                showToast(`${coin.symbol}: ${formatCurrency(coin.price)} (${formatPercent(change)})`, 'info', 2500);
+            }
         });
     });
 }
@@ -6073,7 +6285,7 @@ function renderPortfolioTable() {
 
 
 // ============================================================
-// RENDER: AI INSIGHTS
+// RENDER: AI INSIGHTS (mock — طبق تصمیم)
 // ============================================================
 function renderAIInsights() {
     const list = $('#aiList');
@@ -6233,7 +6445,7 @@ function closeModal(id) {
 
 
 // ============================================================
-// TRADE MODAL
+// TRADE MODAL (با Progress Bar)
 // ============================================================
 function openTradeModal(coinId = null, type = null) {
     if (coinId) state.tradeCoin = coinId;
@@ -6271,31 +6483,47 @@ function updateTradePreview() {
     $('#previewTotal').textContent = formatCurrency(usdAmount + (state.tradeType === 'buy' ? fee : 0));
 }
 
-function executeTrade() {
+async function executeTrade() {
     const usdAmount = parseFloat($('#tradeAmount').value);
     if (!usdAmount || usdAmount <= 0) {
         showToast(t('toastTradeInvalid'), 'warning');
         return;
     }
-    const result = state.tradeType === 'buy'
-        ? Portfolio.buy(state.tradeCoin, usdAmount)
-        : Portfolio.sell(state.tradeCoin, usdAmount);
-    if (!result.success) {
-        showToast(result.error, 'error', 3000);
-        return;
+
+    // 🆕 Progress Bar
+    progressStart(800);
+
+    try {
+        // شبیه‌سازی تأخیر
+        await new Promise(r => setTimeout(r, 600));
+
+        const result = state.tradeType === 'buy'
+            ? Portfolio.buy(state.tradeCoin, usdAmount)
+            : Portfolio.sell(state.tradeCoin, usdAmount);
+
+        if (!result.success) {
+            progressDone(false);
+            showToast(result.error, 'error', 3000);
+            return;
+        }
+
+        const coin = state.coins[state.tradeCoin];
+        if (state.tradeType === 'buy') {
+            showToast(`✅ ${coin.symbol} ${t('toastTradeBuy')} — ${result.amount.toFixed(6)}`, 'success', 3000);
+        } else {
+            const pnlMsg = result.pnl >= 0
+                ? `+${formatCurrency(result.pnl)}`
+                : `${formatCurrency(Math.abs(result.pnl))}`;
+            showToast(`✅ ${coin.symbol} ${t('toastTradeSell')} — ${pnlMsg}`, result.pnl >= 0 ? 'success' : 'warning', 3000);
+        }
+
+        closeModal('tradeModal');
+        renderPortfolio();
+        renderPortfolioTable();
+        progressDone(true);
+    } catch (e) {
+        progressDone(false);
     }
-    const coin = state.coins[state.tradeCoin];
-    if (state.tradeType === 'buy') {
-        showToast(`✅ ${coin.symbol} ${t('toastTradeBuy')} — ${result.amount.toFixed(6)}`, 'success', 3000);
-    } else {
-        const pnlMsg = result.pnl >= 0
-            ? `+${formatCurrency(result.pnl)}`
-            : `${formatCurrency(Math.abs(result.pnl))}`;
-        showToast(`✅ ${coin.symbol} ${t('toastTradeSell')} — ${pnlMsg}`, result.pnl >= 0 ? 'success' : 'warning', 3000);
-    }
-    closeModal('tradeModal');
-    renderPortfolio();
-    renderPortfolioTable();
 }
 
 
@@ -6409,7 +6637,7 @@ function renderAlertsActive() {
     });
 }
 
-function saveAlert() {
+async function saveAlert() {
     const coinId = $('#alertCoin').value;
     const target = parseFloat($('#alertTargetPrice').value);
     const note = $('#alertNote').value.trim();
@@ -6418,6 +6646,10 @@ function saveAlert() {
         showToast(t('toastAlertInvalid'), 'warning');
         return;
     }
+
+    progressStart(600);
+    await new Promise(r => setTimeout(r, 400));
+
     PriceAlerts.add({
         coinId,
         symbol: coin.symbol,
@@ -6429,6 +6661,7 @@ function saveAlert() {
     $('#alertNote').value = '';
     renderAlertsActive();
     showToast(t('toastAlertSaved'), 'success');
+    progressDone(true);
 }
 
 
@@ -6449,7 +6682,7 @@ function openConfirm(message, subMessage, callback) {
 function getCommands() {
     return [
         { id: 'refresh',   group: t('cmdGroupActions'), title: t('cmdRefresh'), desc: t('cmdRefreshDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>', action: () => refreshAll() },
-        { id: 'theme',     group: t('cmdGroupActions'), title: t('cmdToggleTheme'), desc: t('cmdToggleThemeDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>', action: () => { const newT = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if (window.themeManager?.setMode) window.themeManager.setMode(newT); else document.documentElement.setAttribute('data-theme', newT); showToast(t('toastThemeChanged'), 'success', 1500); } },
+        { id: 'theme',     group: t('cmdGroupActions'), title: t('cmdToggleTheme'), desc: t('cmdToggleThemeDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>', action: () => { const newT = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if (window.themeManager?.setMode) window.themeManager.setMode(newT); else { document.documentElement.setAttribute('data-theme', newT); Storage.set('app_theme', newT); } showToast(t('toastThemeChanged'), 'success', 1500); } },
         { id: 'kbdhelp',   group: t('cmdGroupActions'), title: t('cmdKbdHelp'), desc: t('cmdKbdHelpDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>', action: () => openModal('kbdHelpModal') },
         { id: 'alerts',    group: t('cmdGroupActions'), title: t('cmdAlerts'), desc: t('cmdAlertsDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', action: () => openAlertsModal() },
         { id: 'trade',     group: t('cmdGroupPortfolio'), title: t('cmdTrade'), desc: t('cmdTradeDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>', action: () => openTradeModal() },
@@ -6527,10 +6760,13 @@ function filterCmd(query) {
 // REFRESH
 // ============================================================
 async function refreshAll() {
+    progressStart();
     showToast(t('toastRefresh'), 'info', 1500);
-    await fetchMissingData();
+    await fetchMissingData({ force: true });
     renderEverything();
+    await renderPriceChart();
     showToast(t('toastRefreshDone'), 'success', 1500);
+    progressDone(true);
 }
 
 
@@ -6559,7 +6795,6 @@ function confirmReset() {
 function renderEverything() {
     renderLiveTicker();
     renderStatCards();
-    renderPriceChart();
     renderWatchlist();
     renderHeatmap();
     renderGainersLosers();
@@ -6571,6 +6806,7 @@ function renderEverything() {
     renderHistory();
     renderAlertsActive();
     updateWatchlistUI();
+    renderPriceChart();
 }
 
 
@@ -6583,9 +6819,8 @@ function isReload() {
         if (navEntries.length > 0) {
             return navEntries[0].type === 'reload';
         }
-        // Fallback برای مرورگرهای قدیمی
         if (performance.navigation) {
-            return performance.navigation.type === 1; // TYPE_RELOAD
+            return performance.navigation.type === 1;
         }
     } catch (e) {}
     return false;
@@ -6597,12 +6832,11 @@ function isReload() {
 // ============================================================
 function bindEvents() {
 
-    // Refresh
     $('#refreshBtn')?.addEventListener('click', refreshAll);
     $('#searchBtnTop')?.addEventListener('click', openCmdPalette);
     $('#alertsSetupBtn')?.addEventListener('click', openAlertsModal);
 
-    // Watchlist
+    // Watchlist Stars (Fix)
     $$('.stat-watchlist').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -6638,11 +6872,12 @@ function bindEvents() {
         });
     });
 
-    // Heatmap Filter
+    // Heatmap Filters
     $$('.heatmap-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             $$('.heatmap-filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            state.heatFilter = btn.dataset.heat;   // ← 24h یا 7d
             renderHeatmap();
         });
     });
@@ -6665,17 +6900,14 @@ function bindEvents() {
         });
     });
 
-    // Trade Coin
     $('#tradeCoin')?.addEventListener('change', (e) => {
         state.tradeCoin = e.target.value;
         updateTradePair();
         updateTradePreview();
     });
 
-    // Trade Amount
     $('#tradeAmount')?.addEventListener('input', updateTradePreview);
 
-    // Percent Buttons
     $$('.percent-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const pct = parseInt(btn.dataset.pct, 10);
@@ -6695,13 +6927,9 @@ function bindEvents() {
         });
     });
 
-    // Execute Trade
     $('#executeTradeBtn')?.addEventListener('click', executeTrade);
-
-    // Reset Portfolio
     $('#resetPortfolioBtn')?.addEventListener('click', confirmReset);
 
-    // Confirm Modal
     $('#confirmOkBtn')?.addEventListener('click', () => {
         const cb = state.confirmCallback;
         closeModal('confirmModal');
@@ -6709,7 +6937,6 @@ function bindEvents() {
         if (cb) setTimeout(cb, 100);
     });
 
-    // Modal Close
     $$('[data-close-modal]').forEach(btn => {
         btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
     });
@@ -6720,7 +6947,6 @@ function bindEvents() {
         });
     });
 
-    // Alerts Setup
     $('#alertCoin')?.addEventListener('change', updateAlertCoinHint);
 
     $$('.alert-condition-btn').forEach(btn => {
@@ -6732,7 +6958,6 @@ function bindEvents() {
 
     $('#saveAlertBtn')?.addEventListener('click', saveAlert);
 
-    // Notifications Filters
     $$('.notif-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             state.notifFilter = btn.dataset.notifFilter;
@@ -6751,19 +6976,16 @@ function bindEvents() {
         showToast(t('toastNotifCleared'), 'info', 1500);
     });
 
-    // Command Palette
     $('#cmdInput')?.addEventListener('input', (e) => filterCmd(e.target.value));
     $('#cmdOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'cmdOverlay') closeCmdPalette();
     });
 
-    // AI Refresh
     $('#aiRefreshBtn')?.addEventListener('click', () => {
         renderAIInsights();
         showToast(t('toastRefreshDone'), 'success', 1500);
     });
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         const isInput = e.target.matches('input, textarea, select');
         const mod = e.ctrlKey || e.metaKey;
@@ -6829,25 +7051,22 @@ function startAutoRefresh() {
     state.autoRefreshTimer = setInterval(async () => {
         if (document.visibilityState !== 'visible') return;
         try {
-            const res = await fetch('/api/coinstats/prices', { credentials: 'include' });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success && data.data) {
-                    const { btc, eth } = data.data;
-                    if (btc && state.coins.bitcoin) {
-                        state.coins.bitcoin.price = parseFloat(btc.price) || state.coins.bitcoin.price;
-                        state.coins.bitcoin.change_24h = parseFloat(btc.change_24h) || state.coins.bitcoin.change_24h;
-                    }
-                    if (eth && state.coins.ethereum) {
-                        state.coins.ethereum.price = parseFloat(eth.price) || state.coins.ethereum.price;
-                        state.coins.ethereum.change_24h = parseFloat(eth.change_24h) || state.coins.ethereum.change_24h;
-                    }
-                    renderStatCards();
-                    renderWatchlist();
-                    renderHeatmap();
-                    renderGainersLosers();
-                    renderPortfolio();
+            const res = await API.getPrices();
+            if (res.success && res.data) {
+                const { btc, eth } = res.data;
+                if (btc && state.coins.bitcoin) {
+                    state.coins.bitcoin.price = parseFloat(btc.price) || state.coins.bitcoin.price;
+                    state.coins.bitcoin.change_24h = parseFloat(btc.change_24h) || state.coins.bitcoin.change_24h;
                 }
+                if (eth && state.coins.ethereum) {
+                    state.coins.ethereum.price = parseFloat(eth.price) || state.coins.ethereum.price;
+                    state.coins.ethereum.change_24h = parseFloat(eth.change_24h) || state.coins.ethereum.change_24h;
+                }
+                renderStatCards();
+                renderWatchlist();
+                renderHeatmap();
+                renderGainersLosers();
+                renderPortfolio();
             }
         } catch (e) {}
     }, 15000);
@@ -6859,60 +7078,59 @@ function startAutoRefresh() {
 // ============================================================
 async function init() {
     console.log(
-        '%c Dashboard v8.0 ',
+        '%c Dashboard v8.1 ',
         'background: linear-gradient(135deg, #06b6d4, #6366f1); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
     );
-    console.log('%c Keys: Ctrl+K · Ctrl+R · Ctrl+Shift+P · ? · Esc ', 'color:#94a3b8;font-size:11px;');
 
-    // Init modules
+    // ۱. اعمال تم و رنگ (Fix رنگ‌ها)
+    applyThemeAndColor();
+    applyI18n();
+
+    // ۲. Init modules
     SimpleLoader.init();
     Portfolio.init();
 
-    // Chart defaults
+    // ۳. Chart defaults
     if (typeof Chart !== 'undefined') {
         Chart.defaults.font.family = "'Vazirmatn', 'JetBrains Mono', system-ui, sans-serif";
         Chart.defaults.font.size = 11;
     }
 
-    // Apply language
-    applyI18n();
+    // ۴. Init Progress Bar (فقط اگه از nav لود شده)
+    if (window.ProgressBar?.init) window.ProgressBar.init();
 
-    // Load nav (این باید همیشه اجرا بشه)
+    // ۵. Load nav
+    progressStart();
     await loadNav();
+    progressDone();
 
-    // Load data from cache (from Splash)
+    // ۶. Load داده از cache
     loadDataFromCache();
 
-    // Fetch missing (Fear&Greed + BTC Dominance اگه cache نداشتن)
+    // ۷. Fetch missing data (همیشه چک می‌کنه)
+    progressStart();
     await fetchMissingData();
+    progressDone();
 
-    // Bind events
+    // ۸. Bind events
     bindEvents();
 
-    // Decide: Show Loader or not
-    if (isReload()) {
-        // 🎯 Refresh → نمایش Loader ساده ۱.۵ ثانیه
+    // ۹. Detect refresh
+    state._isReload = isReload();
+
+    if (state._isReload) {
+        // 🎯 Refresh → Simple Loader ۱.۵ ثانیه
         SimpleLoader.show(1500);
-
-        // رندر بعد از Loader (به صورت موازی، ولی کاربر نمی‌بینه)
         renderEverything();
         startLiveClock();
         startAutoRefresh();
-
-        // Welcome toast بعد از Loader
-        setTimeout(() => {
-            showToast(t('toastWelcome'), 'info', 3000);
-        }, 1700);
-
+        setTimeout(() => showToast(t('toastWelcome'), 'info', 3000), 1700);
     } else {
-        // 🎯 از Splash یا ناوبری اومده → بدون Loader، مستقیم رندر
+        // 🎯 از Splash یا ناوبری → بدون Loader
         renderEverything();
         startLiveClock();
         startAutoRefresh();
-
-        setTimeout(() => {
-            showToast(t('toastWelcome'), 'info', 3000);
-        }, 500);
+        setTimeout(() => showToast(t('toastWelcome'), 'info', 3000), 500);
     }
 }
 
