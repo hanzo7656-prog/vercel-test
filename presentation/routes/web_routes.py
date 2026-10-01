@@ -6,6 +6,9 @@
 from flask import Blueprint, send_from_directory, redirect, request, jsonify
 from infrastructure.auth.auth_manager import require_auth, get_auth
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 web_bp = Blueprint('web', __name__)
 
@@ -16,24 +19,42 @@ web_bp = Blueprint('web', __name__)
 
 @web_bp.route('/')
 def home():
-    """صفحه اصلی — بررسی لاگین و هدایت درست"""
+    """
+    صفحه اصلی — تصمیم‌گیری بر اساس session
+    
+    - اگه session معتبر هست → /dashboard
+    - در غیر این صورت → /login
+    """
     session_id = request.cookies.get('session_id')
     
     if session_id:
         try:
             auth_manager = get_auth()
             user = auth_manager.get_session(session_id)
+            
             if user:
-                # کاربر لاگین کرده → داشبورد
+                # session معتبره → داشبورد
+                logger.info(f"✅ home(): valid session → /dashboard")
                 return redirect('/dashboard')
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"⚠️ home(): session check failed: {e}")
     
-    # کاربر لاگین نکرده → صفحه لاگین
+    # هر حالت دیگه‌ای (بدون session / session نامعتبر) → login
+    logger.debug(f"🔒 home(): no valid session → /login")
     return redirect('/login')
 
+
 # ============================================================
-# ۲. صفحات با احراز هویت
+# ۲. صفحه ورود (بدون احراز هویت)
+# ============================================================
+
+@web_bp.route('/login')
+def login_page():
+    """صفحه ورود"""
+    return send_from_directory('frontend', 'index.html')
+    
+# ============================================================
+# ۳. صفحات با احراز هویت
 # ============================================================
 
 @web_bp.route('/dashboard')
@@ -82,16 +103,6 @@ def debug():
 @require_auth()
 def settings():
     return send_from_directory('frontend', 'settings.html')
-
-
-# ============================================================
-# ۳. صفحه ورود (بدون احراز هویت)
-# ============================================================
-
-@web_bp.route('/login')
-def login_page():
-    """صفحه ورود"""
-    return send_from_directory('frontend', 'index.html')
 
 
 # ============================================================
