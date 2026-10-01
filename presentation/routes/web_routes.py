@@ -16,9 +16,21 @@ web_bp = Blueprint('web', __name__)
 
 @web_bp.route('/')
 def home():
-    """صفحه اصلی - ریدایرکت به داشبورد"""
-    return redirect('/dashboard')
-
+    """صفحه اصلی — بررسی لاگین و هدایت درست"""
+    session_id = request.cookies.get('session_id')
+    
+    if session_id:
+        try:
+            auth_manager = get_auth()
+            user = auth_manager.get_session(session_id)
+            if user:
+                # کاربر لاگین کرده → داشبورد
+                return redirect('/dashboard')
+        except Exception:
+            pass
+    
+    # کاربر لاگین نکرده → صفحه لاگین
+    return redirect('/login')
 
 # ============================================================
 # ۲. صفحات با احراز هویت
