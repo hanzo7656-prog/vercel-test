@@ -1909,7 +1909,34 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۷. رندر داشبورد ───────
+        // ─────── ۷. بررسی کلاینت‌ها ───────
+        {
+            id: 'apis',
+            nameKey: 'stepApis',
+            weight: 400,
+            timeout: 10000,
+            critical: false,
+            hint: 'hintChecking',
+            check: async () => {
+                const res = await fetch('/api/health/apis', {
+                    credentials: 'include',
+                });
+                const data = await res.json();
+        
+                // ذخیره در sessionStorage
+                try {
+                    sessionStorage.setItem('apis_health_cache', JSON.stringify(data));
+                } catch (e) {}
+        
+                // اگه همه fail شده بودن → warning ولی ادامه بده
+                if (!data.success || data.status === 'error') {
+                    console.warn('⚠️ All external APIs failed');
+                }
+          
+                return data;
+            },
+        },
+        // ─────── ۸. رندر داشبورد ───────
         {
             id: 'render',
             nameKey: 'stepRender',
