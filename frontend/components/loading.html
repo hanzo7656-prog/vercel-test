@@ -2372,6 +2372,22 @@ function retryCurrentStep() {
 // ABORT
 // ============================================================
 function abortLoading() {
+    // اگه قبلاً نمایش داده شده، دوباره نشون نده
+    if (state.abortConfirmShown) return;
+    state.abortConfirmShown = true;
+
+    // تأیید از کاربر
+    const confirmed = confirm(
+        currentLang === 'fa'
+            ? 'از بارگذاری انصراف می‌دهید؟ به صفحه ورود برمی‌گردید.'
+            : 'Abort loading? You will be redirected to login.'
+    );
+
+    if (!confirmed) {
+        state.abortConfirmShown = false;
+        return;
+    }
+
     state.aborted = true;
     state.status = 'aborted';
     stopTimers();
@@ -2379,16 +2395,9 @@ function abortLoading() {
     const root = $('#splashRoot');
     if (root) root.classList.add('exit');
 
-    if (state.onAbort) {
-        try { state.onAbort(); } catch (e) { console.error(e); }
-    }
-
-    // Fallback redirect
     setTimeout(() => {
-        if (window.location.pathname !== '/500') {
-            window.location.href = '/500';
-        }
-    }, 800);
+        window.location.href = '/login';
+    }, 400);
 }
 
 // ============================================================
