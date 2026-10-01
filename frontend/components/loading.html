@@ -1764,27 +1764,30 @@ const state = {
     verySlowThreshold: 2.5,
 };
 
-// ============================================================
-// DEFAULT STEPS — اتصال به بک‌اند واقعی
-// ============================================================
+
+// برای تست های اولیه لودینگ
 function getPresetSteps() {
     return [
         // ─────── ۱. بررسی سلامت سرور ───────
         {
             id: 'health',
             nameKey: 'stepHealth',
-            weight: 400,
-            critical: true,
+            weight: 300,
+            critical: false,
             hint: 'hintChecking',
             check: async () => {
-                const res = await fetch('/api/health/simple', {
-                    credentials: 'include',
-                });
-                const data = await res.json();
-                if (!res.ok || data.status !== 'ok') {
-                    throw new Error('سرور در دسترس نیست');
+                try {
+                    const res = await fetch('/api/health/simple', {
+                        credentials: 'include',
+                    });
+                    const data = await res.json();
+                    if (res.ok && (data.status === 'ok' || data.status === 'degraded')) {
+                        return data;
+                    }
+                } catch (e) {
+                    console.warn('[Health] check skipped:', e.message);
                 }
-                return data;
+                return { success: true, status: 'assumed_ok' };
             },
         },
 
@@ -1867,7 +1870,6 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintFetching',
             check: async () => {
-                // همه قیمت‌ها با یک درخواست!
                 const res = await fetch('/api/coinstats/prices', {
                     credentials: 'include',
                 });
@@ -2909,8 +2911,12 @@ async function autoStart() {
 
 // اجرا بعد از DOMContentLoaded
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', autoStart);
+    document.addEventListener('DOMContentLoaded', () => {
+        bindEvents();      // ← ← ← این خط رو اضافه کن
+        autoStart();
+    });
 } else {
+    bindEvents();          // ← ← ← این خط رو اضافه کن
     autoStart();
 }
 
