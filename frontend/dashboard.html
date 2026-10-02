@@ -7741,9 +7741,9 @@ function startAutoRefresh() {
 // ADD COIN TO WATCHLIST MODAL
 // ============================================================
 const AddCoinModal = {
-    allCoins: [],          // همه کوینهای API
-    filteredCoins: [],     // نتیجه جستجو
-    selectedIds: new Set(),// کوینهای انتخابشده در این session
+    allCoins: [],
+    filteredCoins: [],
+    selectedIds: new Set(),
     popularIds: ['bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2', 'chainlink', 'polkadot', 'tron', 'matic-network'],
     initialized: false,
 
@@ -7775,7 +7775,7 @@ const AddCoinModal = {
 
     async open() {
         this.init();
-        this.selectedIds = new Set(Watchlist.get()); // کوینهای فعلی
+        this.selectedIds = new Set(Watchlist.get());
         this.filteredCoins = [];
         const searchInput = $('#coinSearchInput');
         if (searchInput) searchInput.value = '';
@@ -7784,7 +7784,6 @@ const AddCoinModal = {
         this.updateSelectedCount();
         openModal('addCoinModal');
 
-        // اگه کوینها لود نشدن، fetch کن
         if (Object.keys(state.coins).length < 5) {
             progressStart();
             await fetchMissingData();
@@ -7795,22 +7794,21 @@ const AddCoinModal = {
         this.renderPopular();
         this.showPopularSection();
     },
+
     async loadAllCoins() {
-        // 🆕 از Object.entries استفاده کن تا هم key و هم value رو داشته باشی
         const stateCoins = Object.entries(state.coins).map(([id, c]) => ({
-            id,                    // ← این key هست (bitcoin, ethereum, ...)
+            id,
             symbol: c.symbol,
             name: c.name,
             price: c.price,
             change_24h: c.change_24h,
         }));
-    
+
         if (stateCoins.length >= 30) {
             this.allCoins = stateCoins;
             return;
         }
-  
-        // اگه کم بود، از API بگیر
+
         try {
             const res = await API.getCoins(100);
             if (res.success && Array.isArray(res.data)) {
@@ -7829,7 +7827,7 @@ const AddCoinModal = {
             this.allCoins = stateCoins;
         }
     },
-   
+
     showPopularSection() {
         $('#coinPopularSection').style.display = '';
         $('#coinResultsSection').style.display = 'none';
@@ -7854,15 +7852,13 @@ const AddCoinModal = {
 
         const popular = this.popularIds
             .map(id => {
-                // اول از allCoins بگرد
                 const fromAll = this.allCoins.find(c => c.id === id);
                 if (fromAll) return fromAll;
-            
-                // اگه نبود، از state.coins بساز
+
                 const coin = state.coins[id];
                 if (!coin) return null;
                 return {
-                    id,   // ← 🆕 key رو id کن
+                    id,
                     symbol: coin.symbol,
                     name: coin.name,
                     price: coin.price,
@@ -7871,7 +7867,6 @@ const AddCoinModal = {
             })
             .filter(Boolean);
 
-        // اگه کمتر از ۸ تا بود، از allCoins پر کن
         if (popular.length < 8) {
             const extras = this.allCoins
                 .filter(c => !this.popularIds.includes(c.id))
@@ -7885,7 +7880,6 @@ const AddCoinModal = {
 
     renderPickCard(coin) {
         const isSelected = this.selectedIds.has(coin.id);
-        const priceStr = formatCurrency(coin.price);
         return `
             <div class="coin-pick-card ${isSelected ? 'selected' : ''}" 
                  data-coin-id="${escapeHtml(coin.id)}">
@@ -7960,7 +7954,6 @@ const AddCoinModal = {
             return;
         }
 
-        // فیلتر روی allCoins
         const results = this.allCoins.filter(c => 
             c.symbol.toLowerCase().includes(q) ||
             c.name.toLowerCase().includes(q) ||
@@ -7987,22 +7980,16 @@ const AddCoinModal = {
 
     confirm() {
         const selected = Array.from(this.selectedIds);
-    
-        console.log('💾 ذخیره واچلیست:', selected); // 🆕 debug
-    
+
         Watchlist.save(selected);
-    
-        // 🆕 بازخوانی از localStorage برای اطمینان
+
         const saved = Watchlist.get();
-        console.log('✅ خوانده شد از localStorage:', saved); // 🆕 debug
-    
-        // آپدیت کامل UI
-        updateWatchlistUI();      // ← ستارهها روی کارتهای BTC/ETH
-        renderWatchlist();         // ← لیست توی panel واچلیست
-        renderStatCards?.();       // ← اگه میخوای کارتها هم refresh بشن
-    
+
+        updateWatchlistUI();
+        renderWatchlist();
+
         closeModal('addCoinModal');
-    
+
         const count = saved.length;
         if (count === 0) {
             showToast(state.lang === 'fa' ? 'واچلیست خالی شد' : 'Watchlist cleared', 'info', 1800);
@@ -8013,8 +8000,9 @@ const AddCoinModal = {
                     : `✅ Watchlist saved (${count} coins)`,
                 'success', 2200
             );
-        },
-    };
+        }
+    },
+};
 
 
 // ============================================================
@@ -8033,23 +8021,18 @@ const ChartLoader = {
     show(container) {
         if (!this.el || !container) return;
 
-        // اگه قبلاً نشون داده شده، اول مخفی کن
         if (this._container) this.hide();
 
-        // ذخیره parent اصلی
         this._savedParent = this.el.parentNode;
         this._savedNext = this.el.nextSibling;
 
-        // اگه container position: static هست، relative کن
         if (window.getComputedStyle(container).position === 'static') {
             container.style.position = 'relative';
         }
 
-        // اضافه کردن به container
         container.appendChild(this.el);
         this._container = container;
 
-        // نمایش
         this.el.classList.add('active');
         this.el.setAttribute('aria-hidden', 'false');
     },
@@ -8060,7 +8043,6 @@ const ChartLoader = {
         this.el.classList.remove('active');
         this.el.setAttribute('aria-hidden', 'true');
 
-        // برگردوندن به parent اصلی
         if (this._savedParent) {
             try {
                 if (this._savedNext) {
@@ -8080,6 +8062,9 @@ const ChartLoader = {
 };
 
 // Init
+ChartLoader.init();
+
+
 ChartLoader.init();   
 // ============================================================
 // INIT
