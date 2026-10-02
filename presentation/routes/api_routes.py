@@ -3094,6 +3094,47 @@ def coinstats_btc_dominance():
         logger.error(f"BTC dominance error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@api_bp.route('/coinstats/global-market', methods=['GET'])
+@require_auth()
+def coinstats_global_market():
+    """دریافت وضعیت کلی بازار (Market Cap کل + Volume کل)"""
+    try:
+        container = current_app.container
+        api_client = container.get('api_client')
+        data = api_client.get_global_market()
+        
+        if not data or 'error' in data:
+            return jsonify({
+                'success': False,
+                'error': data.get('error', 'Failed to fetch')
+            }), 500
+        
+        # ساختار CoinStats /v1/markets:
+        # {
+        #   "marketCap": 3400000000000,
+        #   "volume": 180000000000,
+        #   "btcDominance": 52.5,
+        #   "marketCapChange24h": 3.1,
+        #   "volumeChange24h": -1.2,
+        #   ...
+        # }
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'market_cap': data.get('marketCap', 0),
+                'volume_24h': data.get('volume', 0),
+                'market_cap_change_24h': data.get('marketCapChange24h', 0),
+                'volume_change_24h': data.get('volumeChange24h', 0),
+                'btc_dominance': data.get('btcDominance', 0),
+                'timestamp': datetime.now().isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Global market error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 @api_bp.route('/coinstats/all', methods=['GET'])
 @require_auth()
 def coinstats_all():
