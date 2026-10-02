@@ -741,6 +741,10 @@ class ApiClient {
         return this.request('/api/coinstats/btc-dominance');
     }
 
+    getGlobalMarket() {
+        return this.request('/api/coinstats/global-market');
+    }
+    
     getAllCoinStats() {
         return this.request('/api/coinstats/all');
     }
