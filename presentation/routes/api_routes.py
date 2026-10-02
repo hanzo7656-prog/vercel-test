@@ -3067,17 +3067,32 @@ def coinstats_btc_dominance():
         api_client = container.get('api_client')
         dominance = api_client.get_btc_dominance(use_cache=True)
         
+        # CoinStats برمی‌گردونه: { "data": [[ts, pct], ...] }
+        value = 50  # پیش‌فرض
+        
+        if dominance and 'error' not in dominance:
+            data_arr = dominance.get('data')
+            
+            if isinstance(data_arr, list) and len(data_arr) > 0:
+                # آخرین pair
+                last_pair = data_arr[-1]
+                if isinstance(last_pair, list) and len(last_pair) >= 2:
+                    value = float(last_pair[1])
+            
+            # حالت جایگزین (اگه کلاینت فرمت دیگه‌ای داشت)
+            elif 'dominance' in dominance:
+                value = float(dominance['dominance'])
+        
         return jsonify({
             'success': True,
             'data': {
-                'value': dominance.get('dominance', 50) if dominance else 50,
+                'value': value,
                 'timestamp': datetime.now().isoformat()
             }
         })
     except Exception as e:
         logger.error(f"BTC dominance error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @api_bp.route('/coinstats/all', methods=['GET'])
 @require_auth()
