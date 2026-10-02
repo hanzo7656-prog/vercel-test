@@ -5969,19 +5969,45 @@ async function fetchMissingData(opts = {}) {
     }
 
     // BTC Dominance
+    // ۴. BTC Dominance
     if (force || !state.btcDominance) {
         tasks.push((async () => {
             try {
                 const res = await API.getBTCDominance();
+            
+                // CoinStats: { data: [[ts, pct], ...] } → آخرین مقدار
+                let value = 50;
+            
                 if (res.success && res.data) {
-                    state.btcDominance = { value: parseFloat(res.data.value) || 50 };
-                    try {
-                        sessionStorage.setItem('btc_dominance_cache', JSON.stringify(state.btcDominance));
-                    } catch (e) {}
+                    // حالت ۱: { data: [[ts, pct], ...] }  (CoinStats خام)
+                    if (Array.isArray(res.data.data) && res.data.data.length > 0) {
+                        const lastPair = res.data.data[res.data.data.length - 1];
+                        value = parseFloat(lastPair[1]) || 50;
+                    }
+                    // حالت ۲: [[ts, pct], ...]  (بک‌اند فقط data رو پاس داده)
+                    else if (Array.isArray(res.data) && res.data.length > 0) {
+                        const lastPair = res.data[res.data.length - 1];
+                        if (Array.isArray(lastPair)) {
+                            value = parseFloat(lastPair[1]) || 50;
+                        } else if (typeof lastPair === 'number') {
+                            value = lastPair;
+                        }
+                    }
+                    // حالت ۳: { value: 52.5 }  (اگه بک‌اند این‌طور بده)
+                    else if (typeof res.data.value === 'number') {
+                        value = res.data.value;
+                    }
                 }
-            } catch (e) {}
+            
+                state.btcDominance = { value };
+                try {
+                    sessionStorage.setItem('btc_dominance_cache', JSON.stringify(state.btcDominance));
+                } catch (e) {}
+            } catch (e) { 
+                console.warn('BTC Dominance fetch failed:', e); 
+            }
         })());
-    }
+    z}
 
     // Alerts → Notifications
     tasks.push((async () => {
