@@ -5932,7 +5932,6 @@ async function loadNav() {
         const response = await fetch('/components/nav.html');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const html = await response.text();
-
         container.innerHTML = html;
 
         // اجرای script ها
@@ -5944,11 +5943,17 @@ async function loadNav() {
             newScript.textContent = oldScript.textContent;
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
+
+        // 🆕 اضافه کنید: حذف هر <style> که از nav آمده
+        container.querySelectorAll('style').forEach(s => s.remove());
+        
+        // 🆕 و هر link به CSS خارجی که از nav آمده
+        container.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
+
     } catch (err) {
         console.error('Failed to load nav:', err);
     }
 }
-
 
 // ============================================================
 // LOAD DATA FROM CACHE
