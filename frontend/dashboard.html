@@ -3747,6 +3747,179 @@ body {
     font-weight: 700;
     font-size: 12px;
 }
+
+
+/* ============================================================
+   NEON SPINNER
+   ============================================================ */
+.neon-spinner {
+    --size: 1px;
+    --speed: 1.3s;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    font-size: calc(9 * var(--size));
+    color: var(--primary-light);
+    text-indent: -9999em;
+    transform: translateZ(0);
+    animation: neonMulShdSpin var(--speed) infinite linear;
+    will-change: box-shadow;
+    display: inline-block;
+}
+
+@keyframes neonMulShdSpin {
+    0%, 100% {
+        box-shadow:
+            0 -3em 0 0.2em,
+            2em -2em 0 0em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0,
+            2em -2em 0 0.2em,
+            3em 0 0 0,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em,
+            2em -2em 0 0,
+            3em 0 0 0.2em,
+            2em 2em 0 0,
+            0 3em 0 -1em,
+            -2em 2em 0 -1em,
+            -3em 0 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 0,
+            2em 2em 0 0.2em,
+            0 3em 0 0em,
+            -2em 2em 0 -1em,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 0em,
+            0 3em 0 0.2em,
+            -2em 2em 0 0,
+            -3em 0em 0 -1em,
+            -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 0,
+            -2em 2em 0 0.2em,
+            -3em 0 0 0,
+            -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em,
+            2em -2em 0 -1em,
+            3em 0em 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0.2em,
+            -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0,
+            2em -2em 0 -1em,
+            3em 0 0 -1em,
+            2em 2em 0 -1em,
+            0 3em 0 -1em,
+            -2em 2em 0 0,
+            -3em 0em 0 0,
+            -2em -2em 0 0.2em;
+    }
+}
+
+
+/* ============================================================
+   INLINE LOADER (روی نمودار)
+   ============================================================ */
+.inline-loader {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 12, 22, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 100;
+    border-radius: inherit;
+    animation: inlineFadeIn 0.2s ease;
+    pointer-events: auto;
+    direction: rtl;
+}
+
+[data-theme="light"] .inline-loader {
+    background: rgba(246, 248, 252, 0.75);
+}
+
+.inline-loader.active {
+    display: flex;
+}
+
+@keyframes inlineFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.chart-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 20px;
+}
+
+.inline-loader .neon-spinner {
+    --size: 1px;
+    font-size: 10px;
+    color: var(--primary-light);
+}
+
+.chart-loader-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+    text-align: center;
+    animation: loaderTextPulse 2s ease-in-out infinite;
+}
+
+@keyframes loaderTextPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
    
 </style>
 </head>
@@ -4920,7 +5093,17 @@ body {
         </div>
     </div>
 </div>
-   
+
+
+<!-- ============================================================
+     INLINE LOADER (برای نمودار)
+     ============================================================ -->
+<div class="inline-loader" id="chartLoader" aria-hidden="true" role="status">
+    <div class="chart-loader-content">
+        <span class="neon-spinner"></span>
+        <div class="chart-loader-text">کمی صبر کنید</div>
+    </div>
+</div>   
 <!-- ============================================================
      TOAST CONTAINER
      ============================================================ -->
@@ -6285,6 +6468,11 @@ async function renderPriceChart() {
     const canvas = $('#priceChart');
     if (!canvas || typeof Chart === 'undefined') return;
 
+
+    const chartBody = document.querySelector('.chart-body');
+    if (chartBody) {
+        ChartLoader.show(chartBody);
+    }
     // 🆕 نقشه ساده: ۴ تایمفریم → ۴ period
     const periodMap = {
         '24H': '24h',
@@ -6446,7 +6634,8 @@ async function renderPriceChart() {
         progressDone(true);
     } catch (e) {
         console.error('Chart error:', e);
-        progressDone(false);
+    } finally {
+        ChartLoader.hide()
     }
 }
 
@@ -7827,6 +8016,72 @@ const AddCoinModal = {
             );
         }
     }
+
+
+// ============================================================
+// CHART LOADER — لودینگ ساده برای نمودار
+// ============================================================
+const ChartLoader = {
+    el: null,
+    _container: null,
+    _savedParent: null,
+    _savedNext: null,
+
+    init() {
+        this.el = document.getElementById('chartLoader');
+    },
+
+    show(container) {
+        if (!this.el || !container) return;
+
+        // اگه قبلاً نشون داده شده، اول مخفی کن
+        if (this._container) this.hide();
+
+        // ذخیره parent اصلی
+        this._savedParent = this.el.parentNode;
+        this._savedNext = this.el.nextSibling;
+
+        // اگه container position: static هست، relative کن
+        if (window.getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
+        }
+
+        // اضافه کردن به container
+        container.appendChild(this.el);
+        this._container = container;
+
+        // نمایش
+        this.el.classList.add('active');
+        this.el.setAttribute('aria-hidden', 'false');
+    },
+
+    hide() {
+        if (!this.el) return;
+
+        this.el.classList.remove('active');
+        this.el.setAttribute('aria-hidden', 'true');
+
+        // برگردوندن به parent اصلی
+        if (this._savedParent) {
+            try {
+                if (this._savedNext) {
+                    this._savedParent.insertBefore(this.el, this._savedNext);
+                } else {
+                    this._savedParent.appendChild(this.el);
+                }
+            } catch (e) {
+                document.body.appendChild(this.el);
+            }
+        }
+
+        this._container = null;
+        this._savedParent = null;
+        this._savedNext = null;
+    },
+};
+
+// Init
+ChartLoader.init();   
 // ============================================================
 // INIT
 // ============================================================
