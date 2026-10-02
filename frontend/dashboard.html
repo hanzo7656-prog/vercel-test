@@ -7606,22 +7606,22 @@ const AddCoinModal = {
         this.renderPopular();
         this.showPopularSection();
     },
-
+   w
     async loadAllCoins() {
-        // اول از state.coins استفاده کن
-        const stateCoins = Object.values(state.coins);
-        
+        // 🆕 از Object.entries استفاده کن تا هم key و هم value رو داشته باشی
+        const stateCoins = Object.entries(state.coins).map(([id, c]) => ({
+            id,                    // ← این key هست (bitcoin, ethereum, ...)
+            symbol: c.symbol,
+            name: c.name,
+            price: c.price,
+            change_24h: c.change_24h,
+        }));
+    
         if (stateCoins.length >= 30) {
-            this.allCoins = stateCoins.map(c => ({
-                id: c.id || '',
-                symbol: c.symbol,
-                name: c.name,
-                price: c.price,
-                change_24h: c.change_24h,
-            }));
+            this.allCoins = stateCoins;
             return;
         }
-
+  
         // اگه کم بود، از API بگیر
         try {
             const res = await API.getCoins(100);
@@ -7640,8 +7640,8 @@ const AddCoinModal = {
             console.error('Failed to load coins:', e);
             this.allCoins = stateCoins;
         }
-    },
-
+    }
+       
     showPopularSection() {
         $('#coinPopularSection').style.display = '';
         $('#coinResultsSection').style.display = 'none';
@@ -7665,7 +7665,22 @@ const AddCoinModal = {
         if (!grid) return;
 
         const popular = this.popularIds
-            .map(id => this.allCoins.find(c => c.id === id) || state.coins[id])
+            .map(id => {
+                // اول از allCoins بگرد
+                const fromAll = this.allCoins.find(c => c.id === id);
+                if (fromAll) return fromAll;
+            
+                // اگه نبود، از state.coins بساز
+                const coin = state.coins[id];
+                if (!coin) return null;
+                return {
+                    id,   // ← 🆕 key رو id کن
+                    symbol: coin.symbol,
+                    name: coin.name,
+                    price: coin.price,
+                    change_24h: coin.change_24h,
+                };
+            })
             .filter(Boolean);
 
         // اگه کمتر از ۸ تا بود، از allCoins پر کن
@@ -7783,19 +7798,24 @@ const AddCoinModal = {
     },
 
     confirm() {
-        // تبدیل Set به آرایه
         const selected = Array.from(this.selectedIds);
-        
-        // ذخیره توی Watchlist
+    
+        console.log('💾 ذخیره واچلیست:', selected); // 🆕 debug
+    
         Watchlist.save(selected);
-        
-        // آپدیت UI
-        updateWatchlistUI();
-        renderWatchlist();
-        
+    
+        // 🆕 بازخوانی از localStorage برای اطمینان
+        const saved = Watchlist.get();
+        console.log('✅ خوانده شد از localStorage:', saved); // 🆕 debug
+    
+        // آپدیت کامل UI
+        updateWatchlistUI();      // ← ستارهها روی کارتهای BTC/ETH
+        renderWatchlist();         // ← لیست توی panel واچلیست
+        renderStatCards?.();       // ← اگه میخوای کارتها هم refresh بشن
+    
         closeModal('addCoinModal');
-        
-        const count = selected.length;
+    
+        const count = saved.length;
         if (count === 0) {
             showToast(state.lang === 'fa' ? 'واچلیست خالی شد' : 'Watchlist cleared', 'info', 1800);
         } else {
@@ -7806,9 +7826,7 @@ const AddCoinModal = {
                 'success', 2200
             );
         }
-    },
-};
-
+    }
 // ============================================================
 // INIT
 // ============================================================
