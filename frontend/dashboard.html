@@ -5944,11 +5944,37 @@ async function loadNav() {
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
 
-        // 🆕 اضافه کنید: حذف هر <style> که از nav آمده
-        container.querySelectorAll('style').forEach(s => s.remove());
-        
-        // 🆕 و هر link به CSS خارجی که از nav آمده
-        container.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
+        // 🆕 حذف گزینشی: فقط استایل‌هایی که روی کارت‌های داشبورد اثر می‌ذارن
+        container.querySelectorAll('style').forEach(styleEl => {
+            const css = styleEl.textContent || '';
+            
+            // اگه روی selector های داشبورد اثر می‌ذاره → حذفش کن
+            const dashboardSelectors = [
+                '.stat-card',
+                '.stats-grid',
+                '.main-content',
+                '.container',
+                '.chart-body',
+                '.panel',
+                '.sparkline',
+            ];
+            
+            const affectsDashboard = dashboardSelectors.some(sel => css.includes(sel));
+            
+            if (affectsDashboard) {
+                console.log('🗑️ Removing nav style affecting dashboard');
+                styleEl.remove();
+            }
+        });
+
+        // 🆕 حذف link های CSS خارجی که با نام nav میان
+        container.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+            const href = link.getAttribute('href') || '';
+            // فقط اگه مربوط به nav هست (نه theme/base اصلی)
+            if (href.includes('nav') || href.includes('sidebar')) {
+                link.remove();
+            }
+        });
 
     } catch (err) {
         console.error('Failed to load nav:', err);
