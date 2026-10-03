@@ -3787,7 +3787,7 @@ body {
 #heatmapCanvas {
     display: block;
     width: 100%;
-    height: 520px;
+    height: 680px;
     border-radius: 8px;
     background: #0b1220;
     cursor: pointer;
@@ -3939,14 +3939,123 @@ body {
 
 /* ریسپانسیو */
 @media (max-width: 768px) {
-    #heatmapCanvas { height: 400px; }
+    #heatmapCanvas { height: 520px; }
     .heatmap-legend { font-size: 9.5px; gap: 8px; padding: 8px 12px; }
 }
 
 @media (max-width: 480px) {
-    #heatmapCanvas { height: 320px; }
+    #heatmapCanvas { height: 420px; }
     .heatmap-legend { font-size: 9px; gap: 6px; }
     .heatmap-legend-color { width: 10px; height: 10px; }
+}
+
+/* ============================================================
+   HEATMAP FULLSCREEN
+   ============================================================ */
+.heatmap-fullscreen-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.heatmap-fullscreen-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.heatmap-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.heatmap-fullscreen-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* ============================================================
+   HEATMAP FULLSCREEN MODE
+   ============================================================ */
+.heatmap-body.fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99998 !important;
+    padding: 20px !important;
+    background: var(--bg-page) !important;
+    border-radius: 0 !important;
+    animation: fullscreenIn 0.25s ease;
+}
+
+@keyframes fullscreenIn {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.heatmap-body.fullscreen #heatmapCanvas {
+    height: calc(100vh - 100px) !important;
+    width: 100% !important;
+}
+
+/* مخفی کردن بقیه‌ی صفحه وقتی fullscreen هست */
+body.heatmap-fullscreen-active {
+    overflow: hidden;
+}
+
+body.heatmap-fullscreen-active .main-content {
+    pointer-events: none;
+}
+
+body.heatmap-fullscreen-active .heatmap-body.fullscreen {
+    pointer-events: auto;
+}
+
+/* دکمه‌ی خروج */
+.heatmap-exit-fullscreen {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 99999;
+    width: 40px;
+    height: 40px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-lg);
+}
+
+.heatmap-exit-fullscreen:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+    transform: scale(1.05);
+}
+
+.heatmap-exit-fullscreen svg {
+    width: 18px;
+    height: 18px;
+}
+
+body.heatmap-fullscreen-active .heatmap-exit-fullscreen {
+    display: flex;
 }
     
 </style>
@@ -4269,7 +4378,14 @@ body {
                             <button class="heatmap-filter-btn active" data-order="cap">Market Cap</button>
                             <button class="heatmap-filter-btn" data-order="volume">Volume</button>
                         </div>
-                     </div>
+
+                    <!-- 👇 این دکمه رو اضافه کن -->
+                        <button class="heatmap-fullscreen-btn" id="heatmapFullscreenBtn" title="تمام صفحه">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="panel-body no-padding">
                     <div class="heatmap-body" style="position: relative;">
@@ -6825,7 +6941,6 @@ function updateWatchlistUI() {
     });
 }
 
-
 // ============================================================
 // HEATMAP — CryptoRank API + Canvas Treemap
 // ============================================================
@@ -6837,7 +6952,7 @@ const Heatmap = {
     cache: { data: null, timestamp: 0 },
     CACHE_TTL: 5 * 60 * 1000,  // ۵ دقیقه
 
-    // آدرس API — اگه پروکسی داری، اینجا عوض کن به '/api/heatmap'
+    // آدرس API — مستقیم به CryptoRank (چون endpoint سرور خودت وجود نداره)
     API_BASE: 'https://api.cryptorank.io/v0/widget/heatmap',
 
     state: {
@@ -6870,14 +6985,15 @@ const Heatmap = {
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
         this.canvas.addEventListener('mouseleave', () => this.tooltip.classList.remove('show'));
 
-        
+        // ❌ redirect حذف شد — دیگه کلیک روی هیت‌مپ چیزی باز نمی‌کنه
+
         // Retry
         const retryBtn = document.getElementById('heatmapRetryBtn');
         if (retryBtn) {
             retryBtn.addEventListener('click', () => this.load(true));
         }
 
-        // فیلترها
+        // فیلتر Range (24H / 7D / 30D)
         document.querySelectorAll('#heatmapRangeFilters .heatmap-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#heatmapRangeFilters .heatmap-filter-btn').forEach(b => b.classList.remove('active'));
@@ -6887,6 +7003,7 @@ const Heatmap = {
             });
         });
 
+        // فیلتر Order (Market Cap / Volume)
         document.querySelectorAll('#heatmapOrderFilters .heatmap-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#heatmapOrderFilters .heatmap-filter-btn').forEach(b => b.classList.remove('active'));
@@ -6894,6 +7011,24 @@ const Heatmap = {
                 this.state.order = btn.dataset.order;
                 this.load();
             });
+        });
+
+        // Fullscreen toggle
+        const fsBtn = document.getElementById('heatmapFullscreenBtn');
+        if (fsBtn) {
+            fsBtn.addEventListener('click', () => this.toggleFullscreen());
+        }
+
+        const exitBtn = document.getElementById('heatmapExitFullscreenBtn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', () => this.exitFullscreen());
+        }
+
+        // Esc برای خروج از fullscreen
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.body.classList.contains('heatmap-fullscreen-active')) {
+                this.exitFullscreen();
+            }
         });
 
         // ریسایز
@@ -6960,7 +7095,7 @@ const Heatmap = {
                     name: c.name,
                     fullName: c.fullName || c.name,
                     percent: parseFloat(c.percent) || 0,
-                    value: c.value || c.cap || 0,
+                    value: c.cap || c.value || 0,   // ← همیشه از cap برای اندازه
                     price: c.price,
                     formattedPrice: c.formattedPrice,
                     cap: c.cap,
@@ -7014,15 +7149,26 @@ const Heatmap = {
             ctx.lineWidth = 1;
             ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
 
-            if (w < 28 || h < 22) return;
+            // اگه سلول خیلی کوچیکه، فقط یه سیمبل خیلی ریز
+            if (w < 28 || h < 22) {
+                if (w >= 22 && h >= 18) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = `700 7px 'JetBrains Mono', monospace`;
+                    ctx.fillText(leaf.data.name, x0 + w / 2, y0 + h / 2);
+                }
+                return;
+            }
 
             const cx = x0 + w / 2;
             const cy = y0 + h / 2;
             const baseSize = Math.min(w, h);
 
-            const symbolSize = Math.max(9, Math.min(baseSize / 4.5, 26));
-            const percentSize = Math.max(8, Math.min(baseSize / 7, 14));
-            const priceSize = Math.max(7, Math.min(baseSize / 9, 12));
+            // 👇 فونت‌های کوچیک‌تر
+            const symbolSize  = Math.max(7, Math.min(baseSize / 6, 18));
+            const percentSize = Math.max(6, Math.min(baseSize / 9, 11));
+            const priceSize   = Math.max(5, Math.min(baseSize / 12, 9));
 
             // سیمبل
             ctx.fillStyle = '#ffffff';
@@ -7030,6 +7176,7 @@ const Heatmap = {
             ctx.textBaseline = 'middle';
             ctx.font = `800 ${symbolSize}px 'JetBrains Mono', monospace`;
 
+            // سلول کوچیک: فقط سیمبل
             if (h < 35) {
                 ctx.fillText(leaf.data.name, cx, cy);
                 return;
@@ -7044,7 +7191,7 @@ const Heatmap = {
             const pctText = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
             ctx.fillText(pctText, cx, cy + symbolSize * 0.5);
 
-            // قیمت
+            // قیمت (فقط اگه فضا کافیه)
             if (h > 55 && w > 55) {
                 ctx.font = `500 ${priceSize}px 'JetBrains Mono', monospace`;
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
@@ -7124,16 +7271,73 @@ const Heatmap = {
         }
     },
 
+    // ============================================================
+    // FULLSCREEN
+    // ============================================================
+    toggleFullscreen() {
+        const body = document.querySelector('.heatmap-body');
+        if (!body) return;
+
+        if (body.classList.contains('fullscreen')) {
+            this.exitFullscreen();
+        } else {
+            this.enterFullscreen();
+        }
+    },
+
+    enterFullscreen() {
+        const body = document.querySelector('.heatmap-body');
+        if (!body) return;
+
+        body.classList.add('fullscreen');
+        document.body.classList.add('heatmap-fullscreen-active');
+
+        const fsBtn = document.getElementById('heatmapFullscreenBtn');
+        if (fsBtn) fsBtn.classList.add('active');
+
+        // بعد از انیمیشن، هیت‌مپ رو دوباره بکش
+        setTimeout(() => {
+            const cacheKey = `${this.state.range}-${this.state.order}`;
+            if (this.cache[cacheKey]) {
+                this.draw(this.cache[cacheKey].data);
+            }
+        }, 260);
+    },
+
+    exitFullscreen() {
+        const body = document.querySelector('.heatmap-body');
+        if (!body) return;
+
+        body.classList.remove('fullscreen');
+        document.body.classList.remove('heatmap-fullscreen-active');
+
+        const fsBtn = document.getElementById('heatmapFullscreenBtn');
+        if (fsBtn) fsBtn.classList.remove('active');
+
+        // بعد از انیمیشن، هیت‌مپ رو دوباره بکش
+        setTimeout(() => {
+            const cacheKey = `${this.state.range}-${this.state.order}`;
+            if (this.cache[cacheKey]) {
+                this.draw(this.cache[cacheKey].data);
+            }
+        }, 260);
+    },
+
+    // ============================================================
+    // LOADING / ERROR
+    // ============================================================
     showLoading() {
         const el = document.getElementById('heatmapLoading');
         if (el) el.style.display = 'flex';
         const err = document.getElementById('heatmapError');
         if (err) err.style.display = 'none';
     },
+
     hideLoading() {
         const el = document.getElementById('heatmapLoading');
         if (el) el.style.display = 'none';
     },
+
     showError(msg) {
         this.hideLoading();
         const el = document.getElementById('heatmapError');
@@ -7141,16 +7345,18 @@ const Heatmap = {
         if (el) el.style.display = 'flex';
         if (txt) txt.textContent = msg || 'خطا در دریافت داده';
     },
+
     hideError() {
         const el = document.getElementById('heatmapError');
         if (el) el.style.display = 'none';
     },
 };
 
-// جایگزین تابع قدیمی renderHeatmap
+// تابع جایگزین renderHeatmap قدیمی
 function renderHeatmap() {
     Heatmap.init();
 }
+
 
 
 // ============================================================
