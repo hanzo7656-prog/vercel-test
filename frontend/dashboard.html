@@ -1364,7 +1364,6 @@ body {
 
 .watchlist-add-btn svg { width: 13px; height: 13px; }
 
-
 /* ============================================================
    HEATMAP GRID — ۱۲ ستون، بدون dense
    ============================================================ */
@@ -1375,7 +1374,6 @@ body {
     gap: 5px;
 }
 
-/* سایزها — همه بر اساس ۱۲ ستون */
 .heatmap-cell.size-xs {
     grid-column: span 1;
     grid-row: span 1;
@@ -1418,7 +1416,6 @@ body {
 .heatmap-cell.size-xxl .heatmap-cell-symbol { font-size: 24px; }
 .heatmap-cell.size-xxl .heatmap-cell-change { font-size: 16px; }
 
-/* موبایل */
 @media (max-width: 768px) {
     .heatmap-grid {
         grid-template-columns: repeat(8, 1fr);
@@ -5721,6 +5718,9 @@ const API = {
     async getAlerts(limit = 20, resolved = false) {
         return this.request(`/api/alerts?limit=${limit}&resolved=${resolved}`);
     },
+    async getGlobalMarket() {
+        return this.request('/api/coinstats/global-market');
+    },
 };
 
 
@@ -6041,7 +6041,7 @@ async function fetchMissingData(opts = {}) {
     if (force || !state.globalMarket) {
         tasks.push((async () => {
             try {
-                const res = await api.getGlobalMarket();
+                const res = await API.getGlobalMarket();
                 if (res.success && res.data) {
                     state.globalMarket = {
                         market_cap: parseFloat(res.data.market_cap) || 0,
@@ -6371,6 +6371,8 @@ function renderStatCards() {
             const cls = fg.value < 45 ? 'down' : fg.value > 55 ? 'up' : 'neutral';
             labelEl.className = 'stat-card-change ' + cls;
         }
+        // توی renderStatCards قبلی
+        updateGauge(fg.value, fg.classification);   // ← این خط الان نیست
     }
 
     // ===== BTC Dominance =====
@@ -6775,14 +6777,23 @@ function renderHeatmap() {
 
     const sizeKey = state.heatSizeFilter === 'volume' ? 'volume_24h' : 'market_cap';
 
-    // استیبل‌کوین‌ها فیلتر شن (تغییر قیمت ندارن)
+    // استیبل‌کوین‌ها و wrapped coinها فیلتر شن
     const STABLECOINS = [
         'tether', 'usd-coin', 'dai', 'binance-usd',
         'true-usd', 'paxos-standard', 'frax', 'usdd'
     ];
+    
+    const WRAPPED = [
+        'wrapped-bitcoin', 'wrapped-ether', 'weth', 'wbtc', 'wbeth',
+        'staked-ether', 'steth', 'wsteth', 'weeth', 'wbeth',
+        'coinbase-wrapped-btc', 'cbbtc', 'bsc-usd'
+    ];
 
     const coins = Object.entries(state.coins)
         .filter(([id, _]) => !STABLECOINS.includes(id))
+        .filter(([id, _]) => !WRAPPED.includes(id))
+        .filter(([id, _]) => !id.includes('wrapped'))
+        .filter(([id, _]) => !id.startsWith('w'))
         .filter(([_, c]) => (c[sizeKey] || 0) > 0)
         .sort((a, b) => (b[1][sizeKey] || 0) - (a[1][sizeKey] || 0))
         .slice(0, 40);
@@ -6795,7 +6806,6 @@ function renderHeatmap() {
     const maxVal = coins[0][1][sizeKey] || 1;
 
     const cells = coins.map(([id, coin], idx) => {
-        // سایز بر اساس نسبت به بزرگ‌ترین کوین
         const val = coin[sizeKey] || 0;
         const ratio = val / maxVal;
 
@@ -6807,7 +6817,6 @@ function renderHeatmap() {
         else if (ratio >= 0.005) sizeClass = 'size-sm';
         else sizeClass = 'size-xs';
 
-        // تغییر بر اساس تایم‌فریم
         let change;
         if (state.heatTimeFilter === '7d') {
             change = (coin.change_7d && coin.change_7d !== 0) ? coin.change_7d : (coin.change_24h || 0);
@@ -6836,7 +6845,6 @@ function renderHeatmap() {
 
     grid.innerHTML = cells.join('');
 
-    // کلیک → نمایش ۴ ثانیه‌ای
     grid.querySelectorAll('.heatmap-cell').forEach(cell => {
         cell.addEventListener('click', () => {
             const coinId = cell.dataset.coinId;
@@ -6867,7 +6875,6 @@ function renderHeatmap() {
         });
     });
 }
-    
 // ============================================================
 // RENDER: GAINERS / LOSERS
 // ============================================================
