@@ -7358,7 +7358,6 @@ function renderAIInsights() {
     `).join('');
 }
 
-
 // ============================================================
 // RENDER: NOTIFICATIONS
 // ============================================================
@@ -7368,6 +7367,7 @@ function renderNotifications() {
     const all = Notifications.getAll();
     const filter = state.notifFilter;
 
+    // به‌روزرسانی شمارنده‌ها
     const countAll = $('#countAll');
     const countAlerts = $('#countAlerts');
     const countSystem = $('#countSystem');
@@ -7380,9 +7380,11 @@ function renderNotifications() {
     if (countAi) countAi.textContent = toPersian(all.filter(n => n.category === 'ai').length);
     if (notifCount) notifCount.textContent = toPersian(all.length);
 
+    // فیلتر
     const filtered = filter === 'all' ? all : all.filter(n => n.category === filter);
+    const display = filtered.slice(0, 10);
 
-    if (filtered.length === 0) {
+    if (display.length === 0) {
         list.innerHTML = `
             <div class="notif-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7401,9 +7403,7 @@ function renderNotifications() {
         ai:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-10 10c0 5 4 8 10 10 6-2 10-5 10-10A10 10 0 0 0 12 2z"/><circle cx="12" cy="12" r="3"/></svg>',
     };
 
-    list.innerHTML = filtered.map(n => {
-        const filtered = filter === 'all' ? all : all.filter(n => n.category === filter);
-        const display = filtered.slice(0, 10);   // 🆕 فقط ۲۰ تا آخر
+    list.innerHTML = display.map(n => {
         const icon = iconMap[n.category] || iconMap.system;
         const levelCls = n.level === 'critical' ? 'critical' :
                          n.level === 'warning' ? 'warning' :
@@ -7433,7 +7433,7 @@ function renderNotifications() {
         `;
     }).join('');
 
-    // 🆕 رویداد حذف تکی
+    // رویداد حذف تکی
     list.querySelectorAll('[data-remove-notif]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -7441,11 +7441,10 @@ function renderNotifications() {
             const notifs = Notifications.getAll().filter(n => n.id !== id);
             Notifications.save(notifs);
             renderNotifications();
-            updateNotifBadge();
             showToast('اعلان حذف شد', 'info', 1500);
         });
     });
-
+}  // ← این براکت رو حتماً بذار!
 
 // ============================================================
 // RENDER: ACTIVITY
