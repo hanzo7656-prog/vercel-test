@@ -2081,14 +2081,52 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
-    padding-right: 2px;
+    overflow-x: hidden;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
 }
 
 .notif-list::-webkit-scrollbar { width: 4px; }
-.notif-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+.notif-list::-webkit-scrollbar-track { background: transparent; }
+.notif-list::-webkit-scrollbar-thumb { 
+    background: var(--border-strong); 
+    border-radius: 2px; 
+}
+.notif-list::-webkit-scrollbar-thumb:hover { 
+    background: var(--primary); 
+}
 
+.notif-item {
+    position: relative;   /* برای absolute شدن دکمه */
+}
+
+.notif-item-remove {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+    padding: 0;
+}
+
+.notif-item:hover .notif-item-remove { opacity: 1; }
+.notif-item-remove:hover { background: var(--danger); color: white; }
+.notif-item-remove svg { width: 11px; height: 11px; }
+    
 .notif-item {
     display: flex;
     align-items: flex-start;
@@ -7122,6 +7160,8 @@ function renderNotifications() {
     };
 
     list.innerHTML = filtered.map(n => {
+        const filtered = filter === 'all' ? all : all.filter(n => n.category === filter);
+        const display = filtered.slice(0, 10);   // 🆕 فقط ۲۰ تا آخر
         const icon = iconMap[n.category] || iconMap.system;
         const levelCls = n.level === 'critical' ? 'critical' :
                          n.level === 'warning' ? 'warning' :
@@ -7133,15 +7173,36 @@ function renderNotifications() {
                     <div class="notif-title">${escapeHtml(n.title)}</div>
                     <div class="notif-desc">${escapeHtml(n.message)}</div>
                     <div class="notif-time">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
                         ${formatTimeAgo(n.timestamp)}
                     </div>
                 </div>
                 ${!n.read ? '<div class="notif-badge-dot"></div>' : ''}
+                <button class="notif-item-remove" data-remove-notif="${n.id}" title="حذف">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
             </div>
         `;
     }).join('');
-}
+
+    // 🆕 رویداد حذف تکی
+    list.querySelectorAll('[data-remove-notif]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.removeNotif;
+            const notifs = Notifications.getAll().filter(n => n.id !== id);
+            Notifications.save(notifs);
+            renderNotifications();
+            updateNotifBadge();
+            showToast('اعلان حذف شد', 'info', 1500);
+        });
+    });
 
 
 // ============================================================
