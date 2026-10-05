@@ -76,22 +76,44 @@ def chart():
 @web_bp.route('/analyzer')
 @require_auth()
 def analyzer():
-    """صفحه اصلی تحلیلگر — Shell با Nav Tabs"""
+    """صفحه اصلی تحلیلگر — Shell"""
     return send_from_directory('frontend', 'analyzer.html')
 
 
+@web_bp.route('/analyzer_tabs/<path:filename>')
+@require_auth()
+def analyzer_tabs(filename):
+    """
+    سرویس تب‌های تحلیلگر از پوشه frontend/analyzer_tabs/
+    
+    Examples:
+        /analyzer_tabs/market.html
+        /analyzer_tabs/analyze.html
+        /analyzer_tabs/portfolio.html
+    """
+    return send_from_directory('frontend/analyzer_tabs', filename)
+
+
+# (اختیاری) روت‌های SPA برای URL تمیز
+# اگه می‌خوای URL مثل /analyzer/analyze کار کنه بدون .html
 @web_bp.route('/analyzer/analyze')
 @require_auth()
-def analyzer_analyze():
-    """صفحه تحلیل عمیق"""
-    return send_from_directory('frontend', 'analyzer_analyze.html')
+def analyzer_analyze_route():
+    """ریدایرکت به shell — SPA خودش تب رو باز می‌کنه"""
+    return send_from_directory('frontend', 'analyzer.html')
 
 
 @web_bp.route('/analyzer/portfolio')
 @require_auth()
-def analyzer_portfolio():
-    """صفحه پورتفولیو دمو"""
-    return send_from_directory('frontend', 'analyzer_portfolio.html')
+def analyzer_portfolio_route():
+    """ریدایرکت به shell — SPA خودش تب رو باز می‌کنه"""
+    return send_from_directory('frontend', 'analyzer.html')
+
+
+#====================
+#model
+#==================
+
 
 @web_bp.route('/model')
 @require_auth()
