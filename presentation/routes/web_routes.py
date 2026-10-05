@@ -69,11 +69,29 @@ def chart():
     return send_from_directory('frontend', 'chart.html')
 
 
+# ============================================================
+# ۲.۵. صفحات تحلیلگر (Analyzer Suite)
+# ============================================================
+
 @web_bp.route('/analyzer')
 @require_auth()
 def analyzer():
+    """صفحه اصلی تحلیلگر — Shell با Nav Tabs"""
     return send_from_directory('frontend', 'analyzer.html')
 
+
+@web_bp.route('/analyzer/analyze')
+@require_auth()
+def analyzer_analyze():
+    """صفحه تحلیل عمیق"""
+    return send_from_directory('frontend', 'analyzer_analyze.html')
+
+
+@web_bp.route('/analyzer/portfolio')
+@require_auth()
+def analyzer_portfolio():
+    """صفحه پورتفولیو دمو"""
+    return send_from_directory('frontend', 'analyzer_portfolio.html')
 
 @web_bp.route('/model')
 @require_auth()
