@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="indigo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>تحلیلگر بازار</title>
+
+<!-- ⚡ FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'indigo';
+        html.setAttribute('data-color', color);
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   VARIABLES
+   ============================================================ */
+:root {
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 76px;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-rgb: 99, 102, 241;
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(99, 102, 241, 0.1);
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; }
+html[data-color="violet"]  { --primary: #a855f7; --primary-dark: #9333ea; --primary-light: #c084fc; --primary-rgb: 168, 85, 247; }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; height: 100vh; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ============================================================
+   NEON LOADER — فقط برای رفرش صفحه مادر
+   ============================================================ */
+.neon-loader-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 12, 22, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 28px;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.neon-loader-overlay.active {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+.neon-loader-icon {
+    width: 68px; height: 68px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5);
+    animation: loaderPulse 1.8s ease-in-out infinite;
+}
+
+.neon-loader-icon svg { width: 34px; height: 34px; }
+
+@keyframes loaderPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
+    50% { transform: scale(1.08) rotate(-3deg); box-shadow: 0 12px 48px rgba(var(--primary-rgb), 0.8); }
+}
+
+.neon-loader-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-height: 22px;
+    text-align: center;
+}
+
+.neon-loader-sub {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    margin-top: -18px;
+    text-align: center;
+}
+
+/* ============================================================
+   SHELL LAYOUT
+   ============================================================ */
+.analyzer-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-right: var(--sidebar-width);
+    transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.analyzer-shell.expanded { margin-right: var(--sidebar-collapsed); }
+
+@media (max-width: 768px) {
+    .analyzer-shell { margin-right: 0; padding-top: 60px; }
+}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+    min-height: 52px;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--primary-bg);
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+    border-radius: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--primary-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--mono-font);
+    flex-shrink: 0;
+}
+
+.live-dot {
+    width: 6px; height: 6px;
+    background: var(--primary-light);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 8px var(--primary-light);
+}
+
+.live-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid var(--primary-light);
+    opacity: 0;
+    animation: livePulse 1.8s ease-out infinite;
+}
+
+@keyframes livePulse {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+}
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.icon-btn {
+    width: 32px; height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.icon-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+}
+
+.icon-btn svg { width: 14px; height: 14px; }
+
+.cmd-hint {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    font-weight: 600;
+}
+
+.cmd-hint kbd {
+    background: var(--bg-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   NAV TABS
+   ============================================================ */
+.nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-height: 52px;
+}
+
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tab {
+    flex: 1;
+    min-width: 120px;
+    max-width: 240px;
+    padding: 11px 18px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.nav-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.nav-tab:hover { background: var(--bg-hover); color: var(--text-light); }
+
+.nav-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
+}
+
+/* ============================================================
+   CONTENT AREA
+   ============================================================ */
+.content-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-page);
+}
+
+.tab-panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+    overflow: hidden;
+}
+
+.tab-panel.active { display: block; }
+
+.tab-panel iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: var(--bg-page);
+}
+
+/* ============================================================
+   IFRAME LOADER — اسپینر نئونی روی هر iframe
+   ============================================================ */
+.iframe-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 18px;
+    background: var(--bg-page);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.iframe-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.iframe-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+/* اسپینر ۸ نقطه‌ای نئونی */
+.neon-spinner {
+    --size: 1px;
+    --speed: 1.3s;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    font-size: calc(10 * var(--size));
+    color: var(--primary-light);
+    text-indent: -9999em;
+    transform: translateZ(0);
+    animation: neonMulShdSpin var(--speed) infinite linear;
+    will-change: box-shadow;
+}
+
+@keyframes neonMulShdSpin {
+    0%, 100% {
+        box-shadow:
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
+    }
+}
+
+.iframe-loader-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+    text-align: center;
+}
+
+.iframe-loader-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    text-align: center;
+    margin-top: -10px;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 999998;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+}
+
+@media (max-width: 768px) {
+    .toast-container { bottom: auto; top: 100px; left: 12px; right: 12px; }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    .page-title { font-size: 14px; }
+    .cmd-hint { display: none; }
+    .nav-tab { padding: 9px 12px; font-size: 11.5px; min-width: 90px; }
+    .top-bar { padding: 8px 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     NEON LOADER (فقط رفرش)
+     ============================================================ -->
+<div class="neon-loader-overlay" id="neonLoader" role="dialog" aria-modal="true">
+    <div class="neon-loader-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+    </div>
+    <div class="neon-loader-text">در حال بارگذاری تحلیلگر...</div>
+    <div class="neon-loader-sub">لطفاً کمی صبر کنید</div>
+</div>
+
+<!-- ============================================================
+     NAV CONTAINER (sidebar)
+     ============================================================ -->
+<div id="navContainer"></div>
+
+<!-- ============================================================
+     ANALYZER SHELL
+     ============================================================ -->
+<div class="analyzer-shell" id="analyzerShell">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <span class="live-badge">
+                <span class="live-dot"></span>
+                <span>ANALYZER</span>
+            </span>
+            <span class="page-title" id="pageTitle">لیست ارزها</span>
+        </div>
+        <div class="top-bar-right">
+            <span class="cmd-hint"><kbd>Ctrl</kbd>+<kbd>K</kbd></span>
+            <button class="icon-btn" id="refreshBtn" title="بروزرسانی">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- NAV TABS -->
+    <nav class="nav-tabs" id="navTabs">
+        <button class="nav-tab active" data-tab="market" data-url="/analyzer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9"/>
+                <rect x="14" y="3" width="7" height="5"/>
+                <rect x="14" y="12" width="7" height="9"/>
+                <rect x="3" y="16" width="7" height="5"/>
+            </svg>
+            لیست ارزها
+        </button>
+        <button class="nav-tab" data-tab="analyze" data-url="/analyzer/analyze">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+            تحلیل
+        </button>
+        <button class="nav-tab" data-tab="portfolio" data-url="/analyzer/portfolio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 7h-9"/>
+                <path d="M14 17H5"/>
+                <circle cx="17" cy="17" r="3"/>
+                <circle cx="7" cy="7" r="3"/>
+            </svg>
+            پورتفولیو
+        </button>
+    </nav>
+
+    <!-- CONTENT AREA -->
+    <div class="content-area" id="contentArea">
+
+        <!-- ====== TAB 1: MARKET ====== -->
+        <div class="tab-panel active" id="panel-market" data-src="/analyzer_tabs/market.html">
+            <iframe id="iframe-market" src="about:blank" title="لیست ارزها" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-market">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری لیست ارزها...</div>
+                    <div class="iframe-loader-sub">Fetching market data</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TAB 2: ANALYZE ====== -->
+        <div class="tab-panel" id="panel-analyze" data-src="/analyzer_tabs/analyze.html">
+            <iframe id="iframe-analyze" src="about:blank" title="تحلیل" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-analyze">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری اتاق تحلیل...</div>
+                    <div class="iframe-loader-sub">Loading analysis room</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TAB 3: PORTFOLIO ====== -->
+        <div class="tab-panel" id="panel-portfolio" data-src="/analyzer_tabs/portfolio.html">
+            <iframe id="iframe-portfolio" src="about:blank" title="پورتفولیو" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-portfolio">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری پورتفولیو...</div>
+                    <div class="iframe-loader-sub">Loading portfolio</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script>
+(function() {
+'use strict';
+
+// جلوگیری از اجرای دوباره
+if (window.__analyzerShellLoaded) return;
+window.__analyzerShellLoaded = true;
+
+const $ = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    TABS: {
+        market: {
+            url: '/analyzer',
+            src: '/analyzer_tabs/market.html',
+            title: 'لیست ارزها',
+            loader: 'loader-market',
+            iframe: 'iframe-market',
+            panel: 'panel-market'
+        },
+        analyze: {
+            url: '/analyzer/analyze',
+            src: '/analyzer_tabs/analyze.html',
+            title: 'تحلیل',
+            loader: 'loader-analyze',
+            iframe: 'iframe-analyze',
+            panel: 'panel-analyze'
+        },
+        portfolio: {
+            url: '/analyzer/portfolio',
+            src: '/analyzer_tabs/portfolio.html',
+            title: 'پورتفولیو',
+            loader: 'loader-portfolio',
+            iframe: 'iframe-portfolio',
+            panel: 'panel-portfolio'
+        }
+    },
+    LOADER_TIMEOUT: 8000
+};
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    currentTab: 'market',
+    loadedTabs: new Set(),  // تب‌هایی که قبلاً لود شدن
+    isRefresh: false
+};
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(message, type = 'info', duration = 2500) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#6366f1'
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 220px;
+        max-width: 380px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="
+            display:inline-flex;align-items:center;justify-content:center;
+            width:22px;height:22px;min-width:22px;
+            border-radius:7px;
+            background:${colors[type]}20;
+            color:${colors[type]};
+            flex-shrink:0;
+        ">${icons[type]}</span>
+        <span style="flex:1;">${message}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ============================================================
+// NEON LOADER (فقط رفرش)
+// ============================================================
+function isReload() {
+    try {
+        const navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0) {
+            return navEntries[0].type === 'reload';
+        }
+        if (performance.navigation) {
+            return performance.navigation.type === 1;
+        }
+    } catch (e) {}
+    return false;
+}
+
+function showNeonLoader() {
+    const el = $('#neonLoader');
+    if (el) el.classList.add('active');
+}
+
+function hideNeonLoader() {
+    const el = $('#neonLoader');
+    if (el) el.classList.remove('active');
+}
+
+// ============================================================
+// IFRAME LOADER
+// ============================================================
+function showIframeLoader(tabKey) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+    const loader = document.getElementById(cfg.loader);
+    if (loader) loader.classList.remove('hidden');
+}
+
+function hideIframeLoader(tabKey) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+    const loader = document.getElementById(cfg.loader);
+    if (loader) loader.classList.add('hidden');
+}
+
+// ============================================================
+// LOAD TAB IFRAME
+// ============================================================
+function loadTabIframe(tabKey) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+
+    const iframe = document.getElementById(cfg.iframe);
+    if (!iframe) return;
+
+    // اگه قبلاً لود شده، دوباره لود نکن
+    if (state.loadedTabs.has(tabKey) && iframe.src !== 'about:blank') {
+        hideIframeLoader(tabKey);
+        return;
+    }
+
+    // اگه iframe منبع داره ولی هنوز لود نشده، فقط لودر رو نگهدار
+    if (iframe.src !== 'about:blank') {
+        return;
+    }
+
+    // نمایش لودر
+    showIframeLoader(tabKey);
+
+    // ست کردن onload
+    iframe.onload = () => {
+        // تاخیر کوچیک برای smoothness
+        setTimeout(() => {
+            hideIframeLoader(tabKey);
+            state.loadedTabs.add(tabKey);
+        }, 300);
+    };
+
+    // لود کردن
+    iframe.src = cfg.src;
+
+    // Timeout fallback (اگه onload صدا زده نشد)
+    setTimeout(() => {
+        if (!state.loadedTabs.has(tabKey)) {
+            hideIframeLoader(tabKey);
+            state.loadedTabs.add(tabKey);
+            console.warn(`[Shell] Loader timeout for ${tabKey}`);
+        }
+    }, CONFIG.LOADER_TIMEOUT);
+}
+
+// ============================================================
+// SWITCH TAB
+// ============================================================
+function switchTab(tabKey, options = {}) {
+    const { updateUrl = true, scrollTop = true } = options;
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+
+    if (state.currentTab === tabKey && state.loadedTabs.has(tabKey)) {
+        return;
+    }
+
+    state.currentTab = tabKey;
+
+    // Update active tab button
+    $$('.nav-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabKey);
+    });
+
+    // Update panels
+    $$('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    const activePanel = document.getElementById(cfg.panel);
+    if (activePanel) activePanel.classList.add('active');
+
+    // Update title
+    const titleEl = $('#pageTitle');
+    if (titleEl) titleEl.textContent = cfg.title;
+
+    // Update URL (SPA)
+    if (updateUrl) {
+        try {
+            history.pushState({ tab: tabKey }, '', cfg.url);
+        } catch (e) {}
+    }
+
+    // Lazy load iframe
+    loadTabIframe(tabKey);
+
+    // ذخیره در localStorage
+    try {
+        localStorage.setItem('analyzer_last_tab', tabKey);
+    } catch (e) {}
+}
+
+// ============================================================
+// HANDLE POPSTATE (back/forward)
+// ============================================================
+function handlePopState() {
+    const path = window.location.pathname;
+    let tabKey = 'market';
+
+    if (path === '/analyzer/analyze') tabKey = 'analyze';
+    else if (path === '/analyzer/portfolio') tabKey = 'portfolio';
+    else tabKey = 'market';
+
+    switchTab(tabKey, { updateUrl: false });
+}
+
+// ============================================================
+// NAV LOADER (sidebar)
+// ============================================================
+async function loadNav() {
+    const container = $('#navContainer');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/components/nav.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+        container.innerHTML = html;
+
+        // اجرای script ها
+        container.querySelectorAll('script').forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        console.log('✅ Nav loaded');
+    } catch (err) {
+        console.error('Failed to load nav:', err);
+    }
+}
+
+// ============================================================
+// NAV LISTENERS (sidebar toggle)
+// ============================================================
+function setupNavListeners() {
+    window.addEventListener('nav:toggle-sidebar', (e) => {
+        const collapsed = e.detail?.collapsed;
+        const shell = $('#analyzerShell');
+        if (shell) shell.classList.toggle('expanded', !!collapsed);
+    });
+
+    window.addEventListener('nav:theme-changed', () => {
+        // ارسال به iframe‌ها
+        broadcastToIframes('theme-changed', {
+            theme: document.documentElement.getAttribute('data-theme'),
+            color: document.documentElement.getAttribute('data-color')
+        });
+    });
+}
+
+// ============================================================
+// BROADCAST TO IFRAMES
+// ============================================================
+function broadcastToIframes(type, detail = {}) {
+    $$('.tab-panel iframe').forEach(iframe => {
+        try {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type, ...detail }, '*');
+            }
+        } catch (e) {}
+    });
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+function refreshCurrentTab() {
+    const btn = $('#refreshBtn');
+    if (btn) {
+        btn.style.transform = 'rotate(360deg)';
+        btn.style.transition = 'transform 0.6s';
+    }
+
+    const tabKey = state.currentTab;
+    const cfg = CONFIG.TABS[tabKey];
+
+    // پاک کردن کش این تب
+    state.loadedTabs.delete(tabKey);
+
+    // Reload iframe
+    const iframe = document.getElementById(cfg.iframe);
+    if (iframe) {
+        showIframeLoader(tabKey);
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+            iframe.src = cfg.src;
+        }, 100);
+    }
+
+    setTimeout(() => {
+        if (btn) {
+            btn.style.transform = '';
+            btn.style.transition = '';
+        }
+    }, 600);
+
+    showToast('در حال بروزرسانی...', 'info', 1500);
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+function setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+        const isInput = e.target.matches('input, textarea, select');
+        const mod = e.ctrlKey || e.metaKey;
+
+        // Ctrl+1 → Market
+        if (mod && e.key === '1') {
+            e.preventDefault();
+            switchTab('market');
+            return;
+        }
+        // Ctrl+2 → Analyze
+        if (mod && e.key === '2') {
+            e.preventDefault();
+            switchTab('analyze');
+            return;
+        }
+        // Ctrl+3 → Portfolio
+        if (mod && e.key === '3') {
+            e.preventDefault();
+            switchTab('portfolio');
+            return;
+        }
+        // Ctrl+R → Refresh
+        if (mod && e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            refreshCurrentTab();
+            return;
+        }
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log('%c 🎯 Analyzer Shell v1.0 ', 'background: linear-gradient(135deg, #06b6d4, #6366f1); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;');
+
+    const isRefresh = isReload();
+    state.isRefresh = isRefresh;
+
+    // نمایش neon loader فقط موقع رفرش
+    if (isRefresh) {
+        showNeonLoader();
+    }
+
+    // Nav
+    setupNavListeners();
+    await loadNav();
+
+    // Nav tabs event
+    $$('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTab(btn.dataset.tab);
+        });
+    });
+
+    // Refresh button
+    $('#refreshBtn')?.addEventListener('click', refreshCurrentTab);
+
+    // Popstate (back/forward)
+    window.addEventListener('popstate', handlePopState);
+
+    // Keyboard
+    setupKeyboard();
+
+    // ====== تعیین تب اولیه ======
+    let initialTab = 'market';
+
+    // از URL
+    const path = window.location.pathname;
+    if (path === '/analyzer/analyze') initialTab = 'analyze';
+    else if (path === '/analyzer/portfolio') initialTab = 'portfolio';
+
+    // از localStorage (اگه URL مستقیم نبود)
+    if (path === '/analyzer' || path === '/analyzer/') {
+        try {
+            const savedTab = localStorage.getItem('analyzer_last_tab');
+            if (savedTab && CONFIG.TABS[savedTab]) {
+                initialTab = savedTab;
+            }
+        } catch (e) {}
+    }
+
+    // سوئیچ به تب اولیه (بدون updateUrl چون URL همینه)
+    switchTab(initialTab, { updateUrl: false });
+
+    // مخفی کردن neon loader
+    if (isRefresh) {
+        // حداقل 800ms نشون بده
+        setTimeout(() => {
+            hideNeonLoader();
+            // آماده‌سازی: نمایش shell
+            const shell = $('#analyzerShell');
+            if (shell) shell.style.opacity = '1';
+        }, 800);
+    } else {
+        // اولین بار: مستقیم shell نمایش داده می‌شه
+        const shell = $('#analyzerShell');
+        if (shell) shell.style.opacity = '1';
+    }
+
+    console.log('✅ Shell ready | tab:', initialTab, '| refresh:', isRefresh);
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+// Cleanup
+window.__analyzerShellCleanup = function() {
+    window.__analyzerShellLoaded = false;
+};
+
+})();
+</script>
+
+</body>
+</html>
