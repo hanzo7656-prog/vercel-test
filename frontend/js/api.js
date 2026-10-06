@@ -754,6 +754,44 @@ class ApiClient {
     }
 
     // ============================================================
+    // OHLCV — داده کندل واقعی (از DB یا CoinStats)
+    // ============================================================
+
+    /**
+     * دریافت OHLCV کندل‌ها
+     * @param {string} coin - 'bitcoin' یا 'BTC' یا 'BTC/USDT'
+     * @param {string} interval - '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'
+     * @param {string} range - '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'
+     * @param {number} limit - حداکثر تعداد (پیش‌فرض: 1000)
+     */
+    async getOHLCV(coin, interval = '1h', range = '1mo', limit = 1000) {
+        return this.request(
+            `/api/coinstats/ohlcv?coin=${encodeURIComponent(coin)}&interval=${interval}&range=${range}&limit=${limit}`
+        );
+    },
+
+    /**
+     * آمار OHLCV (برای دیباگ)
+     */
+    async getOHLCVStats() {
+        return this.request('/api/coinstats/ohlcv-stats');
+    },
+
+    /**
+     * پاکسازی رکوردهای قدیمی OHLCV
+     * @param {number} retentionDays - مدت نگهداری (پیش‌فرض: 90)
+     * @param {string} interval - فقط یک interval خاص (اختیاری)
+     */
+    async cleanupOHLCV(retentionDays = 90, interval = null) {
+        const body = { retention_days: retentionDays };
+        if (interval) body.interval = interval;
+    
+        return this.request('/api/coinstats/ohlcv-cleanup', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+    // ============================================================
     // ۲۳. قیمت‌های لحظه‌ای (CRYPTO)
     // ============================================================
 
