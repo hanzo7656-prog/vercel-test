@@ -1,0 +1,5948 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="indigo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>پورتفولیو — تحلیلگر بازار</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+
+/* ============================================================
+   VARIABLES
+   ============================================================ */
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-rgb: 99, 102, 241;
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --purple: #a855f7;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(99, 102, 241, 0.1);
+    --purple-bg: rgba(168, 85, 247, 0.1);
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Color themes */
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; }
+html[data-color="violet"]  { --primary: #a855f7; --primary-dark: #9333ea; --primary-light: #c084fc; --primary-rgb: 168, 85, 247; }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+
+/* Light theme */
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+/* Reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: 12px 16px 40px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ============================================================
+   COIN HEADER
+   ============================================================ */
+.coin-header {
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 100;
+}
+
+.coin-header-icon {
+    width: 46px; height: 46px;
+    min-width: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
+}
+
+.coin-header-info { flex: 1; min-width: 0; }
+
+.coin-header-symbol {
+    font-family: var(--mono-font);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rank-badge {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    background: var(--bg-hover);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.coin-header-name {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.coin-header-price-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.coin-header-price {
+    font-family: var(--mono-font);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.5px;
+    transition: color 0.4s;
+}
+
+.coin-header-price.flash-up { animation: headerFlashUp 0.9s; }
+.coin-header-price.flash-down { animation: headerFlashDown 0.9s; }
+
+@keyframes headerFlashUp {
+    0% { color: var(--success); transform: scale(1.05); }
+    100% { color: var(--text-light); transform: scale(1); }
+}
+@keyframes headerFlashDown {
+    0% { color: var(--danger); transform: scale(1.05); }
+    100% { color: var(--text-light); transform: scale(1); }
+}
+
+.coin-header-change {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.coin-header-change.up { color: var(--success); }
+.coin-header-change.down { color: var(--danger); }
+
+/* Coin Search */
+.coin-search-wrap {
+    position: relative;
+    width: 240px;
+    flex-shrink: 0;
+    z-index: 101;
+}
+
+.coin-search-input {
+    width: 100%;
+    padding: 9px 36px 9px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.18s;
+}
+
+.coin-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+    background: var(--bg-card-solid);
+}
+
+.coin-search-input::placeholder {
+    color: var(--text-faint);
+    font-weight: 400;
+}
+
+.coin-search-icon {
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    width: 13px;
+    height: 13px;
+}
+
+.coin-search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+    max-height: 380px;
+    overflow-y: auto;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    padding: 6px;
+}
+
+.coin-search-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.coin-search-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.coin-search-item:hover,
+.coin-search-item.selected {
+    background: var(--primary-bg);
+    transform: translateX(-2px);
+}
+
+.coin-search-item-icon {
+    width: 30px; height: 30px;
+    min-width: 30px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 10.5px;
+    color: var(--primary-light);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.coin-search-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.coin-search-item-symbol {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.coin-search-item-name {
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+.coin-search-item-price {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+/* Notification Center */
+.notif-wrap {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.notif-bell {
+    position: relative;
+    width: 32px; height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.notif-bell:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.notif-bell svg { width: 14px; height: 14px; }
+
+.notif-badge {
+    position: absolute;
+    top: -4px; left: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--danger);
+    color: white;
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-page);
+}
+
+.notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 340px;
+    max-height: 420px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notif-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.notif-clear {
+    width: 24px; height: 24px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.notif-clear:hover { background: var(--danger); color: white; }
+.notif-clear svg { width: 12px; height: 12px; }
+
+.notif-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notif-list::-webkit-scrollbar { width: 4px; }
+.notif-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    cursor: pointer;
+    position: relative;
+}
+
+.notif-item:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+}
+
+.notif-item.success { border-right: 3px solid var(--success); }
+.notif-item.warning { border-right: 3px solid var(--warning); }
+.notif-item.danger  { border-right: 3px solid var(--danger); }
+.notif-item.info    { border-right: 3px solid var(--info); }
+
+.notif-item-icon {
+    width: 26px; height: 26px;
+    min-width: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notif-item.success .notif-item-icon { background: var(--success-bg); color: var(--success); }
+.notif-item.warning .notif-item-icon { background: var(--warning-bg); color: var(--warning); }
+.notif-item.danger  .notif-item-icon { background: var(--danger-bg); color: var(--danger); }
+.notif-item.info    .notif-item-icon { background: var(--info-bg); color: var(--info); }
+
+.notif-item-icon svg { width: 12px; height: 12px; }
+
+.notif-item-body { flex: 1; min-width: 0; }
+
+.notif-item-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 2px;
+}
+
+.notif-item-msg {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.notif-item-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    margin-top: 3px;
+}
+
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.notif-empty svg { width: 32px; height: 32px; opacity: 0.4; }
+
+/* ============================================================
+   MAIN GRID
+   ============================================================ */
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 1100px) {
+    .portfolio-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   CHART CARD
+   ============================================================ */
+.chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tf-buttons {
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tf-buttons::-webkit-scrollbar { display: none; }
+
+.tf-btn {
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.tf-btn:hover { background: var(--bg-hover); color: var(--text-light); }
+.tf-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+}
+
+.chart-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.icon-btn {
+    width: 32px; height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.icon-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+}
+
+.icon-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.icon-btn svg { width: 14px; height: 14px; }
+
+/* Chart Wrapper */
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 520px;
+}
+
+#chart {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Position Marker */
+.position-marker {
+    position: absolute;
+    left: 10px;
+    z-index: 8;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    transition: top 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.position-marker svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    stroke-width: 2.5;
+}
+
+.position-marker.long {
+    background: rgba(34, 197, 94, 0.95);
+    color: white;
+    border: 1px solid rgba(74, 222, 128, 0.7);
+}
+
+.position-marker.short {
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    border: 1px solid rgba(248, 113, 113, 0.7);
+}
+
+/* PnL Overlay */
+.pnl-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 8;
+    pointer-events: none;
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-family: var(--mono-font);
+    background: rgba(0, 0, 0, 0.88);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    direction: rtl;
+}
+
+.pnl-overlay.show { display: flex; }
+.pnl-overlay.up { border-color: rgba(34, 197, 94, 0.5); }
+.pnl-overlay.down { border-color: rgba(239, 68, 68, 0.5); }
+
+.pnl-overlay-label {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+}
+
+.pnl-overlay-value {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+.pnl-overlay.up .pnl-overlay-value { color: var(--success); }
+.pnl-overlay.down .pnl-overlay-value { color: var(--danger); }
+
+.pnl-overlay-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Live Price Badge */
+.live-price-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 8;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-light);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.live-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--success);
+    animation: livePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* Drag Tooltip */
+.drag-overlay {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.5);
+    border-radius: 10px;
+    padding: 9px 13px;
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: white;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    transform: translate(-50%, -130%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+}
+
+.drag-overlay.show { opacity: 1; }
+.drag-overlay.tp { border-color: rgba(34, 197, 94, 0.7); }
+.drag-overlay.sl { border-color: rgba(239, 68, 68, 0.7); }
+.drag-overlay.entry { border-color: rgba(99, 102, 241, 0.7); }
+.drag-overlay.liq { border-color: rgba(245, 158, 11, 0.7); }
+
+.drag-overlay-label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.drag-overlay-label svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2.5;
+}
+
+.drag-overlay-price { font-size: 14px; }
+.drag-overlay.tp .drag-overlay-price { color: #22c55e; }
+.drag-overlay.sl .drag-overlay-price { color: #ef4444; }
+.drag-overlay.entry .drag-overlay-price { color: #818cf8; }
+.drag-overlay.liq .drag-overlay-price { color: #f59e0b; }
+
+/* Chart Stats Bar */
+.chart-stats-bar {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+}
+
+.chart-stat {
+    padding: 10px 12px;
+    background: var(--bg-input);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chart-stat-label {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chart-stat-value {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chart-stat-value.up { color: var(--success); }
+.chart-stat-value.down { color: var(--danger); }
+.chart-stat-value.warning { color: var(--warning); }
+
+@media (max-width: 900px) {
+    .chart-stats-bar { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .chart-stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .chart-wrapper { height: 380px; }
+}
+
+/* Fullscreen */
+body.chart-fullscreen .coin-header,
+body.chart-fullscreen .portfolio-side,
+body.chart-fullscreen .bottom-panel {
+    display: none !important;
+}
+
+body.chart-fullscreen .portfolio-grid {
+    display: block;
+    margin: 0;
+}
+
+body.chart-fullscreen .chart-card {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    border-radius: 0;
+    margin: 0;
+}
+
+body.chart-fullscreen .chart-wrapper {
+    height: calc(100vh - 52px - 52px);
+}
+
+body.chart-fullscreen .chart-stats-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.portfolio-side {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.side-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.side-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+}
+
+.side-card-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.side-card-title svg { width: 13px; height: 13px; color: var(--primary-light); }
+
+.side-card-body { padding: 12px; }
+
+/* Account Stats Grid */
+.account-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.acc-stat {
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border: 1px solid var(--border);
+}
+
+.acc-stat-label {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.acc-stat-value {
+    font-family: var(--mono-font);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.acc-stat-value.up { color: var(--success); }
+.acc-stat-value.down { color: var(--danger); }
+.acc-stat-value.warning { color: var(--warning); }
+.acc-stat-value.primary { color: var(--primary-light); }
+
+/* ============================================================
+   ORDER FORM
+   ============================================================ */
+.order-side-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+}
+
+.order-side-btn {
+    padding: 10px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.order-side-btn svg { width: 13px; height: 13px; }
+.order-side-btn:hover { background: var(--bg-hover); }
+
+.order-side-btn.buy.active {
+    background: linear-gradient(135deg, var(--success), var(--success-dark));
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+}
+
+.order-side-btn.sell.active {
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.order-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Form Field */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    gap: 6px;
+}
+
+.form-label > span:first-child {
+    white-space: nowrap;
+}
+
+.form-label > span:last-child {
+    font-size: 9.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.form-input-wrap {
+    display: flex;
+    align-items: stretch;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+    transition: all 0.15s;
+}
+
+.form-input-wrap:focus-within {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.form-input {
+    flex: 1;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    width: 100%;
+}
+
+.form-input::placeholder { color: var(--text-faint); }
+
+.form-suffix {
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    background: var(--bg-hover);
+    border-left: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.form-select {
+    padding: 9px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+}
+
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+}
+
+/* Percent Buttons */
+.percent-btns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.percent-btn {
+    padding: 6px 4px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.percent-btn:hover {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.percent-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Leverage Box */
+.leverage-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--warning-bg);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 9px;
+}
+
+.leverage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.leverage-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--warning);
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.leverage-label svg { width: 12px; height: 12px; }
+
+.leverage-value {
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--warning);
+    padding: 2px 10px;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 6px;
+}
+
+.leverage-btns {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+}
+
+.lev-btn {
+    padding: 6px 4px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.lev-btn:hover { background: var(--bg-hover-strong); color: var(--text-light); }
+
+.lev-btn.active {
+    background: var(--warning);
+    color: white;
+    border-color: var(--warning);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* Margin Mode */
+.margin-mode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.mm-btn {
+    padding: 7px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+}
+
+.mm-btn:hover {
+    background: var(--bg-hover-strong);
+    color: var(--text-light);
+}
+
+.mm-btn.active {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border-color: rgba(var(--primary-rgb), 0.4);
+}
+
+/* TP/SL Toggle */
+.tpsl-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 11px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tpsl-toggle:hover { border-color: var(--border-strong); }
+
+.tpsl-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.tpsl-toggle-label svg { width: 12px; height: 12px; }
+
+.switch {
+    width: 32px; height: 18px;
+    background: var(--bg-hover-strong);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.switch::after {
+    content: '';
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tpsl-toggle.active .switch { background: var(--primary); }
+.tpsl-toggle.active .switch::after { transform: translateX(-14px); }
+
+.tpsl-fields {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    animation: slideDown 0.3s ease;
+}
+
+.tpsl-fields.open { display: flex; }
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Order Summary */
+.order-summary {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10.5px;
+    font-family: var(--mono-font);
+    gap: 8px;
+}
+
+.summary-row-label { color: var(--text-dim); }
+
+.summary-row-value {
+    color: var(--text-light);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.summary-row-value.up { color: var(--success); }
+.summary-row-value.down { color: var(--danger); }
+.summary-row-value.warning { color: var(--warning); }
+.summary-row-value.primary { color: var(--primary-light); }
+
+/* Submit Button */
+.submit-btn {
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: white;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.submit-btn svg { width: 15px; height: 15px; }
+
+.submit-btn.buy {
+    background: linear-gradient(135deg, var(--success), var(--success-dark));
+}
+.submit-btn.buy:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.5);
+}
+.submit-btn.sell {
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+}
+.submit-btn.sell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
+}
+
+.submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.submit-btn .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   POSITIONS LIST
+   ============================================================ */
+.positions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.positions-list::-webkit-scrollbar { width: 4px; }
+.positions-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.position-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.position-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.position-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.position-card.long::before { background: var(--success); box-shadow: 0 0 12px var(--success); }
+.position-card.short::before { background: var(--danger); box-shadow: 0 0 12px var(--danger); }
+
+.position-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.position-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.position-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.position-badge.long {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.position-badge.short {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.position-symbol {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.position-lev {
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--warning);
+    padding: 2px 6px;
+    background: var(--warning-bg);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.position-pnl {
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.position-pnl-value {
+    font-family: var(--mono-font);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    line-height: 1;
+}
+
+.position-pnl-value.up { color: var(--success); }
+.position-pnl-value.down { color: var(--danger); }
+
+.position-pnl-pct {
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.position-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.position-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    background: var(--bg-hover);
+    border-radius: 6px;
+}
+
+.position-stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.position-stat-value {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.position-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+}
+
+.position-action {
+    padding: 7px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.position-action svg { width: 12px; height: 12px; }
+
+.position-action:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+}
+
+.position-action.close:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.position-action.edit:hover {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Empty State */
+.empty-tab {
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.empty-icon {
+    width: 50px; height: 50px;
+    color: var(--text-faint);
+    opacity: 0.5;
+}
+
+.empty-icon svg { width: 100%; height: 100%; }
+
+.empty-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.empty-msg {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    max-width: 240px;
+    line-height: 1.6;
+}
+
+/* ============================================================
+   BOTTOM PANEL
+   ============================================================ */
+.bottom-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.bottom-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.bottom-tabs::-webkit-scrollbar { display: none; }
+
+.bottom-tab {
+    flex: 1;
+    min-width: 110px;
+    padding: 9px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+
+.bottom-tab svg { width: 13px; height: 13px; }
+
+.bottom-tab:hover { background: var(--bg-hover); color: var(--text-light); }
+
+.bottom-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+}
+
+.bottom-tab .tab-count {
+    padding: 1px 7px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+}
+
+.bottom-tab:not(.active) .tab-count {
+    background: var(--bg-hover);
+    color: var(--text-dim);
+}
+
+.bottom-content {
+    padding: 14px;
+    min-height: 200px;
+}
+
+/* History Table */
+.history-table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    min-width: 700px;
+}
+
+.history-table thead {
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+}
+
+.history-table th {
+    padding: 10px 12px;
+    text-align: right;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+}
+
+.history-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    white-space: nowrap;
+}
+
+.history-table tbody tr:hover { background: var(--bg-hover); }
+.history-table tbody tr:last-child td { border-bottom: none; }
+
+@media (max-width: 640px) {
+    .history-table .hide-mobile { display: none; }
+    .history-table th, .history-table td { padding: 8px; font-size: 11px; }
+}
+
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.type-badge.buy, .type-badge.long, .type-badge.open { background: var(--success-bg); color: var(--success); }
+.type-badge.sell, .type-badge.short, .type-badge.close { background: var(--danger-bg); color: var(--danger); }
+.type-badge.limit { background: var(--info-bg); color: var(--info); }
+.type-badge.market { background: var(--purple-bg); color: var(--purple); }
+
+/* Assets Grid */
+.assets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 768px) { .assets-grid { grid-template-columns: 1fr; } }
+
+.asset-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    margin-bottom: 6px;
+}
+
+.asset-coin {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.asset-icon {
+    width: 32px; height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.asset-icon svg { width: 15px; height: 15px; }
+
+.asset-symbol {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.asset-name {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 1px;
+}
+
+.asset-value {
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.asset-balance {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.asset-usd {
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    color: var(--text-muted);
+}
+
+/* Performance */
+.perf-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 900px) { .perf-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .perf-grid { grid-template-columns: 1fr; } }
+
+.perf-stat {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 13px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+.perf-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px;
+    height: 100%;
+}
+
+.perf-stat.primary::before { background: var(--primary); }
+.perf-stat.success::before { background: var(--success); }
+.perf-stat.danger::before { background: var(--danger); }
+.perf-stat.warning::before { background: var(--warning); }
+
+.perf-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.perf-stat-value {
+    font-family: var(--mono-font);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    line-height: 1.1;
+    color: var(--text-light);
+}
+
+.perf-stat-value.up { color: var(--success); }
+.perf-stat-value.down { color: var(--danger); }
+.perf-stat-value.primary { color: var(--primary-light); }
+
+.perf-stat-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.perf-chart-wrap {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.perf-chart-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.perf-chart-title svg { width: 13px; height: 13px; color: var(--primary-light); }
+
+.perf-chart-container {
+    height: 220px;
+    position: relative;
+}
+
+.perf-chart-container canvas { max-height: 100%; }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.92);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), transparent);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.modal-title svg { width: 15px; height: 15px; color: var(--primary-light); }
+
+.modal-close {
+    width: 30px; height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.modal-close:hover { background: var(--danger); color: white; }
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-body p {
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+.modal-info {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.modal-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    gap: 8px;
+}
+
+.modal-info-label {
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 600;
+}
+
+.modal-info-value {
+    font-family: var(--mono-font);
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.modal-info-value.up { color: var(--success); }
+.modal-info-value.down { color: var(--danger); }
+
+.partial-btns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.partial-btn {
+    padding: 10px 6px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.partial-btn:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.partial-btn.active {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--bg-card);
+    flex-shrink: 0;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn.cancel {
+    background: var(--bg-hover);
+    color: var(--text-light);
+}
+.modal-btn.cancel:hover { background: var(--bg-hover-strong); }
+
+.modal-btn.confirm {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+.modal-btn.confirm:hover {
+    background: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   CONTEXT MENU
+   ============================================================ */
+.context-menu {
+    position: fixed;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    padding: 6px;
+    min-width: 200px;
+    z-index: 99999;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    animation: ctxIn 0.15s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+@keyframes ctxIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu.open { display: flex; }
+
+.ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: right;
+    width: 100%;
+}
+
+.ctx-item:hover {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+}
+
+.ctx-item svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.ctx-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: 400px;
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    body { padding: 10px 10px 30px; }
+    .coin-header { padding: 10px 12px; gap: 10px; }
+    .coin-header-icon { width: 40px; height: 40px; min-width: 40px; font-size: 13px; }
+    .coin-header-price { font-size: 17px; }
+    .coin-header-symbol { font-size: 15px; }
+    .coin-search-wrap { width: 100%; }
+    .tf-btn { padding: 4px 8px; font-size: 10px; }
+    .icon-btn { width: 30px; height: 30px; }
+    .icon-btn svg { width: 13px; height: 13px; }
+    .chart-wrapper { height: 340px; }
+    .pnl-overlay { padding: 8px 10px; }
+    .pnl-overlay-value { font-size: 15px; }
+    .live-price-badge { font-size: 10px; padding: 4px 8px; }
+}
+
+@media (max-width: 480px) {
+    .chart-actions { gap: 4px; }
+    .icon-btn { width: 28px; height: 28px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     COIN HEADER
+     ============================================================ -->
+<div class="coin-header">
+    <div class="coin-header-icon" id="coinIcon">BTC</div>
+    <div class="coin-header-info">
+        <div class="coin-header-symbol">
+            <span id="coinSymbol">BTC</span>
+            <span class="rank-badge" id="coinRank">#1</span>
+        </div>
+        <div class="coin-header-name" id="coinName">Bitcoin</div>
+    </div>
+    <div class="coin-header-price-block">
+        <div class="coin-header-price" id="coinPrice" data-price="0">$0.00</div>
+        <div class="coin-header-change up" id="coinChange">
+            <span id="coinChangeText">+0.00%</span>
+        </div>
+    </div>
+
+    <!-- Coin Search -->
+    <div class="coin-search-wrap" id="coinSearchWrap">
+        <input type="text" class="coin-search-input" id="coinSearchInput" placeholder="جستجوی ارز..." autocomplete="off" spellcheck="false">
+        <svg class="coin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <div class="coin-search-dropdown" id="coinSearchDropdown"></div>
+    </div>
+
+    <!-- Notification Center -->
+    <div class="notif-wrap" id="notifWrap">
+        <button class="notif-bell" id="notifBell" title="اعلان‌ها">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+        </button>
+        <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-header">
+                <span>اعلان‌ها</span>
+                <button class="notif-clear" id="notifClearBtn" title="پاک کردن همه">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="notif-list" id="notifList"></div>
+            <div class="notif-empty" id="notifEmpty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span>اعلانی نیست</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MAIN GRID
+     ============================================================ -->
+<div class="portfolio-grid">
+
+    <!-- ===== LEFT: Chart ===== -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <div class="tf-buttons" id="tfButtons">
+                <button class="tf-btn" data-tf="1">۱m</button>
+                <button class="tf-btn" data-tf="5">۵m</button>
+                <button class="tf-btn" data-tf="15">۱۵m</button>
+                <button class="tf-btn active" data-tf="60">۱h</button>
+                <button class="tf-btn" data-tf="240">۴h</button>
+                <button class="tf-btn" data-tf="D">۱D</button>
+            </div>
+            <div class="chart-actions">
+                <button class="icon-btn" id="toggleIndicatorsBtn" title="اندیکاتورها (SMA/EMA)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="m19 9-5 5-4-4-3 3"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="toggleVolumeBtn" title="حجم">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                        <line x1="12" y1="20" x2="12" y2="8"/>
+                        <line x1="18" y1="20" x2="18" y2="4"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="snapshotBtn" title="اسنپ‌شات">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="resetChartBtn" title="ریست">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="fullscreenBtn" title="تمام صفحه">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chart Wrapper with Overlays -->
+        <div class="chart-wrapper" id="chartWrapper">
+            <div id="chart"></div>
+
+            <!-- Position Marker -->
+            <div class="position-marker" id="positionMarker" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                </svg>
+                <span id="positionMarkerText">Entry</span>
+            </div>
+
+            <!-- PnL Overlay -->
+            <div class="pnl-overlay" id="pnlOverlay">
+                <div class="pnl-overlay-label">PnL زنده</div>
+                <div class="pnl-overlay-value" id="pnlOverlayValue">$0.00</div>
+                <div class="pnl-overlay-meta" id="pnlOverlayMeta">—</div>
+            </div>
+
+            <!-- Live Price Badge -->
+            <div class="live-price-badge" id="livePriceBadge">
+                <span class="live-dot"></span>
+                <span id="livePriceText">—</span>
+            </div>
+
+            <!-- Drag Tooltip -->
+            <div class="drag-overlay" id="dragOverlay">
+                <div class="drag-overlay-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" id="dragOverlayIcon">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                    <span id="dragOverlayLabel">—</span>
+                </div>
+                <div class="drag-overlay-price" id="dragOverlayPrice">—</div>
+            </div>
+        </div>
+
+        <!-- Chart Stats Bar -->
+        <div class="chart-stats-bar">
+            <div class="chart-stat">
+                <span class="chart-stat-label">Current</span>
+                <span class="chart-stat-value" id="statCurrent">$0.00</span>
+            </div>
+            <div class="chart-stat">
+                <span class="chart-stat-label">Entry</span>
+                <span class="chart-stat-value" id="statEntry">—</span>
+            </div>
+            <div class="chart-stat">
+                <span class="chart-stat-label">Take Profit</span>
+                <span class="chart-stat-value up" id="statTp">—</span>
+            </div>
+            <div class="chart-stat">
+                <span class="chart-stat-label">Stop Loss</span>
+                <span class="chart-stat-value down" id="statSl">—</span>
+            </div>
+            <div class="chart-stat">
+                <span class="chart-stat-label">Liq. Price</span>
+                <span class="chart-stat-value warning" id="statLiq">—</span>
+            </div>
+            <div class="chart-stat">
+                <span class="chart-stat-label">R / R</span>
+                <span class="chart-stat-value" id="statRr">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RIGHT: Sidebar ===== -->
+    <div class="portfolio-side">
+
+        <!-- Account Stats -->
+        <div class="side-card">
+            <div class="side-card-header">
+                <div class="side-card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 7h-9"/>
+                        <path d="M14 17H5"/>
+                        <circle cx="17" cy="17" r="3"/>
+                        <circle cx="7" cy="7" r="3"/>
+                    </svg>
+                    موجودی دمو
+                </div>
+                <span class="rank-badge">Paper</span>
+            </div>
+            <div class="side-card-body">
+                <div class="account-grid">
+                    <div class="acc-stat">
+                        <span class="acc-stat-label">Equity</span>
+                        <span class="acc-stat-value primary" id="accEquity">$0.00</span>
+                    </div>
+                    <div class="acc-stat">
+                        <span class="acc-stat-label">P&L</span>
+                        <span class="acc-stat-value" id="accPnl">$0.00</span>
+                    </div>
+                    <div class="acc-stat">
+                        <span class="acc-stat-label">Free Margin</span>
+                        <span class="acc-stat-value" id="accFree">$0.00</span>
+                    </div>
+                    <div class="acc-stat">
+                        <span class="acc-stat-label">Margin Used</span>
+                        <span class="acc-stat-value warning" id="accMargin">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Form -->
+        <div class="side-card">
+            <div class="order-side-toggle" id="orderSideToggle">
+                <button class="order-side-btn buy active" data-side="buy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                    Long
+                </button>
+                <button class="order-side-btn sell" data-side="sell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <polyline points="19 12 12 19 5 12"/>
+                    </svg>
+                    Short
+                </button>
+            </div>
+
+            <div class="order-body">
+
+                <!-- Order Type -->
+                <div class="form-field">
+                    <label class="form-label">Order Type</label>
+                    <select class="form-select" id="orderType">
+                        <option value="market">Market</option>
+                        <option value="limit" selected>Limit</option>
+                        <option value="stop">Stop Market</option>
+                    </select>
+                </div>
+
+                <!-- Entry Price -->
+                <div class="form-field">
+                    <label class="form-label">
+                        <span>قیمت ورود</span>
+                        <span style="color: var(--primary-light);">USDT</span>
+                    </label>
+                    <div class="form-input-wrap">
+                        <input type="number" class="form-input" id="inputEntry" placeholder="0.00" step="0.01">
+                        <span class="form-suffix">$</span>
+                    </div>
+                </div>
+
+                <!-- Amount -->
+                <div class="form-field">
+                    <label class="form-label">
+                        <span>مقدار (USD)</span>
+                        <span style="color: var(--text-dim);" id="maxAmountHint">—</span>
+                    </label>
+                    <div class="form-input-wrap">
+                        <input type="number" class="form-input" id="inputAmount" placeholder="100" step="1">
+                        <span class="form-suffix">$</span>
+                    </div>
+                    <div class="percent-btns" id="percentBtns">
+                        <button class="percent-btn" data-pct="10">10%</button>
+                        <button class="percent-btn" data-pct="25">25%</button>
+                        <button class="percent-btn" data-pct="50">50%</button>
+                        <button class="percent-btn active" data-pct="100">MAX</button>
+                    </div>
+                </div>
+
+                <!-- Leverage -->
+                <div class="leverage-box">
+                    <div class="leverage-header">
+                        <span class="leverage-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                            Leverage
+                        </span>
+                        <span class="leverage-value" id="leverageValue">10x</span>
+                    </div>
+                    <div class="leverage-btns" id="leverageBtns">
+                        <button class="lev-btn" data-lev="1">1x</button>
+                        <button class="lev-btn" data-lev="2">2x</button>
+                        <button class="lev-btn" data-lev="5">5x</button>
+                        <button class="lev-btn active" data-lev="10">10x</button>
+                        <button class="lev-btn" data-lev="20">20x</button>
+                    </div>
+                    <div class="leverage-btns" style="margin-top: 4px;">
+                        <button class="lev-btn" data-lev="50">50x</button>
+                        <button class="lev-btn" data-lev="100">100x</button>
+                        <button class="lev-btn" data-lev="125" style="grid-column: span 3;">125x</button>
+                    </div>
+                </div>
+
+                <!-- Margin Mode -->
+                <div class="form-field">
+                    <label class="form-label">Margin Mode</label>
+                    <div class="margin-mode-toggle" id="marginModeToggle">
+                        <button class="mm-btn active" data-mode="cross">Cross</button>
+                        <button class="mm-btn" data-mode="isolated">Isolated</button>
+                    </div>
+                </div>
+
+                <!-- TP/SL Toggle -->
+                <div class="tpsl-toggle" id="tpslToggle">
+                    <span class="tpsl-toggle-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Take Profit / Stop Loss
+                    </span>
+                    <span class="switch"></span>
+                </div>
+
+                <div class="tpsl-fields" id="tpslFields">
+                    <div class="form-field">
+                        <label class="form-label">
+                            <span>Take Profit</span>
+                            <span style="color: var(--success);">سود</span>
+                        </label>
+                        <div class="form-input-wrap">
+                            <input type="number" class="form-input" id="inputTp" placeholder="0.00" step="0.01">
+                            <span class="form-suffix">$</span>
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">
+                            <span>Stop Loss</span>
+                            <span style="color: var(--danger);">ضرر</span>
+                        </label>
+                        <div class="form-input-wrap">
+                            <input type="number" class="form-input" id="inputSl" placeholder="0.00" step="0.01">
+                            <span class="form-suffix">$</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <div class="summary-row">
+                        <span class="summary-row-label">Total</span>
+                        <span class="summary-row-value" id="sumTotal">$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-row-label">Fee (0.1%)</span>
+                        <span class="summary-row-value" id="sumFee">$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-row-label">Margin</span>
+                        <span class="summary-row-value warning" id="sumMargin">$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-row-label">Liq. Price</span>
+                        <span class="summary-row-value down" id="sumLiq">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button class="submit-btn buy" id="submitBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                    <span id="submitBtnText">باز کردن Long</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="side-card">
+            <div class="side-card-header">
+                <div class="side-card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    پوزیشن‌های باز
+                </div>
+                <span class="rank-badge" id="positionCount">۰</span>
+            </div>
+            <div class="positions-list" id="positionsList"></div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM PANEL
+     ============================================================ -->
+<div class="bottom-panel">
+    <div class="bottom-tabs" id="bottomTabs">
+        <button class="bottom-tab active" data-tab="history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <path d="M12 7v5l4 2"/>
+            </svg>
+            تاریخچه
+            <span class="tab-count" id="historyCount">۰</span>
+        </button>
+        <button class="bottom-tab" data-tab="orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            سفارشات
+            <span class="tab-count" id="ordersCount">۰</span>
+        </button>
+        <button class="bottom-tab" data-tab="assets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 7h-9"/>
+                <path d="M14 17H5"/>
+                <circle cx="17" cy="17" r="3"/>
+                <circle cx="7" cy="7" r="3"/>
+            </svg>
+            دارایی‌ها
+        </button>
+        <button class="bottom-tab" data-tab="performance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            عملکرد
+        </button>
+    </div>
+    <div class="bottom-content" id="bottomContent"></div>
+</div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Close Position Modal -->
+<div class="modal-overlay" id="closeModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                بستن پوزیشن
+            </div>
+            <button class="modal-close" data-close-modal="closeModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-info" id="closeModalInfo"></div>
+            <div>
+                <div style="font-size: 10.5px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; letter-spacing: 0.4px;">
+                    درصد بستن
+                </div>
+                <div class="partial-btns" id="partialBtns">
+                    <button class="partial-btn" data-pct="25">25%</button>
+                    <button class="partial-btn" data-pct="50">50%</button>
+                    <button class="partial-btn" data-pct="75">75%</button>
+                    <button class="partial-btn active" data-pct="100">100%</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="closeModal">انصراف</button>
+            <button class="modal-btn confirm" id="confirmCloseBtn">بستن پوزیشن</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal" style="max-width: 420px;">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span id="confirmTitle">تأیید</span>
+            </div>
+            <button class="modal-close" data-close-modal="confirmModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:26px 20px;">
+            <p style="font-size:13.5px;color:var(--text-light);line-height:1.7;font-weight:600;" id="confirmMessage">آیا مطمئن هستید؟</p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="confirmModal">انصراف</button>
+            <button class="modal-btn confirm" id="confirmOkBtn">تأیید</button>
+        </div>
+    </div>
+</div>
+
+<!-- Right-click Context Menu -->
+<div class="context-menu" id="contextMenu">
+    <button class="ctx-item" data-action="reset-chart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"/>
+            <path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+        </svg>
+        ریست چارت
+    </button>
+    <button class="ctx-item" data-action="toggle-sma">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        SMA / EMA
+    </button>
+    <button class="ctx-item" data-action="snapshot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+        </svg>
+        اسنپ‌شات
+    </button>
+    <button class="ctx-item" data-action="fullscreen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+        تمام صفحه
+    </button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item" data-action="clear-tpsl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        پاک کردن TP/SL
+    </button>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script>
+// ============================================================
+// PART 1 — CORE (Config, State, Utils, API, WebSocket, ChartEngine)
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__portfolioPart1Loaded) return;
+window.__portfolioPart1Loaded = true;
+
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    API: {
+        COINS: '/api/coinstats/coins',
+        CHART: '/api/coinstats/chart',
+        WS_PRICE: '/api/ws/price',
+        WS_ORDERBOOK: '/api/ws/orderbook',
+        WS_TRADES: '/api/ws/trades',
+    },
+    CANDLE_COUNT: 200,
+    TIMEFRAME_SECONDS: {
+        '1': 60, '5': 300, '15': 900, '60': 3600, '240': 14400, 'D': 86400
+    },
+    DRAG_THRESHOLD_PX: 10,
+    MAX_NOTIFICATIONS: 50,
+    INITIAL_BALANCE: 10000,
+    STORAGE: {
+        PORTFOLIO: 'analyzer_portfolio_v2',
+        HISTORY: 'analyzer_trade_history_v2',
+        ORDERS: 'analyzer_open_orders_v2',
+        SELECTED_COIN: 'analyzer_selected_coin',
+        LEVERAGE: 'analyzer_leverage',
+        MARGIN_MODE: 'analyzer_margin_mode',
+        NOTIF: 'analyzer_portfolio_notifications',
+        GLOBAL_NOTIF: 'dashboard_notifications_v8',
+        SETTINGS: 'analyzer_portfolio_settings',
+    }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    // Coins
+    coins: [],
+    selectedCoinId: 'bitcoin',
+
+    // Chart
+    chart: null,
+    candleSeries: null,
+    volumeSeries: null,
+    sma20Series: null,
+    sma50Series: null,
+    ema12Series: null,
+    ema26Series: null,
+    areaSeries: { entryTp: null, entrySl: null },
+    tpslLines: [],
+    showIndicators: false,
+    showVolume: true,
+    activeTimeframe: '60',
+    candles: [],
+
+    // Prices
+    currentPrice: 0,
+    prevPrice: 0,
+    priceDirection: 'neutral',
+
+    // Order Form
+    side: 'buy',
+    leverage: 10,
+    marginMode: 'cross',
+    orderType: 'limit',
+    tpslEnabled: false,
+    entryPrice: 0,
+    tpPrice: 0,
+    slPrice: 0,
+    amount: 0,
+
+    // Drag
+    dragging: null,
+
+    // Portfolio
+    balance: CONFIG.INITIAL_BALANCE,
+    positions: [],
+    history: [],
+    openOrders: [],
+
+    // Real-time
+    wsConnected: false,
+    wsLastMessage: 0,
+    realtimePrices: {},
+
+    // UI
+    closingPositionId: null,
+    closingPct: 100,
+    confirmCallback: null,
+    currentBottomTab: 'history',
+    searchOpen: false,
+    searchSelectedIdx: 0,
+    searchResults: [],
+    contextMenuOpen: false,
+
+    // Notifications
+    notifications: [],
+    notifOpen: false,
+
+    // Modals
+    editingPosition: null,
+
+    // Timers
+    timers: {
+        priceUpdate: null,
+        accountStats: null,
+        notifCheck: null,
+    },
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function formatCurrency(v) {
+    if (v === undefined || v === null || isNaN(v)) return '$0.00';
+    const n = Number(v);
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(2) + 'B';
+    if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
+    if (abs >= 1000) return sign + '$' + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (abs >= 1) return sign + '$' + abs.toFixed(2);
+    if (abs >= 0.01) return sign + '$' + abs.toFixed(4);
+    return sign + '$' + abs.toFixed(6);
+}
+
+function formatPrice(v) {
+    if (v === undefined || v === null || isNaN(v)) return '0.00';
+    const n = Number(v);
+    if (n >= 1000) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n >= 1) return n.toFixed(2);
+    if (n >= 0.01) return n.toFixed(4);
+    return n.toFixed(6);
+}
+
+function formatPercent(v) {
+    if (v === undefined || v === null || isNaN(v)) return '0.00%';
+    return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+}
+
+function formatNumber(n) {
+    if (!n && n !== 0) return '۰';
+    return Number(n).toLocaleString('fa-IR');
+}
+
+function formatTimeAgo(date) {
+    if (!date) return '—';
+    const d = new Date(date);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 60) return diff + ' ثانیه پیش';
+    if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
+    return Math.floor(diff / 86400) + ' روز پیش';
+}
+
+function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function getCurrentCoin() {
+    return state.coins.find(c => c.id === state.selectedCoinId) || null;
+}
+
+function computeLiquidationPrice(entry, leverage, side, marginMode) {
+    if (!entry || !leverage) return 0;
+    // Cross: فاصله لیکویید 95% از 1/leverage
+    // Isolated: فاصله لیکویید 100% از 1/leverage
+    const factor = marginMode === 'isolated' ? 1.0 : 0.95;
+    const distPct = (100 / leverage) * factor / 100;
+    return side === 'buy'
+        ? entry * (1 - distPct)
+        : entry * (1 + distPct);
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type = 'info', duration = 2500) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const colors = {
+        success: '#22c55e', error: '#ef4444',
+        warning: '#f59e0b', info: '#6366f1'
+    };
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 220px;
+        max-width: 380px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;min-width:22px;border-radius:7px;background:${colors[type]}20;color:${colors[type]};flex-shrink:0;">
+            ${icons[type]}
+        </span>
+        <span style="flex:1;">${escapeHtml(msg)}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ============================================================
+// STORAGE
+// ============================================================
+const Storage = {
+    load() {
+        try {
+            const data = JSON.parse(localStorage.getItem(CONFIG.STORAGE.PORTFOLIO) || '{}');
+            state.balance = data.balance ?? CONFIG.INITIAL_BALANCE;
+            state.positions = data.positions ?? [];
+            state.openOrders = data.openOrders ?? [];
+        } catch (e) {
+            state.balance = CONFIG.INITIAL_BALANCE;
+        }
+        try {
+            state.history = JSON.parse(localStorage.getItem(CONFIG.STORAGE.HISTORY) || '[]');
+        } catch (e) {
+            state.history = [];
+        }
+        try {
+            state.notifications = JSON.parse(localStorage.getItem(CONFIG.STORAGE.NOTIF) || '[]');
+        } catch (e) {
+            state.notifications = [];
+        }
+        try {
+            const settings = JSON.parse(localStorage.getItem(CONFIG.STORAGE.SETTINGS) || '{}');
+            if (settings.leverage) state.leverage = settings.leverage;
+            if (settings.marginMode) state.marginMode = settings.marginMode;
+            if (settings.activeTimeframe) state.activeTimeframe = settings.activeTimeframe;
+        } catch (e) {}
+    },
+
+    save() {
+        try {
+            localStorage.setItem(CONFIG.STORAGE.PORTFOLIO, JSON.stringify({
+                balance: state.balance,
+                positions: state.positions,
+                openOrders: state.openOrders,
+            }));
+            localStorage.setItem(CONFIG.STORAGE.HISTORY, JSON.stringify(state.history.slice(0, 500)));
+            localStorage.setItem(CONFIG.STORAGE.NOTIF, JSON.stringify(state.notifications.slice(0, CONFIG.MAX_NOTIFICATIONS)));
+            localStorage.setItem(CONFIG.STORAGE.SETTINGS, JSON.stringify({
+                leverage: state.leverage,
+                marginMode: state.marginMode,
+                activeTimeframe: state.activeTimeframe,
+            }));
+        } catch (e) {}
+    },
+};
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+const NotifCenter = {
+    add(type, title, message, options = {}) {
+        const item = {
+            id: 'notif-' + uid(),
+            type,
+            title,
+            message,
+            timestamp: new Date().toISOString(),
+            read: false,
+        };
+        state.notifications.unshift(item);
+        if (state.notifications.length > CONFIG.MAX_NOTIFICATIONS) {
+            state.notifications = state.notifications.slice(0, CONFIG.MAX_NOTIFICATIONS);
+        }
+        Storage.save();
+        renderNotifications();
+
+        if (options.toast !== false) {
+            showToast(title + (message ? ' — ' + message : ''), type, 3000);
+        }
+
+        // ارسال به Global
+        if (options.forwardToGlobal !== false) {
+            try {
+                const existing = JSON.parse(localStorage.getItem(CONFIG.STORAGE.GLOBAL_NOTIF) || '[]');
+                existing.unshift({
+                    id: item.id,
+                    level: type === 'danger' ? 'critical' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info',
+                    category: 'system',
+                    title: title,
+                    message: message,
+                    timestamp: Date.now(),
+                    read: false,
+                    source: 'portfolio',
+                });
+                if (existing.length > 50) existing.length = 50;
+                localStorage.setItem(CONFIG.STORAGE.GLOBAL_NOTIF, JSON.stringify(existing));
+            } catch (e) {}
+        }
+    },
+
+    markAllRead() {
+        state.notifications.forEach(n => n.read = true);
+        Storage.save();
+        renderNotifications();
+    },
+
+    clearAll() {
+        state.notifications = [];
+        Storage.save();
+        renderNotifications();
+    },
+
+    getUnreadCount() {
+        return state.notifications.filter(n => !n.read).length;
+    },
+};
+
+// ============================================================
+// API
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        try {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' },
+                ...options,
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.warn(`[API] ${url}:`, err.message);
+            return { success: false, error: err.message };
+        }
+    },
+
+    async getCoins(limit = 250) {
+        return this.request(`${CONFIG.API.COINS}?limit=${limit}`);
+    },
+
+    async getChart(coinId, period = '24h') {
+        return this.request(`${CONFIG.API.CHART}/${coinId}?period=${period}`);
+    },
+
+    async getWSPrice(symbol) {
+        return this.request(`${CONFIG.API.WS_PRICE}/${symbol.toLowerCase()}`);
+    },
+
+    async getWSOrderbook(symbol) {
+        return this.request(`${CONFIG.API.WS_ORDERBOOK}/${symbol.toLowerCase()}`);
+    },
+
+    async getWSTrades(symbol) {
+        return this.request(`${CONFIG.API.WS_TRADES}/${symbol.toLowerCase()}`);
+    },
+};
+
+// ============================================================
+// CANDLES GENERATOR (fallback)
+// ============================================================
+function generateCandles(coinId, count, basePrice, tf) {
+    let seed = 12345;
+    for (let i = 0; i < coinId.length; i++) seed = ((seed << 5) - seed) + coinId.charCodeAt(i);
+    seed = Math.abs(seed);
+
+    const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const interval = CONFIG.TIMEFRAME_SECONDS[tf] || 3600;
+
+    let price = basePrice;
+    const now = Math.floor(Date.now() / 1000);
+    const startTime = now - (count * interval);
+
+    const candles = [];
+    for (let i = 0; i < count; i++) {
+        const vol = 0.012 + (random() * 0.018);
+        const bias = (random() - 0.48) * 0.01;
+        const change = (random() - 0.5) * vol + bias;
+        const open = price;
+        price = price * (1 + change);
+        const close = price;
+        const high = Math.max(open, close) * (1 + random() * 0.008);
+        const low = Math.min(open, close) * (1 - random() * 0.008);
+        const volume = 1e6 + random() * 5e6;
+        candles.push({
+            time: startTime + i * interval,
+            open, high, low, close, volume
+        });
+    }
+    return candles;
+}
+
+// ============================================================
+// SMA / EMA
+// ============================================================
+function computeSMA(closes, period) {
+    const out = [];
+    for (let i = 0; i < closes.length; i++) {
+        if (i < period - 1) { out.push(null); continue; }
+        let sum = 0;
+        for (let j = i - period + 1; j <= i; j++) sum += closes[j];
+        out.push(sum / period);
+    }
+    return out;
+}
+
+function computeEMA(closes, period) {
+    if (closes.length === 0) return [];
+    const k = 2 / (period + 1);
+    const out = [closes[0]];
+    for (let i = 1; i < closes.length; i++) {
+        out.push(closes[i] * k + out[i - 1] * (1 - k));
+    }
+    return out;
+}
+
+// ============================================================
+// CHART ENGINE
+// ============================================================
+const ChartEngine = {
+    init() {
+        const container = document.getElementById('chart');
+        if (!container || !window.LightweightCharts) return;
+
+        state.chart = LightweightCharts.createChart(container, {
+            layout: {
+                background: { color: 'transparent' },
+                textColor: '#8b9bb4',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10,
+            },
+            grid: {
+                vertLines: { color: 'rgba(148, 163, 184, 0.06)' },
+                horzLines: { color: 'rgba(148, 163, 184, 0.06)' },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: { color: '#6366f1', width: 1, style: 3, labelBackgroundColor: '#6366f1' },
+                horzLine: { color: '#6366f1', width: 1, style: 3, labelBackgroundColor: '#6366f1' },
+            },
+            rightPriceScale: {
+                borderColor: 'rgba(148, 163, 184, 0.1)',
+                scaleMargins: { top: 0.1, bottom: 0.25 },
+            },
+            timeScale: {
+                borderColor: 'rgba(148, 163, 184, 0.1)',
+                timeVisible: true,
+                secondsVisible: false,
+                rightOffset: 5,
+                barSpacing: 8,
+            },
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: true,
+            },
+            handleScale: {
+                axisPressedMouseMove: true,
+                mouseWheel: true,
+                pinch: true,
+            },
+        });
+
+        state.candleSeries = state.chart.addCandlestickSeries({
+            upColor: '#22c55e',
+            downColor: '#ef4444',
+            borderUpColor: '#22c55e',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#22c55e',
+            wickDownColor: '#ef4444',
+            priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        });
+
+        state.volumeSeries = state.chart.addHistogramSeries({
+            color: 'rgba(99, 102, 241, 0.3)',
+            priceFormat: { type: 'volume' },
+            priceScaleId: 'volume',
+            scaleMargins: { top: 0.85, bottom: 0 },
+        });
+
+        state.chart.priceScale('volume').applyOptions({
+            scaleMargins: { top: 0.85, bottom: 0 },
+        });
+
+        // Resize
+        const ro = new ResizeObserver(() => {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            if (w > 0 && h > 0) state.chart.resize(w, h);
+        });
+        ro.observe(container);
+
+        // Drag setup
+        this.setupDrag(container);
+
+        // Update labels on zoom
+        state.chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+            updatePositionMarkerPosition();
+        });
+    },
+
+    setData(candles) {
+        state.candles = candles;
+
+        const candleData = candles.map(c => ({
+            time: c.time,
+            open: c.open, high: c.high, low: c.low, close: c.close,
+        }));
+
+        const volumeData = candles.map(c => ({
+            time: c.time,
+            value: c.volume,
+            color: c.close >= c.open ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)',
+        }));
+
+        state.candleSeries.setData(candleData);
+        state.volumeSeries.setData(volumeData);
+
+        if (candles.length > 0) {
+            state.currentPrice = candles[candles.length - 1].close;
+        }
+
+        state.chart.timeScale().fitContent();
+    },
+
+    // ============================================================
+    // DRAG — با capture: true
+    // ============================================================
+    setupDrag(container) {
+        const priceToY = (price) => state.candleSeries?.priceToCoordinate(price);
+        const yToPrice = (y) => state.candleSeries?.coordinateToPrice(y);
+
+        const findNearbyLine = (mouseY) => {
+            let closest = null;
+            let minDist = CONFIG.DRAG_THRESHOLD_PX;
+
+            state.tpslLines.forEach(item => {
+                const y = priceToY(item.price);
+                if (y === null || y === undefined) return;
+                const dist = Math.abs(y - mouseY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = item.type;
+                }
+            });
+            return closest;
+        };
+
+        // MOUSEDOWN — با capture
+        container.addEventListener('mousedown', (e) => {
+            const rect = container.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+            const lineType = findNearbyLine(mouseY);
+
+            if (lineType) {
+                state.dragging = lineType;
+                // غیرفعال کردن pan چارت
+                state.chart.applyOptions({
+                    handleScroll: { mouseWheel: true, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScale: { axisPressedMouseMove: false, mouseWheel: true, pinch: true },
+                });
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                container.style.cursor = 'grabbing';
+            }
+        }, true);
+
+        // MOUSEMOVE — با capture
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+
+            if (state.dragging) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                const newPrice = yToPrice(mouseY);
+                if (newPrice === null || newPrice === undefined) return;
+                const rounded = Math.round(newPrice * 100) / 100;
+
+                const item = state.tpslLines.find(i => i.type === state.dragging);
+                if (!item) return;
+
+                item.price = rounded;
+                item.priceLine.applyOptions({ price: rounded });
+
+                if (state.dragging === 'tp') {
+                    state.tpPrice = rounded;
+                    $('#inputTp').value = rounded.toFixed(2);
+                } else if (state.dragging === 'sl') {
+                    state.slPrice = rounded;
+                    $('#inputSl').value = rounded.toFixed(2);
+                } else if (state.dragging === 'entry') {
+                    state.entryPrice = rounded;
+                    $('#inputEntry').value = rounded.toFixed(2);
+                } else if (state.dragging === 'liq') {
+                    // Liq → تغییر Leverage
+                    const entry = state.entryPrice;
+                    if (entry > 0) {
+                        const distPct = Math.abs((rounded - entry) / entry) * 100;
+                        if (distPct > 0) {
+                            const factor = state.marginMode === 'isolated' ? 1.0 : 0.95;
+                            const newLev = Math.max(1, Math.min(125, Math.round(factor * 100 / distPct)));
+                            state.leverage = newLev;
+                            $$('.lev-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lev) === newLev));
+                            $('#leverageValue').textContent = newLev + 'x';
+                        }
+                    }
+                }
+
+                showDragOverlay(e.clientX - rect.left, mouseY, state.dragging, rounded);
+                updateChartStats();
+                updateSummary();
+                updatePnLOverlay();
+                return;
+            }
+
+            const lineType = findNearbyLine(mouseY);
+            container.style.cursor = lineType ? 'grab' : 'default';
+        }, true);
+
+        // MOUSEUP
+        const onMouseUp = (e) => {
+            if (!state.dragging) return;
+            state.dragging = null;
+            container.style.cursor = 'default';
+            hideDragOverlay();
+
+            state.chart.applyOptions({
+                handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+            });
+
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            validateAfterDrag();
+        };
+
+        window.addEventListener('mouseup', onMouseUp, true);
+        document.addEventListener('mouseup', onMouseUp, true);
+
+        // TOUCH
+        container.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            const rect = container.getBoundingClientRect();
+            const lineType = findNearbyLine(touch.clientY - rect.top);
+            if (lineType) {
+                state.dragging = lineType;
+                state.chart.applyOptions({
+                    handleScroll: { mouseWheel: true, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScale: { axisPressedMouseMove: false, mouseWheel: true, pinch: true },
+                });
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        }, { capture: true, passive: false });
+
+        container.addEventListener('touchmove', (e) => {
+            if (!state.dragging) return;
+            const touch = e.touches[0];
+            if (!touch) return;
+            const rect = container.getBoundingClientRect();
+            const newPrice = yToPrice(touch.clientY - rect.top);
+            if (newPrice === null || newPrice === undefined) return;
+            const rounded = Math.round(newPrice * 100) / 100;
+            const item = state.tpslLines.find(i => i.type === state.dragging);
+            if (!item) return;
+            item.price = rounded;
+            item.priceLine.applyOptions({ price: rounded });
+
+            if (state.dragging === 'tp') {
+                state.tpPrice = rounded;
+                $('#inputTp').value = rounded.toFixed(2);
+            } else if (state.dragging === 'sl') {
+                state.slPrice = rounded;
+                $('#inputSl').value = rounded.toFixed(2);
+            } else if (state.dragging === 'entry') {
+                state.entryPrice = rounded;
+                $('#inputEntry').value = rounded.toFixed(2);
+            }
+
+            showDragOverlay(touch.clientX - rect.left, touch.clientY - rect.top, state.dragging, rounded);
+            updateChartStats();
+            updateSummary();
+            updatePnLOverlay();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }, { capture: true, passive: false });
+
+        window.addEventListener('touchend', () => {
+            if (state.dragging) {
+                state.dragging = null;
+                hideDragOverlay();
+                state.chart.applyOptions({
+                    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+                    handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+                });
+                validateAfterDrag();
+            }
+        }, true);
+    },
+
+    // ============================================================
+    // REDRAW LINES + AREAS
+    // ============================================================
+    redrawLines() {
+        // پاک کردن
+        state.tpslLines.forEach(item => {
+            try { state.candleSeries.removePriceLine(item.priceLine); } catch (e) {}
+        });
+        state.tpslLines = [];
+
+        // پاک کردن Areaها
+        if (state.areaSeries.entryTp) {
+            try { state.chart.removeSeries(state.areaSeries.entryTp); } catch (e) {}
+            state.areaSeries.entryTp = null;
+        }
+        if (state.areaSeries.entrySl) {
+            try { state.chart.removeSeries(state.areaSeries.entrySl); } catch (e) {}
+            state.areaSeries.entrySl = null;
+        }
+
+        const entry = state.entryPrice;
+        const tp = state.tpPrice;
+        const sl = state.slPrice;
+        const side = state.side;
+        const lev = state.leverage;
+        const mm = state.marginMode;
+
+        // ===== Area بین Entry و TP (سبز کم‌رنگ) =====
+        if (entry > 0 && tp > 0 && state.candles.length > 0) {
+            const upper = Math.max(entry, tp);
+            const lower = Math.min(entry, tp);
+
+            // یه AreaSeries با baseline = lower
+            const areaSeries = state.chart.addAreaSeries({
+                topColor: 'rgba(34, 197, 94, 0.25)',
+                bottomColor: 'rgba(34, 197, 94, 0.05)',
+                lineColor: 'transparent',
+                lineWidth: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false,
+            });
+
+            // دیتا: بالاترین قیمت = upper
+            const data = state.candles.map(c => ({
+                time: c.time,
+                value: upper,
+            }));
+            areaSeries.setData(data);
+
+            // خط پایین (baseline)
+            areaSeries.createPriceLine({
+                price: lower,
+                color: 'transparent',
+                lineWidth: 0,
+                lineStyle: 0,
+                axisLabelVisible: false,
+                title: '',
+            });
+
+            state.areaSeries.entryTp = areaSeries;
+        }
+
+        // ===== Area بین Entry و SL (قرمز کم‌رنگ) =====
+        if (entry > 0 && sl > 0 && state.candles.length > 0) {
+            const upper = Math.max(entry, sl);
+            const lower = Math.min(entry, sl);
+
+            const areaSeries = state.chart.addAreaSeries({
+                topColor: 'rgba(239, 68, 68, 0.25)',
+                bottomColor: 'rgba(239, 68, 68, 0.05)',
+                lineColor: 'transparent',
+                lineWidth: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false,
+            });
+
+            const data = state.candles.map(c => ({
+                time: c.time,
+                value: upper,
+            }));
+            areaSeries.setData(data);
+
+            areaSeries.createPriceLine({
+                price: lower,
+                color: 'transparent',
+                lineWidth: 0,
+                lineStyle: 0,
+                axisLabelVisible: false,
+                title: '',
+            });
+
+            state.areaSeries.entrySl = areaSeries;
+        }
+
+        // ===== خطوط افقی =====
+        if (entry > 0) {
+            const line = state.candleSeries.createPriceLine({
+                price: entry,
+                color: '#6366f1',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'Entry',
+            });
+            state.tpslLines.push({ type: 'entry', priceLine: line, price: entry });
+        }
+
+        if (tp > 0) {
+            const line = state.candleSeries.createPriceLine({
+                price: tp,
+                color: '#22c55e',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'TP',
+            });
+            state.tpslLines.push({ type: 'tp', priceLine: line, price: tp });
+        }
+
+        if (sl > 0) {
+            const line = state.candleSeries.createPriceLine({
+                price: sl,
+                color: '#ef4444',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'SL',
+            });
+            state.tpslLines.push({ type: 'sl', priceLine: line, price: sl });
+        }
+
+        // Liq Line
+        const liq = computeLiquidationPrice(entry, lev, side, mm);
+        if (liq > 0 && lev > 1) {
+            const line = state.candleSeries.createPriceLine({
+                price: liq,
+                color: '#f59e0b',
+                lineWidth: 1.5,
+                lineStyle: LightweightCharts.LineStyle.Dotted,
+                axisLabelVisible: true,
+                title: 'Liq',
+            });
+            state.tpslLines.push({ type: 'liq', priceLine: line, price: liq });
+        }
+
+        updateChartStats();
+    },
+
+    // ============================================================
+    // TOGGLE INDICATORS
+    // ============================================================
+    toggleIndicators() {
+        state.showIndicators = !state.showIndicators;
+        const btn = $('#toggleIndicatorsBtn');
+        if (btn) btn.classList.toggle('active', state.showIndicators);
+
+        // پاک کردن
+        if (state.sma20Series) { state.chart.removeSeries(state.sma20Series); state.sma20Series = null; }
+        if (state.sma50Series) { state.chart.removeSeries(state.sma50Series); state.sma50Series = null; }
+        if (state.ema12Series) { state.chart.removeSeries(state.ema12Series); state.ema12Series = null; }
+        if (state.ema26Series) { state.chart.removeSeries(state.ema26Series); state.ema26Series = null; }
+
+        if (state.showIndicators && state.candles.length > 0) {
+            const closes = state.candles.map(c => c.close);
+            const times = state.candles.map(c => c.time);
+
+            const sma20 = computeSMA(closes, 20);
+            const sma50 = computeSMA(closes, 50);
+            const ema12 = computeEMA(closes, 12);
+            const ema26 = computeEMA(closes, 26);
+
+            const makeData = (arr) => arr.map((v, i) => v !== null ? { time: times[i], value: v } : null).filter(Boolean);
+
+            state.sma20Series = state.chart.addLineSeries({
+                color: '#f59e0b', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'SMA 20',
+            });
+            state.sma20Series.setData(makeData(sma20));
+
+            state.sma50Series = state.chart.addLineSeries({
+                color: '#ef4444', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'SMA 50',
+            });
+            state.sma50Series.setData(makeData(sma50));
+
+            state.ema12Series = state.chart.addLineSeries({
+                color: '#22d3ee', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true, title: 'EMA 12',
+            });
+            state.ema12Series.setData(makeData(ema12));
+
+            state.ema26Series = state.chart.addLineSeries({
+                color: '#818cf8', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true, title: 'EMA 26',
+            });
+            state.ema26Series.setData(makeData(ema26));
+        }
+    },
+
+    // ============================================================
+    // TOGGLE VOLUME
+    // ============================================================
+    toggleVolume() {
+        state.showVolume = !state.showVolume;
+        const btn = $('#toggleVolumeBtn');
+        if (btn) btn.classList.toggle('active', state.showVolume);
+        state.volumeSeries.applyOptions({ visible: state.showVolume });
+    },
+
+    // ============================================================
+    // SNAPSHOT
+    // ============================================================
+    snapshot() {
+        const canvas = document.querySelector('#chart canvas');
+        if (!canvas) {
+            showToast('چارت آماده نیست', 'warning');
+            return;
+        }
+        try {
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chart_${state.selectedCoinId}_${Date.now()}.png`;
+            a.click();
+            showToast('اسنپ‌شات دانلود شد', 'success', 1800);
+        } catch (e) {
+            showToast('خطا در اسنپ‌شات', 'error');
+        }
+    },
+
+    // ============================================================
+    // RESET
+    // ============================================================
+    reset() {
+        state.entryPrice = 0;
+        state.tpPrice = 0;
+        state.slPrice = 0;
+        state.amount = 0;
+        $('#inputEntry').value = '';
+        $('#inputTp').value = '';
+        $('#inputSl').value = '';
+        $('#inputAmount').value = '';
+        this.redrawLines();
+        updateChartStats();
+        updateSummary();
+        updatePnLOverlay();
+    },
+};
+
+// ============================================================
+// WEBSOCKET — Real-time price
+// ============================================================
+const WS = {
+    connected: false,
+    lastMessage: 0,
+    reconnectTimer: null,
+
+    connect() {
+        // اگه endpoint واقعی داری، اینجا وصل شو
+        // فعلاً polling بر اساس getWSPrice
+        if (state.timers.priceUpdate) clearInterval(state.timers.priceUpdate);
+        state.timers.priceUpdate = setInterval(() => this.poll(), 2000);
+        this.poll();
+    },
+
+    async poll() {
+        const coin = getCurrentCoin();
+        if (!coin) return;
+
+        try {
+            const res = await API.getWSPrice(coin.symbol);
+            if (res.success && res.data) {
+                const newPrice = parseFloat(res.data.price);
+                if (newPrice > 0) {
+                    this.updatePrice(newPrice);
+                    state.wsConnected = true;
+                    state.wsLastMessage = Date.now();
+                }
+            }
+        } catch (e) {
+            state.wsConnected = false;
+        }
+    },
+
+    updatePrice(newPrice) {
+        const oldPrice = state.currentPrice;
+        state.prevPrice = oldPrice;
+        state.currentPrice = newPrice;
+        state.priceDirection = newPrice > oldPrice ? 'up' : newPrice < oldPrice ? 'down' : 'neutral';
+
+        const coin = getCurrentCoin();
+        if (coin) coin.price = newPrice;
+
+        // Update candle آخر
+        if (state.candles.length > 0) {
+            const last = state.candles[state.candles.length - 1];
+            last.close = newPrice;
+            last.high = Math.max(last.high, newPrice);
+            last.low = Math.min(last.low, newPrice);
+            try {
+                state.candleSeries.update({
+                    time: last.time,
+                    open: last.open,
+                    high: last.high,
+                    low: last.low,
+                    close: last.close,
+                });
+            } catch (e) {}
+        }
+
+        // Header
+        const priceEl = $('#coinPrice');
+        if (priceEl) {
+            priceEl.textContent = formatCurrency(newPrice);
+            priceEl.dataset.price = newPrice;
+            priceEl.classList.remove('flash-up', 'flash-down');
+            void priceEl.offsetWidth;
+            priceEl.classList.add(newPrice > oldPrice ? 'flash-up' : 'flash-down');
+        }
+
+        // Live badge
+        const liveText = $('#livePriceText');
+        if (liveText) liveText.textContent = formatCurrency(newPrice);
+
+        // Chart stats
+        updateChartStats();
+
+        // Positions PnL
+        recomputePositionsPnL();
+        renderPositions();
+        renderAccount();
+        updatePnLOverlay();
+        updatePositionMarkerPosition();
+
+        // Check auto triggers
+        checkPositionTriggers();
+
+        // Check open orders
+        checkOpenOrders();
+    },
+};
+
+// ============================================================
+// EXPOSE FOR NEXT PARTS
+// ============================================================
+window.__portfolio = {
+    $, $$, CONFIG, state, Storage, NotifCenter, API, WS, ChartEngine,
+    escapeHtml, formatCurrency, formatPrice, formatPercent, formatNumber,
+    formatTimeAgo, uid, getCurrentCoin, computeLiquidationPrice,
+    showToast, generateCandles, computeSMA, computeEMA,
+};
+
+})();
+
+// ============================================================
+// PART 2 — PORTFOLIO LOGIC (Order, Position, Triggers, Edit)
+// ============================================================
+(function() {
+'use strict';
+
+if (!window.__portfolio) {
+    console.error('❌ portfolio part 1 not loaded');
+    return;
+}
+if (window.__portfolioPart2Loaded) return;
+window.__portfolioPart2Loaded = true;
+
+const {
+    $, $$, CONFIG, state, Storage, NotifCenter, API, WS, ChartEngine,
+    escapeHtml, formatCurrency, formatPrice, formatPercent, formatNumber,
+    uid, getCurrentCoin, computeLiquidationPrice, showToast,
+} = window.__portfolio;
+
+// ============================================================
+// ORDER TYPE VALIDATION
+// ============================================================
+function validateOrder() {
+    const errors = [];
+    const amount = parseFloat($('#inputAmount')?.value) || 0;
+    const entry = parseFloat($('#inputEntry')?.value) || 0;
+
+    if (entry <= 0) errors.push('قیمت ورود نامعتبر است');
+    if (amount <= 0) errors.push('مقدار نامعتبر است');
+
+    const margin = amount / state.leverage;
+    const fee = amount * 0.001;
+
+    if (margin + fee > state.balance) {
+        errors.push('موجودی کافی نیست');
+    }
+
+    if (state.tpslEnabled) {
+        const tp = parseFloat($('#inputTp')?.value) || 0;
+        const sl = parseFloat($('#inputSl')?.value) || 0;
+
+        if (state.side === 'buy') {
+            if (tp > 0 && tp <= entry) errors.push('برای Long، TP باید بالاتر از Entry باشد');
+            if (sl > 0 && sl >= entry) errors.push('برای Long، SL باید پایین‌تر از Entry باشد');
+        } else {
+            if (tp > 0 && tp >= entry) errors.push('برای Short، TP باید پایین‌تر از Entry باشد');
+            if (sl > 0 && sl <= entry) errors.push('برای Short، SL باید بالاتر از Entry باشد');
+        }
+    }
+
+    return errors;
+}
+
+// ============================================================
+// EXECUTE ORDER
+// ============================================================
+function executeOrder() {
+    const coin = getCurrentCoin();
+    if (!coin) {
+        showToast('ارزی انتخاب نشده', 'error');
+        return;
+    }
+
+    const errors = validateOrder();
+    if (errors.length > 0) {
+        showToast(errors[0], 'warning', 3000);
+        return;
+    }
+
+    const amount = parseFloat($('#inputAmount').value);
+    const entry = parseFloat($('#inputEntry').value);
+    const orderType = $('#orderType').value;
+    const tp = state.tpslEnabled ? (parseFloat($('#inputTp').value) || 0) : 0;
+    const sl = state.tpslEnabled ? (parseFloat($('#inputSl').value) || 0) : 0;
+
+    // Loading state
+    const submitBtn = $('#submitBtn');
+    const originalHTML = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span><span>در حال ارسال...</span>';
+
+    // شبیه‌سازی تاخیر شبکه
+    setTimeout(() => {
+        // اگه Market بود → پوزیشن باز می‌شه
+        // اگه Limit/Stop بود → سفارش معلق
+        if (orderType === 'market') {
+            openPosition(coin, entry, amount, tp, sl, 'market');
+        } else {
+            createOpenOrder(coin, entry, amount, tp, sl, orderType);
+        }
+
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHTML;
+    }, 400);
+}
+
+// ============================================================
+// OPEN POSITION
+// ============================================================
+function openPosition(coin, entry, amount, tp, sl, orderType = 'market') {
+    const margin = amount / state.leverage;
+    const fee = amount * 0.001;
+    const liq = computeLiquidationPrice(entry, state.leverage, state.side, state.marginMode);
+
+    const position = {
+        id: 'pos-' + uid(),
+        coinId: coin.id,
+        symbol: coin.symbol,
+        side: state.side === 'buy' ? 'long' : 'short',
+        entryPrice: entry,
+        amount: amount,
+        leverage: state.leverage,
+        marginMode: state.marginMode,
+        margin: margin,
+        fee: fee,
+        tp: tp,
+        sl: sl,
+        liquidationPrice: liq,
+        markPrice: state.currentPrice,
+        pnl: 0,
+        pnlPercent: 0,
+        openedAt: new Date().toISOString(),
+        orderType: orderType,
+    };
+
+    state.positions.push(position);
+    state.balance -= (margin + fee);
+
+    // History
+    state.history.unshift({
+        id: 'h-' + uid(),
+        type: 'open',
+        coinId: coin.id,
+        symbol: coin.symbol,
+        side: position.side,
+        price: entry,
+        amount: amount,
+        leverage: state.leverage,
+        timestamp: Date.now(),
+    });
+
+    Storage.save();
+
+    // Notification
+    NotifCenter.add('success',
+        `${position.side === 'long' ? 'Long' : 'Short'} باز شد — ${coin.symbol}`,
+        `${formatCurrency(amount)} @ ${formatCurrency(entry)} · ${state.leverage}x`,
+        { toast: true }
+    );
+
+    // Reset form
+    resetFormAfterOrder();
+
+    // Re-render
+    renderAccount();
+    renderPositions();
+    renderBottom();
+    updatePnLOverlay();
+    updatePositionMarkerPosition();
+    ChartEngine.redrawLines();
+}
+
+// ============================================================
+// CREATE OPEN ORDER (Limit / Stop)
+// ============================================================
+function createOpenOrder(coin, price, amount, tp, sl, orderType) {
+    const margin = amount / state.leverage;
+    const fee = amount * 0.001;
+
+    const order = {
+        id: 'ord-' + uid(),
+        coinId: coin.id,
+        symbol: coin.symbol,
+        side: state.side === 'buy' ? 'long' : 'short',
+        orderType: orderType,
+        triggerPrice: price,
+        amount: amount,
+        leverage: state.leverage,
+        marginMode: state.marginMode,
+        margin: margin,
+        fee: fee,
+        tp: tp,
+        sl: sl,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+    };
+
+    state.openOrders.push(order);
+    // برای سفارشات Limit، موجودی رو قفل نمی‌کنیم (ساده‌سازی)
+    Storage.save();
+
+    NotifCenter.add('info',
+        `سفارش ${orderType === 'limit' ? 'Limit' : 'Stop'} ثبت شد`,
+        `${coin.symbol} · ${formatCurrency(amount)} @ ${formatCurrency(price)}`,
+        { toast: true }
+    );
+
+    resetFormAfterOrder();
+
+    renderBottom();
+    renderAccount();
+}
+
+// ============================================================
+// RESET FORM
+// ============================================================
+function resetFormAfterOrder() {
+    $('#inputAmount').value = '';
+    $('#inputTp').value = '';
+    $('#inputSl').value = '';
+
+    state.tpPrice = 0;
+    state.slPrice = 0;
+    state.amount = 0;
+    state.tpslEnabled = false;
+    $('#tpslToggle').classList.remove('active');
+    $('#tpslFields').classList.remove('open');
+
+    // Entry رو نگه‌دار (آخرین قیمت)
+    state.entryPrice = state.currentPrice;
+    $('#inputEntry').value = state.currentPrice.toFixed(2);
+
+    ChartEngine.redrawLines();
+    updateSummary();
+    updatePnLOverlay();
+}
+
+// ============================================================
+// RECOMPUTE POSITIONS PNL
+// ============================================================
+function recomputePositionsPnL() {
+    state.positions.forEach(p => {
+        const coin = state.coins.find(c => c.id === p.coinId);
+        const current = (p.coinId === state.selectedCoinId) ? state.currentPrice : (coin?.price || p.entryPrice);
+        p.markPrice = current;
+
+        const diff = p.side === 'long'
+            ? (current - p.entryPrice)
+            : (p.entryPrice - current);
+
+        p.pnl = (diff / p.entryPrice) * p.amount;
+        p.pnlPercent = p.margin > 0 ? (p.pnl / p.margin) * 100 : 0;
+    });
+}
+
+// ============================================================
+// CLOSE POSITION
+// ============================================================
+function closePosition(posId, pct = 100) {
+    const idx = state.positions.findIndex(p => p.id === posId);
+    if (idx === -1) return;
+
+    const pos = state.positions[idx];
+    const pctFactor = pct / 100;
+    const closeAmount = pos.amount * pctFactor;
+    const closeMargin = pos.margin * pctFactor;
+
+    const coin = state.coins.find(c => c.id === pos.coinId);
+    const current = (pos.coinId === state.selectedCoinId) ? state.currentPrice : (coin?.price || pos.entryPrice);
+
+    const diff = pos.side === 'long'
+        ? (current - pos.entryPrice)
+        : (pos.entryPrice - current);
+
+    const pnlPart = (diff / pos.entryPrice) * closeAmount;
+    const closeFee = closeAmount * 0.001;
+    const netPnl = pnlPart - closeFee;
+    const returnAmount = closeMargin + netPnl;
+
+    state.balance += returnAmount;
+
+    // History
+    state.history.unshift({
+        id: 'h-' + uid(),
+        type: 'close',
+        coinId: pos.coinId,
+        symbol: pos.symbol,
+        side: pos.side,
+        price: current,
+        amount: closeAmount,
+        pnl: netPnl,
+        pct: pct,
+        timestamp: Date.now(),
+    });
+
+    // Partial یا Full Close
+    if (pct >= 100) {
+        state.positions.splice(idx, 1);
+    } else {
+        pos.amount -= closeAmount;
+        pos.margin -= closeMargin;
+    }
+
+    Storage.save();
+
+    const cls = netPnl >= 0 ? 'success' : 'warning';
+    NotifCenter.add(cls,
+        `پوزیشن بسته شد — ${pos.symbol}`,
+        `${netPnl >= 0 ? '+' : ''}${formatCurrency(netPnl)} (${pct}%)`,
+        { toast: true }
+    );
+
+    // Re-render
+    renderAccount();
+    renderPositions();
+    renderBottom();
+    updatePnLOverlay();
+    updatePositionMarkerPosition();
+}
+
+// ============================================================
+// AUTO TRIGGERS (TP/SL/Liq)
+// ============================================================
+function checkPositionTriggers() {
+    const toClose = [];
+
+    state.positions.forEach(pos => {
+        const coin = state.coins.find(c => c.id === pos.coinId);
+        const current = (pos.coinId === state.selectedCoinId) ? state.currentPrice : (coin?.price || pos.entryPrice);
+
+        // Liq Check
+        if (pos.liquidationPrice > 0) {
+            if (pos.side === 'long' && current <= pos.liquidationPrice) {
+                toClose.push({ id: pos.id, reason: 'liq' });
+                return;
+            }
+            if (pos.side === 'short' && current >= pos.liquidationPrice) {
+                toClose.push({ id: pos.id, reason: 'liq' });
+                return;
+            }
+        }
+
+        // TP Check
+        if (pos.tp > 0) {
+            if (pos.side === 'long' && current >= pos.tp) {
+                toClose.push({ id: pos.id, reason: 'tp' });
+                return;
+            }
+            if (pos.side === 'short' && current <= pos.tp) {
+                toClose.push({ id: pos.id, reason: 'tp' });
+                return;
+            }
+        }
+
+        // SL Check
+        if (pos.sl > 0) {
+            if (pos.side === 'long' && current <= pos.sl) {
+                toClose.push({ id: pos.id, reason: 'sl' });
+                return;
+            }
+            if (pos.side === 'short' && current >= pos.sl) {
+                toClose.push({ id: pos.id, reason: 'sl' });
+                return;
+            }
+        }
+    });
+
+    // بستن پوزیشن‌های تحریک‌شده
+    toClose.forEach(({ id, reason }) => {
+        const pos = state.positions.find(p => p.id === id);
+        if (!pos) return;
+
+        const titles = {
+            liq: '🔥 پوزیشن لیکویید شد',
+            tp: '🎯 Take Profit فعال شد',
+            sl: '🛑 Stop Loss فعال شد',
+        };
+        const types = {
+            liq: 'danger',
+            tp: 'success',
+            sl: 'warning',
+        };
+
+        NotifCenter.add(types[reason],
+            `${titles[reason]} — ${pos.symbol}`,
+            `قیمت: ${formatCurrency(pos.markPrice)}`,
+            { toast: true }
+        );
+
+        // اگه Liq بود، مارجین صفر می‌شه
+        if (reason === 'liq') {
+            const idx = state.positions.findIndex(p => p.id === id);
+            if (idx !== -1) {
+                const p = state.positions[idx];
+                // مارجین از دست رفته
+                state.history.unshift({
+                    id: 'h-' + uid(),
+                    type: 'close',
+                    coinId: p.coinId,
+                    symbol: p.symbol,
+                    side: p.side,
+                    price: p.markPrice,
+                    amount: p.amount,
+                    pnl: -p.margin,
+                    reason: 'liq',
+                    timestamp: Date.now(),
+                });
+                state.positions.splice(idx, 1);
+                Storage.save();
+                renderAccount();
+                renderPositions();
+                renderBottom();
+                updatePnLOverlay();
+                updatePositionMarkerPosition();
+            }
+        } else {
+            closePosition(id, 100);
+        }
+    });
+}
+
+// ============================================================
+// CHECK OPEN ORDERS (Limit/Stop Trigger)
+// ============================================================
+function checkOpenOrders() {
+    const toExecute = [];
+
+    state.openOrders.forEach(order => {
+        const coin = state.coins.find(c => c.id === order.coinId);
+        const current = coin?.price || state.currentPrice;
+
+        if (order.orderType === 'limit') {
+            if (order.side === 'long' && current <= order.triggerPrice) {
+                toExecute.push(order);
+            } else if (order.side === 'short' && current >= order.triggerPrice) {
+                toExecute.push(order);
+            }
+        } else if (order.orderType === 'stop') {
+            if (order.side === 'long' && current >= order.triggerPrice) {
+                toExecute.push(order);
+            } else if (order.side === 'short' && current <= order.triggerPrice) {
+                toExecute.push(order);
+            }
+        }
+    });
+
+    toExecute.forEach(order => {
+        // حذف از open orders
+        state.openOrders = state.openOrders.filter(o => o.id !== order.id);
+
+        // باز کردن پوزیشن
+        const coin = state.coins.find(c => c.id === order.coinId);
+        if (!coin) return;
+
+        const position = {
+            id: 'pos-' + uid(),
+            coinId: coin.id,
+            symbol: coin.symbol,
+            side: order.side,
+            entryPrice: order.triggerPrice,
+            amount: order.amount,
+            leverage: order.leverage,
+            marginMode: order.marginMode,
+            margin: order.margin,
+            fee: order.fee,
+            tp: order.tp,
+            sl: order.sl,
+            liquidationPrice: computeLiquidationPrice(order.triggerPrice, order.leverage, order.side === 'long' ? 'buy' : 'sell', order.marginMode),
+            markPrice: current,
+            pnl: 0,
+            pnlPercent: 0,
+            openedAt: new Date().toISOString(),
+            orderType: order.orderType,
+        };
+
+        state.positions.push(position);
+        state.balance -= (order.margin + order.fee);
+
+        state.history.unshift({
+            id: 'h-' + uid(),
+            type: 'open',
+            coinId: coin.id,
+            symbol: coin.symbol,
+            side: position.side,
+            price: position.entryPrice,
+            amount: position.amount,
+            leverage: order.leverage,
+            reason: order.orderType,
+            timestamp: Date.now(),
+        });
+
+        Storage.save();
+
+        NotifCenter.add('success',
+            `سفارش ${order.orderType} اجرا شد`,
+            `${coin.symbol} @ ${formatCurrency(position.entryPrice)}`,
+            { toast: true }
+        );
+
+        renderAccount();
+        renderPositions();
+        renderBottom();
+        updatePnLOverlay();
+        updatePositionMarkerPosition();
+        ChartEngine.redrawLines();
+    });
+}
+
+// ============================================================
+// CANCEL OPEN ORDER
+// ============================================================
+function cancelOrder(orderId) {
+    const order = state.openOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    state.openOrders = state.openOrders.filter(o => o.id !== orderId);
+    Storage.save();
+
+    NotifCenter.add('info', 'سفارش لغو شد', `${order.symbol} · ${formatCurrency(order.amount)}`);
+    renderBottom();
+}
+
+// ============================================================
+// EDIT POSITION (بارگذاری در فرم)
+// ============================================================
+function editPosition(posId) {
+    const pos = state.positions.find(p => p.id === posId);
+    if (!pos) return;
+
+    // تغییر ارز
+    state.selectedCoinId = pos.coinId;
+    try { localStorage.setItem(CONFIG.STORAGE.SELECTED_COIN, pos.coinId); } catch (e) {}
+
+    // پر کردن فرم
+    state.side = pos.side === 'long' ? 'buy' : 'sell';
+    state.leverage = pos.leverage;
+    state.marginMode = pos.marginMode;
+    state.entryPrice = pos.entryPrice;
+    state.tpPrice = pos.tp || 0;
+    state.slPrice = pos.sl || 0;
+    state.amount = pos.amount;
+
+    $('#inputEntry').value = pos.entryPrice.toFixed(2);
+    $('#inputAmount').value = pos.amount.toFixed(2);
+    if (pos.tp) $('#inputTp').value = pos.tp.toFixed(2);
+    if (pos.sl) $('#inputSl').value = pos.sl.toFixed(2);
+
+    // فعال کردن TP/SL اگه داشت
+    state.tpslEnabled = (pos.tp > 0 || pos.sl > 0);
+    $('#tpslToggle').classList.toggle('active', state.tpslEnabled);
+    $('#tpslFields').classList.toggle('open', state.tpslEnabled);
+
+    // Side buttons
+    $$('.order-side-btn').forEach(b => b.classList.toggle('active', b.dataset.side === state.side));
+    const submitBtn = $('#submitBtn');
+    submitBtn.className = 'submit-btn ' + state.side;
+    $('#submitBtnText').textContent = state.side === 'buy' ? 'باز کردن Long' : 'باز کردن Short';
+
+    // Leverage
+    $$('.lev-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lev) === pos.leverage));
+    $('#leverageValue').textContent = pos.leverage + 'x';
+
+    // Margin Mode
+    $$('.mm-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === pos.marginMode));
+
+    // Reload chart
+    if (window.__portfolioPart3 && window.__portfolioPart3.loadChartData) {
+        window.__portfolioPart3.loadChartData();
+    } else if (window.__portfolio.loadChartData) {
+        window.__portfolio.loadChartData();
+    }
+
+    setTimeout(() => {
+        ChartEngine.redrawLines();
+        updateSummary();
+        updatePnLOverlay();
+        updatePositionMarkerPosition();
+    }, 100);
+
+    showToast('پوزیشن بارگذاری شد در فرم', 'info', 1800);
+}
+
+// ============================================================
+// RESET PORTFOLIO
+// ============================================================
+function resetPortfolio() {
+    if (!confirm('آیا مطمئن هستی؟ همه پوزیشن‌ها، سفارشات و تاریخچه پاک می‌شوند.')) return;
+
+    state.balance = CONFIG.INITIAL_BALANCE;
+    state.positions = [];
+    state.openOrders = [];
+    state.history = [];
+    Storage.save();
+
+    renderAccount();
+    renderPositions();
+    renderBottom();
+    updatePnLOverlay();
+    updatePositionMarkerPosition();
+    ChartEngine.redrawLines();
+
+    showToast('پورتفولیو ریست شد', 'success');
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+window.__portfolioPart2 = {
+    validateOrder,
+    executeOrder,
+    openPosition,
+    createOpenOrder,
+    resetFormAfterOrder,
+    recomputePositionsPnL,
+    closePosition,
+    checkPositionTriggers,
+    checkOpenOrders,
+    cancelOrder,
+    editPosition,
+    resetPortfolio,
+};
+
+// Alias to root
+Object.assign(window.__portfolio, window.__portfolioPart2);
+
+})();
+
+// ============================================================
+// PART 3 — UI RENDER + EVENTS + INIT
+// ============================================================
+(function() {
+'use strict';
+
+if (!window.__portfolio) {
+    console.error('❌ portfolio part 1 not loaded');
+    return;
+}
+if (window.__portfolioPart3Loaded) return;
+window.__portfolioPart3Loaded = true;
+
+const {
+    $, $$, CONFIG, state, Storage, NotifCenter, API, WS, ChartEngine,
+    escapeHtml, formatCurrency, formatPrice, formatPercent, formatNumber,
+    formatTimeAgo, uid, getCurrentCoin, computeLiquidationPrice, showToast,
+    generateCandles,
+} = window.__portfolio;
+
+const {
+    executeOrder, closePosition, cancelOrder, editPosition, resetPortfolio,
+    checkPositionTriggers, checkOpenOrders, recomputePositionsPnL,
+} = window.__portfolioPart2;
+
+// ============================================================
+// SVG ICONS
+// ============================================================
+const ICONS = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    danger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+};
+
+// ============================================================
+// DRAG OVERLAY
+// ============================================================
+function showDragOverlay(x, y, type, price) {
+    const overlay = $('#dragOverlay');
+    if (!overlay) return;
+
+    const labels = {
+        entry: 'Entry',
+        tp: 'Take Profit',
+        sl: 'Stop Loss',
+        liq: 'Liquidation',
+    };
+
+    overlay.className = 'drag-overlay show ' + type;
+    $('#dragOverlayLabel').textContent = labels[type] || '—';
+    $('#dragOverlayPrice').textContent = formatCurrency(price);
+    overlay.style.left = x + 'px';
+    overlay.style.top = y + 'px';
+}
+
+function hideDragOverlay() {
+    $('#dragOverlay')?.classList.remove('show');
+}
+
+// ============================================================
+// VALIDATE AFTER DRAG
+// ============================================================
+function validateAfterDrag() {
+    const side = state.side;
+    const entry = state.entryPrice;
+    const tp = state.tpPrice;
+    const sl = state.slPrice;
+
+    if (entry <= 0) return;
+
+    // Long: TP > Entry > SL
+    // Short: SL > Entry > TP
+    if (side === 'buy') {
+        if (tp > 0 && tp < entry) {
+            state.entryPrice = tp;
+            state.tpPrice = entry;
+            ChartEngine.redrawLines();
+        }
+        if (sl > 0 && sl > entry) {
+            state.entryPrice = sl;
+            state.slPrice = entry;
+            ChartEngine.redrawLines();
+        }
+    } else {
+        if (tp > 0 && tp > entry) {
+            state.entryPrice = tp;
+            state.tpPrice = entry;
+            ChartEngine.redrawLines();
+        }
+        if (sl > 0 && sl < entry) {
+            state.entryPrice = sl;
+            state.slPrice = entry;
+            ChartEngine.redrawLines();
+        }
+    }
+
+    if (state.entryPrice > 0) $('#inputEntry').value = state.entryPrice.toFixed(2);
+    if (state.tpPrice > 0) $('#inputTp').value = state.tpPrice.toFixed(2);
+    if (state.slPrice > 0) $('#inputSl').value = state.slPrice.toFixed(2);
+
+    updateChartStats();
+    updateSummary();
+    updatePnLOverlay();
+}
+
+// ============================================================
+// CHART STATS
+// ============================================================
+function updateChartStats() {
+    $('#statCurrent').textContent = formatCurrency(state.currentPrice);
+    $('#statEntry').textContent = state.entryPrice > 0 ? formatCurrency(state.entryPrice) : '—';
+    $('#statTp').textContent = state.tpPrice > 0 ? formatCurrency(state.tpPrice) : '—';
+    $('#statSl').textContent = state.slPrice > 0 ? formatCurrency(state.slPrice) : '—';
+
+    const liq = computeLiquidationPrice(state.entryPrice, state.leverage, state.side, state.marginMode);
+    $('#statLiq').textContent = liq > 0 ? formatCurrency(liq) : '—';
+
+    if (state.entryPrice > 0 && state.tpPrice > 0 && state.slPrice > 0) {
+        const reward = Math.abs(state.tpPrice - state.entryPrice);
+        const risk = Math.abs(state.slPrice - state.entryPrice);
+        const rr = risk > 0 ? reward / risk : 0;
+        $('#statRr').textContent = rr.toFixed(2) + ':1';
+    } else {
+        $('#statRr').textContent = '—';
+    }
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function updateSummary() {
+    const amount = parseFloat($('#inputAmount')?.value) || 0;
+    const fee = amount * 0.001;
+    const margin = amount / state.leverage;
+    const liq = computeLiquidationPrice(state.entryPrice, state.leverage, state.side, state.marginMode);
+
+    $('#sumTotal').textContent = formatCurrency(amount);
+    $('#sumFee').textContent = formatCurrency(fee);
+    $('#sumMargin').textContent = formatCurrency(margin);
+    $('#sumLiq').textContent = liq > 0 ? formatCurrency(liq) : '—';
+
+    // Max amount hint
+    const maxAmount = state.balance * state.leverage * 0.99;
+    $('#maxAmountHint').textContent = 'حداکثر: ' + formatCurrency(maxAmount);
+
+    // Submit validation
+    const btn = $('#submitBtn');
+    if (btn) {
+        const valid = amount > 0 && (margin + fee) <= state.balance && state.entryPrice > 0;
+        btn.disabled = !valid;
+    }
+}
+
+// ============================================================
+// PNL OVERLAY
+// ============================================================
+function updatePnLOverlay() {
+    const overlay = $('#pnlOverlay');
+    if (!overlay) return;
+
+    // اگه پوزیشن فعال روی ارز فعلی داری
+    const openPos = state.positions.find(p => p.coinId === state.selectedCoinId);
+
+    if (openPos) {
+        const pnl = openPos.pnl || 0;
+        const pnlPct = openPos.pnlPercent || 0;
+
+        overlay.classList.add('show', pnl >= 0 ? 'up' : 'down');
+        overlay.classList.remove(pnl >= 0 ? 'down' : 'up');
+        $('#pnlOverlayValue').textContent = (pnl >= 0 ? '+' : '') + formatCurrency(Math.abs(pnl));
+        $('#pnlOverlayMeta').textContent = formatPercent(pnlPct) + ' · ' + openPos.symbol;
+        return;
+    }
+
+    // اگه در حال ساخت پوزیشن جدید هستیم
+    if (state.entryPrice > 0 && state.amount > 0) {
+        const diff = state.side === 'buy'
+            ? (state.currentPrice - state.entryPrice)
+            : (state.entryPrice - state.currentPrice);
+        const pnl = (diff / state.entryPrice) * state.amount;
+        const margin = state.amount / state.leverage;
+        const pnlPct = margin > 0 ? (pnl / margin) * 100 : 0;
+
+        overlay.classList.add('show', pnl >= 0 ? 'up' : 'down');
+        overlay.classList.remove(pnl >= 0 ? 'down' : 'up');
+        $('#pnlOverlayValue').textContent = (pnl >= 0 ? '+' : '') + formatCurrency(Math.abs(pnl));
+        $('#pnlOverlayMeta').textContent = formatPercent(pnlPct) + ' (پیش‌نمایش)';
+        return;
+    }
+
+    overlay.classList.remove('show');
+}
+
+// ============================================================
+// POSITION MARKER
+// ============================================================
+function updatePositionMarkerPosition() {
+    if (!state.candleSeries) return;
+    const marker = $('#positionMarker');
+    if (!marker) return;
+
+    const openPos = state.positions.find(p => p.coinId === state.selectedCoinId);
+    if (!openPos) {
+        marker.style.display = 'none';
+        return;
+    }
+
+    const y = state.candleSeries.priceToCoordinate(openPos.entryPrice);
+    if (y === null || y === undefined || y < 0) {
+        marker.style.display = 'none';
+        return;
+    }
+
+    marker.style.display = 'flex';
+    marker.className = 'position-marker ' + openPos.side;
+    marker.style.top = (y - 12) + 'px';
+
+    const arrow = openPos.side === 'long'
+        ? '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>'
+        : '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>';
+
+    marker.querySelector('svg').innerHTML = arrow;
+    $('#positionMarkerText').textContent =
+        (openPos.side === 'long' ? '▲ LONG' : '▼ SHORT') + ' @ ' + formatCurrency(openPos.entryPrice);
+}
+
+// ============================================================
+// RENDER HEADER
+// ============================================================
+function renderCoinHeader() {
+    const coin = getCurrentCoin();
+    if (!coin) return;
+
+    $('#coinIcon').textContent = coin.symbol.slice(0, 3);
+    $('#coinSymbol').textContent = coin.symbol;
+    $('#coinRank').textContent = '#' + coin.rank;
+    $('#coinName').textContent = coin.name;
+
+    const priceEl = $('#coinPrice');
+    priceEl.textContent = formatCurrency(state.currentPrice || coin.price);
+    priceEl.dataset.price = state.currentPrice || coin.price;
+
+    const ch = coin.priceChange1d || 0;
+    const cls = ch > 0 ? 'up' : ch < 0 ? 'down' : 'up';
+    $('#coinChange').className = 'coin-header-change ' + cls;
+    $('#coinChangeText').textContent = formatPercent(ch);
+
+    const input = $('#coinSearchInput');
+    if (input && !input.value) input.placeholder = `${coin.symbol} — ${coin.name}`;
+}
+
+// ============================================================
+// RENDER ACCOUNT
+// ============================================================
+function renderAccount() {
+    recomputePositionsPnL();
+
+    let marginUsed = 0;
+    let unrealizedPnl = 0;
+
+    state.positions.forEach(p => {
+        marginUsed += p.margin;
+        unrealizedPnl += p.pnl || 0;
+    });
+
+    const equity = state.balance + marginUsed + unrealizedPnl;
+    const freeMargin = Math.max(0, equity - marginUsed);
+    const totalPnl = equity - CONFIG.INITIAL_BALANCE;
+
+    $('#accEquity').textContent = formatCurrency(equity);
+    $('#accPnl').textContent = (totalPnl >= 0 ? '+' : '') + formatCurrency(Math.abs(totalPnl));
+    $('#accPnl').className = 'acc-stat-value ' + (totalPnl >= 0 ? 'up' : 'down');
+    $('#accFree').textContent = formatCurrency(freeMargin);
+    $('#accMargin').textContent = formatCurrency(marginUsed);
+}
+
+// ============================================================
+// RENDER POSITIONS
+// ============================================================
+function renderPositions() {
+    const container = $('#positionsList');
+    if (!container) return;
+
+    $('#positionCount').textContent = formatNumber(state.positions.length);
+
+    if (state.positions.length === 0) {
+        container.innerHTML = `
+            <div class="empty-tab">
+                <div class="empty-icon">${ICONS.empty}</div>
+                <div class="empty-title">هیچ پوزیشن بازی نداری</div>
+                <div class="empty-msg">از فرم بالا اولین معامله‌ت رو انجام بده</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = state.positions.map(pos => {
+        const pnl = pos.pnl || 0;
+        const pnlPct = pos.pnlPercent || 0;
+        const cls = pnl >= 0 ? 'up' : 'down';
+
+        return `
+            <div class="position-card ${pos.side}">
+                <div class="position-header">
+                    <div class="position-info">
+                        <span class="position-badge ${pos.side}">${pos.side === 'long' ? 'LONG' : 'SHORT'}</span>
+                        <span class="position-symbol">${escapeHtml(pos.symbol)}</span>
+                        <span class="position-lev">${pos.leverage}x</span>
+                    </div>
+                    <div class="position-pnl">
+                        <div class="position-pnl-value ${cls}">${pnl >= 0 ? '+' : ''}${formatCurrency(Math.abs(pnl))}</div>
+                        <div class="position-pnl-pct">${formatPercent(pnlPct)}</div>
+                    </div>
+                </div>
+                <div class="position-stats">
+                    <div class="position-stat">
+                        <span class="position-stat-label">Entry</span>
+                        <span class="position-stat-value">${formatCurrency(pos.entryPrice)}</span>
+                    </div>
+                    <div class="position-stat">
+                        <span class="position-stat-label">Mark</span>
+                        <span class="position-stat-value">${formatCurrency(pos.markPrice || pos.entryPrice)}</span>
+                    </div>
+                    <div class="position-stat">
+                        <span class="position-stat-label">Size</span>
+                        <span class="position-stat-value">${formatCurrency(pos.amount)}</span>
+                    </div>
+                    <div class="position-stat">
+                        <span class="position-stat-label">Margin</span>
+                        <span class="position-stat-value">${formatCurrency(pos.margin)}</span>
+                    </div>
+                    ${pos.tp ? `
+                    <div class="position-stat">
+                        <span class="position-stat-label">TP</span>
+                        <span class="position-stat-value" style="color: var(--success);">${formatCurrency(pos.tp)}</span>
+                    </div>` : ''}
+                    ${pos.sl ? `
+                    <div class="position-stat">
+                        <span class="position-stat-label">SL</span>
+                        <span class="position-stat-value" style="color: var(--danger);">${formatCurrency(pos.sl)}</span>
+                    </div>` : ''}
+                </div>
+                <div class="position-actions">
+                    <button class="position-action edit" data-edit="${pos.id}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        ویرایش
+                    </button>
+                    <button class="position-action close" data-close="${pos.id}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        بستن
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Bind
+    container.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => openCloseModal(btn.dataset.close));
+    });
+    container.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => editPosition(btn.dataset.edit));
+    });
+}
+
+// ============================================================
+// RENDER NOTIFICATIONS
+// ============================================================
+function renderNotifications() {
+    const list = $('#notifList');
+    const empty = $('#notifEmpty');
+    const badge = $('#notifBadge');
+    if (!list) return;
+
+    const unread = NotifCenter.getUnreadCount();
+    if (badge) {
+        badge.textContent = unread > 99 ? '۹۹+' : unread.toLocaleString('fa-IR');
+        badge.style.display = unread > 0 ? 'flex' : 'none';
+    }
+
+    if (state.notifications.length === 0) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = 'flex';
+        return;
+    }
+
+    if (empty) empty.style.display = 'none';
+
+    list.innerHTML = state.notifications.slice(0, 30).map(n => {
+        const icon = ICONS[n.type] || ICONS.info;
+        return `
+            <div class="notif-item ${n.type}">
+                <div class="notif-item-icon">${icon}</div>
+                <div class="notif-item-body">
+                    <div class="notif-item-title">${escapeHtml(n.title)}</div>
+                    <div class="notif-item-msg">${escapeHtml(n.message)}</div>
+                    <div class="notif-item-time">${formatTimeAgo(n.timestamp)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// RENDER BOTTOM
+// ============================================================
+function renderBottom() {
+    const tab = state.currentBottomTab;
+    const container = $('#bottomContent');
+    if (!container) return;
+
+    if (tab === 'history') renderHistory(container);
+    else if (tab === 'orders') renderOrders(container);
+    else if (tab === 'assets') renderAssets(container);
+    else if (tab === 'performance') renderPerformance(container);
+
+    renderBottomCounts();
+}
+
+function renderBottomCounts() {
+    $('#historyCount').textContent = formatNumber(state.history.length);
+    $('#ordersCount').textContent = formatNumber(state.openOrders.length);
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistory(container) {
+    if (state.history.length === 0) {
+        container.innerHTML = `
+            <div class="empty-tab">
+                <div class="empty-icon">${ICONS.empty}</div>
+                <div class="empty-title">هیچ معامله‌ای ثبت نشده</div>
+                <div class="empty-msg">پس از اولین معامله، اینجا نمایش داده می‌شود</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>زمان</th>
+                        <th>ارز</th>
+                        <th>نوع</th>
+                        <th>سمت</th>
+                        <th>قیمت</th>
+                        <th class="hide-mobile">مقدار</th>
+                        <th>P&L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${state.history.slice(0, 100).map(h => {
+                        const pnl = h.pnl;
+                        const hasPnl = pnl !== undefined && pnl !== null;
+                        const pnlCls = hasPnl ? (pnl >= 0 ? 'var(--success)' : 'var(--danger)') : 'var(--text-muted)';
+                        return `
+                            <tr>
+                                <td>${formatTimeAgo(h.timestamp)}</td>
+                                <td>${escapeHtml(h.symbol)}</td>
+                                <td><span class="type-badge ${h.type}">${h.type === 'open' ? 'باز کردن' : 'بستن'}</span></td>
+                                <td><span class="type-badge ${h.side}">${h.side === 'long' ? 'LONG' : 'SHORT'}</span></td>
+                                <td>${formatCurrency(h.price)}</td>
+                                <td class="hide-mobile">${formatCurrency(h.amount)}</td>
+                                <td style="color: ${pnlCls}; font-weight: 700;">
+                                    ${hasPnl ? ((pnl >= 0 ? '+' : '') + formatCurrency(Math.abs(pnl))) : '—'}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+function renderOrders(container) {
+    if (state.openOrders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-tab">
+                <div class="empty-icon">${ICONS.empty}</div>
+                <div class="empty-title">هیچ سفارش معلقی نداری</div>
+                <div class="empty-msg">سفارشات Limit و Stop اینجا نمایش داده می‌شوند</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>زمان</th>
+                        <th>ارز</th>
+                        <th>نوع</th>
+                        <th>سمت</th>
+                        <th>قیمت Trigger</th>
+                        <th class="hide-mobile">مقدار</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${state.openOrders.map(o => `
+                        <tr>
+                            <td>${formatTimeAgo(o.createdAt)}</td>
+                            <td>${escapeHtml(o.symbol)}</td>
+                            <td><span class="type-badge ${o.orderType}">${o.orderType === 'limit' ? 'Limit' : 'Stop'}</span></td>
+                            <td><span class="type-badge ${o.side}">${o.side === 'long' ? 'LONG' : 'SHORT'}</span></td>
+                            <td>${formatCurrency(o.triggerPrice)}</td>
+                            <td class="hide-mobile">${formatCurrency(o.amount)}</td>
+                            <td>
+                                <button class="position-action close" data-cancel-order="${o.id}" style="padding: 5px 10px; font-size: 10.5px;">
+                                    لغو
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.querySelectorAll('[data-cancel-order]').forEach(btn => {
+        btn.addEventListener('click', () => cancelOrder(btn.dataset.cancelOrder));
+    });
+}
+
+// ============================================================
+// ASSETS
+// ============================================================
+function renderAssets(container) {
+    recomputePositionsPnL();
+
+    let marginUsed = 0;
+    let unrealizedPnl = 0;
+    state.positions.forEach(p => {
+        marginUsed += p.margin;
+        unrealizedPnl += p.pnl || 0;
+    });
+
+    const equity = state.balance + marginUsed + unrealizedPnl;
+    const totalValue = equity;
+
+    let html = `<div class="assets-grid"><div>`;
+
+    // USDT
+    html += `
+        <div class="asset-item">
+            <div class="asset-coin">
+                <div class="asset-icon">$</div>
+                <div>
+                    <div class="asset-symbol">USDT</div>
+                    <div class="asset-name">موجودی آزاد</div>
+                </div>
+            </div>
+            <div class="asset-value">
+                <div class="asset-balance">${formatCurrency(state.balance)}</div>
+                <div class="asset-usd">${totalValue > 0 ? ((state.balance / totalValue) * 100).toFixed(1) : 0}%</div>
+            </div>
+        </div>
+    `;
+
+    if (marginUsed > 0) {
+        html += `
+            <div class="asset-item">
+                <div class="asset-coin">
+                    <div class="asset-icon" style="background: linear-gradient(135deg, var(--warning), var(--warning-dark));">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="asset-symbol">Margin Used</div>
+                        <div class="asset-name">مارجین در پوزیشن‌ها</div>
+                    </div>
+                </div>
+                <div class="asset-value">
+                    <div class="asset-balance">${formatCurrency(marginUsed)}</div>
+                    <div class="asset-usd">${totalValue > 0 ? ((marginUsed / totalValue) * 100).toFixed(1) : 0}%</div>
+                </div>
+            </div>
+        `;
+    }
+
+    if (unrealizedPnl !== 0) {
+        const pnlColor = unrealizedPnl >= 0 ? 'var(--success)' : 'var(--danger)';
+        html += `
+            <div class="asset-item">
+                <div class="asset-coin">
+                    <div class="asset-icon" style="background: ${pnlColor};">
+                        ${unrealizedPnl >= 0
+                            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+                            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}
+                    </div>
+                    <div>
+                        <div class="asset-symbol">Unrealized P&L</div>
+                        <div class="asset-name">سود/زیان باز</div>
+                    </div>
+                </div>
+                <div class="asset-value">
+                    <div class="asset-balance" style="color: ${pnlColor};">${unrealizedPnl >= 0 ? '+' : ''}${formatCurrency(Math.abs(unrealizedPnl))}</div>
+                    <div class="asset-usd">${unrealizedPnl >= 0 ? 'سود' : 'زیان'}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    html += `</div><div>`;
+
+    // Positions grouped by coin
+    if (state.positions.length > 0) {
+        const grouped = {};
+        state.positions.forEach(p => {
+            if (!grouped[p.coinId]) grouped[p.coinId] = { symbol: p.symbol, size: 0, value: 0 };
+            grouped[p.coinId].size += p.amount;
+            grouped[p.coinId].value += p.amount;
+        });
+        Object.values(grouped).forEach(g => {
+            html += `
+                <div class="asset-item">
+                    <div class="asset-coin">
+                        <div class="asset-icon">${escapeHtml(g.symbol.slice(0, 3))}</div>
+                        <div>
+                            <div class="asset-symbol">${escapeHtml(g.symbol)}</div>
+                            <div class="asset-name">Position</div>
+                        </div>
+                    </div>
+                    <div class="asset-value">
+                        <div class="asset-balance">${formatCurrency(g.value)}</div>
+                        <div class="asset-usd">${totalValue > 0 ? ((g.value / totalValue) * 100).toFixed(1) : 0}%</div>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        html += `
+            <div class="empty-tab" style="padding: 30px 20px;">
+                <div class="empty-title">فقط USDT داری</div>
+                <div class="empty-msg">با معامله، دارایی‌هات اینجا نمایش داده می‌شن</div>
+            </div>
+        `;
+    }
+
+    html += `</div></div>`;
+
+    // Summary
+    html += `
+        <div style="margin-top: 14px; padding: 12px 16px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: var(--text-muted); font-family: var(--mono-font); text-transform: uppercase; font-weight: 700;">Total Equity</span>
+            <span style="font-size: 17px; color: var(--text-light); font-family: var(--mono-font); font-weight: 700;">${formatCurrency(equity)}</span>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+// ============================================================
+// PERFORMANCE
+// ============================================================
+function renderPerformance(container) {
+    recomputePositionsPnL();
+
+    let marginUsed = 0;
+    let unrealizedPnl = 0;
+    state.positions.forEach(p => {
+        marginUsed += p.margin;
+        unrealizedPnl += p.pnl || 0;
+    });
+
+    const equity = state.balance + marginUsed + unrealizedPnl;
+    const totalPnl = equity - CONFIG.INITIAL_BALANCE;
+    const totalPnlPct = (totalPnl / CONFIG.INITIAL_BALANCE) * 100;
+
+    const closedTrades = state.history.filter(h => h.type === 'close' && h.pnl !== undefined);
+    const wins = closedTrades.filter(h => h.pnl > 0);
+    const losses = closedTrades.filter(h => h.pnl < 0);
+    const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
+    const avgWin = wins.length > 0 ? wins.reduce((s, h) => s + h.pnl, 0) / wins.length : 0;
+    const avgLoss = losses.length > 0 ? losses.reduce((s, h) => s + h.pnl, 0) / losses.length : 0;
+    const totalWins = wins.reduce((s, h) => s + h.pnl, 0);
+    const totalLosses = Math.abs(losses.reduce((s, h) => s + h.pnl, 0));
+    const profitFactor = totalLosses > 0 ? totalWins / totalLosses : (totalWins > 0 ? 999 : 0);
+
+    container.innerHTML = `
+        <div class="perf-grid">
+            <div class="perf-stat primary">
+                <span class="perf-stat-label">Equity</span>
+                <span class="perf-stat-value primary">${formatCurrency(equity)}</span>
+                <span class="perf-stat-meta">موجودی کل</span>
+            </div>
+            <div class="perf-stat ${totalPnl >= 0 ? 'success' : 'danger'}">
+                <span class="perf-stat-label">Total P&L</span>
+                <span class="perf-stat-value ${totalPnl >= 0 ? 'up' : 'down'}">${totalPnl >= 0 ? '+' : ''}${formatCurrency(Math.abs(totalPnl))}</span>
+                <span class="perf-stat-meta">${formatPercent(totalPnlPct)}</span>
+            </div>
+            <div class="perf-stat success">
+                <span class="perf-stat-label">Win Rate</span>
+                <span class="perf-stat-value up">${winRate.toFixed(1)}%</span>
+                <span class="perf-stat-meta">${wins.length} از ${closedTrades.length} معامله</span>
+            </div>
+            <div class="perf-stat warning">
+                <span class="perf-stat-label">Total Trades</span>
+                <span class="perf-stat-value">${formatNumber(closedTrades.length)}</span>
+                <span class="perf-stat-meta">${state.positions.length} پوزیشن باز</span>
+            </div>
+            <div class="perf-stat success">
+                <span class="perf-stat-label">Avg Win</span>
+                <span class="perf-stat-value up">+${formatCurrency(avgWin)}</span>
+                <span class="perf-stat-meta">${wins.length} معامله برنده</span>
+            </div>
+            <div class="perf-stat danger">
+                <span class="perf-stat-label">Avg Loss</span>
+                <span class="perf-stat-value down">${formatCurrency(avgLoss)}</span>
+                <span class="perf-stat-meta">${losses.length} معامله بازنده</span>
+            </div>
+            <div class="perf-stat ${profitFactor >= 1.5 ? 'success' : profitFactor >= 1 ? 'warning' : 'danger'}">
+                <span class="perf-stat-label">Profit Factor</span>
+                <span class="perf-stat-value ${profitFactor >= 1.5 ? 'up' : profitFactor >= 1 ? '' : 'down'}">${profitFactor >= 999 ? '∞' : profitFactor.toFixed(2)}</span>
+                <span class="perf-stat-meta">سود کل / ضرر کل</span>
+            </div>
+            <div class="perf-stat info">
+                <span class="perf-stat-label">Open Positions</span>
+                <span class="perf-stat-value">${formatNumber(state.positions.length)}</span>
+                <span class="perf-stat-meta">${state.openOrders.length} سفارش معلق</span>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// LOAD COINS
+// ============================================================
+async function loadCoins() {
+    try {
+        const res = await API.getCoins(250);
+        if (res.success && Array.isArray(res.data)) {
+            state.coins = res.data
+                .filter(c => c.id && c.symbol)
+                .map(c => ({
+                    id: c.id,
+                    symbol: c.symbol || '',
+                    name: c.name || c.symbol || '',
+                    rank: c.rank || 999,
+                    price: parseFloat(c.price) || 0,
+                    priceChange1d: parseFloat(c.priceChange1d) || 0,
+                }));
+            return true;
+        }
+    } catch (e) {
+        console.error('loadCoins failed:', e);
+    }
+    return false;
+}
+
+// ============================================================
+// LOAD CHART DATA
+// ============================================================
+async function loadChartData() {
+    const coin = getCurrentCoin();
+    if (!coin) return;
+
+    let candles = null;
+
+    // تلاش برای دریافت از API
+    try {
+        const periodMap = { '1': '1h', '5': '5m', '15': '15m', '60': '1h', '240': '4h', 'D': '1d' };
+        const period = periodMap[state.activeTimeframe] || '1h';
+        const res = await API.getChart(coin.id, period);
+
+        if (res.success && res.data?.prices && res.data.prices.length > 0) {
+            const prices = res.data.prices;
+            const timestamps = res.data.timestamps || prices.map((_, i) => Date.now() - (prices.length - i) * 3600000);
+            candles = prices.map((p, i) => ({
+                time: Math.floor(timestamps[i] / 1000),
+                open: p,
+                high: p * 1.003,
+                low: p * 0.997,
+                close: p,
+                volume: 1e6,
+            }));
+        }
+    } catch (e) {
+        console.warn('Chart API failed, fallback to generator');
+    }
+
+    if (!candles || candles.length < 10) {
+        candles = generateCandles(coin.id, CONFIG.CANDLE_COUNT, coin.price, state.activeTimeframe);
+    }
+
+    ChartEngine.setData(candles);
+    state.currentPrice = candles[candles.length - 1].close;
+    coin.price = state.currentPrice;
+
+    // Entry default
+    if (state.entryPrice === 0) {
+        state.entryPrice = state.currentPrice;
+        $('#inputEntry').value = state.currentPrice.toFixed(2);
+    }
+}
+
+// ============================================================
+// OPEN CLOSE MODAL
+// ============================================================
+function openCloseModal(posId) {
+    const pos = state.positions.find(p => p.id === posId);
+    if (!pos) return;
+
+    state.closingPositionId = posId;
+    state.closingPct = 100;
+
+    const pnl = pos.pnl || 0;
+    const pnlPct = pos.pnlPercent || 0;
+
+    $('#closeModalInfo').innerHTML = `
+        <div class="modal-info-row">
+            <span class="modal-info-label">ارز</span>
+            <span class="modal-info-value">${escapeHtml(pos.symbol)}</span>
+        </div>
+        <div class="modal-info-row">
+            <span class="modal-info-label">سمت / لوریج</span>
+            <span class="modal-info-value">${pos.side === 'long' ? 'LONG' : 'SHORT'} · ${pos.leverage}x</span>
+        </div>
+        <div class="modal-info-row">
+            <span class="modal-info-label">Size</span>
+            <span class="modal-info-value">${formatCurrency(pos.amount)}</span>
+        </div>
+        <div class="modal-info-row">
+            <span class="modal-info-label">P&L</span>
+            <span class="modal-info-value ${pnl >= 0 ? 'up' : 'down'}">
+                ${pnl >= 0 ? '+' : ''}${formatCurrency(Math.abs(pnl))} (${formatPercent(pnlPct)})
+            </span>
+        </div>
+    `;
+
+    $$('#partialBtns .partial-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.pct) === 100));
+    $('#closeModal').classList.add('open');
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function openSearch() {
+    state.searchOpen = true;
+    state.searchSelectedIdx = 0;
+    renderSearch();
+    $('#coinSearchDropdown').classList.add('open');
+}
+
+function closeSearch() {
+    state.searchOpen = false;
+    $('#coinSearchDropdown').classList.remove('open');
+}
+
+function renderSearch() {
+    const dropdown = $('#coinSearchDropdown');
+    const input = $('#coinSearchInput');
+    if (!dropdown || !input) return;
+    const q = input.value.trim().toLowerCase();
+
+    let results = q
+        ? state.coins.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.symbol.toLowerCase().includes(q) ||
+            c.id.toLowerCase().includes(q)
+        ).slice(0, 10)
+        : state.coins.slice(0, 8);
+
+    state.searchResults = results;
+
+    if (results.length === 0) {
+        dropdown.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim); font-size: 12px;">نتیجه‌ای یافت نشد</div>';
+        return;
+    }
+
+    dropdown.innerHTML = results.map((c, i) => `
+        <div class="coin-search-item ${i === state.searchSelectedIdx ? 'selected' : ''}" data-coin-id="${escapeHtml(c.id)}">
+            <div class="coin-search-item-icon">${escapeHtml(c.symbol.slice(0, 3))}</div>
+            <div class="coin-search-item-info">
+                <span class="coin-search-item-symbol">${escapeHtml(c.symbol)}</span>
+                <span class="coin-search-item-name">${escapeHtml(c.name)}</span>
+            </div>
+            <span class="coin-search-item-price">${formatCurrency(c.price)}</span>
+        </div>
+    `).join('');
+
+    dropdown.querySelectorAll('.coin-search-item').forEach(item => {
+        item.addEventListener('click', () => selectCoin(item.dataset.coinId));
+    });
+}
+
+function selectCoin(coinId) {
+    const coin = state.coins.find(c => c.id === coinId);
+    if (!coin) return;
+
+    state.selectedCoinId = coinId;
+    try { localStorage.setItem(CONFIG.STORAGE.SELECTED_COIN, coinId); } catch (e) {}
+
+    closeSearch();
+    $('#coinSearchInput').value = '';
+
+    // Reset entry
+    state.entryPrice = 0;
+    state.tpPrice = 0;
+    state.slPrice = 0;
+    state.amount = 0;
+
+    renderCoinHeader();
+    loadChartData().then(() => {
+        ChartEngine.redrawLines();
+        updateChartStats();
+        updateSummary();
+        updatePnLOverlay();
+        updatePositionMarkerPosition();
+        renderPositions();
+    });
+
+    showToast(`ارز تغییر کرد به ${coin.symbol}`, 'success', 1500);
+}
+
+// ============================================================
+// CONTEXT MENU
+// ============================================================
+function openContextMenu(x, y) {
+    const menu = $('#contextMenu');
+    if (!menu) return;
+
+    state.contextMenuOpen = true;
+    menu.classList.add('open');
+
+    // موقعیت
+    const menuW = 200;
+    const menuH = 260;
+    const left = Math.min(x, window.innerWidth - menuW - 10);
+    const top = Math.min(y, window.innerHeight - menuH - 10);
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+}
+
+function closeContextMenu() {
+    state.contextMenuOpen = false;
+    $('#contextMenu')?.classList.remove('open');
+}
+
+// ============================================================
+// FULLSCREEN
+// ============================================================
+function toggleFullscreen() {
+    document.body.classList.toggle('chart-fullscreen');
+    const isFS = document.body.classList.contains('chart-fullscreen');
+
+    setTimeout(() => {
+        if (state.chart) {
+            const container = $('#chart');
+            if (container) state.chart.resize(container.clientWidth, container.clientHeight);
+        }
+    }, 100);
+
+    showToast(isFS ? 'حالت تمام صفحه' : 'خروج از تمام صفحه', 'info', 1200);
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+function setupEvents() {
+    // Timeframes
+    $$('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.tf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.activeTimeframe = btn.dataset.tf;
+            Storage.save();
+            loadChartData().then(() => ChartEngine.redrawLines());
+        });
+    });
+
+    // Chart actions
+    $('#toggleIndicatorsBtn')?.addEventListener('click', () => ChartEngine.toggleIndicators());
+    $('#toggleVolumeBtn')?.addEventListener('click', () => ChartEngine.toggleVolume());
+    $('#snapshotBtn')?.addEventListener('click', () => ChartEngine.snapshot());
+    $('#resetChartBtn')?.addEventListener('click', () => ChartEngine.reset());
+    $('#fullscreenBtn')?.addEventListener('click', toggleFullscreen);
+
+    // Side toggle
+    $$('.order-side-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.order-side-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.side = btn.dataset.side;
+
+            const submitBtn = $('#submitBtn');
+            submitBtn.className = 'submit-btn ' + state.side;
+            $('#submitBtnText').textContent = state.side === 'buy' ? 'باز کردن Long' : 'باز کردن Short';
+            submitBtn.querySelector('svg').innerHTML = state.side === 'buy'
+                ? '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>'
+                : '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>';
+
+            ChartEngine.redrawLines();
+            updateSummary();
+            updatePnLOverlay();
+        });
+    });
+
+    // Order Type
+    $('#orderType')?.addEventListener('change', (e) => {
+        state.orderType = e.target.value;
+    });
+
+    // Amount percent
+    $$('.percent-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.percent-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const pct = parseInt(btn.dataset.pct) / 100;
+            const maxAmount = state.balance * state.leverage * 0.99;
+            const amount = Math.floor(maxAmount * pct);
+            $('#inputAmount').value = amount;
+            state.amount = amount;
+            updateSummary();
+            updatePnLOverlay();
+        });
+    });
+
+    // Leverage
+    $$('.lev-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.lev-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.leverage = parseInt(btn.dataset.lev);
+            $('#leverageValue').textContent = state.leverage + 'x';
+            Storage.save();
+            ChartEngine.redrawLines();
+            updateSummary();
+        });
+    });
+
+    // Margin Mode
+    $$('.mm-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.mm-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.marginMode = btn.dataset.mode;
+            Storage.save();
+            ChartEngine.redrawLines();
+            updateSummary();
+        });
+    });
+
+    // TP/SL Toggle
+    $('#tpslToggle')?.addEventListener('click', () => {
+        state.tpslEnabled = !state.tpslEnabled;
+        $('#tpslToggle').classList.toggle('active', state.tpslEnabled);
+        $('#tpslFields').classList.toggle('open', state.tpslEnabled);
+    });
+
+    // Inputs
+    ['inputEntry', 'inputAmount', 'inputTp', 'inputSl'].forEach(id => {
+        $('#' + id)?.addEventListener('input', () => {
+            if (id === 'inputEntry') {
+                state.entryPrice = parseFloat($('#inputEntry').value) || 0;
+                ChartEngine.redrawLines();
+            }
+            if (id === 'inputAmount') {
+                state.amount = parseFloat($('#inputAmount').value) || 0;
+            }
+            if (id === 'inputTp') {
+                state.tpPrice = parseFloat($('#inputTp').value) || 0;
+                ChartEngine.redrawLines();
+            }
+            if (id === 'inputSl') {
+                state.slPrice = parseFloat($('#inputSl').value) || 0;
+                ChartEngine.redrawLines();
+            }
+            updateSummary();
+            updatePnLOverlay();
+        });
+    });
+
+    // Submit
+    $('#submitBtn')?.addEventListener('click', executeOrder);
+
+    // Bottom tabs
+    $$('.bottom-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.bottom-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.currentBottomTab = btn.dataset.tab;
+            renderBottom();
+        });
+    });
+
+    // Modals
+    $$('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById(btn.dataset.closeModal)?.classList.remove('open');
+        });
+    });
+
+    $$('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.classList.remove('open');
+        });
+    });
+
+    // Partial buttons
+    $$('#partialBtns .partial-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('#partialBtns .partial-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.closingPct = parseInt(btn.dataset.pct);
+        });
+    });
+
+    // Confirm Close
+    $('#confirmCloseBtn')?.addEventListener('click', () => {
+        if (!state.closingPositionId) return;
+        const posId = state.closingPositionId;
+        const pct = state.closingPct;
+        $('#closeModal').classList.remove('open');
+        closePosition(posId, pct);
+    });
+
+    // Confirm Modal
+    $('#confirmOkBtn')?.addEventListener('click', () => {
+        const cb = state.confirmCallback;
+        $('#confirmModal').classList.remove('open');
+        state.confirmCallback = null;
+        if (cb) setTimeout(cb, 100);
+    });
+
+    // Notification Center
+    $('#notifBell')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.notifOpen = !state.notifOpen;
+        $('#notifDropdown').classList.toggle('open', state.notifOpen);
+        if (state.notifOpen) {
+            setTimeout(() => NotifCenter.markAllRead(), 800);
+        }
+    });
+
+    $('#notifClearBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        NotifCenter.clearAll();
+        showToast('اعلان‌ها پاک شدند', 'info', 1500);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#notifWrap')) {
+            $('#notifDropdown')?.classList.remove('open');
+            state.notifOpen = false;
+        }
+        if (!e.target.closest('#coinSearchWrap')) closeSearch();
+        if (!e.target.closest('#contextMenu') && state.contextMenuOpen) closeContextMenu();
+    });
+
+    // Search
+    const searchInput = $('#coinSearchInput');
+    searchInput?.addEventListener('focus', openSearch);
+    searchInput?.addEventListener('input', () => {
+        state.searchSelectedIdx = 0;
+        renderSearch();
+        if (!state.searchOpen) openSearch();
+    });
+    searchInput?.addEventListener('keydown', (e) => {
+        if (!state.searchOpen) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            state.searchSelectedIdx = Math.min(state.searchSelectedIdx + 1, state.searchResults.length - 1);
+            renderSearch();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            state.searchSelectedIdx = Math.max(state.searchSelectedIdx - 1, 0);
+            renderSearch();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const coin = state.searchResults[state.searchSelectedIdx];
+            if (coin) selectCoin(coin.id);
+        } else if (e.key === 'Escape') {
+            closeSearch();
+            searchInput.blur();
+        }
+    });
+
+    // Right click on chart
+    $('#chart')?.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openContextMenu(e.clientX, e.clientY);
+    });
+
+    // Context menu actions
+    $$('#contextMenu .ctx-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            closeContextMenu();
+            if (action === 'reset-chart') ChartEngine.reset();
+            else if (action === 'toggle-sma') ChartEngine.toggleIndicators();
+            else if (action === 'snapshot') ChartEngine.snapshot();
+            else if (action === 'fullscreen') toggleFullscreen();
+            else if (action === 'clear-tpsl') {
+                state.tpPrice = 0;
+                state.slPrice = 0;
+                $('#inputTp').value = '';
+                $('#inputSl').value = '';
+                ChartEngine.redrawLines();
+                updateSummary();
+            }
+        });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea, select')) return;
+
+        const key = e.key.toLowerCase();
+
+        if (key === 'escape') {
+            closeSearch();
+            closeContextMenu();
+            $$('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+            if (document.body.classList.contains('chart-fullscreen')) toggleFullscreen();
+            return;
+        }
+
+        if (key === 'b') {
+            $$('.order-side-btn').forEach(b => {
+                if (b.dataset.side === 'buy') b.click();
+            });
+        } else if (key === 's') {
+            $$('.order-side-btn').forEach(b => {
+                if (b.dataset.side === 'sell') b.click();
+            });
+        } else if (key === 'r') {
+            ChartEngine.reset();
+        } else if (key === 'f') {
+            toggleFullscreen();
+        } else if (key === 'v') {
+            ChartEngine.toggleVolume();
+        } else if (key === 'i') {
+            ChartEngine.toggleIndicators();
+        }
+    });
+
+    // Message from parent (Shell)
+    window.addEventListener('message', (e) => {
+        if (e.data?.type === 'theme-changed') {
+            if (e.data.theme) document.documentElement.setAttribute('data-theme', e.data.theme);
+            if (e.data.color) document.documentElement.setAttribute('data-color', e.data.color);
+        }
+        if (e.data?.type === 'refresh') {
+            refreshAll();
+        }
+        if (e.data?.type === 'watchlist-updated') {
+            // ...
+        }
+    });
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+async function refreshAll() {
+    showToast('در حال بروزرسانی...', 'info', 1200);
+    await loadCoins();
+    await loadChartData();
+    ChartEngine.redrawLines();
+    renderCoinHeader();
+    renderAccount();
+    renderPositions();
+    renderBottom();
+    updateChartStats();
+    updateSummary();
+    updatePnLOverlay();
+    updatePositionMarkerPosition();
+    showToast('بروزرسانی شد', 'success', 1500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log('%c 💼 Portfolio v2 ', 'background: linear-gradient(135deg, #06b6d4, #6366f1); color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px;');
+
+    // Load storage
+    Storage.load();
+
+    // Load coins
+    await loadCoins();
+
+    // Selected coin
+    let savedCoin = null;
+    try { savedCoin = localStorage.getItem(CONFIG.STORAGE.SELECTED_COIN); } catch (e) {}
+    if (savedCoin && state.coins.find(c => c.id === savedCoin)) {
+        state.selectedCoinId = savedCoin;
+    } else {
+        state.selectedCoinId = state.coins[0]?.id || 'bitcoin';
+    }
+
+    // Init chart
+    ChartEngine.init();
+
+    // Load data
+    await loadChartData();
+    renderCoinHeader();
+
+    // Initial leverage
+    $$('.lev-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lev) === state.leverage));
+    $('#leverageValue').textContent = state.leverage + 'x';
+
+    // Initial margin mode
+    $$('.mm-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === state.marginMode));
+
+    // Active timeframe
+    $$('.tf-btn').forEach(b => b.classList.toggle('active', b.dataset.tf === state.activeTimeframe));
+
+    // Initial render
+    renderAccount();
+    renderPositions();
+    renderBottom();
+    renderNotifications();
+    updateChartStats();
+    updateSummary();
+    updatePnLOverlay();
+    updatePositionMarkerPosition();
+    ChartEngine.redrawLines();
+
+    // Events
+    setupEvents();
+
+    // WebSocket
+    WS.connect();
+
+    // Auto triggers (هر ۲ ثانیه)
+    if (state.timers.accountStats) clearInterval(state.timers.accountStats);
+    state.timers.accountStats = setInterval(() => {
+        checkPositionTriggers();
+        checkOpenOrders();
+        recomputePositionsPnL();
+        renderAccount();
+        if (state.currentBottomTab === 'assets' || state.currentBottomTab === 'performance') {
+            renderBottom();
+        }
+    }, 2000);
+
+    // Notif check
+    if (state.timers.notifCheck) clearInterval(state.timers.notifCheck);
+    state.timers.notifCheck = setInterval(() => {
+        renderNotifications();
+    }, 5000);
+
+    console.log('✅ Portfolio v2 ready');
+}
+
+// ============================================================
+// EXPOSE
+// ============================================================
+window.__portfolioPart3 = {
+    showDragOverlay, hideDragOverlay,
+    validateAfterDrag,
+    updateChartStats, updateSummary, updatePnLOverlay, updatePositionMarkerPosition,
+    renderCoinHeader, renderAccount, renderPositions, renderNotifications,
+    renderBottom, renderHistory, renderOrders, renderAssets, renderPerformance,
+    loadCoins, loadChartData,
+    openCloseModal, openSearch, closeSearch, selectCoin,
+    openContextMenu, closeContextMenu, toggleFullscreen,
+    refreshAll,
+};
+
+// BOOT
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+// Cleanup
+window.__portfolioCleanup = function() {
+    Object.values(state.timers).forEach(t => { if (t) clearInterval(t); });
+    if (state.chart) {
+        try { state.chart.remove(); } catch (e) {}
+    }
+    window.__portfolioPart1Loaded = false;
+    window.__portfolioPart2Loaded = false;
+    window.__portfolioPart3Loaded = false;
+};
+
+})();
+
+</script>
+
+</body>
+</html>
