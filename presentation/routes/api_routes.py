@@ -3182,47 +3182,35 @@ def coinstats_all():
 @api_bp.route('/coinstats/ohlcv')
 def get_ohlcv():
     """
-    دریافت OHLCV واقعی از CoinStats
+    دریافت OHLCV (اول از DB، اگه نبود از CoinStats)
     
     Query params:
         coin:      'bitcoin' | 'BTC' | 'BTC/USDT'  (اجباری)
         interval:  '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'  (پیش‌فرض: '1h')
         range:     '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'  (پیش‌فرض: '1mo')
-        exchange:  'Binance' (پیش‌فرض)
+        limit:     حداکثر تعداد کندل (پیش‌فرض: 1000)
     
     Returns:
-        {
-            success: true,
-            pair: "BTC/USDT",
-            interval: "1h",
-            range: "1mo",
-            count: 720,
-            warning: "..." (اختیاری، اگه range cap شده باشه),
-            data: [ { timestamp, open, high, low, close, volume }, ... ]
-        }
+        { success, pair, interval, range, count, warning, data: [...] }
     """
     try:
         from infrastructure.api.coinstats_client import coinstats_client
+        from infrastructure.repositories.ohlcv_repository import OHLCVRepository
         
         coin = request.args.get('coin', 'bitcoin').lower().strip()
         interval = request.args.get('interval', '1h')
         range_ = request.args.get('range', '1mo')
-        exchange = request.args.get('exchange', 'Binance')
+        limit = int(request.args.get('limit', 1000))
         
         # تبدیل coin به pair
         pair = None
-        
         if '/' in coin:
-            # کاربر pair داده: "btc/usdt"
             pair = coin.upper()
         elif coin.isupper() and len(coin) >= 6 and coin.endswith('USDT'):
-            # "BTCUSDT"
             pair = f"{coin[:-4]}/USDT"
         elif coin.isupper() and 2 <= len(coin) <= 6:
-            # "BTC"
             pair = f"{coin}/USDT"
         else:
-            # coin_id مثل "bitcoin"
             pair = coinstats_client.coin_id_to_pair(coin)
         
         if not pair:
@@ -3231,15 +3219,23 @@ def get_ohlcv():
                 'error': f'Cannot map "{coin}" to a trading pair'
             }), 400
         
-        # دریافت داده
-        result = coinstats_client.get_ohlcv_candles(
-            exchange=exchange,
-            pair=pair,
+        # ============================================================
+        # استفاده از Repository.get_or_fetch
+        # - اول از DB می‌خونه
+        # - اگه نبود، از API می‌گیره و ذخیره می‌کنه
+        # ============================================================
+        
+        repo = OHLCVRepository()
+        
+        df = repo.get_or_fetch(
+            symbol=pair,
             interval=interval,
-            range=range_,
+            api_client=coinstats_client,
+            data_range=range_,
+            min_candles=50,
         )
         
-        if not result or 'candles' not in result:
+        if df is None or df.empty:
             return jsonify({
                 'success': False,
                 'error': 'No OHLCV data available',
@@ -3248,14 +3244,38 @@ def get_ohlcv():
                 'range': range_,
             }), 404
         
+        # محدود کردن تعداد
+        if len(df) > limit:
+            df = df.tail(limit)
+        
+        # تبدیل DataFrame به لیست کندل‌ها
+        candles = []
+        for ts, row in df.iterrows():
+            try:
+                candles.append({
+                    'timestamp': int(ts.timestamp() * 1000),  # milliseconds
+                    'open': float(row['Open']),
+                    'high': float(row['High']),
+                    'low': float(row['Low']),
+                    'close': float(row['Close']),
+                    'volume': float(row['Volume']),
+                })
+            except (ValueError, TypeError, KeyError):
+                continue
+        
+        if not candles:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to parse candles',
+            }), 500
+        
         return jsonify({
             'success': True,
             'pair': pair,
             'interval': interval,
-            'range': result.get('range', range_),
-            'warning': result.get('warning'),
-            'count': len(result['candles']),
-            'data': result['candles'],
+            'range': range_,
+            'count': len(candles),
+            'data': candles,
         })
     
     except Exception as e:
@@ -3264,35 +3284,57 @@ def get_ohlcv():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/coinstats/symbol-map')
-def get_symbol_map():
-    """Mapping از coin_id به pair (hard-coded فقط)"""
-    try:
-        from infrastructure.api.coinstats_client import COIN_TO_PAIR
-        return jsonify({'success': True, 'data': COIN_TO_PAIR})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+# ============================================================
+# OHLCV Stats (برای دیباگ)
+# ============================================================
 
 @api_bp.route('/coinstats/ohlcv-stats')
 def get_ohlcv_stats():
-    """آمار OHLCV client (برای دیباگ)"""
+    """آمار OHLCV: تعداد رکوردها، symbols، intervals"""
     try:
-        from infrastructure.api.coinstats_client import coinstats_client
-        stats = coinstats_client._stats
+        from infrastructure.repositories.ohlcv_repository import OHLCVRepository
+        
+        repo = OHLCVRepository()
+        stats = repo.get_stats()
+        
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# OHLCV Cleanup
+# ============================================================
+
+@api_bp.route('/coinstats/ohlcv-cleanup', methods=['POST'])
+def cleanup_ohlcv():
+    """
+    پاک کردن رکوردهای قدیمی
+    
+    Body (JSON):
+        { retention_days: 90, interval: '1h' (اختیاری) }
+    """
+    try:
+        from infrastructure.repositories.ohlcv_repository import OHLCVRepository
+        
+        data = request.get_json() or {}
+        retention_days = int(data.get('retention_days', 90))
+        interval = data.get('interval')
+        
+        repo = OHLCVRepository()
+        remaining = repo.cleanup_old(
+            retention_days=retention_days,
+            interval=interval,
+        )
+        
         return jsonify({
             'success': True,
-            'data': {
-                'ohlcv_requests': stats.get('ohlcv_requests', 0),
-                'ohlcv_candles_total': stats.get('ohlcv_candles_total', 0),
-                'ohlcv_range_caps': stats.get('ohlcv_range_caps', 0),
-                'cache_hits': stats.get('cache_hits', 0),
-                'cache_misses': stats.get('cache_misses', 0),
-            }
+            'remaining': remaining,
+            'retention_days': retention_days,
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-        
+            
 # ============================================================
 # ۱۹. قیمت‌های لحظه‌ای (WebSocket + Fallback)
 # ============================================================
