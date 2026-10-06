@@ -3176,6 +3176,124 @@ def coinstats_all():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================
+# OHLCV Routes
+# ============================================================
+
+@api_bp.route('/coinstats/ohlcv')
+def get_ohlcv():
+    """
+    دریافت OHLCV واقعی از CoinStats
+    
+    Query params:
+        coin:      'bitcoin' | 'BTC' | 'BTC/USDT'  (اجباری)
+        interval:  '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'  (پیش‌فرض: '1h')
+        range:     '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'  (پیش‌فرض: '1mo')
+        exchange:  'Binance' (پیش‌فرض)
+    
+    Returns:
+        {
+            success: true,
+            pair: "BTC/USDT",
+            interval: "1h",
+            range: "1mo",
+            count: 720,
+            warning: "..." (اختیاری، اگه range cap شده باشه),
+            data: [ { timestamp, open, high, low, close, volume }, ... ]
+        }
+    """
+    try:
+        from infrastructure.api.coinstats_client import coinstats_client
+        
+        coin = request.args.get('coin', 'bitcoin').lower().strip()
+        interval = request.args.get('interval', '1h')
+        range_ = request.args.get('range', '1mo')
+        exchange = request.args.get('exchange', 'Binance')
+        
+        # تبدیل coin به pair
+        pair = None
+        
+        if '/' in coin:
+            # کاربر pair داده: "btc/usdt"
+            pair = coin.upper()
+        elif coin.isupper() and len(coin) >= 6 and coin.endswith('USDT'):
+            # "BTCUSDT"
+            pair = f"{coin[:-4]}/USDT"
+        elif coin.isupper() and 2 <= len(coin) <= 6:
+            # "BTC"
+            pair = f"{coin}/USDT"
+        else:
+            # coin_id مثل "bitcoin"
+            pair = coinstats_client.coin_id_to_pair(coin)
+        
+        if not pair:
+            return jsonify({
+                'success': False,
+                'error': f'Cannot map "{coin}" to a trading pair'
+            }), 400
+        
+        # دریافت داده
+        result = coinstats_client.get_ohlcv_candles(
+            exchange=exchange,
+            pair=pair,
+            interval=interval,
+            range=range_,
+        )
+        
+        if not result or 'candles' not in result:
+            return jsonify({
+                'success': False,
+                'error': 'No OHLCV data available',
+                'pair': pair,
+                'interval': interval,
+                'range': range_,
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'pair': pair,
+            'interval': interval,
+            'range': result.get('range', range_),
+            'warning': result.get('warning'),
+            'count': len(result['candles']),
+            'data': result['candles'],
+        })
+    
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"OHLCV route error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/coinstats/symbol-map')
+def get_symbol_map():
+    """Mapping از coin_id به pair (hard-coded فقط)"""
+    try:
+        from infrastructure.api.coinstats_client import COIN_TO_PAIR
+        return jsonify({'success': True, 'data': COIN_TO_PAIR})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/coinstats/ohlcv-stats')
+def get_ohlcv_stats():
+    """آمار OHLCV client (برای دیباگ)"""
+    try:
+        from infrastructure.api.coinstats_client import coinstats_client
+        stats = coinstats_client._stats
+        return jsonify({
+            'success': True,
+            'data': {
+                'ohlcv_requests': stats.get('ohlcv_requests', 0),
+                'ohlcv_candles_total': stats.get('ohlcv_candles_total', 0),
+                'ohlcv_range_caps': stats.get('ohlcv_range_caps', 0),
+                'cache_hits': stats.get('cache_hits', 0),
+                'cache_misses': stats.get('cache_misses', 0),
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+# ============================================================
 # ۱۹. قیمت‌های لحظه‌ای (WebSocket + Fallback)
 # ============================================================
 
