@@ -185,7 +185,7 @@ class DatabaseRegistry:
         if auto_reconnect and not db.is_connected():
             logger.warning(f"⚠️ Database '{name}' disconnected, reconnecting...")
             self._reconnect_count += 1
-          w  self._last_reconnect = utc_now()
+            self._last_reconnect = utc_now()
             
             try:
                 if db.connect():
