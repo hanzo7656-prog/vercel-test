@@ -80,11 +80,10 @@ def _error(message: str, status_code: int = 400, **extra):
     response = {
         'success': False,
         'error': message,
-        response['timestamp'] = datetime.now(timezone.utc).isoformat()
     }
     response.update(extra)
+    response['timestamp'] = datetime.now(timezone.utc).isoformat()
     return jsonify(response), status_code
-
 
 def _normalize_symbol(symbol: str) -> str:
     """
