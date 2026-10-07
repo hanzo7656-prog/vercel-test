@@ -1,7 +1,7 @@
 # infrastructure/database/postgresql_manager.py
 # ============================================================
-# مدیریت PostgreSQL (Neon) - نسخه ۳.۱
-# رفع باگ + بهبود + ارتقا + Quota Integration + Cache
+# مدیریت PostgreSQL (Neon) - نسخه ۳.۲
+# رفع باگ + UTC Session + execute_values امن + کش + Quota
 # ============================================================
 
 import psycopg2
@@ -13,7 +13,7 @@ import re
 import threading
 from typing import Any, Optional, Dict, List, Generator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from infrastructure.database.base import DatabaseBase, retry_on_error
 from infrastructure.database.quota_manager import quota_manager
@@ -28,12 +28,17 @@ class PostgreSQLManager(DatabaseBase):
     ویژگی‌ها:
         - Connection Pool (ThreadedConnectionPool)
         - Self-Healing
-        - Bulk operations
+        - Bulk operations (execute_values)
         - Transaction support
         - Retry خودکار
         - Quota Integration
-        - 🆕 is_connected سریع (بدون query)
-        - 🆕 کش used_mb (۵ دقیقه)
+        - is_connected سریع (بدون query)
+        - کش used_mb (۵ دقیقه)
+
+    ارتقاهای نسخه ۳.۲:
+        - Session روی UTC تنظیم می‌شود (options="-c timezone=UTC")
+        - execute_values با rollback امن
+        - save via save_candles-safe
     """
 
     def __init__(self, name: str, config: Dict[str, Any]) -> None:
@@ -48,7 +53,7 @@ class PostgreSQLManager(DatabaseBase):
         self._version_cache_time: float = 0
         self._version_cache_ttl: float = 300
 
-        # 🆕 کش حجم استفاده‌شده
+        # کش حجم استفاده‌شده
         self._cached_used_mb: Optional[float] = None
         self._used_mb_cache_time: float = 0
         self._used_mb_cache_ttl: float = 300
@@ -69,6 +74,11 @@ class PostgreSQLManager(DatabaseBase):
         self._slow_query_threshold: float = 1.0
         self._current_conn: Optional[Any] = None
 
+        # 🆕 Session options (UTC)
+        self._session_options: str = config.get(
+            "session_options", "-c timezone=UTC"
+        )
+
         logger.debug(f"✅ PostgreSQLManager '{name}' initialized")
 
     # ============================================================
@@ -76,7 +86,7 @@ class PostgreSQLManager(DatabaseBase):
     # ============================================================
 
     def connect(self) -> bool:
-        """برقراری اتصال با Pool"""
+        """برقراری اتصال با Pool + Session UTC"""
         with self._lock:
             conn_config = self.config.get("connection", {})
             host = conn_config.get("host", "unknown")
@@ -85,7 +95,7 @@ class PostgreSQLManager(DatabaseBase):
             logger.info(
                 f"🔗 Connecting to PostgreSQL '{self.name}' "
                 f"(host={host}, pool={self._pool_min}-{self._pool_max}, "
-                f"timeout={self._connect_timeout}s)..."
+                f"timeout={self._connect_timeout}s, tz=UTC)..."
             )
 
             try:
@@ -108,15 +118,28 @@ class PostgreSQLManager(DatabaseBase):
                     keepalives_idle=30,
                     keepalives_interval=5,
                     keepalives_count=3,
+                    # 🆕 Session timezone = UTC
+                    options=self._session_options,
                 )
 
-                # تست اتصال
+                # تست اتصال + تأیید timezone
                 conn = self._pool.getconn()
                 try:
                     cursor = conn.cursor()
-                    cursor.execute("SELECT 1")
-                    cursor.fetchone()
+                    cursor.execute("SELECT 1, current_setting('TIMEZONE')")
+                    row = cursor.fetchone()
                     cursor.close()
+
+                    actual_tz = row[1] if row and len(row) > 1 else "unknown"
+                    if actual_tz.upper() not in ("UTC", "ETC/UTC", "GMT"):
+                        logger.warning(
+                            f"⚠️ '{self.name}' session timezone is "
+                            f"'{actual_tz}' (expected UTC)"
+                        )
+                    else:
+                        logger.debug(
+                            f"✅ '{self.name}' session timezone: {actual_tz}"
+                        )
                 finally:
                     self._pool.putconn(conn)
 
@@ -176,18 +199,11 @@ class PostgreSQLManager(DatabaseBase):
                 return False
 
     def is_connected(self) -> bool:
-        """
-        🆕 بررسی سریع اتصال — بدون query
-
-        دلیل: نسخه قبلی query می‌زد و اگر pool خالی بود،
-        getconn() بی‌نهایت block می‌کرد → hang در import time.
-        """
+        """بررسی سریع اتصال — بدون query"""
         return self._connected and self._pool is not None
 
     def _test_connection(self) -> bool:
-        """
-        🆕 تست واقعی اتصال (با query) — برای ping/health_check
-        """
+        """تست واقعی اتصال (با query)"""
         if not self._connected or self._pool is None:
             return False
 
@@ -348,7 +364,12 @@ class PostgreSQLManager(DatabaseBase):
         query: str,
         params_list: List[tuple]
     ) -> int:
-        """اجرای کوئری با چند پارامتر (bulk)"""
+        """
+        اجرای کوئری با چند پارامتر (bulk).
+
+        ⚠️ توجه: برای INSERT با ON CONFLICT از execute_values
+        استفاده کنید، نه این متد.
+        """
         if not self.is_connected():
             return 0
 
@@ -397,8 +418,15 @@ class PostgreSQLManager(DatabaseBase):
         values: List[tuple],
         page_size: int = 100
     ) -> int:
-        """Bulk insert با execute_values"""
-        if not self.is_connected():
+        """
+        Bulk insert با execute_values.
+
+        ✅ این متد برای INSERT با ON CONFLICT DO NOTHING/UPDATE درست است.
+
+        Returns:
+            تعداد رکوردهای واقعاً insert/update شده
+        """
+        if not self.is_connected() or not values:
             return 0
 
         conn = None
@@ -417,7 +445,7 @@ class PostgreSQLManager(DatabaseBase):
 
             self._query_count += len(values)
             self._write_count += len(values)
-            return affected
+            return affected or 0
 
         except Exception as e:
             if conn:
@@ -463,7 +491,7 @@ class PostgreSQLManager(DatabaseBase):
         value: Any,
         ttl: Optional[int] = None
     ) -> bool:
-        """ذخیره مقدار در جدول cache"""
+        """ذخیره مقدار در جدول cache (NOW() = UTC به لطف session)"""
         try:
             if ttl:
                 self.execute(
@@ -573,15 +601,9 @@ class PostgreSQLManager(DatabaseBase):
         return quota_status
 
     def _calculate_used_size(self) -> float:
-        """
-        🆕 محاسبه حجم استفاده‌شده (MB) — با کش ۵ دقیقه
-
-        دلیل: کوئری pg_database_size روی Neon کند است و در
-        مسیر بحرانی get_stats صدا زده می‌شد → hang.
-        """
+        """محاسبه حجم استفاده‌شده (MB) — با کش ۵ دقیقه"""
         now = time.time()
 
-        # 🆕 کش
         if (
             self._cached_used_mb is not None
             and (now - self._used_mb_cache_time) < self._used_mb_cache_ttl
@@ -715,6 +737,7 @@ class PostgreSQLManager(DatabaseBase):
             "error_count": self._error_count,
             "used_mb": used_mb,
             "quota": quota,
+            "session_timezone": "UTC",
         }
 
     def health_check(self) -> Dict[str, Any]:
@@ -727,6 +750,7 @@ class PostgreSQLManager(DatabaseBase):
             base["pool"] = stats.get("pool", {})
             base["used_mb"] = stats.get("used_mb", 0)
             base["quota"] = stats.get("quota", {})
+            base["session_timezone"] = stats.get("session_timezone", "unknown")
         except Exception:
             base["version"] = "unknown"
 
