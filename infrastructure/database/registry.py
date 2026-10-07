@@ -11,8 +11,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 from contextlib import contextmanager
 
-from infrastructure.database.base import DatabaseBase
-
+from infrastructure.database.base import DatabaseBase, utc_now
 logger = logging.getLogger(__name__)
 
 
