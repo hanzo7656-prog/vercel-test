@@ -12,7 +12,7 @@
 
 <style>
 /* ============================================================
-   SPLASH LOADER v6 — Transparency-First Design
+   SPLASH LOADER v6.1 — Transparency-First + Retry on Cards
    ============================================================ */
 
 /* ---------- Color Themes ---------- */
@@ -188,7 +188,6 @@ body {
     50% { transform: translate(40px, -30px) scale(1.2); opacity: 0.9; }
 }
 
-/* Floating Particles */
 .splash-particles {
     position: absolute;
     inset: 0;
@@ -281,7 +280,6 @@ body {
     justify-content: center;
 }
 
-/* Progress Ring SVG */
 .progress-ring {
     position: absolute;
     inset: 0;
@@ -311,10 +309,9 @@ body {
 .progress-ring__dot {
     fill: var(--primary-light);
     filter: drop-shadow(0 0 10px var(--primary));
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: cx 0.6s cubic-bezier(0.4, 0, 0.2, 1), cy 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Orbital Logo */
 .orbital-logo {
     position: relative;
     width: 90px;
@@ -358,7 +355,6 @@ body {
     }
 }
 
-/* Orbiting dot */
 .orbital-dot {
     position: absolute;
     top: 50%;
@@ -383,11 +379,6 @@ body {
     to {
         transform: rotate(360deg) translateX(65px) rotate(-360deg);
     }
-}
-
-/* Percent inside ring - hidden, we show in label below */
-.orbital-percent {
-    display: none;
 }
 
 /* ============================================================
@@ -435,7 +426,7 @@ body {
 }
 
 /* ============================================================
-   STATS BAR (Estimated Time + Progress + Step)
+   STATS BAR
    ============================================================ */
 .splash-stats {
     display: grid;
@@ -537,7 +528,7 @@ body {
     border-radius: 14px;
     background: var(--bg-hover);
     border: 1px solid var(--border);
-    max-height: 280px;
+    max-height: 320px;
     overflow-y: auto;
 }
 
@@ -551,10 +542,11 @@ body {
     gap: 10px;
     padding: 10px 12px;
     border-radius: 10px;
-    transition: all 0.3s var(--ease-spring);
+    transition: background 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
     position: relative;
     overflow: hidden;
     background: transparent;
+    border: 1px solid transparent;
 }
 
 .step-item.is-pending {
@@ -563,7 +555,7 @@ body {
 
 .step-item.is-active {
     background: var(--primary-bg);
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-color: rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.1) inset;
     animation: stepActiveGlow 2s ease-in-out infinite;
 }
@@ -586,7 +578,7 @@ body {
 
 .step-item.is-error {
     background: var(--danger-bg);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.3);
     animation: stepShake 0.4s ease;
 }
 
@@ -603,7 +595,7 @@ body {
 
 .step-item.is-warning {
     background: var(--warning-bg);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.3);
 }
 
 /* Icon */
@@ -615,7 +607,7 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: all 0.3s var(--ease-spring);
+    transition: background 0.3s var(--ease-spring), color 0.3s var(--ease-spring);
     background: var(--bg-hover);
     color: var(--text-dim);
     font-size: 12px;
@@ -723,7 +715,6 @@ body {
     font-weight: 700;
 }
 
-/* Inner Progress Bar (for active step) */
 .step-progress {
     height: 4px;
     background: var(--bg-hover-strong);
@@ -755,7 +746,6 @@ body {
     animation: shimmer 1.5s linear infinite;
 }
 
-/* Indeterminate */
 .step-progress.indeterminate .step-progress-fill {
     width: 30% !important;
     animation: indeterminate 1.6s ease-in-out infinite;
@@ -766,12 +756,12 @@ body {
     100% { transform: translateX(400%); }
 }
 
-/* Right Side Info */
+/* Right side info */
 .step-info {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 3px;
+    gap: 4px;
     flex-shrink: 0;
 }
 
@@ -790,13 +780,13 @@ body {
 .step-item.is-warning .step-time { color: var(--warning); }
 
 .step-action-btn {
-    padding: 3px 8px;
+    padding: 4px 10px;
     background: var(--bg-card-solid);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-muted);
+    border: 1px solid var(--border-strong);
+    border-radius: 7px;
+    color: var(--text-light);
     font-family: var(--ui-font);
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -813,12 +803,22 @@ body {
     transform: translateY(-1px);
 }
 
+.step-action-btn.retry {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: white;
+}
+
+.step-action-btn.retry:hover {
+    background: var(--warning-dark);
+}
+
 .step-action-btn svg {
     width: 10px;
     height: 10px;
 }
 
-/* Done Checkmark Animation */
+/* Done checkmark animation */
 .step-item.is-done .step-icon::after {
     content: '';
     position: absolute;
@@ -988,7 +988,6 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
-/* Confetti Burst on Success */
 .confetti-burst {
     position: absolute;
     inset: 0;
@@ -1023,7 +1022,7 @@ body {
 }
 
 /* ============================================================
-   ERROR MODAL OVERLAY
+   ERROR MODAL
    ============================================================ */
 .splash-error-modal {
     position: fixed;
@@ -1155,7 +1154,80 @@ body {
 }
 
 /* ============================================================
-   KEYBOARD SHORTCUT HINT
+   CONFIRM MODAL (برای انصراف)
+   ============================================================ */
+.splash-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.25s ease;
+}
+
+.splash-confirm-modal.open { display: flex; }
+
+.confirm-card {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 28px 24px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    text-align: center;
+    animation: cardIn 0.4s var(--ease-spring);
+}
+
+.confirm-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: var(--warning);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4);
+}
+
+.confirm-icon svg { width: 28px; height: 28px; }
+
+.confirm-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.confirm-actions .action-btn {
+    flex: 1;
+    min-width: 110px;
+}
+
+/* ============================================================
+   KEYBOARD HINT
    ============================================================ */
 .splash-hint {
     position: fixed;
@@ -1306,30 +1378,17 @@ body {
      ============================================================ -->
 <div class="splash-root" id="splashRoot" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
 
-    <!-- ========================================================
-         ANIMATED BACKGROUND
-         ======================================================== -->
     <div class="splash-bg" aria-hidden="true"></div>
-
-    <!-- Particles Container (JS fills) -->
     <div class="splash-particles" id="splashParticles" aria-hidden="true"></div>
-
-    <!-- Confetti Container (on success) -->
     <div class="confetti-burst" id="confettiBurst" aria-hidden="true"></div>
 
-    <!-- ========================================================
-         MAIN CARD
-         ======================================================== -->
     <div class="splash-card">
 
-        <!-- ====================================================
-             HERO: Orbital Logo + Progress Ring
-             ==================================================== -->
+        <!-- HERO -->
         <div class="splash-hero">
 
             <div class="orbital-wrapper">
 
-                <!-- SVG Progress Ring -->
                 <svg class="progress-ring" viewBox="0 0 140 140" aria-hidden="true">
                     <defs>
                         <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1339,25 +1398,21 @@ body {
                         </linearGradient>
                     </defs>
 
-                    <!-- Track (background circle) -->
                     <circle class="progress-ring__track"
                             cx="70" cy="70" r="64"
                             fill="none"/>
 
-                    <!-- Fill (progress arc) -->
                     <circle class="progress-ring__fill"
                             id="progressRingFill"
                             cx="70" cy="70" r="64"
                             fill="none"/>
 
-                    <!-- Dot at end of progress -->
                     <circle class="progress-ring__dot"
                             id="progressRingDot"
                             cx="70" cy="6" r="4"
                             fill="none"/>
                 </svg>
 
-                <!-- Logo Center -->
                 <div class="orbital-logo" id="orbitalLogo">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3v18h18"/>
@@ -1365,29 +1420,23 @@ body {
                     </svg>
                 </div>
 
-                <!-- Orbiting dot -->
                 <div class="orbital-dot" aria-hidden="true"></div>
 
             </div>
 
-            <!-- Title -->
             <h1 class="splash-title" id="splashTitle">
                 سیستم تحلیلگر در حال بارگذاری
             </h1>
 
-            <!-- Subtitle (dynamic) -->
             <div class="splash-subtitle" id="splashSubtitle">
                 لطفاً صبر کنید...
             </div>
 
         </div>
 
-        <!-- ====================================================
-             STATS BAR (Estimated Time + Progress + Current Step)
-             ==================================================== -->
+        <!-- STATS -->
         <div class="splash-stats" role="status" aria-live="polite">
 
-            <!-- Estimated Time -->
             <div class="stat-item">
                 <div class="stat-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1399,7 +1448,6 @@ body {
                 <div class="stat-value primary" id="statTime">—</div>
             </div>
 
-            <!-- Progress Percent -->
             <div class="stat-item">
                 <div class="stat-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1411,7 +1459,6 @@ body {
                 <div class="stat-value" id="statProgress">۰٪</div>
             </div>
 
-            <!-- Current Step Counter -->
             <div class="stat-item">
                 <div class="stat-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1425,19 +1472,12 @@ body {
 
         </div>
 
-        <!-- ====================================================
-             STEPS LIST (JS fills this)
-             ==================================================== -->
-        <div class="splash-steps" id="splashSteps" role="list">
-            <!-- Filled by JS -->
-        </div>
+        <!-- STEPS -->
+        <div class="splash-steps" id="splashSteps" role="list"></div>
 
-        <!-- ====================================================
-             ACTIONS
-             ==================================================== -->
+        <!-- ACTIONS -->
         <div class="splash-actions">
 
-            <!-- Left: Secondary Actions -->
             <div class="actions-left">
                 <button class="action-btn ghost" id="btnPause" title="توقف موقت">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1456,7 +1496,6 @@ body {
                 </button>
             </div>
 
-            <!-- Right: Danger Actions -->
             <div class="actions-right">
                 <button class="action-btn danger" id="btnAbort" title="توقف کامل بارگذاری">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1470,19 +1509,16 @@ body {
         </div>
 
     </div>
-    <!-- /splash-card -->
 
 </div>
-<!-- /splash-root -->
 
 <!-- ============================================================
      ERROR MODAL
      ============================================================ -->
-<div class="splash-error-modal" id="errorModal" role="dialog" aria-modal="true" aria-labelledby="errorTitle">
+<div class="splash-error-modal" id="errorModal" role="dialog" aria-modal="true">
 
     <div class="error-card">
 
-        <!-- Icon -->
         <div class="error-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
@@ -1491,22 +1527,10 @@ body {
             </svg>
         </div>
 
-        <!-- Title -->
-        <div class="error-title" id="errorTitle">
-            خطا در بارگذاری
-        </div>
+        <div class="error-title" id="errorTitle">خطا در بارگذاری</div>
+        <div class="error-step-name" id="errorStepName">—</div>
+        <div class="error-message" id="errorMessage">خطای نامشخص</div>
 
-        <!-- Failed Step Name -->
-        <div class="error-step-name" id="errorStepName">
-            —
-        </div>
-
-        <!-- Error Message -->
-        <div class="error-message" id="errorMessage">
-            خطای نامشخص
-        </div>
-
-        <!-- Actions -->
         <div class="error-actions">
 
             <button class="action-btn primary" id="btnRetry">
@@ -1543,6 +1567,37 @@ body {
 </div>
 
 <!-- ============================================================
+     CONFIRM MODAL (انصراف از بارگذاری)
+     ============================================================ -->
+<div class="splash-confirm-modal" id="confirmModal" role="dialog" aria-modal="true">
+
+    <div class="confirm-card">
+
+        <div class="confirm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+
+        <div class="confirm-title" id="confirmTitle">انصراف از بارگذاری؟</div>
+        <div class="confirm-desc" id="confirmDesc">بارگذاری متوقف می‌شود و به صفحه ورود هدایت می‌شوید.</div>
+
+        <div class="confirm-actions">
+            <button class="action-btn ghost" id="confirmNo">
+                <span>ادامه بده</span>
+            </button>
+            <button class="action-btn danger" id="confirmYes">
+                <span>بله، انصراف</span>
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ============================================================
      KEYBOARD HINT
      ============================================================ -->
 <div class="splash-hint" aria-hidden="true">
@@ -1556,16 +1611,18 @@ body {
     <span data-splash-i18n="hintAbort">انصراف</span>
 </div>
 
-</body>
-</html>
 <script>
 // ============================================================
-// Splash Loader v6.0 — Transparency-First Loader
-// با محاسبه زمان تخمینی + مدیریت خطای هوشمند + i18n
+// Splash Loader v6.1 — PART 1: Core + Rendering
+// State + I18N + Steps + Retry on Cards + Progress Ring
 // ============================================================
-
 (function() {
 'use strict';
+
+// جلوگیری از اجرای دوباره
+if (window.__splashPart1Loaded) return;
+window.__splashPart1Loaded = true;
+
 
 // ============================================================
 // UTILS
@@ -1578,12 +1635,14 @@ function toPersian(num) {
 }
 
 function formatMs(ms) {
+    if (!ms || ms < 0) return '0ms';
     if (ms < 1000) return Math.round(ms) + 'ms';
     return (ms / 1000).toFixed(1) + 's';
 }
 
 function formatSeconds(seconds) {
-    if (seconds < 1) return 'کمتر از ۱s';
+    if (!seconds || seconds < 0) return '—';
+    if (seconds < 1) return '<۱s';
     if (seconds < 60) return '~' + Math.ceil(seconds) + 's';
     const m = Math.floor(seconds / 60);
     const s = Math.ceil(seconds % 60);
@@ -1596,6 +1655,7 @@ function escapeHtml(s) {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
 }
+
 
 // ============================================================
 // I18N
@@ -1612,7 +1672,7 @@ const I18N = {
         resume: 'ادامه',
         skip: 'رد کردن',
         abort: 'انصراف',
-        retry: 'تلاش دوباره',
+        retry: 'تلاش مجدد',
         skipAll: 'رد همه',
         abortAll: 'توقف کامل',
         hintPause: 'توقف موقت',
@@ -1622,7 +1682,6 @@ const I18N = {
         errorUnknown: 'خطای نامشخص',
         errorTimeout: 'زمان انتظار تمام شد',
         errorCritical: 'این مرحله حیاتی است و باید تکمیل شود',
-        errorOptional: 'می‌توانید این مرحله را رد کنید',
         stepOf: 'از',
         stepDone: 'انجام شد',
         stepActive: 'در حال انجام...',
@@ -1630,23 +1689,18 @@ const I18N = {
         stepError: 'خطا',
         stepSkipped: 'رد شد',
         stepWarning: 'کمی طولانی شده',
-        stepWarningSlow: 'شبکه کند است...',
         allDone: 'همه مراحل تکمیل شد',
         completing: 'در حال اتمام...',
-        abortConfirmTitle: 'انصراف از بارگذاری؟',
-        abortConfirmDesc: 'بارگذاری متوقف می‌شود و به صفحه خطا هدایت می‌شوید.',
-        yes: 'بله، انصراف',
-        no: 'ادامه بده',
-        // Preset step names
+        // Step names
         stepHealth: 'اتصال به سرور',
         stepUser: 'دریافت اطلاعات کاربر',
         stepStats: 'دریافت آمار سیستم',
         stepCoins: 'دریافت لیست ارزها',
         stepPrices: 'دریافت قیمت‌های لحظه‌ای',
         stepModel: 'بارگذاری مدل AI',
-        stepPortfolio: 'بارگذاری پورتفولیو',
+        stepApis: 'بررسی کلاینت‌ها',
         stepRender: 'رندر داشبورد',
-        // Step hints
+        // Hints
         hintChecking: 'در حال بررسی...',
         hintFetching: 'در حال دریافت...',
         hintLoading: 'در حال بارگذاری...',
@@ -1672,7 +1726,6 @@ const I18N = {
         errorUnknown: 'Unknown error',
         errorTimeout: 'Request timeout',
         errorCritical: 'This step is critical and must complete',
-        errorOptional: 'You can skip this step',
         stepOf: 'of',
         stepDone: 'Done',
         stepActive: 'In progress...',
@@ -1680,20 +1733,15 @@ const I18N = {
         stepError: 'Error',
         stepSkipped: 'Skipped',
         stepWarning: 'Taking longer',
-        stepWarningSlow: 'Slow network...',
         allDone: 'All steps completed',
         completing: 'Completing...',
-        abortConfirmTitle: 'Abort loading?',
-        abortConfirmDesc: 'Loading will stop and you\'ll be redirected to error page.',
-        yes: 'Yes, abort',
-        no: 'Continue',
         stepHealth: 'Connecting to server',
         stepUser: 'Fetching user info',
         stepStats: 'Fetching system stats',
         stepCoins: 'Fetching coin list',
         stepPrices: 'Fetching live prices',
         stepModel: 'Loading AI model',
-        stepPortfolio: 'Loading portfolio',
+        stepApis: 'Checking API clients',
         stepRender: 'Rendering dashboard',
         hintChecking: 'Checking...',
         hintFetching: 'Fetching...',
@@ -1716,59 +1764,62 @@ function applyI18n() {
         }
     });
 
-    // Update title and subtitle
     const title = $('#splashTitle');
-    const subtitle = $('#splashSubtitle');
     if (title && !state.errorShown) title.textContent = t('title');
-    if (subtitle && !state.paused && !state.errorShown) subtitle.textContent = t('subtitle');
-    if (subtitle && state.paused) subtitle.textContent = t('subtitlePaused');
 
-    // Update stat labels
-    $$('.stat-label').forEach((el, idx) => {
-        const keys = ['statTime', 'statProgress', 'statStep'];
+    const subtitle = $('#splashSubtitle');
+    if (subtitle) {
+        if (state.paused) subtitle.textContent = t('subtitlePaused');
+        else if (state.status === 'running') subtitle.textContent = t('subtitle');
+    }
+
+    // Stat labels
+    const statLabels = $$('.stat-label');
+    const keys = ['statTime', 'statProgress', 'statStep'];
+    statLabels.forEach((el, idx) => {
         if (keys[idx]) el.textContent = t(keys[idx]);
     });
 }
+
 
 // ============================================================
 // STATE
 // ============================================================
 const state = {
-    // Engine
+    // Steps
     steps: [],
     currentIndex: 0,
-    status: 'idle', // idle | running | paused | success | error | aborted
-    errorShown: false,
-    skipAllFlag: false,
+    status: 'idle',   // idle | running | paused | error | success | aborted
+    paused: false,
     aborted: false,
     completed: false,
+    errorShown: false,
+    skipAllFlag: false,
 
     // Timing
     startTime: 0,
     stepStartTime: 0,
-    stepDurations: {}, // { stepId: actualMs }
     totalEstimatedWeight: 0,
-    completedWeight: 0,
 
-    // UI References
-    intervalId: null,
+    // Timers
     updateIntervalId: null,
+    stepIntervalId: null,
 
     // Callbacks
     onComplete: null,
     onAbort: null,
-    onError: null,
 
     // Config
-    slowThreshold: 1.5, // ضریب نسبت به وزن
-    verySlowThreshold: 2.5,
+    slowThreshold: 1.5,
 };
 
 
-// برای تست های اولیه لودینگ
+// ============================================================
+// PRESET STEPS
+// ============================================================
 function getPresetSteps() {
     return [
-        // ─────── ۱. بررسی سلامت سرور ───────
+        // ۱. سلامت سرور
         {
             id: 'health',
             nameKey: 'stepHealth',
@@ -1779,22 +1830,17 @@ function getPresetSteps() {
             check: async () => {
                 try {
                     const res = await fetch('/api/health/simple', {
-                        method: 'GET',
-                        credentials: 'same-origin',  // ← ← ← به جای 'include'
-                        });
-                    if (res.ok) {
-                        const data = await res.json();
-                        console.log('[Health] OK:', data);
-                        return data;
-                    }
-                    console.warn('[Health] Non-OK status:', res.status);
+                        credentials: 'same-origin',
+                    });
+                    if (res.ok) return await res.json();
                 } catch (e) {
                     console.warn('[Health] Failed:', e.message);
                 }
                 return { success: true, status: 'assumed_ok' };
             },
         },
-        // ─────── ۲. دریافت اطلاعات کاربر ───────
+
+        // ۲. اطلاعات کاربر (بحرانی)
         {
             id: 'user',
             nameKey: 'stepUser',
@@ -1802,9 +1848,7 @@ function getPresetSteps() {
             critical: true,
             hint: 'hintFetching',
             check: async () => {
-                const res = await fetch('/api/user', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/user', { credentials: 'include' });
                 if (res.status === 401) {
                     window.location.href = '/login';
                     throw new Error('نشست منقضی شده است');
@@ -1821,7 +1865,7 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۳. دریافت آمار داشبورد ───────
+        // ۳. آمار داشبورد
         {
             id: 'stats',
             nameKey: 'stepStats',
@@ -1829,9 +1873,7 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintFetching',
             check: async () => {
-                const res = await fetch('/api/metrics/dashboard', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/metrics/dashboard', { credentials: 'include' });
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     throw new Error(data.error || 'خطا در دریافت آمار');
@@ -1843,7 +1885,7 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۴. دریافت لیست ارزها ───────
+        // ۴. لیست ارزها
         {
             id: 'coins',
             nameKey: 'stepCoins',
@@ -1851,9 +1893,7 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintFetching',
             check: async () => {
-                const res = await fetch('/api/coinstats/coins?limit=50', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/coinstats/coins?limit=50', { credentials: 'include' });
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     throw new Error(data.error || 'خطا در دریافت لیست ارزها');
@@ -1865,7 +1905,7 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۵. دریافت قیمت‌های لحظه‌ای ───────
+        // ۵. قیمت‌های لحظه‌ای
         {
             id: 'prices',
             nameKey: 'stepPrices',
@@ -1873,9 +1913,7 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintFetching',
             check: async () => {
-                const res = await fetch('/api/coinstats/prices', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/coinstats/prices', { credentials: 'include' });
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     throw new Error(data.error || 'خطا در دریافت قیمت‌ها');
@@ -1887,7 +1925,7 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۶. بارگذاری مدل AI ───────
+        // ۶. مدل AI
         {
             id: 'model',
             nameKey: 'stepModel',
@@ -1895,9 +1933,7 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintLoading',
             check: async () => {
-                const res = await fetch('/api/model/status', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/model/status', { credentials: 'include' });
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     throw new Error(data.error || 'خطا در بارگذاری مدل');
@@ -1909,7 +1945,7 @@ function getPresetSteps() {
             },
         },
 
-        // ─────── ۷. بررسی کلاینت‌ها ───────
+        // ۷. بررسی کلاینت‌ها
         {
             id: 'apis',
             nameKey: 'stepApis',
@@ -1918,25 +1954,16 @@ function getPresetSteps() {
             critical: false,
             hint: 'hintChecking',
             check: async () => {
-                const res = await fetch('/api/health/apis', {
-                    credentials: 'include',
-                });
+                const res = await fetch('/api/health/apis', { credentials: 'include' });
                 const data = await res.json();
-        
-                // ذخیره در sessionStorage
                 try {
                     sessionStorage.setItem('apis_health_cache', JSON.stringify(data));
                 } catch (e) {}
-        
-                // اگه همه fail شده بودن → warning ولی ادامه بده
-                if (!data.success || data.status === 'error') {
-                    console.warn('⚠️ All external APIs failed');
-                }
-          
                 return data;
             },
         },
-        // ─────── ۸. رندر داشبورد ───────
+
+        // ۸. رندر (بحرانی، ولی سریع)
         {
             id: 'render',
             nameKey: 'stepRender',
@@ -1950,25 +1977,28 @@ function getPresetSteps() {
         },
     ];
 }
+
+
 // ============================================================
 // ICONS
 // ============================================================
 const ICONS = {
     pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
     spinner: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>',
-    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    check:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     skipped: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
     warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    retry:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>',
 };
 
+
 // ============================================================
-// PARTICLES (Background)
+// PARTICLES + CONFETTI
 // ============================================================
 function createParticles() {
     const container = $('#splashParticles');
     if (!container) return;
-
     container.innerHTML = '';
     const count = window.innerWidth < 768 ? 12 : 22;
 
@@ -1987,19 +2017,15 @@ function createParticles() {
         p.style.animationDuration = duration + 's';
         p.style.animationDelay = delay + 's';
         p.style.setProperty('--drift', drift + 'px');
-
         container.appendChild(p);
     }
 }
 
-// ============================================================
-// CONFETTI (on Success)
-// ============================================================
 function burstConfetti() {
     const container = $('#confettiBurst');
     if (!container) return;
-
     container.innerHTML = '';
+
     const colors = ['#22c55e', '#16a34a', '#34d399', '#6366f1', '#818cf8', '#fbbf24'];
     const count = 40;
 
@@ -2020,193 +2046,36 @@ function burstConfetti() {
         piece.style.animationDelay = (Math.random() * 0.3) + 's';
 
         container.appendChild(piece);
-
         setTimeout(() => piece.remove(), 1800);
     }
 }
 
-// ============================================================
-// RENDER STEPS
-// ============================================================
-function renderSteps() {
-    const container = $('#splashSteps');
-    if (!container) return;
-
-    container.innerHTML = state.steps.map((step, idx) => {
-        const isDone = idx < state.currentIndex;
-        const isActive = idx === state.currentIndex && state.status === 'running';
-        const isError = step.status === 'error';
-        const isSkipped = step.status === 'skipped';
-        const isWarning = step.status === 'warning';
-
-        let statusClass = 'is-pending';
-        if (isError) statusClass = 'is-error';
-        else if (isSkipped) statusClass = 'is-skipped';
-        else if (isWarning) statusClass = 'is-warning';
-        else if (isDone) statusClass = 'is-done';
-        else if (isActive) statusClass = 'is-active';
-
-        const icon = isError ? ICONS.error
-                    : isSkipped ? ICONS.skipped
-                    : isWarning ? ICONS.warning
-                    : isDone ? ICONS.check
-                    : isActive ? ICONS.spinner
-                    : ICONS.pending;
-
-        // Time display
-        let timeText = '';
-        if (step.actualDuration) {
-            timeText = formatMs(step.actualDuration);
-        } else if (isActive) {
-            timeText = formatMs(Date.now() - state.stepStartTime);
-        } else if (isDone || isSkipped) {
-            timeText = '✓';
-        } else {
-            timeText = '~' + formatMs(step.weight);
-        }
-
-        // Hint text
-        let hintText = '';
-        if (isActive) {
-            const hintKey = step.hint || 'hintLoading';
-            hintText = t(hintKey);
-            if (step.currentProgress) {
-                hintText += ` — ${step.currentProgress.current}/${step.currentProgress.total}`;
-            }
-        } else if (isDone) {
-            hintText = t('stepDone');
-        } else if (isError) {
-            hintText = step.errorMessage || t('errorUnknown');
-        } else if (isSkipped) {
-            hintText = t('stepSkipped');
-        } else if (isWarning) {
-            hintText = t('stepWarning');
-        } else if (idx > state.currentIndex) {
-            hintText = t('stepPending');
-        }
-
-        // Progress bar (only for active step)
-        const showProgress = isActive;
-        const progressPercent = step.currentProgress
-            ? (step.currentProgress.current / step.currentProgress.total) * 100
-            : 0;
-        const indeterminate = isActive && !step.currentProgress;
-
-        // Action buttons per step (only for active step)
-        let actionBtn = '';
-        if (isActive && !step.critical) {
-            actionBtn = `<button class="step-action-btn" data-skip-step="${idx}" title="${t('skip')}">
-                ${t('skip')}
-            </button>`;
-        } else if (isError) {
-            actionBtn = `<button class="step-action-btn" data-retry-step="${idx}" title="${t('retry')}">
-                ${t('retry')}
-            </button>`;
-        }
-
-        const stepName = step.nameKey ? t(step.nameKey) : (step.name || '—');
-
-        return `
-            <div class="step-item ${statusClass}" data-step-idx="${idx}" role="listitem">
-                <div class="step-icon">${icon}</div>
-                <div class="step-content">
-                    <div class="step-name">${escapeHtml(stepName)}</div>
-                    <div class="step-hint">${escapeHtml(hintText)}</div>
-                    ${showProgress ? `
-                        <div class="step-progress ${indeterminate ? 'indeterminate' : ''}">
-                            <div class="step-progress-fill" style="width: ${indeterminate ? 0 : progressPercent}%"></div>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="step-info">
-                    <div class="step-time">${escapeHtml(timeText)}</div>
-                    ${actionBtn}
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    // Bind actions
-    container.querySelectorAll('[data-skip-step]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.skipStep, 10);
-            if (idx === state.currentIndex) {
-                skipCurrentStep();
-            }
-        });
-    });
-
-    container.querySelectorAll('[data-retry-step]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.retryStep, 10);
-            if (idx === state.currentIndex) {
-                retryCurrentStep();
-            }
-        });
-    });
-}
 
 // ============================================================
-// UPDATE PROGRESS RING
+// PROGRESS RING
 // ============================================================
 function updateProgressRing(percent) {
     const fill = $('#progressRingFill');
     const dot = $('#progressRingDot');
-
     if (!fill) return;
 
-    const circumference = 402; // 2π * 64
+    const circumference = 402;
     const offset = circumference - (percent / 100) * circumference;
-
     fill.style.strokeDashoffset = offset;
 
-    // Update dot position
     if (dot) {
-        const angle = (percent / 100) * 360 - 90; // Start from top
+        const angle = (percent / 100) * 360 - 90;
         const rad = (angle * Math.PI) / 180;
         const cx = 70 + 64 * Math.cos(rad);
         const cy = 70 + 64 * Math.sin(rad);
-        dot.setAttribute('cx', cx);
-        dot.setAttribute('cy', cy);
+        dot.setAttribute('cx', cx.toFixed(2));
+        dot.setAttribute('cy', cy.toFixed(2));
     }
 }
 
-// ============================================================
-// UPDATE STATS BAR
-// ============================================================
-function updateStats() {
-    const statTime = $('#statTime');
-    const statProgress = $('#statProgress');
-    const statStep = $('#statStep');
-
-    // Progress percent
-    const percent = calculateProgress();
-
-    // Estimated time remaining
-    const remaining = estimateRemainingTime();
-
-    // Step counter
-    const stepText = `${toPersian(Math.min(state.currentIndex + 1, state.steps.length))} ${t('stepOf')} ${toPersian(state.steps.length)}`;
-
-    if (statTime) {
-        statTime.textContent = remaining > 0 ? formatSeconds(remaining) : t('completing');
-    }
-
-    if (statProgress) {
-        statProgress.textContent = toPersian(Math.round(percent)) + '٪';
-    }
-
-    if (statStep) {
-        statStep.textContent = stepText;
-    }
-
-    updateProgressRing(percent);
-}
 
 // ============================================================
-// CALCULATE PROGRESS
+// PROGRESS CALCULATION
 // ============================================================
 function calculateProgress() {
     if (state.steps.length === 0) return 0;
@@ -2214,15 +2083,12 @@ function calculateProgress() {
     let completedWeight = 0;
     state.steps.forEach((step, idx) => {
         if (idx < state.currentIndex) {
-            // Fully completed/skipped/errored
             completedWeight += step.weight;
         } else if (idx === state.currentIndex && state.status === 'running') {
-            // Partial weight based on current step progress
             if (step.currentProgress) {
                 const pct = step.currentProgress.current / step.currentProgress.total;
                 completedWeight += step.weight * pct;
             } else {
-                // Estimate by time (max 90% of the step)
                 const elapsed = Date.now() - state.stepStartTime;
                 const pct = Math.min(elapsed / step.weight, 0.9);
                 completedWeight += step.weight * pct;
@@ -2233,19 +2099,15 @@ function calculateProgress() {
     return Math.min((completedWeight / state.totalEstimatedWeight) * 100, 100);
 }
 
-// ============================================================
-// ESTIMATE REMAINING TIME
-// ============================================================
 function estimateRemainingTime() {
     if (state.status !== 'running') return 0;
 
     let remainingMs = 0;
 
     state.steps.forEach((step, idx) => {
-        if (idx < state.currentIndex) return; // Done
+        if (idx < state.currentIndex) return;
 
         if (idx === state.currentIndex && state.status === 'running') {
-            // Current step — estimate based on progress
             if (step.currentProgress) {
                 const elapsed = Date.now() - state.stepStartTime;
                 const pct = step.currentProgress.current / step.currentProgress.total;
@@ -2260,7 +2122,6 @@ function estimateRemainingTime() {
                 remainingMs += Math.max(0, step.weight - elapsed);
             }
         } else {
-            // Future steps — use weight
             remainingMs += step.weight;
         }
     });
@@ -2268,25 +2129,369 @@ function estimateRemainingTime() {
     return remainingMs / 1000;
 }
 
+
+// ============================================================
+// UPDATE STATS BAR
+// ============================================================
+function updateStats() {
+    const statTime = $('#statTime');
+    const statProgress = $('#statProgress');
+    const statStep = $('#statStep');
+
+    const percent = calculateProgress();
+    const remaining = estimateRemainingTime();
+
+    const stepText = `${toPersian(Math.min(state.currentIndex + 1, state.steps.length))} ${t('stepOf')} ${toPersian(state.steps.length)}`;
+
+    if (statTime) {
+        if (state.status === 'success' || state.completed) {
+            statTime.textContent = t('allDone');
+        } else if (state.status === 'paused') {
+            statTime.textContent = t('subtitlePaused');
+        } else if (remaining > 0) {
+            statTime.textContent = formatSeconds(remaining);
+        } else {
+            statTime.textContent = t('completing');
+        }
+    }
+
+    if (statProgress) {
+        statProgress.textContent = toPersian(Math.round(percent)) + '٪';
+    }
+
+    if (statStep) {
+        statStep.textContent = stepText;
+    }
+
+    updateProgressRing(percent);
+}
+
+
+// ============================================================
+// RENDER SINGLE STEP HTML
+// ============================================================
+function renderStepHtml(step, idx) {
+    // تعیین وضعیت — order matters!
+    const isError   = step.status === 'error';
+    const isSkipped = step.status === 'skipped';
+    const isWarning = step.status === 'warning';
+    const isDone    = step.status === 'done' || idx < state.currentIndex;
+    const isActive  = idx === state.currentIndex && state.status === 'running' && step.status === 'active';
+    const isPending = !isError && !isSkipped && !isWarning && !isDone && !isActive;
+
+    // Status class
+    let statusClass = 'is-pending';
+    if (isError)        statusClass = 'is-error';
+    else if (isSkipped) statusClass = 'is-skipped';
+    else if (isWarning) statusClass = 'is-warning';
+    else if (isDone)    statusClass = 'is-done';
+    else if (isActive)  statusClass = 'is-active';
+
+    // Icon
+    const icon = isError   ? ICONS.error
+               : isSkipped ? ICONS.skipped
+               : isWarning ? ICONS.warning
+               : isDone    ? ICONS.check
+               : isActive  ? ICONS.spinner
+               : ICONS.pending;
+
+    // Time text
+    let timeText = '';
+    if (step.actualDuration) {
+        timeText = formatMs(step.actualDuration);
+    } else if (isActive) {
+        timeText = formatMs(Date.now() - state.stepStartTime);
+    } else if (isDone) {
+        timeText = '✓';
+    } else if (isSkipped) {
+        timeText = '—';
+    } else {
+        timeText = '~' + formatMs(step.weight);
+    }
+
+    // Hint text
+    let hintText = '';
+    if (isActive) {
+        const hintKey = step.hint || 'hintLoading';
+        hintText = t(hintKey);
+        if (step.currentProgress) {
+            hintText += ` — ${step.currentProgress.current}/${step.currentProgress.total}`;
+        }
+    } else if (isDone) {
+        hintText = t('stepDone');
+    } else if (isError) {
+        hintText = step.errorMessage || t('errorUnknown');
+    } else if (isSkipped) {
+        hintText = t('stepSkipped');
+    } else if (isWarning) {
+        hintText = t('stepWarning');
+    } else if (isPending && idx > state.currentIndex) {
+        hintText = t('stepPending');
+    }
+
+    // Hint color class
+    const hintClass = isError ? 'error-text' : isWarning ? 'warning-text' : '';
+
+    // Progress bar
+    const showProgress = isActive;
+    const progressPercent = step.currentProgress
+        ? (step.currentProgress.current / step.currentProgress.total) * 100
+        : 0;
+    const indeterminate = isActive && !step.currentProgress;
+
+    // Action button — ORDER MATTERS: error first (retry), then active (skip)
+    let actionBtn = '';
+
+    if (isError) {
+        // ✅ دکمه retry برای همه خطاها (بحرانی و غیر-بحرانی)
+        actionBtn = `
+            <button class="step-action-btn retry" data-retry-step="${idx}" title="${t('retry')}">
+                ${ICONS.retry}
+                <span>${t('retry')}</span>
+            </button>
+        `;
+    } else if (isActive && !step.critical) {
+        // دکمه skip فقط در حالت active و غیر-بحرانی
+        actionBtn = `
+            <button class="step-action-btn" data-skip-step="${idx}" title="${t('skip')}">
+                <span>${t('skip')}</span>
+            </button>
+        `;
+    }
+
+    const stepName = step.nameKey ? t(step.nameKey) : (step.name || '—');
+
+    return `
+        <div class="step-item ${statusClass}" data-step-idx="${idx}" role="listitem">
+            <div class="step-icon">${icon}</div>
+            <div class="step-content">
+                <div class="step-name">${escapeHtml(stepName)}</div>
+                <div class="step-hint ${hintClass}">${escapeHtml(hintText)}</div>
+                ${showProgress ? `
+                    <div class="step-progress ${indeterminate ? 'indeterminate' : ''}">
+                        <div class="step-progress-fill" style="width: ${indeterminate ? 0 : progressPercent}%"></div>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="step-info">
+                <div class="step-time">${escapeHtml(timeText)}</div>
+                ${actionBtn}
+            </div>
+        </div>
+    `;
+}
+
+
+// ============================================================
+// RENDER STEPS — INCREMENTAL (بدون re-render کامل)
+// ============================================================
+function renderSteps() {
+    const container = $('#splashSteps');
+    if (!container) return;
+
+    // اگر تعداد آیتم‌ها با تعداد steps نمی‌خورد → کامل بازسازی کن
+    if (container.children.length !== state.steps.length) {
+        container.innerHTML = state.steps
+            .map((step, idx) => renderStepHtml(step, idx))
+            .join('');
+        bindStepActions();
+        return;
+    }
+
+    // در غیر این صورت → فقط آیتم‌های تغییر یافته را آپدیت کن
+    state.steps.forEach((step, idx) => {
+        const existing = container.querySelector(`[data-step-idx="${idx}"]`);
+        if (!existing) return;
+
+        // ساخت HTML جدید در یک wrapper موقت
+        const temp = document.createElement('div');
+        temp.innerHTML = renderStepHtml(step, idx);
+        const newEl = temp.firstElementChild;
+        if (!newEl) return;
+
+        const oldClass = existing.className;
+        const newClass = newEl.className;
+
+        // اگر status کلاس عوض شده → icon و class را آپدیت کن
+        if (oldClass !== newClass) {
+            existing.className = newClass;
+
+            const oldIcon = existing.querySelector('.step-icon');
+            const newIcon = newEl.querySelector('.step-icon');
+            if (oldIcon && newIcon) oldIcon.innerHTML = newIcon.innerHTML;
+        }
+
+        // hint را همیشه آپدیت کن (چون ممکنه متنش عوض شده باشد)
+        const oldHint = existing.querySelector('.step-hint');
+        const newHint = newEl.querySelector('.step-hint');
+        if (oldHint && newHint) {
+            oldHint.className = newHint.className;
+            oldHint.innerHTML = newHint.innerHTML;
+        }
+
+        // time را آپدیت کن
+        const oldTime = existing.querySelector('.step-time');
+        const newTime = newEl.querySelector('.step-time');
+        if (oldTime && newTime) oldTime.textContent = newTime.textContent;
+
+        // progress را آپدیت کن (فقط اگر وجود داشت)
+        const oldProg = existing.querySelector('.step-progress');
+        const newProg = newEl.querySelector('.step-progress');
+        if (oldProg && newProg) {
+            const oldFill = oldProg.querySelector('.step-progress-fill');
+            const newFill = newProg.querySelector('.step-progress-fill');
+            if (oldFill && newFill) {
+                oldFill.style.width = newFill.style.width;
+            }
+            oldProg.classList.toggle('indeterminate', newProg.classList.contains('indeterminate'));
+        } else if (newProg && !oldProg) {
+            const content = existing.querySelector('.step-content');
+            if (content) content.appendChild(newProg);
+        } else if (oldProg && !newProg) {
+            oldProg.remove();
+        }
+
+        // دکمه‌ی عملیات (retry/skip) را آپدیت کن
+        const oldInfo = existing.querySelector('.step-info');
+        const newInfo = newEl.querySelector('.step-info');
+        if (oldInfo && newInfo) {
+            const oldBtn = oldInfo.querySelector('.step-action-btn');
+            const newBtn = newInfo.querySelector('.step-action-btn');
+            const oldTimeEl = oldInfo.querySelector('.step-time');
+
+            // پاک کردن دکمه قدیمی
+            if (oldBtn) oldBtn.remove();
+
+            // اضافه کردن دکمه جدید (اگر هست)
+            if (newBtn) oldInfo.appendChild(newBtn);
+
+            // اطمینان از اینکه زمان اول است
+            if (oldTimeEl) oldInfo.prepend(oldTimeEl);
+        }
+    });
+
+    bindStepActions();
+}
+
+
+// ============================================================
+// BIND STEP ACTIONS (retry + skip روی کارت‌ها)
+// ============================================================
+function bindStepActions() {
+    const container = $('#splashSteps');
+    if (!container) return;
+
+    // Retry
+    container.querySelectorAll('[data-retry-step]').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.retryStep, 10);
+            if (idx === state.currentIndex) {
+                retryCurrentStep();
+            }
+        };
+    });
+
+    // Skip
+    container.querySelectorAll('[data-skip-step]').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.skipStep, 10);
+            if (idx === state.currentIndex) {
+                skipCurrentStep();
+            }
+        };
+    });
+}
+
+
+// ============================================================
+// EXPOSE TO PART 2
+// ============================================================
+window.__splashPart1 = {
+    $, $$,
+    toPersian, formatMs, formatSeconds, escapeHtml,
+    I18N, t, applyI18n,
+    state,
+    getPresetSteps,
+    ICONS,
+    createParticles, burstConfetti,
+    updateProgressRing,
+    calculateProgress, estimateRemainingTime,
+    updateStats,
+    renderStepHtml, renderSteps, bindStepActions,
+    get currentLang() { return currentLang; },
+    set currentLang(v) { currentLang = v; },
+};
+
+console.log('✅ Splash Part 1 (Core + Rendering) loaded');
+
+})();
+</script>
+<script>
+// ============================================================
+// Splash Loader v6.1 — PART 2: Run + Events + Confirm + Init
+// RunLoop + Retry + Skip + Confirm Modal + Init + API
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__splashPart2Loaded) return;
+window.__splashPart2Loaded = true;
+
+if (!window.__splashPart1) {
+    console.error('❌ Splash Part 1 not loaded');
+    return;
+}
+
+const {
+    $, $$,
+    toPersian, formatMs, formatSeconds, escapeHtml,
+    I18N, t, applyI18n,
+    state,
+    getPresetSteps,
+    ICONS,
+    createParticles, burstConfetti,
+    updateProgressRing,
+    calculateProgress, estimateRemainingTime,
+    updateStats,
+    renderStepHtml, renderSteps, bindStepActions,
+} = window.__splashPart1;
+
+
+// برای setLang
+function setLang(lang) {
+    if (lang !== 'fa' && lang !== 'en') lang = 'fa';
+    window.__splashPart1.currentLang = lang;
+    applyI18n();
+    renderSteps();
+    updateStats();
+}
+
+
 // ============================================================
 // RUN SINGLE STEP
 // ============================================================
 async function runStep(idx) {
     const step = state.steps[idx];
-    if (!step) return;
+    if (!step) return { success: false };
 
-    state.stepStartTime = Date.now();
+    // Reset step state
     step.status = 'active';
     step.currentProgress = null;
+    step.errorMessage = null;
+
+    state.stepStartTime = Date.now();
     state.status = 'running';
+
     renderSteps();
     updateStats();
 
-    // Update subtitle
+    // Subtitle
     const subtitle = $('#splashSubtitle');
     if (subtitle) subtitle.textContent = t('subtitle');
 
-    // Progress callback for step
+    // Progress callback
     const progressCallback = (current, total) => {
         step.currentProgress = { current, total };
         renderSteps();
@@ -2294,8 +2499,8 @@ async function runStep(idx) {
     };
 
     try {
-        // Execute with timeout protection
         const timeoutMs = step.timeout || (step.weight || 1000) * 6;
+
         const result = await Promise.race([
             step.check(progressCallback),
             new Promise((_, reject) =>
@@ -2306,21 +2511,21 @@ async function runStep(idx) {
         step.actualDuration = Date.now() - state.stepStartTime;
         step.status = 'done';
 
-        if (state.skipAllFlag && !step.critical) {
-            // If skipAll was active, keep going
-        }
-
         renderSteps();
         updateStats();
 
-        // Small pause for UX (visible transition)
+        // Small UX pause
         await new Promise(r => setTimeout(r, 120));
 
         return { success: true, result };
+
     } catch (err) {
         step.actualDuration = Date.now() - state.stepStartTime;
         step.status = 'error';
         step.errorMessage = err.message || t('errorUnknown');
+
+        // ⚠️ مهم: وضعیت را از running خارج کن
+        state.status = 'error';
 
         renderSteps();
         updateStats();
@@ -2328,6 +2533,7 @@ async function runStep(idx) {
         return { success: false, error: err, step };
     }
 }
+
 
 // ============================================================
 // SLOW STEP DETECTION
@@ -2348,34 +2554,32 @@ function checkStepSpeed() {
     }
 }
 
+
 // ============================================================
 // SKIP CURRENT STEP
 // ============================================================
 function skipCurrentStep() {
-    if (state.status !== 'running') return;
+    if (state.status !== 'running' && state.status !== 'error') return;
     if (state.currentIndex >= state.steps.length) return;
 
     const step = state.steps[state.currentIndex];
-    if (step.critical) {
-        // Can't skip critical
-        return;
-    }
+    if (step.critical) return;
 
     step.status = 'skipped';
-    step.actualDuration = Date.now() - state.stepStartTime;
     step.skipped = true;
+    step.actualDuration = Date.now() - state.stepStartTime;
 
     renderSteps();
     updateStats();
 
-    // Force move to next step
     state.currentIndex++;
+    state.status = 'running';
+
     setTimeout(() => {
-        if (state.status === 'running' || state.status === 'paused') {
-            runLoop();
-        }
+        if (!state.aborted && !state.completed) runLoop();
     }, 200);
 }
+
 
 // ============================================================
 // RETRY CURRENT STEP
@@ -2386,51 +2590,35 @@ function retryCurrentStep() {
     const step = state.steps[state.currentIndex];
     step.status = 'pending';
     step.errorMessage = null;
+    step.currentProgress = null;
 
     state.errorShown = false;
     closeErrorModal();
 
-    renderSteps();
+    // ✅ برگرداندن وضعیت به running
     state.status = 'running';
-    runLoop();
+
+    renderSteps();
+    updateStats();
+
+    setTimeout(() => {
+        if (!state.aborted && !state.completed) runLoop();
+    }, 150);
 }
 
-// ============================================================
-// ABORT
-// ============================================================
-function abortLoading() {
-    // اگه قبلاً نمایش داده شده، دوباره نشون نده
-    if (state.abortConfirmShown) return;
-    state.abortConfirmShown = true;
 
-    // تأیید از کاربر
-    const confirmed = confirm(
-        currentLang === 'fa'
-            ? 'از بارگذاری انصراف می‌دهید؟ به صفحه ورود برمی‌گردید.'
-            : 'Abort loading? You will be redirected to login.'
-    );
-
-    if (!confirmed) {
-        state.abortConfirmShown = false;
+// ============================================================
+// ERROR MODAL (فقط برای خطاهای بحرانی)
+// ============================================================
+function showErrorModal(step) {
+    // برای خطاهای غیر-بحرانی، هیچ modal ای باز نکن
+    // کاربر میتواند از دکمه retry روی کارت استفاده کند
+    if (!step.critical) {
+        state.errorShown = false;
         return;
     }
 
-    state.aborted = true;
-    state.status = 'aborted';
-    stopTimers();
-
-    const root = $('#splashRoot');
-    if (root) root.classList.add('exit');
-
-    setTimeout(() => {
-        window.location.href = '/login';
-    }, 400);
-}
-
-// ============================================================
-// SHOW ERROR MODAL
-// ============================================================
-function showErrorModal(step) {
+    // خطای بحرانی → modal
     state.errorShown = true;
 
     const modal = $('#errorModal');
@@ -2438,16 +2626,13 @@ function showErrorModal(step) {
     const message = $('#errorMessage');
     const title = $('#errorTitle');
     const skipAllBtn = $('#btnSkipAll');
-    const retryBtn = $('#btnRetry');
 
-    if (title) title.textContent = step.critical ? t('errorCritical') : t('errorTitle');
+    if (title) title.textContent = t('errorCritical');
     if (stepName) stepName.textContent = step.nameKey ? t(step.nameKey) : (step.name || '—');
     if (message) message.textContent = step.errorMessage || t('errorUnknown');
 
-    // Hide skip for critical steps
-    if (skipAllBtn) {
-        skipAllBtn.style.display = step.critical ? 'none' : 'inline-flex';
-    }
+    // برای خطای بحرانی، «رد همه» مخفی است
+    if (skipAllBtn) skipAllBtn.style.display = 'none';
 
     if (modal) modal.classList.add('open');
 }
@@ -2457,24 +2642,151 @@ function closeErrorModal() {
     if (modal) modal.classList.remove('open');
 }
 
+
+// ============================================================
+// CONFIRM ABORT MODAL
+// ============================================================
+function openAbortConfirmModal() {
+    const modal = $('#confirmModal');
+    if (modal) modal.classList.add('open');
+}
+
+function closeAbortConfirmModal() {
+    const modal = $('#confirmModal');
+    if (modal) modal.classList.remove('open');
+}
+
+function confirmAbort() {
+    closeAbortConfirmModal();
+
+    state.aborted = true;
+    state.status = 'aborted';
+    stopTimers();
+
+    const root = $('#splashRoot');
+    if (root) root.classList.add('exit');
+
+    if (state.onAbort) {
+        try { state.onAbort(); } catch (e) { console.error(e); }
+    }
+
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 600);
+}
+
+function abortLoading() {
+    // به جای confirm() بومی → modal سفارشی
+    openAbortConfirmModal();
+}
+
+
+// ============================================================
+// PAUSE / RESUME
+// ============================================================
+function pauseLoading() {
+    if (state.status !== 'running') return;
+
+    state.status = 'paused';
+    state.paused = true;
+
+    const root = $('#splashRoot');
+    const subtitle = $('#splashSubtitle');
+    const btnPause = $('#btnPause');
+
+    if (root) root.classList.add('paused');
+    if (subtitle) subtitle.textContent = t('subtitlePaused');
+
+    if (btnPause) {
+        btnPause.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            <span>${t('resume')}</span>
+        `;
+    }
+
+    updateStats();
+}
+
+function resumeLoading() {
+    if (state.status !== 'paused') return;
+
+    state.status = 'running';
+    state.paused = false;
+
+    const root = $('#splashRoot');
+    const subtitle = $('#splashSubtitle');
+    const btnPause = $('#btnPause');
+
+    if (root) root.classList.remove('paused');
+    if (subtitle) subtitle.textContent = t('subtitle');
+
+    if (btnPause) {
+        btnPause.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16" rx="1"/>
+                <rect x="14" y="4" width="4" height="16" rx="1"/>
+            </svg>
+            <span>${t('pause')}</span>
+        `;
+    }
+
+    updateStats();
+    runLoop();
+}
+
+
+// ============================================================
+// TIMERS
+// ============================================================
+function startTimers() {
+    stopTimers();
+
+    // Update stats + step speed every 100ms
+    state.updateIntervalId = setInterval(() => {
+        if (state.status === 'running') {
+            updateStats();
+            checkStepSpeed();
+
+            // update active step time display (بدون re-render کامل)
+            const activeEl = $('.step-item.is-active, .step-item.is-warning');
+            if (activeEl) {
+                const timeEl = activeEl.querySelector('.step-time');
+                if (timeEl) {
+                    timeEl.textContent = formatMs(Date.now() - state.stepStartTime);
+                }
+            }
+        }
+    }, 100);
+}
+
+function stopTimers() {
+    if (state.updateIntervalId) {
+        clearInterval(state.updateIntervalId);
+        state.updateIntervalId = null;
+    }
+    if (state.stepIntervalId) {
+        clearInterval(state.stepIntervalId);
+        state.stepIntervalId = null;
+    }
+}
+
+
 // ============================================================
 // MAIN LOOP
 // ============================================================
 async function runLoop() {
-    if (state.aborted) return;
+    if (state.aborted || state.completed) return;
+    if (state.status === 'paused' || state.status === 'error') return;
 
-    // All steps done?
+    // All done?
     if (state.currentIndex >= state.steps.length) {
         await completeLoading();
         return;
     }
 
-    // If paused, wait
-    if (state.status === 'paused') {
-        return;
-    }
-
-    // Skip-all flag: auto-skip non-critical steps
+    // Skip-all: auto-skip non-critical
     if (state.skipAllFlag) {
         const step = state.steps[state.currentIndex];
         if (step && !step.critical) {
@@ -2491,22 +2803,31 @@ async function runLoop() {
 
     const result = await runStep(state.currentIndex);
 
-    if (state.aborted) return;
+    if (state.aborted || state.completed) return;
 
     if (result.success) {
         state.currentIndex++;
+        state.status = 'running';
         updateStats();
         setTimeout(() => runLoop(), 100);
     } else {
-        // Error — show modal
-        showErrorModal(result.step);
+        // خطا رخ داد
+        if (result.step.critical) {
+            // خطای بحرانی → modal
+            showErrorModal(result.step);
+        }
+        // خطای غیر-بحرانی: هیچ modal ای باز نمیشود؛
+        // کاربر میتواند روی کارت step دکمه retry یا skip بزند
     }
 }
+
 
 // ============================================================
 // COMPLETE LOADING
 // ============================================================
 async function completeLoading() {
+    if (state.completed) return;
+
     state.status = 'success';
     state.completed = true;
     stopTimers();
@@ -2521,17 +2842,12 @@ async function completeLoading() {
 
     updateProgressRing(100);
     updateStats();
-
-    // Confetti
     burstConfetti();
 
-    // Wait a moment to show success
     await new Promise(r => setTimeout(r, 1000));
 
-    // Exit animation
     if (root) root.classList.add('exit');
 
-    // Callback
     const totalTime = Date.now() - state.startTime;
     const skipped = state.steps.filter(s => s.status === 'skipped').length;
 
@@ -2553,7 +2869,6 @@ async function completeLoading() {
         }
     }
 
-    // Remove from DOM
     setTimeout(() => {
         if (root && root.parentNode) {
             root.style.display = 'none';
@@ -2561,99 +2876,9 @@ async function completeLoading() {
     }, 700);
 }
 
-// ============================================================
-// TIMERS
-// ============================================================
-function startTimers() {
-    stopTimers();
-
-    // Update stats every 100ms (for smooth ring + time)
-    state.updateIntervalId = setInterval(() => {
-        if (state.status === 'running') {
-            updateStats();
-            checkStepSpeed();
-        }
-    }, 100);
-
-    // Re-render steps every 500ms (for active step time update)
-    state.intervalId = setInterval(() => {
-        if (state.status === 'running') {
-            // Only update the active step's time display
-            const activeEl = $('.step-item.is-active, .step-item.is-warning');
-            if (activeEl) {
-                const timeEl = activeEl.querySelector('.step-time');
-                if (timeEl) {
-                    timeEl.textContent = formatMs(Date.now() - state.stepStartTime);
-                }
-            }
-        }
-    }, 500);
-}
-
-function stopTimers() {
-    if (state.updateIntervalId) {
-        clearInterval(state.updateIntervalId);
-        state.updateIntervalId = null;
-    }
-    if (state.intervalId) {
-        clearInterval(state.intervalId);
-        state.intervalId = null;
-    }
-}
 
 // ============================================================
-// PAUSE / RESUME
-// ============================================================
-function pauseLoading() {
-    if (state.status !== 'running') return;
-
-    state.status = 'paused';
-
-    const root = $('#splashRoot');
-    const subtitle = $('#splashSubtitle');
-    const btnPause = $('#btnPause');
-
-    if (root) root.classList.add('paused');
-    if (subtitle) subtitle.textContent = t('subtitlePaused');
-
-    if (btnPause) {
-        btnPause.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-            <span>${t('resume')}</span>
-        `;
-    }
-}
-
-function resumeLoading() {
-    if (state.status !== 'paused') return;
-
-    state.status = 'running';
-    state.stepStartTime = Date.now() - (state.stepDurations[state.steps[state.currentIndex]?.id] || 0);
-
-    const root = $('#splashRoot');
-    const subtitle = $('#splashSubtitle');
-    const btnPause = $('#btnPause');
-
-    if (root) root.classList.remove('paused');
-    if (subtitle) subtitle.textContent = t('subtitle');
-
-    if (btnPause) {
-        btnPause.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="6" y="4" width="4" height="16" rx="1"/>
-                <rect x="14" y="4" width="4" height="16" rx="1"/>
-            </svg>
-            <span>${t('pause')}</span>
-        `;
-    }
-
-    runLoop();
-}
-
-// ============================================================
-// EVENT BINDINGS
+// BIND EVENTS
 // ============================================================
 function bindEvents() {
 
@@ -2689,9 +2914,9 @@ function bindEvents() {
             step.actualDuration = Date.now() - state.stepStartTime;
         }
         state.currentIndex++;
+        state.status = 'running';
         renderSteps();
         updateStats();
-        state.status = 'running';
         setTimeout(() => runLoop(), 200);
     });
 
@@ -2700,12 +2925,62 @@ function bindEvents() {
         abortLoading();
     });
 
+    // Confirm modal
+    $('#confirmYes')?.addEventListener('click', confirmAbort);
+    $('#confirmNo')?.addEventListener('click', closeAbortConfirmModal);
+    $('#confirmModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'confirmModal') closeAbortConfirmModal();
+    });
+
+    // Error modal overlay click (بستن با کلیک روی پس‌زمینه — فقط اگه غیر-بحرانی باشد)
+    $('#errorModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'errorModal') {
+            const step = state.steps[state.currentIndex];
+            // اگر بحرانی نیست، می‌توان بست
+            if (step && !step.critical) {
+                closeErrorModal();
+                state.errorShown = false;
+            }
+        }
+    });
+
     // Keyboard
     document.addEventListener('keydown', (e) => {
-        if (state.status === 'success' || state.aborted) return;
+        // نادیده گرفتن وقتی کاربر در حال تایپ است
+        if (e.target.matches('input, textarea')) return;
+
+        // اگر confirm modal باز است → فقط Esc و Enter
+        const confirmModal = $('#confirmModal');
+        if (confirmModal && confirmModal.classList.contains('open')) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeAbortConfirmModal();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmAbort();
+            }
+            return;
+        }
+
+        // اگر error modal باز است → Escape
+        const errorModal = $('#errorModal');
+        if (errorModal && errorModal.classList.contains('open')) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                const step = state.steps[state.currentIndex];
+                if (step && !step.critical) {
+                    closeErrorModal();
+                    state.errorShown = false;
+                }
+            }
+            return;
+        }
+
+        // در حالت success یا aborted → هیچ
+        if (state.status === 'success' || state.aborted || state.completed) return;
 
         // Space → Pause/Resume
-        if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+        if (e.code === 'Space') {
             e.preventDefault();
             if (state.status === 'paused') resumeLoading();
             else pauseLoading();
@@ -2713,13 +2988,20 @@ function bindEvents() {
         }
 
         // S → Skip
-        if (e.key.toLowerCase() === 's' && !e.target.matches('input, textarea')) {
+        if (e.key.toLowerCase() === 's') {
             e.preventDefault();
             skipCurrentStep();
             return;
         }
 
-        // Esc → Abort
+        // R → Retry (اگه خطا داشت)
+        if (e.key.toLowerCase() === 'r' && state.status === 'error') {
+            e.preventDefault();
+            retryCurrentStep();
+            return;
+        }
+
+        // Esc → Abort confirm
         if (e.key === 'Escape') {
             e.preventDefault();
             abortLoading();
@@ -2727,34 +3009,26 @@ function bindEvents() {
     });
 }
 
+
 // ============================================================
 // PUBLIC API
 // ============================================================
 const splashLoader = {
 
-    /**
-     * شروع بارگذاری
-     * @param {Object} options
-     * @param {Array} [options.steps] — آرایه گام‌ها (اگه نباشه، preset استفاده می‌شه)
-     * @param {string} [options.lang='fa'] — زبان (fa/en)
-     * @param {Function} [options.onComplete] — کال‌بک موفقیت
-     * @param {Function} [options.onAbort] — کال‌بک انصراف
-     * @param {Function} [options.onError] — کال‌بک خطا
-     */
     async start(options = {}) {
-        // Reset
+        // Reset state
         state.aborted = false;
         state.completed = false;
         state.errorShown = false;
         state.skipAllFlag = false;
+        state.paused = false;
         state.currentIndex = 0;
         state.startTime = Date.now();
         state.status = 'running';
-        state.stepDurations = {};
 
-        // Language
-        currentLang = options.lang || document.documentElement.lang || 'fa';
-        if (currentLang !== 'fa' && currentLang !== 'en') currentLang = 'fa';
+        // Lang
+        const lang = options.lang || document.documentElement.lang || 'fa';
+        setLang(lang);
 
         // Steps
         const rawSteps = options.steps || getPresetSteps();
@@ -2766,25 +3040,26 @@ const splashLoader = {
             currentProgress: null,
         }));
 
-        // Calculate total weight
-        state.totalEstimatedWeight = state.steps.reduce((sum, s) => sum + (s.weight || 500), 0);
+        state.totalEstimatedWeight = state.steps.reduce(
+            (sum, s) => sum + (s.weight || 500), 0
+        );
 
         // Callbacks
         state.onComplete = options.onComplete || null;
         state.onAbort = options.onAbort || null;
-        state.onError = options.onError || null;
 
-        // Reset root
+        // Reset UI
         const root = $('#splashRoot');
         if (root) {
             root.classList.remove('exit', 'success', 'paused');
             root.style.display = '';
         }
 
-        // Apply i18n
-        applyI18n();
+        // Confirm modal بسته
+        closeAbortConfirmModal();
+        closeErrorModal();
 
-        // Init particles
+        // Particles
         createParticles();
 
         // Initial render
@@ -2792,79 +3067,39 @@ const splashLoader = {
         updateStats();
         updateProgressRing(0);
 
-        // Start timers
+        // Timers
         startTimers();
 
         // Run
         await runLoop();
     },
 
-    /**
-     * توقف موقت
-     */
-    pause() {
-        pauseLoading();
-    },
+    pause() { pauseLoading(); },
+    resume() { resumeLoading(); },
+    skip() { skipCurrentStep(); },
+    retry() { retryCurrentStep(); },
+    abort() { abortLoading(); },
 
-    /**
-     * ادامه
-     */
-    resume() {
-        resumeLoading();
-    },
-
-    /**
-     * رد کردن گام فعلی
-     */
-    skip() {
-        skipCurrentStep();
-    },
-
-    /**
-     * انصراف کامل
-     */
-    abort() {
-        abortLoading();
-    },
-
-    /**
-     * وضعیت فعلی
-     */
     getState() {
-        const progress = calculateProgress();
-        const remaining = estimateRemainingTime();
         return {
             status: state.status,
             currentStep: state.currentIndex,
             totalSteps: state.steps.length,
-            percent: Math.round(progress),
-            estimatedRemaining: remaining,
+            percent: Math.round(calculateProgress()),
+            estimatedRemaining: estimateRemainingTime(),
             elapsed: (Date.now() - state.startTime) / 1000,
             skipped: state.steps.filter(s => s.status === 'skipped').length,
             errors: state.steps.filter(s => s.status === 'error').length,
         };
     },
 
-    /**
-     * تعیین زبان
-     */
-    setLang(lang) {
-        currentLang = lang;
-        applyI18n();
-        renderSteps();
-    },
+    setLang(lang) { setLang(lang); },
 
-    /**
-     * مخفی کردن دستی
-     */
     hide() {
         const root = $('#splashRoot');
         if (root) root.classList.add('exit');
     },
 
-    /**
-     * نمایش دستی
-     */
     show() {
         const root = $('#splashRoot');
         if (root) {
@@ -2874,59 +3109,32 @@ const splashLoader = {
     },
 };
 
-// ============================================================
-// EXPOSE
-// ============================================================
 window.splashLoader = splashLoader;
-
-// Alias for backwards compat
 window.splash = splashLoader;
 
-// ============================================================
-// AUTO-START — راه‌اندازی خودکار
-// ============================================================
 
-/**
- * شروع خودکار بارگذاری وقتی صفحه باز می‌شه
- */
+// ============================================================
+// AUTO START
+// ============================================================
 async function autoStart() {
-    // بررسی که کاربر لاگین کرده
-    let hasAuth = false;
-
-    // بررسی localStorage (فقط به عنوان hint، نه اعتبار)
-    try {
-        const username = localStorage.getItem('username');
-        const sessionId = localStorage.getItem('session_id');
-        if (username || sessionId) hasAuth = true;
-    } catch (e) { /* ignore */ }
-
-    // اگه هیچ نشونه‌ای از auth نیست، بفرست به login
-    // (سرور هم چک می‌کنه — این فقط برای UX بهتره)
-    // ولی چون در حالت عادی از login میایم اینجا، پس معمولاً auth داری
-
-    // تعیین زبان از localStorage
     let lang = 'fa';
     try {
         lang = localStorage.getItem('login_lang') || 'fa';
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 
-    // شروع بارگذاری
     await splashLoader.start({
-        lang: lang,
+        lang,
 
         onComplete: (result) => {
             console.log('✅ Loading complete:', result);
-
-            // ذخیره خلاصه loading در session
             try {
                 sessionStorage.setItem('loading_summary', JSON.stringify({
                     totalTime: result.totalTime,
                     steps: result.steps,
                     skipped: result.skipped,
                 }));
-            } catch (e) { /* ignore */ }
+            } catch (e) {}
 
-            // ✅ Redirect به داشبورد
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 500);
@@ -2934,40 +3142,36 @@ async function autoStart() {
 
         onAbort: () => {
             console.log('⛔ Loading aborted by user');
-            // کاربر خودش انصراف داد — برگرد به login
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 300);
-        },
-
-        onError: (err) => {
-            console.error('❌ Loading error:', err);
-            // خطای غیرقابل‌حل — برگرد به login
-            // (اگه خطای شبکه باشه، بهتره کاربر دوباره لاگین کنه)
         },
     });
 }
 
-// اجرا بعد از DOMContentLoaded
+
+// ============================================================
+// BOOT
+// ============================================================
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        bindEvents();      // ← ← ← این خط رو اضافه کن
+        bindEvents();
         autoStart();
     });
 } else {
-    bindEvents();          // ← ← ← این خط رو اضافه کن
+    bindEvents();
     autoStart();
 }
+
 
 // ============================================================
 // LOG
 // ============================================================
 console.log(
-    '%c Splash Loader v6.0 ',
+    '%c Splash Loader v6.1 ',
     'background: linear-gradient(135deg, #6366f1, #818cf8); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
 );
-console.log('%c Transparency-First with Time Estimation ', 'color:#94a3b8;font-size:11px;');
-console.log('%c Keyboard: Space (pause) · S (skip) · Esc (abort) ', 'color:#94a3b8;font-size:11px;');
+console.log('%c Retry on cards + Custom confirm modal ', 'color:#94a3b8;font-size:11px;');
+console.log('%c Keyboard: Space (pause) · S (skip) · R (retry) · Esc (abort) ', 'color:#94a3b8;font-size:11px;');
 
 })();
 </script>
+</body>
+</html>
