@@ -779,4 +779,82 @@ class OHLCVRepository(Repository):
         )
 
 
+    # ============================================================
+    # Repository Interface (stubs)
+    # ============================================================
+    # این متدها برای مطابقت با interface الزامی‌اند، ولی OHLCV
+    # از الگوی repository معمولی استفاده نمی‌کند.
+
+    def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
+        """دریافت یک رکورد با ID"""
+        if not self._ensure_db():
+            return None
+        try:
+            result = self.db.execute(
+                "SELECT * FROM ohlcv_history WHERE id = %s",
+                (entity_id,),
+            )
+            return result[0] if result else None
+        except Exception as e:
+            logger.error(f"❌ find_by_id error: {e}")
+            return None
+
+    def find_all(self, limit: int = 1000) -> List[Dict[str, Any]]:
+        """دریافت همه رکوردها"""
+        if not self._ensure_db():
+            return []
+        try:
+            return self.db.execute(
+                "SELECT * FROM ohlcv_history ORDER BY timestamp DESC LIMIT %s",
+                (limit,),
+            ) or []
+        except Exception as e:
+            logger.error(f"❌ find_all error: {e}")
+            return []
+
+    def find_by_criteria(
+        self,
+        criteria: Optional[Dict[str, Any]] = None,
+        limit: int = 1000,
+    ) -> List[Dict[str, Any]]:
+        """جستجو بر اساس معیارها"""
+        if not self._ensure_db():
+            return []
+
+        criteria = criteria or {}
+        conditions = []
+        params: List[Any] = []
+
+        for key, val in criteria.items():
+            if key in ("symbol", "interval"):
+                conditions.append(f"{key} = %s")
+                params.append(val)
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        params.append(limit)
+
+        try:
+            return self.db.execute(
+                f"SELECT * FROM ohlcv_history WHERE {where_clause} "
+                f"ORDER BY timestamp DESC LIMIT %s",
+                tuple(params),
+            ) or []
+        except Exception as e:
+            logger.error(f"❌ find_by_criteria error: {e}")
+            return []
+
+    def delete(self, entity_id: Any) -> bool:
+        """حذف یک رکورد با ID"""
+        if not self._ensure_db():
+            return False
+        try:
+            self.db.execute(
+                "DELETE FROM ohlcv_history WHERE id = %s",
+                (entity_id,),
+            )
+            return True
+        except Exception as e:
+            logger.error(f"❌ delete error: {e}")
+            return False
+
 __all__ = ["OHLCVRepository", "VALID_INTERVALS"]
