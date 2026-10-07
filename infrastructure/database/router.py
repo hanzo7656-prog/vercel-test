@@ -10,7 +10,7 @@ from typing import Any, Optional, Dict, List
 from datetime import datetime
 
 from infrastructure.database.registry import registry
-from infrastructure.database.base import DatabaseBase
+from infrastructure.database.base import DatabaseBase, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -314,7 +314,7 @@ class DatabaseRouter:
             "route_by_type": dict(self._route_by_type),
             "routing": dict(self._routing),
             "failover_chain": dict(self._failover_chain),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_now().isoformat() + "Z",
         }
     
     def reset_stats(self) -> None:
