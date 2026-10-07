@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime
 
-from infrastructure.database.base import DatabaseBase
+from infrastructure.database.base import DatabaseBase, utc_now
 from infrastructure.database.postgresql_manager import PostgreSQLManager
 from infrastructure.database.redis_manager import RedisManager
 from infrastructure.database.sqlite_manager import SQLiteManager
@@ -170,7 +170,7 @@ class DatabaseFactory:
 
     def _connect_all_with_retry(self) -> None:
         """اتصال به همه دیتابیس‌ها با Retry"""
-        self._init_started_at = datetime.now()
+        self._init_started_at = utc_now()
         databases = self._config.get("databases", {})
 
         logger.info(f"🔄 Initializing {len(databases)} databases...")
@@ -197,12 +197,11 @@ class DatabaseFactory:
                 )
                 self._failed_connections.append(db_name)
 
-        self._init_completed_at = datetime.now()
+        self._init_completed_at = utc_now()
 
         duration = (
             self._init_completed_at - self._init_started_at
         ).total_seconds()
-
         logger.info(
             f"✅ Initialization complete in {duration:.2f}s "
             f"(failed: {len(self._failed_connections)})"
@@ -436,11 +435,11 @@ class DatabaseFactory:
         return {
             "initialized": self._init_completed_at is not None,
             "init_started_at": (
-                self._init_started_at.isoformat()
+                self._init_started_at.isoformat() + "Z"
                 if self._init_started_at else None
             ),
             "init_completed_at": (
-                self._init_completed_at.isoformat()
+                self._init_completed_at.isoformat() + "Z"
                 if self._init_completed_at else None
             ),
             "total_retries": self._total_retries,
@@ -449,7 +448,7 @@ class DatabaseFactory:
             "summary": registry.get_summary(),
             "router_stats": router.get_stats(),
             "health_check_enabled": self._health_enabled,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_now().isoformat() + "Z",
         }
 
     def get_health_summary(self) -> Dict[str, Any]:
