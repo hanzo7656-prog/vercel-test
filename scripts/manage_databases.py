@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 # scripts/manage_databases.py
 # ============================================================
-# مدیریت دیتابیس‌ها - نسخه ۵.۰
-# RuleEngine + OHLCV Ready Schema
+# مدیریت دیتابیس‌ها - نسخه ۵.۱
+# RuleEngine + OHLCV + UTC-safe DEFAULT
 # ============================================================
 
 """
 مدیریت کامل دیتابیس‌های سیستم (۵ دیتابیس)
 
-نسخه ۵.۰:
-    - RuleEngine-aware schema
-    - حذف XGBoost-specific (is_ensemble, training_profiles)
-    - اضافه rule_config_overrides
-    - اضافه state_transitions
-    - اضافه scan_history
-    - مدل: model_type
+نسخه ۵.۱:
+    - DEFAULT CURRENT_TIMESTAMP → DEFAULT (NOW() AT TIME ZONE 'UTC')
+    - timeout در execute_schema
+    - حذف SQL_ASCII non-safe
+    - سازگار با session timezone = UTC
 
 استفاده:
     python scripts/manage_databases.py --action=all
@@ -30,7 +28,7 @@ import os
 import sys
 import logging
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -49,6 +47,15 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
+# Timezone Helper
+# ============================================================
+
+def _utc_now_iso() -> str:
+    """UTC ISO با Z."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+# ============================================================
 # Logging
 # ============================================================
 
@@ -62,12 +69,20 @@ def setup_logging(verbose: bool = False) -> None:
 
 
 # ============================================================
+# DEFAULT برای ستون‌های تاریخ (UTC-safe)
+# ============================================================
+# با session timezone = UTC که در PostgreSQLManager تنظیم شده،
+# NOW() خودش UTC است. ولی برای اطمینان، صریحاً UTC می‌نویسیم.
+
+DEFAULT_NOW = "(NOW() AT TIME ZONE 'UTC')"
+
+
+# ============================================================
 # PRIMARY Schema (Neon #1)
 # ============================================================
 
 SCHEMA_PRIMARY = {
-    # --------- جدول مدل‌ها (RuleEngine-aware) ---------
-    "models": """
+    "models": f"""
         CREATE TABLE IF NOT EXISTS models (
             id SERIAL PRIMARY KEY,
             version VARCHAR(50) UNIQUE NOT NULL,
@@ -79,10 +94,10 @@ SCHEMA_PRIMARY = {
             features TEXT[] DEFAULT ARRAY[]::TEXT[],
             is_active BOOLEAN DEFAULT FALSE,
             model_type VARCHAR(50) DEFAULT 'rule_config',
-            training_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            metadata JSONB DEFAULT '{}'::jsonb
+            training_date TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            metadata JSONB DEFAULT '{{}}'::jsonb
         );
         CREATE INDEX IF NOT EXISTS idx_models_version ON models(version);
         CREATE INDEX IF NOT EXISTS idx_models_active ON models(is_active);
@@ -90,9 +105,8 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_models_accuracy ON models(accuracy DESC);
         CREATE INDEX IF NOT EXISTS idx_models_training_date ON models(training_date DESC);
     """,
-    
-    # --------- تاریخچه آموزش/کالیبراسیون ---------
-    "model_training_history": """
+
+    "model_training_history": f"""
         CREATE TABLE IF NOT EXISTS model_training_history (
             id SERIAL PRIMARY KEY,
             model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
@@ -105,16 +119,15 @@ SCHEMA_PRIMARY = {
             reason TEXT,
             status VARCHAR(20) DEFAULT 'success',
             error_message TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             completed_at TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_mth_model_id ON model_training_history(model_id);
         CREATE INDEX IF NOT EXISTS idx_mth_created_at ON model_training_history(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_mth_status ON model_training_history(status);
     """,
-    
-    # --------- پیش‌بینی‌ها ---------
-    "predictions": """
+
+    "predictions": f"""
         CREATE TABLE IF NOT EXISTS predictions (
             id SERIAL PRIMARY KEY,
             coin VARCHAR(50) NOT NULL,
@@ -125,10 +138,10 @@ SCHEMA_PRIMARY = {
             prediction_score FLOAT DEFAULT 0.5,
             period VARCHAR(10) DEFAULT '24h',
             model_mode VARCHAR(30) DEFAULT 'RULE_ENGINE',
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            timestamp TIMESTAMP DEFAULT {DEFAULT_NOW},
             processing_time_ms FLOAT DEFAULT 0,
             data_points INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_pred_coin ON predictions(coin);
         CREATE INDEX IF NOT EXISTS idx_pred_timestamp ON predictions(timestamp DESC);
@@ -136,22 +149,20 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_pred_coin_time ON predictions(coin, timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_pred_confidence ON predictions(confidence DESC);
     """,
-    
-    # --------- 🆕 Rule Config Overrides ---------
-    "rule_config_overrides": """
+
+    "rule_config_overrides": f"""
         CREATE TABLE IF NOT EXISTS rule_config_overrides (
             id SERIAL PRIMARY KEY,
             name VARCHAR(100) NOT NULL UNIQUE,
             config JSONB NOT NULL,
-            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT {DEFAULT_NOW},
             updated_by VARCHAR(100)
         );
         CREATE INDEX IF NOT EXISTS idx_rco_name ON rule_config_overrides(name);
         CREATE INDEX IF NOT EXISTS idx_rco_updated_at ON rule_config_overrides(updated_at DESC);
     """,
-    
-    # --------- 🆕 State Transitions ---------
-    "state_transitions": """
+
+    "state_transitions": f"""
         CREATE TABLE IF NOT EXISTS state_transitions (
             id SERIAL PRIMARY KEY,
             symbol VARCHAR(50) NOT NULL,
@@ -159,15 +170,14 @@ SCHEMA_PRIMARY = {
             to_state VARCHAR(20) NOT NULL,
             score REAL NOT NULL,
             context JSONB,
-            changed_at TIMESTAMP NOT NULL DEFAULT NOW()
+            changed_at TIMESTAMP NOT NULL DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_st_symbol_time ON state_transitions(symbol, changed_at DESC);
         CREATE INDEX IF NOT EXISTS idx_st_changed_at ON state_transitions(changed_at DESC);
         CREATE INDEX IF NOT EXISTS idx_st_to_state ON state_transitions(to_state);
     """,
-    
-    # --------- 🆕 Scan History ---------
-    "scan_history": """
+
+    "scan_history": f"""
         CREATE TABLE IF NOT EXISTS scan_history (
             id SERIAL PRIMARY KEY,
             scan_id VARCHAR(100) NOT NULL UNIQUE,
@@ -176,14 +186,13 @@ SCHEMA_PRIMARY = {
             top_symbols TEXT[],
             duration_seconds REAL,
             config_used JSONB,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            created_at TIMESTAMP NOT NULL DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_sh_scan_id ON scan_history(scan_id);
         CREATE INDEX IF NOT EXISTS idx_sh_created_at ON scan_history(created_at DESC);
     """,
 
-    # --------- 🆕 OHLCV History ---------
-    "ohlcv_history": """
+    "ohlcv_history": f"""
         CREATE TABLE IF NOT EXISTS ohlcv_history (
             id BIGSERIAL PRIMARY KEY,
             symbol VARCHAR(50) NOT NULL,
@@ -194,7 +203,7 @@ SCHEMA_PRIMARY = {
             low DECIMAL(20, 8) NOT NULL,
             close DECIMAL(20, 8) NOT NULL,
             volume DECIMAL(30, 8) DEFAULT 0,
-            created_at TIMESTAMP DEFAULT NOW()
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE UNIQUE INDEX IF NOT EXISTS idx_ohlcv_unique
             ON ohlcv_history (symbol, interval, timestamp);
@@ -203,46 +212,42 @@ SCHEMA_PRIMARY = {
         CREATE INDEX IF NOT EXISTS idx_ohlcv_created
             ON ohlcv_history (created_at DESC);
     """,
-    
-    # --------- ترس و طمع ---------
-    "fear_greed_history": """
+
+    "fear_greed_history": f"""
         CREATE TABLE IF NOT EXISTS fear_greed_history (
             id SERIAL PRIMARY KEY,
             value INTEGER NOT NULL,
             classification VARCHAR(50),
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_fg_timestamp ON fear_greed_history(timestamp DESC);
     """,
-    
-    # --------- سلطه بیت‌کوین ---------
-    "btc_dominance_history": """
+
+    "btc_dominance_history": f"""
         CREATE TABLE IF NOT EXISTS btc_dominance_history (
             id SERIAL PRIMARY KEY,
             value DECIMAL(5, 2) NOT NULL,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_bd_timestamp ON btc_dominance_history(timestamp DESC);
     """,
-    
-    # --------- بازار جهانی ---------
-    "global_market_history": """
+
+    "global_market_history": f"""
         CREATE TABLE IF NOT EXISTS global_market_history (
             id SERIAL PRIMARY KEY,
             market_cap DECIMAL(30, 2),
             volume DECIMAL(30, 2),
             btc_dominance DECIMAL(5, 2),
             active_cryptocurrencies INTEGER,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_gm_timestamp ON global_market_history(timestamp DESC);
     """,
-    
-    # --------- کاربران ---------
-    "users": """
+
+    "users": f"""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(50) UNIQUE NOT NULL,
@@ -250,53 +255,50 @@ SCHEMA_PRIMARY = {
             email VARCHAR(100),
             role VARCHAR(20) DEFAULT 'user',
             is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             last_login TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
         CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
         CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
     """,
-    
-    # --------- لاگ دستورات ---------
-    "commands_log": """
+
+    "commands_log": f"""
         CREATE TABLE IF NOT EXISTS commands_log (
             id SERIAL PRIMARY KEY,
             user_id VARCHAR(100),
             command TEXT NOT NULL,
             response TEXT,
             status VARCHAR(20) DEFAULT 'success',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cl_user_id ON commands_log(user_id);
         CREATE INDEX IF NOT EXISTS idx_cl_created_at ON commands_log(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_cl_status ON commands_log(status);
     """,
-    
-    # --------- تنظیمات اپ ---------
-    "app_settings": """
+
+    "app_settings": f"""
         CREATE TABLE IF NOT EXISTS app_settings (
             id SERIAL PRIMARY KEY,
             user_id INTEGER,
             category VARCHAR(50) NOT NULL,
-            value JSONB NOT NULL DEFAULT '{}'::jsonb,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            value JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
-        CREATE INDEX IF NOT EXISTS idx_settings_user_category 
+        CREATE INDEX IF NOT EXISTS idx_settings_user_category
             ON app_settings(user_id, category);
-        CREATE INDEX IF NOT EXISTS idx_settings_user 
+        CREATE INDEX IF NOT EXISTS idx_settings_user
             ON app_settings(user_id);
     """,
-    
-    # --------- کش fallback ---------
-    "cache": """
+
+    "cache": f"""
         CREATE TABLE IF NOT EXISTS cache (
             key VARCHAR(255) PRIMARY KEY,
             value TEXT,
             expires_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
     """,
@@ -308,7 +310,7 @@ SCHEMA_PRIMARY = {
 # ============================================================
 
 SCHEMA_BACKUP = {
-    "models_backup": """
+    "models_backup": f"""
         CREATE TABLE IF NOT EXISTS models_backup (
             id SERIAL PRIMARY KEY,
             original_id INTEGER,
@@ -319,14 +321,14 @@ SCHEMA_BACKUP = {
             coins TEXT[],
             model_type VARCHAR(50),
             backup_reason VARCHAR(100),
-            backup_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            backup_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_mb_version ON models_backup(version);
         CREATE INDEX IF NOT EXISTS idx_mb_backup_at ON models_backup(backup_at DESC);
         CREATE INDEX IF NOT EXISTS idx_mb_original_id ON models_backup(original_id);
     """,
-    
-    "predictions_backup": """
+
+    "predictions_backup": f"""
         CREATE TABLE IF NOT EXISTS predictions_backup (
             id SERIAL PRIMARY KEY,
             original_id INTEGER,
@@ -336,24 +338,24 @@ SCHEMA_BACKUP = {
             prediction_score FLOAT,
             period VARCHAR(10),
             timestamp TIMESTAMP,
-            backup_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            backup_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_pb_coin ON predictions_backup(coin);
         CREATE INDEX IF NOT EXISTS idx_pb_backup_at ON predictions_backup(backup_at DESC);
         CREATE INDEX IF NOT EXISTS idx_pb_original_id ON predictions_backup(original_id);
     """,
-    
-    "system_state": """
+
+    "system_state": f"""
         CREATE TABLE IF NOT EXISTS system_state (
             id SERIAL PRIMARY KEY,
             key VARCHAR(100) UNIQUE NOT NULL,
             value TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_ss_key ON system_state(key);
     """,
-    
-    "backup_metadata": """
+
+    "backup_metadata": f"""
         CREATE TABLE IF NOT EXISTS backup_metadata (
             id SERIAL PRIMARY KEY,
             backup_type VARCHAR(50) NOT NULL,
@@ -362,19 +364,19 @@ SCHEMA_BACKUP = {
             size_mb FLOAT,
             status VARCHAR(20) DEFAULT 'success',
             error_message TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_bm_type ON backup_metadata(backup_type);
         CREATE INDEX IF NOT EXISTS idx_bm_created_at ON backup_metadata(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_bm_status ON backup_metadata(status);
     """,
-    
-    "cache": """
+
+    "cache": f"""
         CREATE TABLE IF NOT EXISTS cache (
             key VARCHAR(255) PRIMARY KEY,
             value TEXT,
             expires_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
     """,
@@ -386,7 +388,7 @@ SCHEMA_BACKUP = {
 # ============================================================
 
 SCHEMA_ANALYTICS = {
-    "predictions_analytics": """
+    "predictions_analytics": f"""
         CREATE TABLE IF NOT EXISTS predictions_analytics (
             id SERIAL PRIMARY KEY,
             date DATE NOT NULL,
@@ -399,14 +401,14 @@ SCHEMA_ANALYTICS = {
             avg_score FLOAT DEFAULT 0.5,
             correct_predictions INTEGER DEFAULT 0,
             accuracy FLOAT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             UNIQUE(date, coin)
         );
         CREATE INDEX IF NOT EXISTS idx_pa_date ON predictions_analytics(date DESC);
         CREATE INDEX IF NOT EXISTS idx_pa_coin ON predictions_analytics(coin);
     """,
-    
-    "model_performance": """
+
+    "model_performance": f"""
         CREATE TABLE IF NOT EXISTS model_performance (
             id SERIAL PRIMARY KEY,
             model_version VARCHAR(50),
@@ -418,14 +420,14 @@ SCHEMA_ANALYTICS = {
             recall_score FLOAT,
             f1_score FLOAT,
             avg_confidence FLOAT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             UNIQUE(model_version, date)
         );
         CREATE INDEX IF NOT EXISTS idx_mp_version ON model_performance(model_version);
         CREATE INDEX IF NOT EXISTS idx_mp_date ON model_performance(date DESC);
     """,
-    
-    "market_analytics": """
+
+    "market_analytics": f"""
         CREATE TABLE IF NOT EXISTS market_analytics (
             id SERIAL PRIMARY KEY,
             date DATE NOT NULL,
@@ -437,14 +439,14 @@ SCHEMA_ANALYTICS = {
             btc_dominance DECIMAL(5, 2),
             volatility FLOAT,
             trend VARCHAR(20),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             UNIQUE(date)
         );
         CREATE INDEX IF NOT EXISTS idx_ma_date ON market_analytics(date DESC);
         CREATE INDEX IF NOT EXISTS idx_ma_trend ON market_analytics(trend);
     """,
-    
-    "signal_statistics": """
+
+    "signal_statistics": f"""
         CREATE TABLE IF NOT EXISTS signal_statistics (
             id SERIAL PRIMARY KEY,
             coin VARCHAR(50) NOT NULL,
@@ -453,14 +455,14 @@ SCHEMA_ANALYTICS = {
             count INTEGER DEFAULT 0,
             avg_confidence FLOAT DEFAULT 0,
             win_rate FLOAT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW},
             UNIQUE(coin, period, signal_type)
         );
         CREATE INDEX IF NOT EXISTS idx_ss_coin ON signal_statistics(coin);
         CREATE INDEX IF NOT EXISTS idx_ss_signal ON signal_statistics(signal_type);
     """,
-    
-    "daily_summary": """
+
+    "daily_summary": f"""
         CREATE TABLE IF NOT EXISTS daily_summary (
             id SERIAL PRIMARY KEY,
             date DATE UNIQUE NOT NULL,
@@ -471,17 +473,17 @@ SCHEMA_ANALYTICS = {
             market_sentiment VARCHAR(50),
             top_signal VARCHAR(20),
             notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_ds_date ON daily_summary(date DESC);
     """,
-    
-    "cache": """
+
+    "cache": f"""
         CREATE TABLE IF NOT EXISTS cache (
             key VARCHAR(255) PRIMARY KEY,
             value TEXT,
             expires_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
     """,
@@ -493,21 +495,21 @@ SCHEMA_ANALYTICS = {
 # ============================================================
 
 SCHEMA_LOGS = {
-    "system_logs": """
+    "system_logs": f"""
         CREATE TABLE IF NOT EXISTS system_logs (
             id SERIAL PRIMARY KEY,
             level VARCHAR(20) NOT NULL,
             source VARCHAR(100),
             message TEXT,
             metadata JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_sl_level ON system_logs(level);
         CREATE INDEX IF NOT EXISTS idx_sl_created_at ON system_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_sl_source ON system_logs(source);
     """,
-    
-    "error_logs": """
+
+    "error_logs": f"""
         CREATE TABLE IF NOT EXISTS error_logs (
             id SERIAL PRIMARY KEY,
             error_type VARCHAR(100),
@@ -515,14 +517,14 @@ SCHEMA_LOGS = {
             stack_trace TEXT,
             endpoint VARCHAR(255),
             user_id VARCHAR(100),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_el_type ON error_logs(error_type);
         CREATE INDEX IF NOT EXISTS idx_el_created_at ON error_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_el_endpoint ON error_logs(endpoint);
     """,
-    
-    "api_logs": """
+
+    "api_logs": f"""
         CREATE TABLE IF NOT EXISTS api_logs (
             id SERIAL PRIMARY KEY,
             endpoint VARCHAR(255),
@@ -531,15 +533,15 @@ SCHEMA_LOGS = {
             response_time_ms FLOAT,
             user_id VARCHAR(100),
             ip_address VARCHAR(45),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_al_endpoint ON api_logs(endpoint);
         CREATE INDEX IF NOT EXISTS idx_al_created_at ON api_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_al_status ON api_logs(status_code);
         CREATE INDEX IF NOT EXISTS idx_al_user ON api_logs(user_id);
     """,
-    
-    "audit_logs": """
+
+    "audit_logs": f"""
         CREATE TABLE IF NOT EXISTS audit_logs (
             id SERIAL PRIMARY KEY,
             user_id VARCHAR(100),
@@ -549,7 +551,7 @@ SCHEMA_LOGS = {
             old_value TEXT,
             new_value TEXT,
             ip_address VARCHAR(45),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_aul_user_id ON audit_logs(user_id);
         CREATE INDEX IF NOT EXISTS idx_aul_action ON audit_logs(action);
@@ -562,6 +564,8 @@ SCHEMA_LOGS = {
 # ============================================================
 # ARCHIVE Schema (Layerbase SQLite)
 # ============================================================
+# توجه: SQLite از CURRENT_TIMESTAMP استفاده می‌کند که UTC است.
+# پس نیازی به تغییر نیست.
 
 SCHEMA_ARCHIVE = {
     "predictions_archive": """
@@ -583,7 +587,7 @@ SCHEMA_ARCHIVE = {
         CREATE INDEX IF NOT EXISTS idx_par_timestamp ON predictions_archive(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_par_original_id ON predictions_archive(original_id);
     """,
-    
+
     "models_archive": """
         CREATE TABLE IF NOT EXISTS models_archive (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -598,7 +602,7 @@ SCHEMA_ARCHIVE = {
         CREATE INDEX IF NOT EXISTS idx_mar_version ON models_archive(version);
         CREATE INDEX IF NOT EXISTS idx_mar_original_id ON models_archive(original_id);
     """,
-    
+
     "logs_archive": """
         CREATE TABLE IF NOT EXISTS logs_archive (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -612,7 +616,7 @@ SCHEMA_ARCHIVE = {
         CREATE INDEX IF NOT EXISTS idx_lar_level ON logs_archive(level);
         CREATE INDEX IF NOT EXISTS idx_lar_original_id ON logs_archive(original_id);
     """,
-    
+
     "backup_snapshots": """
         CREATE TABLE IF NOT EXISTS backup_snapshots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -648,7 +652,7 @@ def execute_schema(
             "errors": [],
             "skipped": [],
         }
-    
+
     if not db.is_connected():
         logger.error(f"❌ Database '{db_name}' not connected")
         return {
@@ -658,16 +662,16 @@ def execute_schema(
             "errors": [],
             "skipped": [],
         }
-    
+
     results = {
         "success": True,
         "tables": [],
         "errors": [],
         "skipped": [],
     }
-    
+
     logger.info(f"🔄 Creating {len(schema)} tables in '{db_name}'...")
-    
+
     for table_name, create_sql in schema.items():
         try:
             db.execute(create_sql)
@@ -675,7 +679,7 @@ def execute_schema(
             logger.debug(f"  ✅ {table_name}")
         except Exception as e:
             error_msg = str(e)
-            
+
             if "already exists" in error_msg.lower():
                 results["skipped"].append(table_name)
                 logger.debug(f"  ⏭️ {table_name} (already exists)")
@@ -684,24 +688,24 @@ def execute_schema(
                 results["errors"].append(error_log)
                 results["success"] = False
                 logger.error(f"  ❌ {error_log[:200]}")
-    
+
     logger.info(
         f"✅ '{db_name}': "
         f"{len(results['tables'])} created, "
         f"{len(results['skipped'])} skipped, "
         f"{len(results['errors'])} errors"
     )
-    
+
     return results
 
 
 def run_migrations() -> Dict[str, Any]:
     """اجرای همه migrations"""
     logger.info("=" * 70)
-    logger.info("🚀 Starting Database Migration (v5.0 - RuleEngine)")
-    logger.info(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("🚀 Starting Database Migration (v5.1 - UTC-safe)")
+    logger.info(f"📅 {_utc_now_iso()}")
     logger.info("=" * 70)
-    
+
     results = {
         "primary": None,
         "backup": None,
@@ -709,47 +713,26 @@ def run_migrations() -> Dict[str, Any]:
         "logs": None,
         "archive": None,
     }
-    
+
     logger.info("\n📦 [1/5] Primary Database")
-    results["primary"] = execute_schema(
-        get_primary(),
-        SCHEMA_PRIMARY,
-        "primary",
-    )
-    
+    results["primary"] = execute_schema(get_primary(), SCHEMA_PRIMARY, "primary")
+
     logger.info("\n📦 [2/5] Backup Database")
-    results["backup"] = execute_schema(
-        get_backup(),
-        SCHEMA_BACKUP,
-        "backup",
-    )
-    
+    results["backup"] = execute_schema(get_backup(), SCHEMA_BACKUP, "backup")
+
     logger.info("\n📦 [3/5] Analytics Database")
-    results["analytics"] = execute_schema(
-        get_analytics(),
-        SCHEMA_ANALYTICS,
-        "analytics",
-    )
-    
+    results["analytics"] = execute_schema(get_analytics(), SCHEMA_ANALYTICS, "analytics")
+
     logger.info("\n📦 [4/5] Logs Database")
-    results["logs"] = execute_schema(
-        get_logs_db(),
-        SCHEMA_LOGS,
-        "logs",
-    )
-    
+    results["logs"] = execute_schema(get_logs_db(), SCHEMA_LOGS, "logs")
+
     logger.info("\n📦 [5/5] Archive Database")
-    results["archive"] = execute_schema(
-        get_archive(),
-        SCHEMA_ARCHIVE,
-        "archive",
-    )
-    
-    # خلاصه
+    results["archive"] = execute_schema(get_archive(), SCHEMA_ARCHIVE, "archive")
+
     total_created = sum(len(r["tables"]) for r in results.values() if r)
     total_skipped = sum(len(r["skipped"]) for r in results.values() if r)
     total_errors = sum(len(r["errors"]) for r in results.values() if r)
-    
+
     logger.info("\n" + "=" * 70)
     logger.info("📊 Migration Summary")
     logger.info("=" * 70)
@@ -757,7 +740,7 @@ def run_migrations() -> Dict[str, Any]:
     logger.info(f"  ⏭️  Skipped: {total_skipped} tables")
     logger.info(f"  ❌ Errors:  {total_errors}")
     logger.info("=" * 70)
-    
+
     return results
 
 
@@ -768,29 +751,28 @@ def run_migrations() -> Dict[str, Any]:
 def seed_data() -> Dict[str, Any]:
     """داده اولیه"""
     logger.info("\n🌱 Seeding initial data...")
-    
+
     results = {
         "users": 0,
         "cache": 0,
         "system_state": 0,
         "errors": [],
     }
-    
+
     db = get_primary()
     if db is None or not db.is_connected():
         logger.error("❌ Primary database not available")
         results["errors"].append("primary: not connected")
         return results
-    
-    # کاربران
+
     try:
         existing = db.execute("SELECT COUNT(*) as count FROM users")
-        
+
         if existing and existing[0]["count"] == 0:
             db.execute(
                 """
                 INSERT INTO users (username, password_hash, role, email)
-                VALUES 
+                VALUES
                     (%s, %s, %s, %s),
                     (%s, %s, %s, %s)
                 """,
@@ -806,8 +788,7 @@ def seed_data() -> Dict[str, Any]:
     except Exception as e:
         results["errors"].append(f"users: {e}")
         logger.error(f"  ❌ users: {e}")
-    
-    # Cache
+
     try:
         db.execute(
             """
@@ -815,15 +796,14 @@ def seed_data() -> Dict[str, Any]:
             VALUES (%s, %s)
             ON CONFLICT (key) DO NOTHING
             """,
-            ("system_initialized", datetime.now().isoformat()),
+            ("system_initialized", _utc_now_iso()),
         )
         results["cache"] = 1
         logger.info("  ✅ Initialized system cache")
     except Exception as e:
         results["errors"].append(f"cache: {e}")
         logger.error(f"  ❌ cache: {e}")
-    
-    # System state
+
     try:
         backup_db = get_backup()
         if backup_db and backup_db.is_connected():
@@ -833,21 +813,21 @@ def seed_data() -> Dict[str, Any]:
                 VALUES (%s, %s)
                 ON CONFLICT (key) DO NOTHING
                 """,
-                ("initialized_at", datetime.now().isoformat()),
+                ("initialized_at", _utc_now_iso()),
             )
             results["system_state"] = 1
             logger.info("  ✅ Initialized system_state (backup)")
     except Exception as e:
         results["errors"].append(f"system_state: {e}")
         logger.error(f"  ❌ system_state: {e}")
-    
+
     logger.info(
         f"✅ Seeding complete: "
         f"{results['users']} users, "
         f"{results['cache']} cache, "
         f"{results['system_state']} state"
     )
-    
+
     return results
 
 
@@ -860,11 +840,11 @@ def reset_databases(confirm: bool = False) -> None:
     if not confirm:
         logger.error("❌ Reset requires --confirm flag")
         return
-    
+
     logger.warning("=" * 70)
     logger.warning("⚠️  RESETTING ALL DATABASES!")
     logger.warning("=" * 70)
-    
+
     schemas = {
         "primary": (get_primary(), SCHEMA_PRIMARY),
         "backup": (get_backup(), SCHEMA_BACKUP),
@@ -872,17 +852,17 @@ def reset_databases(confirm: bool = False) -> None:
         "logs": (get_logs_db(), SCHEMA_LOGS),
         "archive": (get_archive(), SCHEMA_ARCHIVE),
     }
-    
+
     total_dropped = 0
     total_errors = 0
-    
+
     for db_name, (db, schema) in schemas.items():
         if db is None or not db.is_connected():
             logger.warning(f"⏭️  '{db_name}' not connected, skipping")
             continue
-        
+
         logger.info(f"🗑️  Dropping tables from '{db_name}'...")
-        
+
         for table_name in reversed(list(schema.keys())):
             try:
                 db.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE")
@@ -891,7 +871,7 @@ def reset_databases(confirm: bool = False) -> None:
             except Exception as e:
                 total_errors += 1
                 logger.error(f"  ❌ {table_name}: {e}")
-    
+
     logger.warning("=" * 70)
     logger.warning(
         f"✅ Reset complete: {total_dropped} dropped, {total_errors} errors"
@@ -907,9 +887,9 @@ def show_status() -> None:
     """وضعیت دیتابیس‌ها"""
     logger.info("=" * 70)
     logger.info("📊 Database Status")
-    logger.info(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"📅 {_utc_now_iso()}")
     logger.info("=" * 70)
-    
+
     databases = {
         "primary": (get_primary(), SCHEMA_PRIMARY, "postgresql"),
         "backup": (get_backup(), SCHEMA_BACKUP, "postgresql"),
@@ -917,12 +897,12 @@ def show_status() -> None:
         "logs": (get_logs_db(), SCHEMA_LOGS, "postgresql"),
         "archive": (get_archive(), SCHEMA_ARCHIVE, "sqlite"),
     }
-    
+
     for db_name, (db, schema, db_type) in databases.items():
         if db is None or not db.is_connected():
             logger.info(f"❌ {db_name:10s} | NOT CONNECTED")
             continue
-        
+
         try:
             if db_type == "sqlite":
                 result = db.execute(
@@ -934,25 +914,25 @@ def show_status() -> None:
                     "SELECT COUNT(*) as count FROM information_schema.tables "
                     "WHERE table_schema = 'public'"
                 )
-            
+
             table_count = result[0]["count"] if result else 0
             expected = len(schema)
-            
+
             if table_count >= expected:
                 emoji, status = "✅", "OK"
             elif table_count > 0:
                 emoji, status = "⚠️", "PARTIAL"
             else:
                 emoji, status = "❌", "EMPTY"
-            
+
             logger.info(
                 f"{emoji} {db_name:10s} | "
                 f"{table_count:2d}/{expected:2d} tables | {status}"
             )
-        
+
         except Exception as e:
             logger.info(f"⚠️  {db_name:10s} | ERROR: {str(e)[:60]}")
-    
+
     logger.info("=" * 70)
 
 
@@ -961,7 +941,7 @@ def show_tables_info() -> None:
     logger.info("\n" + "=" * 70)
     logger.info("📋 Tables Info")
     logger.info("=" * 70)
-    
+
     databases = {
         "primary": (get_primary(), SCHEMA_PRIMARY),
         "backup": (get_backup(), SCHEMA_BACKUP),
@@ -969,14 +949,14 @@ def show_tables_info() -> None:
         "logs": (get_logs_db(), SCHEMA_LOGS),
         "archive": (get_archive(), SCHEMA_ARCHIVE),
     }
-    
+
     for db_name, (db, schema) in databases.items():
         if db is None or not db.is_connected():
             continue
-        
+
         logger.info(f"\n📦 {db_name.upper()} ({len(schema)} tables)")
         logger.info("-" * 70)
-        
+
         for table_name in schema.keys():
             try:
                 count_result = db.execute(
@@ -986,14 +966,14 @@ def show_tables_info() -> None:
                 logger.info(f"  • {table_name:30s} | {count:>10,} rows")
             except Exception as e:
                 logger.info(f"  • {table_name:30s} | ❌ {str(e)[:30]}")
-    
+
     logger.info("\n" + "=" * 70)
 
 
 def verify_schemas() -> Dict[str, Any]:
     """بررسی کامل جداول"""
     logger.info("\n🔍 Verifying schemas...")
-    
+
     databases = {
         "primary": (get_primary(), SCHEMA_PRIMARY),
         "backup": (get_backup(), SCHEMA_BACKUP),
@@ -1001,21 +981,21 @@ def verify_schemas() -> Dict[str, Any]:
         "logs": (get_logs_db(), SCHEMA_LOGS),
         "archive": (get_archive(), SCHEMA_ARCHIVE),
     }
-    
+
     results = {
         "total_expected": 0,
         "total_found": 0,
         "missing_tables": [],
         "extra_tables": [],
     }
-    
+
     for db_name, (db, schema) in databases.items():
         if db is None or not db.is_connected():
             continue
-        
+
         expected_tables = set(schema.keys())
         results["total_expected"] += len(expected_tables)
-        
+
         try:
             if db_name == "archive":
                 result = db.execute(
@@ -1027,65 +1007,65 @@ def verify_schemas() -> Dict[str, Any]:
                     "SELECT table_name FROM information_schema.tables "
                     "WHERE table_schema = 'public'"
                 )
-            
+
             existing_tables = {
                 row.get("name") or row.get("table_name")
                 for row in result
             }
-            
+
             found = expected_tables & existing_tables
             missing = expected_tables - existing_tables
             extra = existing_tables - expected_tables
-            
+
             results["total_found"] += len(found)
-            
+
             for table in missing:
                 results["missing_tables"].append(f"{db_name}.{table}")
-            
+
             for table in extra:
                 results["extra_tables"].append(f"{db_name}.{table}")
-            
+
             if missing:
                 logger.warning(f"  ⚠️  {db_name}: missing {len(missing)} tables")
             else:
                 logger.info(f"  ✅ {db_name}: all {len(expected_tables)} tables present")
-        
+
         except Exception as e:
             logger.error(f"  ❌ {db_name}: {e}")
-    
+
     logger.info(
         f"\n📊 Verification: "
         f"{results['total_found']}/{results['total_expected']} tables found"
     )
-    
+
     if results["missing_tables"]:
         logger.warning(f"⚠️  Missing: {results['missing_tables']}")
-    
+
     if results["extra_tables"]:
         logger.info(f"ℹ️  Extra: {results['extra_tables']}")
-    
+
     return results
 
 
 # ============================================================
-# Migrate existing tables (add columns)
+# Migrate existing tables
 # ============================================================
 
 def migrate_existing_tables() -> Dict[str, Any]:
     """
-    Migration برای جداول موجود (اضافه کردن ستون‌های جدید)
-    
-    برای مواردی که جدول از قبل هست ولی ستون جدید لازم داره
+    Migration برای جداول موجود.
+
+    این تابع ستون‌های جدید را اضافه می‌کند.
     """
     logger.info("\n🔧 Migrating existing tables...")
-    
+
     results = {"migrations": [], "errors": []}
-    
+
     db = get_primary()
     if db is None or not db.is_connected():
         return results
-    
-    # --------- اضافه کردن model_type به models ---------
+
+    # --------- model_type به models ---------
     try:
         db.execute("""
             DO $$
@@ -1106,10 +1086,12 @@ def migrate_existing_tables() -> Dict[str, Any]:
     except Exception as e:
         results["errors"].append(f"models.model_type: {e}")
         logger.warning(f"  ⚠️  models.model_type: {e}")
-    
-    # --------- حذف is_ensemble اگه هست (اختیاری) ---------
-    # نگه می‌داریم تا در آینده تصمیم بگیریم
-    
+
+    # --------- تبدیل DEFAULT CURRENT_TIMESTAMP به UTC ---------
+    # برای جداولی که از قبل ساخته شده‌اند و DEFAULT قدیمی دارند
+    logger.info("  ℹ️  Existing DEFAULTs will remain (data is already UTC)")
+    logger.info("  ℹ️  New tables will use DEFAULT (NOW() AT TIME ZONE 'UTC')")
+
     return results
 
 
@@ -1133,7 +1115,7 @@ Examples:
   python manage_databases.py --action=reset --confirm
         """,
     )
-    
+
     parser.add_argument(
         "--action",
         choices=[
@@ -1149,46 +1131,46 @@ Examples:
         default="migrate",
         help="Action to perform (default: migrate)",
     )
-    
+
     parser.add_argument("--confirm", action="store_true")
     parser.add_argument("--verbose", action="store_true")
-    
+
     args = parser.parse_args()
-    
+
     setup_logging(args.verbose)
-    
+
     if args.action == "status":
         show_status()
-    
+
     elif args.action == "tables":
         show_tables_info()
-    
+
     elif args.action == "verify":
         verify_schemas()
-    
+
     elif args.action == "migrate":
         run_migrations()
         show_status()
-    
+
     elif args.action == "migrate-existing":
         migrate_existing_tables()
-    
+
     elif args.action == "seed":
         seed_data()
-    
+
     elif args.action == "reset":
         reset_databases(confirm=args.confirm)
-    
+
     elif args.action == "all":
         logger.info("🚀 Running full initialization...")
         logger.info("")
-        
+
         run_migrations()
         migrate_existing_tables()
         seed_data()
         verify_schemas()
         show_status()
-        
+
         logger.info("\n" + "=" * 70)
         logger.info("✅ Full initialization complete!")
         logger.info("=" * 70)
