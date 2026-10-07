@@ -669,33 +669,59 @@ class CoinStatsClient(APIClient):
         
         return result
     
-    def get_coins_list(
-        self,
-        limit: int = 50,
-        page: int = 1,
-        currency: str = "USD",
-        search: str = None,
-    ) -> Optional[List[Dict]]:
-        """دریافت لیست ارزها (TTL: ۲۴ ساعت)"""
-        cache_key: str = f"coins_list_{limit}_{page}_{currency}_{search}"
-        
+    def get_coins_list(self, limit=50, page=1, currency="USD", search=None):
+        """
+        دریافت لیست ارزها (با cache بهینه‌شده)
+    
+        نکات:
+            - همیشه از cache_limit=250 استفاده می‌کند
+            - search روی cache انجام می‌شود (نه cache key جدا)
+            - cache key: coins_list_250_1_USD
+        """
+        # ✅ همیشه از یک cache key استفاده کن
+        cache_limit = max(250, limit)  # حداقل ۲۵۰ (یا بیشتر اگه کسی بیشتر خواست)
+        cache_key = f"coins_list_{cache_limit}_{page}_{currency}"
+
         cached = cache_manager.get(cache_key)
+
         if cached is not None:
-            self._stats["cache_hits"] += 1
-            return cached
-        
-        self._stats["cache_misses"] += 1
-        params = {"limit": limit, "page": page, "currency": currency}
-        if search:
-            params["search"] = search
-        
-        result: Dict = self._request("GET", "/v1/coins", params)
-        
+            # search روی cache (بدون cache key جدا)
+            if search:
+                search_lower = search.lower().strip()
+                filtered = [
+                    c for c in cached
+                    if search_lower in (c.get('name') or '').lower()
+                    or search_lower in (c.get('symbol') or '').lower()
+                    or search_lower in (c.get('id') or '').lower()
+                ]
+                return filtered[:limit]
+            return cached[:limit]
+            
+        # fetch از API
+        result = self._request("GET", "/v1/coins", {
+            "limit": cache_limit,
+            "page": page,
+            "currency": currency,
+        })
+
         if result and "result" in result:
             coins = result.get("result", [])
-            cache_manager.set(cache_key, coins, 86400)
-            return coins
-        
+
+            # ✅ TTL = ۶ ساعت (نه ۲۴)
+            cache_manager.set(cache_key, coins, 21600)
+
+            # search روی نتیجه
+            if search:
+                search_lower = search.lower().strip()
+                coins = [
+                    c for c in coins
+                    if search_lower in (c.get('name') or '').lower()
+                    or search_lower in (c.get('symbol') or '').lower()
+                    or search_lower in (c.get('id') or '').lower()
+                ]
+
+            return coins[:limit]
+
         return None
     
     # ============================================================
