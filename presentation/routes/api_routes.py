@@ -1733,14 +1733,25 @@ def db_init_all():
 @api_bp.route('/db/ohlcv/stats', methods=['GET'])
 @require_auth()
 def db_ohlcv_stats():
-    """آمار OHLCV Repository"""
+    """آمار OHLCV Repository (زمان‌ها UTC با Z)"""
     try:
         from infrastructure.repositories import repos
         stats = repos.ohlcv.get_stats()
-        return jsonify({'success': True, 'data': stats})
+
+        # اضافه کردن Z به زمان‌های naive
+        if stats.get('oldest') and not stats['oldest'].endswith('Z'):
+            stats['oldest'] = stats['oldest'] + 'Z'
+        if stats.get('newest') and not stats['newest'].endswith('Z'):
+            stats['newest'] = stats['newest'] + 'Z'
+
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
+        
 
 @api_bp.route('/db/ohlcv/cleanup', methods=['POST'])
 @require_auth('admin')
@@ -2854,7 +2865,180 @@ def schedule_stop():
 # ============================================================
 # ۱۱. پیش‌بینی (PREDICTIONS)
 # ============================================================
+# ============================================================
+# AI Predict (Stub — میتواند به RuleEngine وصل شود)
+# ============================================================
 
+@api_bp.route('/ai/predict', methods=['GET'])
+@require_auth()
+def ai_predict():
+    """
+    پیش‌بینی AI برای یک ارز.
+
+    Query params:
+        coin: 'bitcoin' (اجباری)
+        period: '24h' (اختیاری)
+
+    Returns:
+        {
+            success, data: {
+                coin, signal_type, confidence, current_price,
+                predicted_at, source
+            }
+        }
+    """
+    try:
+        coin = request.args.get('coin', '').lower().strip()
+        period = request.args.get('period', '24h')
+
+        if not coin:
+            return jsonify({
+                'success': False,
+                'error': 'coin parameter is required',
+            }), 400
+
+        container = current_app.container
+
+        # تلاش برای استفاده از prediction_service
+        try:
+            prediction_service = container.get('prediction_service')
+            if prediction_service:
+                dto = prediction_service.predict_single(coin, period)
+                if dto.success:
+                    return jsonify({
+                        'success': True,
+                        'data': dto.data,
+                        'source': 'prediction_service',
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                    })
+        except Exception as e:
+            logger.debug(f"prediction_service unavailable: {e}")
+
+        # Fallback: پاسخ stub از آخرین prediction در DB
+        try:
+            from infrastructure.repositories import repos
+            prediction = repos.prediction.find_latest_by_coin(coin)
+            if prediction:
+                return jsonify({
+                    'success': True,
+                    'data': prediction.to_dict(),
+                    'source': 'db_latest',
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                })
+        except Exception as e:
+            logger.debug(f"DB prediction lookup failed: {e}")
+
+        # نهایی: خطای واضح
+        return jsonify({
+            'success': False,
+            'error': f'No prediction available for {coin}',
+            'hint': 'Run a prediction first or check prediction_service',
+        }), 404
+
+    except Exception as e:
+        logger.error(f"AI predict error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# State Machine (Stub — میتواند به RuleEngine وصل شود)
+# ============================================================
+
+@api_bp.route('/state/<symbol>', methods=['GET'])
+@require_auth()
+def get_state(symbol):
+    """
+    وضعیت State Machine برای یک نماد.
+
+    Returns:
+        {
+            success, data: {
+                symbol, current_state, since, transitions_count,
+                last_score, context
+            }
+        }
+    """
+    try:
+        symbol = symbol.upper().strip()
+
+        # تلاش برای RuleEngine
+        try:
+            container = current_app.container
+            state_machine = container.get('state_machine')
+            if state_machine:
+                state_data = state_machine.get_state(symbol)
+                return jsonify({
+                    'success': True,
+                    'data': state_data,
+                    'source': 'state_machine',
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                })
+        except Exception as e:
+            logger.debug(f"state_machine unavailable: {e}")
+
+        # Fallback: آخرین transition از DB
+        try:
+            db = get_primary()
+            if db and db.is_connected():
+                rows = db.execute("""
+                    SELECT symbol, from_state, to_state, score, changed_at
+                    FROM state_transitions
+                    WHERE symbol = %s
+                    ORDER BY changed_at DESC
+                    LIMIT 1
+                """, (symbol,))
+
+                if rows:
+                    row = rows[0]
+                    changed_at = row.get('changed_at')
+
+                    # شمارش کل transitions
+                    count_result = db.execute("""
+                        SELECT COUNT(*) as count FROM state_transitions
+                        WHERE symbol = %s
+                    """, (symbol,))
+                    total = count_result[0]['count'] if count_result else 0
+
+                    since_iso = (
+                        changed_at.isoformat() + "Z"
+                        if changed_at and hasattr(changed_at, 'isoformat')
+                        else None
+                    )
+
+                    return jsonify({
+                        'success': True,
+                        'data': {
+                            'symbol': symbol,
+                            'current_state': row.get('to_state'),
+                            'from_state': row.get('from_state'),
+                            'since': since_iso,
+                            'transitions_count': total,
+                            'last_score': row.get('score'),
+                        },
+                        'source': 'db_latest_transition',
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                    })
+        except Exception as e:
+            logger.debug(f"DB state lookup failed: {e}")
+
+        # نهایی: حالت IDLE
+        return jsonify({
+            'success': True,
+            'data': {
+                'symbol': symbol,
+                'current_state': 'IDLE',
+                'since': None,
+                'transitions_count': 0,
+                'last_score': None,
+            },
+            'source': 'default_idle',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        })
+
+    except Exception as e:
+        logger.error(f"Get state error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 @api_bp.route('/predict/single', methods=['GET'])
 def predict_single():
     """پیش‌بینی برای یک ارز"""
@@ -3182,78 +3366,157 @@ def coinstats_all():
 @api_bp.route('/coinstats/ohlcv')
 def get_ohlcv():
     """
-    دریافت OHLCV (اول از DB، اگه نبود از CoinStats)
-    
+    دریافت OHLCV (دو زمانه: DB → API → merge)
+
     Query params:
-        coin:      'bitcoin' | 'BTC' | 'BTC/USDT'  (اجباری)
-        interval:  '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'  (پیش‌فرض: '1h')
-        range:     '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'  (پیش‌فرض: '1mo')
-        limit:     حداکثر تعداد کندل (پیش‌فرض: 1000)
-    
+        coin:        'bitcoin' | 'BTC' | 'BTC/USDT'  (اجباری)
+        pair:        'BTC/USDT'                       (اختیاری — جایگزین coin)
+        interval:    '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'  (پیش‌فرض: '1h')
+        range:       '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'  (پیش‌فرض: '1mo')
+        limit:       حداکثر تعداد کندل (پیش‌فرض: 1000)
+        min_candles: حداقل کندل لازم برای استفاده از DB (پیش‌فرض: 50)
+
     Returns:
-        { success, pair, interval, range, count, warning, data: [...] }
+        {
+            success, pair, interval, range,
+            source: 'DB' | 'API' | 'HYBRID' | 'DB_FALLBACK',
+            count, warning, data: [...]
+        }
     """
     try:
         from infrastructure.api.coinstats_client import coinstats_client
         from infrastructure.repositories.ohlcv_repository import OHLCVRepository
-        
-        coin = request.args.get('coin', 'bitcoin').lower().strip()
-        interval = request.args.get('interval', '1h')
-        range_ = request.args.get('range', '1mo')
-        limit = int(request.args.get('limit', 1000))
-        
-        # تبدیل coin به pair
-        pair = None
-        if '/' in coin:
-            pair = coin.upper()
-        elif coin.isupper() and len(coin) >= 6 and coin.endswith('USDT'):
-            pair = f"{coin[:-4]}/USDT"
-        elif coin.isupper() and 2 <= len(coin) <= 6:
-            pair = f"{coin}/USDT"
+        from datetime import timezone
+
+        # ============================================================
+        # پارامترها
+        # ============================================================
+
+        coin = request.args.get('coin', '').strip()
+        pair_param = request.args.get('pair', '').strip()
+        interval = request.args.get('interval', '1h').strip()
+        range_ = request.args.get('range', '1mo').strip()
+
+        try:
+            limit = int(request.args.get('limit', 1000))
+        except (ValueError, TypeError):
+            limit = 1000
+        limit = max(1, min(limit, 5000))
+
+        try:
+            min_candles = int(request.args.get('min_candles', 50))
+        except (ValueError, TypeError):
+            min_candles = 50
+        min_candles = max(0, min(min_candles, limit))
+
+        # اعتبارسنجی interval
+        valid_intervals = ["5m", "15m", "30m", "1h", "4h", "1d", "1w"]
+        if interval not in valid_intervals:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid interval: {interval}',
+                'valid': valid_intervals,
+            }), 400
+
+        # ============================================================
+        # تبدیل coin/pair به pair نهایی
+        # ============================================================
+
+        pair: Optional[str] = None
+
+        # اولویت ۱: pair مستقیم
+        if pair_param:
+            pair = pair_param.upper()
+            if '/' not in pair:
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid pair format: {pair_param} (use "BTC/USDT")',
+                }), 400
+
+        # اولویت ۲: coin
+        elif coin:
+            coin_lower = coin.lower().strip()
+
+            if '/' in coin:
+                # مثل BTC/USDT
+                pair = coin.upper()
+            elif coin.isupper() and coin.endswith('USDT') and len(coin) >= 6:
+                # مثل BTCUSDT
+                pair = f"{coin[:-4]}/USDT"
+            elif coin.isupper() and 2 <= len(coin) <= 6 and coin.isalpha():
+                # مثل BTC
+                pair = f"{coin}/USDT"
+            else:
+                # coin_id → pair
+                pair = coinstats_client.coin_id_to_pair(coin_lower)
+
         else:
-            pair = coinstats_client.coin_id_to_pair(coin)
-        
+            return jsonify({
+                'success': False,
+                'error': 'Either "coin" or "pair" parameter is required',
+            }), 400
+
         if not pair:
             return jsonify({
                 'success': False,
-                'error': f'Cannot map "{coin}" to a trading pair'
+                'error': f'Cannot map "{coin or pair_param}" to a trading pair',
             }), 400
-        
+
         # ============================================================
-        # استفاده از Repository.get_or_fetch
-        # - اول از DB می‌خونه
-        # - اگه نبود، از API می‌گیره و ذخیره می‌کنه
+        # دریافت از Repository (دو زمانه)
         # ============================================================
-        
+
         repo = OHLCVRepository()
-        
+
         df = repo.get_or_fetch(
             symbol=pair,
             interval=interval,
             api_client=coinstats_client,
             data_range=range_,
-            min_candles=50,
+            min_candles=min_candles,
         )
-        
+
         if df is None or df.empty:
+            # هیچ داده‌ای نبود (نه DB نه API) → خطا
             return jsonify({
                 'success': False,
-                'error': 'No OHLCV data available',
+                'error': 'No OHLCV data available (DB empty and API failed)',
                 'pair': pair,
                 'interval': interval,
                 'range': range_,
             }), 404
-        
+
+        # منبع داده
+        source = df.attrs.get('source', 'unknown')
+
+        # ============================================================
         # محدود کردن تعداد
+        # ============================================================
+
         if len(df) > limit:
             df = df.tail(limit)
-        
-        # تبدیل DataFrame به لیست کندل‌ها
+
+        # ============================================================
+        # تبدیل DataFrame به لیست کندل‌ها (UTC-safe)
+        # ============================================================
+
         candles = []
         for ts, row in df.iterrows():
             try:
+                # ts از df.index می‌آید که naive UTC است
+                # pandas .timestamp() روی naive، local فرض می‌کند → باگ
+                # راه‌حل: صریحاً UTC فرض کن
+                if hasattr(ts, "tz_localize"):
+                    ts_utc = ts.tz_localize("UTC") if ts.tzinfo is None else ts.astimezone(timezone.utc)
+                    ts_ms = int(ts_utc.timestamp() * 1000)
+                else:
+                    # fallback برای datetime ساده
+                    import pandas as pd
+                    ts_utc = pd.Timestamp(ts, tz="UTC")
+                    ts_ms = int(ts_utc.timestamp() * 1000)
+
                 candles.append({
-                    'timestamp': int(ts.timestamp() * 1000),  # milliseconds
+                    'timestamp': ts_ms,
                     'open': float(row['Open']),
                     'high': float(row['High']),
                     'low': float(row['Low']),
@@ -3262,28 +3525,46 @@ def get_ohlcv():
                 })
             except (ValueError, TypeError, KeyError):
                 continue
-        
+
         if not candles:
             return jsonify({
                 'success': False,
-                'error': 'Failed to parse candles',
+                'error': 'Failed to parse candles from DataFrame',
+                'pair': pair,
+                'interval': interval,
             }), 500
-        
-        return jsonify({
+
+        # ============================================================
+        # پاسخ
+        # ============================================================
+
+        response = {
             'success': True,
             'pair': pair,
             'interval': interval,
             'range': range_,
+            'source': source,
             'count': len(candles),
             'data': candles,
-        })
-    
+        }
+
+        # اطلاعات اضافی در صورت DB_FALLBACK
+        if source == 'DB_FALLBACK':
+            response['warning'] = 'DB data returned (API unavailable)'
+            response['age_hours'] = df.attrs.get('age_hours')
+            response['api_error'] = df.attrs.get('api_error')
+
+        # اطلاعات merge
+        if source == 'HYBRID':
+            response['db_count'] = df.attrs.get('db_count', 0)
+            response['api_count'] = df.attrs.get('api_count', 0)
+
+        return jsonify(response)
+
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"OHLCV route error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
 # ============================================================
 # OHLCV Stats (برای دیباگ)
 # ============================================================
