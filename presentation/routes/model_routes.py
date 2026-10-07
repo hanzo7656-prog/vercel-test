@@ -17,7 +17,7 @@
 import io
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import (
     Blueprint,
@@ -71,7 +71,7 @@ def _success(data=None, **extra):
     if data is not None:
         response['data'] = data
     response.update(extra)
-    response['timestamp'] = datetime.now().isoformat()
+    response['timestamp'] = datetime.now(timezone.utc).isoformat()
     return jsonify(response)
 
 
@@ -80,7 +80,7 @@ def _error(message: str, status_code: int = 400, **extra):
     response = {
         'success': False,
         'error': message,
-        'timestamp': datetime.now().isoformat(),
+        response['timestamp'] = datetime.now(timezone.utc).isoformat()
     }
     response.update(extra)
     return jsonify(response), status_code
@@ -1193,7 +1193,7 @@ def screener_history_stats():
                     'avg_passed': round(row.get('avg_passed', 0) or 0, 2),
                     'avg_duration': round(row.get('avg_duration', 0) or 0, 2),
                     'last_scan': (
-                        row['last_scan'].isoformat()
+                        row['last_scan'].isoformat() + 'Z'
                         if row.get('last_scan') else None
                     ),
                     'recent_24h': row.get('recent_24h', 0),
@@ -1845,7 +1845,7 @@ def state_symbol_activate(symbol):
             'side': data.get('side', 'long'),
             'size': data.get('size', 0),
             'leverage': data.get('leverage', 1),
-            'activated_at': datetime.now().isoformat(),
+            'activated_at': datetime.now(timezone.utc).isoformat(),
             'source': 'portfolio',
         }
         
@@ -1888,7 +1888,7 @@ def state_symbol_cooling(symbol):
             'exit_price': data.get('exit_price'),
             'pnl': data.get('pnl', 0),
             'reason': data.get('reason', 'Manual'),
-            'cooling_started_at': datetime.now().isoformat(),
+            'cooling_started_at': datetime.now(timezone.utc).isoformat(),
             'source': 'portfolio',
         }
         
