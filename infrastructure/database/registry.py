@@ -368,28 +368,28 @@ class DatabaseRegistry:
         
         now_utc = utc_now()
 
-    return {
-        "total_databases": total,
-        "connected": connected,
-        "disconnected": total - connected,
-        "ping_ok": ping_ok,
-        "by_type": by_type,
-        "uptime_seconds": int(
-            (now_utc - self._registered_at).total_seconds()
-        ),
-        "reconnect_count": self._reconnect_count,
-        "last_reconnect": (
-            self._last_reconnect.isoformat() + "Z"
-            if self._last_reconnect else None
-        ),
-        "quota": {
-            "total_used_mb": round(total_used_mb, 2),
-            "warnings": warnings,
-            "criticals": criticals,
-        },
-        "databases": health,
-        "timestamp": now_utc.isoformat() + "Z",
-    }
+        return {
+            "total_databases": total,
+            "connected": connected,
+            "disconnected": total - connected,
+            "ping_ok": ping_ok,
+            "by_type": by_type,
+            "uptime_seconds": int(
+                (now_utc - self._registered_at).total_seconds()
+            ),
+            "reconnect_count": self._reconnect_count,
+            "last_reconnect": (
+                self._last_reconnect.isoformat() + "Z"
+                if self._last_reconnect else None
+            ),
+            "quota": {
+                "total_used_mb": round(total_used_mb, 2),
+                "warnings": warnings,
+                "criticals": criticals,
+            },
+            "databases": health,
+            "timestamp": now_utc.isoformat() + "Z",
+        }
     
     def get_health_summary(self) -> Dict[str, Any]:
         """خلاصه سلامت (بدون اطلاعات جزئی)"""
