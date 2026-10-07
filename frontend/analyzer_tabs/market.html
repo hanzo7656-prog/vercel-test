@@ -1,0 +1,5071 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="indigo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>لیست ارزها | تحلیلگر بازار</title>
+
+<!-- FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'indigo';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#6366f1';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {
+        console.warn('FOUC prevention failed:', e);
+    }
+})();
+</script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   MARKET PAGE v3.0 — CSS
+   Table + Card View + Real Sparklines + Preset Filters + Coin Detail
+   ============================================================ */
+
+/* ============================================================
+   VARIABLES
+   ============================================================ */
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-rgb: 99, 102, 241;
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --purple: #a855f7;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(99, 102, 241, 0.1);
+    --purple-bg: rgba(168, 85, 247, 0.1);
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; }
+html[data-color="violet"]  { --primary: #a855f7; --primary-dark: #9333ea; --primary-light: #c084fc; --primary-rgb: 168, 85, 247; }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: 12px 16px 40px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ============================================================
+   INITIAL LOADER
+   ============================================================ */
+.initial-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-page);
+    transition: opacity 0.4s, visibility 0.4s;
+}
+
+.initial-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.initial-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+.loader-spinner {
+    width: 56px;
+    height: 56px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    position: relative;
+}
+
+.loader-spinner::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--primary-light);
+    opacity: 0.5;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+    font-family: var(--mono-font);
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   COIN HEADER (بالای صفحه)
+   ============================================================ */
+.page-header {
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 100;
+    animation: fadeSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.page-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.page-header-icon {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
+}
+
+.page-header-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.page-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+}
+
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: auto;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   SEARCH (سراسری)
+   ============================================================ */
+.search-wrap {
+    position: relative;
+    min-width: 260px;
+    flex: 1;
+    max-width: 400px;
+    z-index: 101;
+}
+
+@media (max-width: 640px) {
+    .search-wrap { max-width: 100%; min-width: 100%; }
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 38px 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.18s;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+    background: var(--bg-card-solid);
+}
+
+.search-input::placeholder {
+    color: var(--text-faint);
+    font-weight: 400;
+}
+
+.search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    width: 14px;
+    height: 14px;
+}
+
+.search-clear {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.search-clear:hover { background: var(--danger-bg); color: var(--danger); }
+.search-clear.visible { display: flex; }
+.search-clear svg { width: 10px; height: 10px; }
+
+/* ============================================================
+   NOTIFICATION CENTER
+   ============================================================ */
+.notif-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.notif-bell {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.notif-bell:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.notif-bell svg { width: 15px; height: 15px; }
+
+.notif-badge {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--danger);
+    color: white;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-page);
+}
+
+.notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 340px;
+    max-height: 440px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notif-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+    .notif-dropdown {
+        position: fixed;
+        top: 80px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+    }
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.notif-clear {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.notif-clear:hover { background: var(--danger); color: white; }
+.notif-clear svg { width: 12px; height: 12px; }
+
+.notif-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notif-list::-webkit-scrollbar { width: 4px; }
+.notif-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.notif-item:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+}
+
+.notif-item.success { border-right: 3px solid var(--success); }
+.notif-item.warning { border-right: 3px solid var(--warning); }
+.notif-item.danger  { border-right: 3px solid var(--danger); }
+.notif-item.info    { border-right: 3px solid var(--info); }
+
+.notif-item-icon {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notif-item.success .notif-item-icon { background: var(--success-bg); color: var(--success); }
+.notif-item.warning .notif-item-icon { background: var(--warning-bg); color: var(--warning); }
+.notif-item.danger  .notif-item-icon { background: var(--danger-bg); color: var(--danger); }
+.notif-item.info    .notif-item-icon { background: var(--info-bg); color: var(--info); }
+
+.notif-item-icon svg { width: 12px; height: 12px; }
+
+.notif-item-body { flex: 1; min-width: 0; }
+
+.notif-item-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 2px;
+}
+
+.notif-item-msg {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.notif-item-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    margin-top: 3px;
+}
+
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.notif-empty svg { width: 32px; height: 32px; opacity: 0.4; }
+
+/* ============================================================
+   MARKET WIDGETS (۶ کارت)
+   ============================================================ */
+.market-widgets {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 1400px) { .market-widgets { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .market-widgets { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .market-widgets { grid-template-columns: 1fr; } }
+
+.mw-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: cardIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    position: relative;
+    overflow: hidden;
+}
+
+.mw-card:nth-child(1) { animation-delay: 0.04s; }
+.mw-card:nth-child(2) { animation-delay: 0.08s; }
+.mw-card:nth-child(3) { animation-delay: 0.12s; }
+.mw-card:nth-child(4) { animation-delay: 0.16s; }
+.mw-card:nth-child(5) { animation-delay: 0.20s; }
+.mw-card:nth-child(6) { animation-delay: 0.24s; }
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mw-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.mw-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mw-card:hover::before { opacity: 1; }
+
+.mw-card.fear-greed { background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), var(--bg-card)); }
+.mw-card.btc-dom { background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--bg-card)); }
+.mw-card.market-cap { background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), var(--bg-card)); }
+.mw-card.volume { background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), var(--bg-card)); }
+.mw-card.eth-dom { background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), var(--bg-card)); }
+.mw-card.active-coins { background: linear-gradient(135deg, rgba(34, 197, 94, 0.06), var(--bg-card)); }
+
+.mw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.mw-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mw-label svg {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+}
+
+.mw-value {
+    font-family: var(--mono-font);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+    line-height: 1.05;
+    transition: color 0.4s;
+}
+
+.mw-value.up { color: var(--success); }
+.mw-value.down { color: var(--danger); }
+.mw-value.warning { color: var(--warning); }
+.mw-value.primary { color: var(--primary-light); }
+.mw-value.purple { color: var(--purple); }
+
+.mw-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mw-gauge {
+    height: 4px;
+    background: var(--bg-hover-strong);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 2px;
+}
+
+.mw-gauge-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.mw-gauge-fill.good { background: linear-gradient(90deg, var(--success-dark), var(--success)); }
+.mw-gauge-fill.warning { background: linear-gradient(90deg, var(--warning-dark), var(--warning)); }
+.mw-gauge-fill.danger { background: linear-gradient(90deg, var(--danger-dark), var(--danger)); }
+.mw-gauge-fill.primary { background: linear-gradient(90deg, var(--primary-dark), var(--primary)); }
+.mw-gauge-fill.purple { background: linear-gradient(90deg, var(--purple), #c084fc); }
+
+/* ============================================================
+   PRESET FILTERS BAR
+   ============================================================ */
+.preset-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    padding-top: 2px;
+}
+
+.preset-bar::-webkit-scrollbar { display: none; }
+
+.preset-label {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    flex-shrink: 0;
+    padding-left: 4px;
+}
+
+.preset-btn {
+    padding: 7px 13px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preset-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-light);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.preset-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+}
+
+.preset-btn .emoji {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.preset-btn .badge {
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    min-width: 16px;
+    text-align: center;
+}
+
+.preset-btn:not(.active) .badge {
+    background: var(--bg-hover);
+    color: var(--text-dim);
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    position: relative;
+}
+
+.toolbar-btn svg { width: 12px; height: 12px; }
+
+.toolbar-btn:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.toolbar-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+}
+
+.toolbar-btn .fb-badge {
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+.toolbar-btn:not(.active) .fb-badge {
+    background: var(--bg-hover-strong);
+    color: var(--text-dim);
+}
+
+.toolbar-select {
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.18s;
+}
+
+.toolbar-select:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.toolbar-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-right: auto;
+}
+
+.toolbar-counter svg { width: 12px; height: 12px; }
+
+.toolbar-counter .count-value {
+    color: var(--text-light);
+    font-weight: 800;
+}
+
+/* View Toggle */
+.view-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.view-toggle-btn {
+    width: 30px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.view-toggle-btn svg { width: 14px; height: 14px; }
+
+.view-toggle-btn:hover { background: var(--bg-hover-strong); color: var(--text-light); }
+.view-toggle-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 6px rgba(var(--primary-rgb), 0.4);
+}
+
+/* Density */
+.density-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.density-btn {
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+}
+
+.density-btn:hover { color: var(--text-light); }
+.density-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* ============================================================
+   COINS TABLE (View 1)
+   ============================================================ */
+.coins-table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+.coins-table-wrap::-webkit-scrollbar { height: 6px; }
+.coins-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 3px;
+}
+.coins-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+.coins-table {
+    width: 100%;
+    min-width: 1100px;
+    border-collapse: collapse;
+}
+
+@media (max-width: 640px) {
+    .coins-table { min-width: 800px; }
+}
+
+.coins-table thead {
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+}
+
+.coins-table th {
+    padding: 11px 12px;
+    text-align: right;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    background: var(--bg-input);
+    z-index: 5;
+}
+
+.coins-table th.sortable { cursor: pointer; transition: color 0.15s; }
+.coins-table th.sortable:hover { color: var(--primary-light); }
+.coins-table th.active { color: var(--primary-light); }
+
+.coins-table th .sort-icon {
+    display: inline-block;
+    margin-right: 3px;
+    font-size: 8px;
+    opacity: 0.4;
+}
+
+.coins-table th.active .sort-icon { opacity: 1; }
+
+.coins-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+.coins-table.compact td {
+    padding: 6px 10px;
+    font-size: 11.5px;
+}
+
+.coins-table.compact th {
+    padding: 7px 10px;
+    font-size: 9px;
+}
+
+.coins-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.coins-table tbody tr:hover { background: var(--bg-hover); }
+.coins-table tbody tr:last-child td { border-bottom: none; }
+
+/* Responsive hide */
+@media (max-width: 1300px) { .coins-table .hide-xl { display: none; } }
+@media (max-width: 1100px) { .coins-table .hide-lg { display: none; } }
+@media (max-width: 900px)  { .coins-table .hide-md { display: none; } }
+@media (max-width: 640px)  {
+    .coins-table .hide-sm { display: none; }
+    .coins-table th, .coins-table td { padding: 9px 6px; font-size: 11px; }
+}
+
+/* Coin cell */
+.coin-cell {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.coin-icon-sm {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--primary-light);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: transform 0.25s;
+}
+
+.coins-table tbody tr:hover .coin-icon-sm {
+    transform: scale(1.08) rotate(-4deg);
+}
+
+.coin-cell-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.coin-cell-symbol {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+}
+
+.coin-cell-name {
+    font-size: 10px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.rank-cell {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-align: center;
+    width: 40px;
+}
+
+/* Price */
+.price-cell {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+    transition: color 0.3s;
+}
+
+.price-cell.flash-up { animation: cellFlashUp 0.7s; }
+.price-cell.flash-down { animation: cellFlashDown 0.7s; }
+
+@keyframes cellFlashUp {
+    0% { color: var(--success); }
+    100% { color: var(--text-light); }
+}
+@keyframes cellFlashDown {
+    0% { color: var(--danger); }
+    100% { color: var(--text-light); }
+}
+
+/* Change cells */
+.change-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.change-cell svg { width: 9px; height: 9px; }
+.change-cell.up { background: var(--success-bg); color: var(--success); }
+.change-cell.down { background: var(--danger-bg); color: var(--danger); }
+.change-cell.neutral { background: var(--bg-hover); color: var(--text-muted); }
+
+/* High/Low */
+.hl-cell {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.3;
+}
+
+.hl-cell .hl-high { color: var(--success); }
+.hl-cell .hl-low { color: var(--danger); }
+
+/* Volume/MarketCap */
+.volume-cell, .marketcap-cell {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* ATR */
+.atr-cell {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.atr-cell.low { color: var(--text-muted); }
+.atr-cell.medium { color: var(--warning); }
+.atr-cell.high { color: var(--danger); }
+
+/* Sparkline cell */
+.sparkline-cell {
+    width: 100px;
+    height: 28px;
+    position: relative;
+}
+
+.sparkline-cell svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    display: block;
+}
+
+.sparkline-cell .sparkline-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 9px;
+}
+
+/* Star */
+.star-cell { width: 34px; text-align: center; }
+
+.star-btn {
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.star-btn svg { width: 14px; height: 14px; }
+.star-btn:hover { background: var(--warning-bg); color: var(--warning); }
+.star-btn.active { color: var(--warning); }
+.star-btn.active svg { fill: currentColor; }
+
+/* Search highlight */
+mark {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    font-weight: 800;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* ============================================================
+   COINS GRID (View 2 — Cards)
+   ============================================================ */
+.coins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 640px) {
+    .coins-grid { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.coin-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    padding-top: 38px;
+}
+
+.coin-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.coin-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.coin-card:hover::before { opacity: 1; }
+
+.coin-card.up::before { background: var(--success); opacity: 0.6; }
+.coin-card.down::before { background: var(--danger); opacity: 0.6; }
+
+.coin-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.coin-card-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--primary-light);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: transform 0.25s;
+}
+
+.coin-card:hover .coin-card-icon {
+    transform: scale(1.08) rotate(-4deg);
+}
+
+.coin-card.up .coin-card-icon { background: var(--success-bg); color: var(--success); }
+.coin-card.down .coin-card-icon { background: var(--danger-bg); color: var(--danger); }
+
+.coin-card-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.coin-card-symbol {
+    font-family: var(--mono-font);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+}
+
+.coin-card-name {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.coin-card-rank {
+    font-family: var(--mono-font);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--bg-hover);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.coin-card-star {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.coin-card-star svg { width: 15px; height: 15px; }
+.coin-card-star:hover { background: var(--warning-bg); color: var(--warning); }
+.coin-card-star.active { color: var(--warning); }
+.coin-card-star.active svg { fill: currentColor; }
+
+.coin-card-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.coin-card-price {
+    font-family: var(--mono-font);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    transition: color 0.3s;
+}
+
+.coin-card-price.flash-up { animation: cellFlashUp 0.7s; }
+.coin-card-price.flash-down { animation: cellFlashDown 0.7s; }
+
+.coin-card-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 7px;
+    white-space: nowrap;
+}
+
+.coin-card-change svg { width: 10px; height: 10px; }
+.coin-card-change.up { background: var(--success-bg); color: var(--success); }
+.coin-card-change.down { background: var(--danger-bg); color: var(--danger); }
+.coin-card-change.neutral { background: var(--bg-hover); color: var(--text-muted); }
+
+.coin-card-chart {
+    height: 50px;
+    margin: 2px 0;
+    position: relative;
+}
+
+.coin-card-chart svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    display: block;
+}
+
+.coin-card-chart .sparkline-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 10px;
+}
+
+.coin-card-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.coin-card-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.coin-card-stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 600;
+    font-family: var(--mono-font);
+}
+
+.coin-card-stat-value {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.coin-card-stat-value.up { color: var(--success); }
+.coin-card-stat-value.down { color: var(--danger); }
+.coin-card-stat-value.warning { color: var(--warning); }
+.coin-card-stat-value.muted { color: var(--text-muted); }
+
+/* ============================================================
+   EMPTY / SKELETON
+   ============================================================ */
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: cardIn 0.5s ease;
+}
+
+.empty-icon {
+    width: 60px;
+    height: 60px;
+    color: var(--text-faint);
+    opacity: 0.5;
+}
+
+.empty-icon svg { width: 100%; height: 100%; }
+
+.empty-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.empty-message {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.skeleton-row { display: table-row; }
+
+.skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        rgba(148, 163, 184, 0.05) 0%,
+        rgba(148, 163, 184, 0.12) 50%,
+        rgba(148, 163, 184, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+.skeleton-line.short { width: 40px; }
+.skeleton-line.medium { width: 100px; }
+.skeleton-line.long { width: 150px; }
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 92vh;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.92);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal.modal-lg { max-width: 720px; }
+
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08), transparent);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 0;
+}
+
+.modal-title-icon {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 10px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--mono-font);
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.modal-title-icon svg { width: 18px; height: 18px; }
+
+.modal-title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.modal-title-main {
+    font-family: var(--mono-font);
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-title-sub {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-close {
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.modal-close:hover { background: var(--danger); color: white; }
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--bg-card);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 100px;
+}
+
+.modal-btn svg { width: 13px; height: 13px; }
+
+.modal-btn.cancel { background: var(--bg-hover); color: var(--text-light); }
+.modal-btn.cancel:hover { background: var(--bg-hover-strong); }
+
+.modal-btn.primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+}
+.modal-btn.primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.success {
+    background: var(--success);
+    color: white;
+}
+.modal-btn.success:hover {
+    background: var(--success-dark);
+    transform: translateY(-1px);
+}
+
+/* Coin Detail specific */
+.coin-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.coin-detail-item {
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.coin-detail-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.coin-detail-value {
+    font-family: var(--mono-font);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+}
+
+.coin-detail-value.up { color: var(--success); }
+.coin-detail-value.down { color: var(--danger); }
+
+.coin-detail-price-hero {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, var(--primary-bg), transparent);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 12px;
+    margin-bottom: 4px;
+}
+
+.coin-detail-price-hero .hero-price {
+    font-family: var(--mono-font);
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.6px;
+    line-height: 1;
+}
+
+.coin-detail-price-hero .hero-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 8px;
+}
+
+.coin-detail-price-hero .hero-change.up {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.coin-detail-price-hero .hero-change.down {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.coin-detail-chart {
+    height: 160px;
+    margin-top: 4px;
+    position: relative;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+}
+
+.coin-detail-chart svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.data-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+}
+
+.data-source-badge.DB {
+    background: var(--info-bg);
+    color: var(--info);
+    border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.data-source-badge.API {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.data-source-badge.HYBRID {
+    background: var(--purple-bg);
+    color: var(--purple);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.data-source-badge.DB_FALLBACK {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* ============================================================
+   COMMAND PALETTE
+   ============================================================ */
+.cmd-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 12vh 16px 16px;
+}
+
+.cmd-overlay.open { opacity: 1; visibility: visible; }
+
+.cmd-panel {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.96) translateY(-10px);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.cmd-overlay.open .cmd-panel { transform: scale(1) translateY(0); }
+
+.cmd-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.cmd-search svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cmd-input::placeholder { color: var(--text-faint); }
+
+.cmd-kbd {
+    padding: 3px 7px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-weight: 700;
+}
+
+.cmd-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.cmd-group-title {
+    padding: 10px 12px 6px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cmd-item:hover,
+.cmd-item.selected {
+    background: var(--primary-bg);
+    transform: translateX(-2px);
+}
+
+.cmd-item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary-light);
+}
+
+.cmd-item-icon svg { width: 15px; height: 15px; }
+
+.cmd-item-main { flex: 1; min-width: 0; }
+
+.cmd-item-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cmd-item-desc {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+.cmd-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12.5px;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: 400px;
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   RESPONSIVE TWEAKS
+   ============================================================ */
+@media (max-width: 900px) {
+    .page-header {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    .page-header-title {
+        font-size: 13.5px;
+    }
+    .page-header-icon {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+    }
+    .page-header-icon svg { width: 17px; height: 17px; }
+}
+
+@media (max-width: 640px) {
+    body { padding: 10px 10px 30px; }
+    .mw-value { font-size: 16px; }
+    .toolbar {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+    .toolbar-btn {
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+    .coin-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   SCROLL TO TOP
+   ============================================================ */
+.scroll-top-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    padding: 0;
+}
+
+.scroll-top-btn.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-top-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(var(--primary-rgb), 0.6);
+}
+
+.scroll-top-btn svg { width: 20px; height: 20px; }
+
+@media (max-width: 768px) {
+    .scroll-top-btn {
+        bottom: 80px;
+        right: 12px;
+        width: 40px;
+        height: 40px;
+    }
+    .scroll-top-btn svg { width: 18px; height: 18px; }
+}
+</style>
+<body>
+
+<!-- ============================================================
+     INITIAL LOADER
+     ============================================================ -->
+<div class="initial-loader" id="initialLoader">
+    <div class="initial-loader-content">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">در حال بارگذاری لیست ارزها...</div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     PAGE HEADER
+     ============================================================ -->
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+        </div>
+        <div>
+            <div>لیست ارزهای دیجیتال</div>
+            <div class="page-header-meta" id="pageMeta">— ارز · آخرین بروزرسانی: —</div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrap" id="searchWrap">
+        <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="جستجوی ارز... (نام یا نماد)"
+            autocomplete="off"
+            spellcheck="false"
+        >
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <button class="search-clear" id="searchClear" title="پاک کردن">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Actions -->
+    <div class="page-header-actions">
+        <button class="toolbar-btn" id="refreshBtn" title="بروزرسانی">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6"/>
+                <path d="M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+            </svg>
+            <span>بروزرسانی</span>
+        </button>
+
+        <button class="toolbar-btn" id="exportBtn" title="خروجی CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>CSV</span>
+        </button>
+
+        <button class="toolbar-btn" id="cmdPaletteBtn" title="پالت فرمان (Ctrl+K)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <path d="M14 9h4M14 13h4M14 17h4"/>
+            </svg>
+            <span>Ctrl+K</span>
+        </button>
+
+        <!-- Notification -->
+        <div class="notif-wrap" id="notifWrap">
+            <button class="notif-bell" id="notifBell" title="اعلان‌ها">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-header">
+                    <span>اعلان‌ها</span>
+                    <button class="notif-clear" id="notifClearBtn" title="پاک کردن همه">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="notif-list" id="notifList"></div>
+                <div class="notif-empty" id="notifEmpty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span>اعلانی نیست</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     MARKET WIDGETS (۶ کارت)
+     ============================================================ -->
+<div class="market-widgets">
+
+    <!-- ۱. Fear & Greed -->
+    <div class="mw-card fear-greed">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+                ترس و طمع
+            </div>
+        </div>
+        <div class="mw-value warning" id="mwFearGreed">—</div>
+        <div class="mw-hint" id="mwFearGreedHint">در حال بارگذاری...</div>
+        <div class="mw-gauge">
+            <div class="mw-gauge-fill warning" id="mwFearGreedBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- ۲. BTC Dominance -->
+    <div class="mw-card btc-dom">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                سلطه BTC
+            </div>
+        </div>
+        <div class="mw-value warning" id="mwBtcDom">—</div>
+        <div class="mw-hint" id="mwBtcDomHint">از کل بازار</div>
+        <div class="mw-gauge">
+            <div class="mw-gauge-fill warning" id="mwBtcDomBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- ۳. Total Market Cap -->
+    <div class="mw-card market-cap">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                مارکت‌کپ کل
+            </div>
+        </div>
+        <div class="mw-value primary" id="mwMarketCap">—</div>
+        <div class="mw-hint" id="mwMarketCapHint">در حال بارگذاری...</div>
+    </div>
+
+    <!-- ۴. Volume 24h -->
+    <div class="mw-card volume">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                حجم ۲۴ ساعته
+            </div>
+        </div>
+        <div class="mw-value" id="mwVolume">—</div>
+        <div class="mw-hint" id="mwVolumeHint">در حال بارگذاری...</div>
+    </div>
+
+    <!-- ۵. ETH Dominance -->
+    <div class="mw-card eth-dom">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+                سلطه ETH
+            </div>
+        </div>
+        <div class="mw-value purple" id="mwEthDom">—</div>
+        <div class="mw-hint" id="mwEthDomHint">از کل بازار</div>
+        <div class="mw-gauge">
+            <div class="mw-gauge-fill purple" id="mwEthDomBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- ۶. Active Cryptocurrencies -->
+    <div class="mw-card active-coins">
+        <div class="mw-header">
+            <div class="mw-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="8" cy="8" r="6"/>
+                    <path d="M18.09 10.37A6 6 0 1 1 10.34 18"/>
+                </svg>
+                ارزهای فعال
+            </div>
+        </div>
+        <div class="mw-value up" id="mwActiveCoins">—</div>
+        <div class="mw-hint" id="mwActiveCoinsHint">در حال بارگذاری...</div>
+    </div>
+
+</div>
+
+
+<!-- ============================================================
+     PRESET FILTERS BAR
+     ============================================================ -->
+<div class="preset-bar" id="presetBar">
+    <span class="preset-label">فیلتر سریع:</span>
+    <button class="preset-btn active" data-preset="all">
+        <span class="emoji">🌐</span>
+        <span>همه</span>
+        <span class="badge" id="badgeAll">0</span>
+    </button>
+    <button class="preset-btn" data-preset="gainers">
+        <span class="emoji">🔥</span>
+        <span>بیشترین رشد</span>
+        <span class="badge" id="badgeGainers">0</span>
+    </button>
+    <button class="preset-btn" data-preset="losers">
+        <span class="emoji">📉</span>
+        <span>بیشترین افت</span>
+        <span class="badge" id="badgeLosers">0</span>
+    </button>
+    <button class="preset-btn" data-preset="volume">
+        <span class="emoji">💎</span>
+        <span>حجم بالا</span>
+        <span class="badge" id="badgeVolume">0</span>
+    </button>
+    <button class="preset-btn" data-preset="volatile">
+        <span class="emoji">🚀</span>
+        <span>نوسان بالا</span>
+        <span class="badge" id="badgeVolatile">0</span>
+    </button>
+    <button class="preset-btn" data-preset="mcap">
+        <span class="emoji">👑</span>
+        <span>مارکت‌کپ بالا</span>
+        <span class="badge" id="badgeMcap">0</span>
+    </button>
+    <button class="preset-btn" data-preset="watchlist">
+        <span class="emoji">⭐</span>
+        <span>Watchlist</span>
+        <span class="badge" id="badgeWatchlist">0</span>
+    </button>
+    <button class="preset-btn" data-preset="top50">
+        <span class="emoji">🏆</span>
+        <span>Top ۵۰</span>
+    </button>
+</div>
+
+
+<!-- ============================================================
+     TOOLBAR
+     ============================================================ -->
+<div class="toolbar">
+
+    <!-- Sort -->
+    <select class="toolbar-select" id="sortSelect" title="مرتب‌سازی">
+        <option value="rank_asc">رتبه (کم به زیاد)</option>
+        <option value="price_desc">گران‌ترین</option>
+        <option value="price_asc">ارزان‌ترین</option>
+        <option value="change_desc">بیشترین رشد ۲۴h</option>
+        <option value="change_asc">بیشترین افت ۲۴h</option>
+        <option value="change7d_desc">بیشترین رشد ۷d</option>
+        <option value="change7d_asc">بیشترین افت ۷d</option>
+        <option value="volume_desc">بیشترین حجم</option>
+        <option value="marketcap_desc">بیشترین مارکت‌کپ</option>
+        <option value="atr_desc">بیشترین نوسان</option>
+        <option value="name_asc">نام (A-Z)</option>
+    </select>
+
+    <!-- View Toggle -->
+    <div class="view-toggle" id="viewToggle">
+        <button class="view-toggle-btn active" data-view="table" title="نمایش جدول">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+        </button>
+        <button class="view-toggle-btn" data-view="card" title="نمایش کارت">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Density (فقط برای table) -->
+    <div class="density-toggle" id="densityToggle">
+        <button class="density-btn" data-density="compact" title="فشرده">S</button>
+        <button class="density-btn active" data-density="normal" title="عادی">M</button>
+        <button class="density-btn" data-density="comfort" title="راحت">L</button>
+    </div>
+
+    <!-- Counter -->
+    <div class="toolbar-counter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="8" r="6"/>
+            <path d="M18.09 10.37A6 6 0 1 1 10.34 18"/>
+        </svg>
+        <span>نمایش</span>
+        <span class="count-value" id="resultCount">۰</span>
+        <span>از</span>
+        <span class="count-value" id="totalCount">۰</span>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     COINS TABLE (Table View)
+     ============================================================ -->
+<div class="coins-table-wrap" id="tableWrap">
+    <table class="coins-table" id="coinsTable">
+        <thead>
+            <tr>
+                <th class="sortable" data-sort="rank" style="width:45px;">
+                    #<span class="sort-icon">▼</span>
+                </th>
+                <th class="sortable" data-sort="name">
+                    ارز<span class="sort-icon">▼</span>
+                </th>
+                <th class="sortable" data-sort="price">
+                    قیمت<span class="sort-icon">▼</span>
+                </th>
+                <th class="sortable" data-sort="change">
+                    ۲۴h<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-lg sortable" data-sort="change7d">
+                    ۷d<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-xl sortable" data-sort="change30d">
+                    ۳۰d<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-md">
+                    High / Low
+                </th>
+                <th class="sortable" data-sort="volume">
+                    حجم<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-sm sortable" data-sort="marketcap">
+                    مارکت‌کپ<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-md sortable" data-sort="atr">
+                    نوسان<span class="sort-icon">▼</span>
+                </th>
+                <th class="hide-lg" style="width:110px;">
+                    نمودار
+                </th>
+                <th style="width:36px;"></th>
+            </tr>
+        </thead>
+        <tbody id="coinsTableBody">
+            <!-- Skeleton loading -->
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line short"></div></td>
+                <td class="hide-xl"><div class="skeleton-line short"></div></td>
+                <td class="hide-md"><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-sm"><div class="skeleton-line medium"></div></td>
+                <td class="hide-md"><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line medium"></div></td>
+                <td></td>
+            </tr>
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line short"></div></td>
+                <td class="hide-xl"><div class="skeleton-line short"></div></td>
+                <td class="hide-md"><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-sm"><div class="skeleton-line medium"></div></td>
+                <td class="hide-md"><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line medium"></div></td>
+                <td></td>
+            </tr>
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line short"></div></td>
+                <td class="hide-xl"><div class="skeleton-line short"></div></td>
+                <td class="hide-md"><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-sm"><div class="skeleton-line medium"></div></td>
+                <td class="hide-md"><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line medium"></div></td>
+                <td></td>
+            </tr>
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line short"></div></td>
+                <td class="hide-xl"><div class="skeleton-line short"></div></td>
+                <td class="hide-md"><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-sm"><div class="skeleton-line medium"></div></td>
+                <td class="hide-md"><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line medium"></div></td>
+                <td></td>
+            </tr>
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line short"></div></td>
+                <td class="hide-xl"><div class="skeleton-line short"></div></td>
+                <td class="hide-md"><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td class="hide-sm"><div class="skeleton-line medium"></div></td>
+                <td class="hide-md"><div class="skeleton-line short"></div></td>
+                <td class="hide-lg"><div class="skeleton-line medium"></div></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+<!-- ============================================================
+     COINS GRID (Card View)
+     ============================================================ -->
+<div class="coins-grid" id="gridWrap" style="display:none;"></div>
+
+
+<!-- ============================================================
+     SCROLL TO TOP
+     ============================================================ -->
+<button class="scroll-top-btn" id="scrollTopBtn" title="بازگشت به بالا">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"/>
+        <polyline points="5 12 12 5 19 12"/>
+    </svg>
+</button>
+
+
+<!-- ============================================================
+     MODAL: Coin Detail
+     ============================================================ -->
+<div class="modal-overlay" id="coinDetailModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div class="modal-title">
+                <div class="modal-title-icon" id="detailIcon">?</div>
+                <div class="modal-title-text">
+                    <span class="modal-title-main" id="detailSymbol">—</span>
+                    <span class="modal-title-sub" id="detailName">—</span>
+                </div>
+            </div>
+            <button class="modal-close" id="detailClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" id="detailBody">
+            <!-- محتوا با JS پر می‌شود -->
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" id="detailCloseBtn">بستن</button>
+            <button class="modal-btn primary" id="detailAnalyzeBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18"/>
+                    <path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                تحلیل کامل
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     COMMAND PALETTE
+     ============================================================ -->
+<div class="cmd-overlay" id="cmdOverlay">
+    <div class="cmd-panel">
+        <div class="cmd-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="cmd-input" id="cmdInput" placeholder="جستجو..." autocomplete="off">
+            <span class="cmd-kbd">ESC</span>
+        </div>
+        <div class="cmd-list" id="cmdList"></div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script>
+// ============================================================
+// MARKET PAGE v3.0 — PART 1: CORE
+// Config + State + Utils + API + Storage + Toast + Loading + Filter
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__marketPart1Loaded) return;
+window.__marketPart1Loaded = true;
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    API: {
+        COINS: '/api/coinstats/coins',
+        OHLCV: '/api/coinstats/ohlcv',
+        CHART: '/api/coinstats/chart',
+        FEAR_GREED: '/api/coinstats/fear-greed',
+        BTC_DOM: '/api/coinstats/btc-dominance',
+        GLOBAL_MARKET: '/api/coinstats/global-market',
+    },
+
+    COINS_LIMIT: 250,
+    SPARKLINE_LIMIT: 30,
+    SPARKLINE_BATCH: 5,
+    SPARKLINE_CACHE_TTL: 5 * 60 * 1000,
+
+    PRICE_UPDATE_INTERVAL: 30000,
+    WIDGET_UPDATE_INTERVAL: 5 * 60 * 1000,
+
+    STORAGE: {
+        COINS_CACHE: 'analyzer_coins_cache',       // مشترک با analyze
+        VIEW_MODE: 'market_view_mode',
+        DENSITY: 'market_density',
+        SORT: 'market_sort',
+        SELECTED_PRESET: 'market_preset',
+        WATCHLIST: 'analyzer_watchlist',           // مشترک
+        NOTIF: 'market_notifications',
+        GLOBAL_NOTIF: 'dashboard_notifications_v8',
+        SPARKLINE_PREFIX: 'market_sparkline_',
+    },
+};
+
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    // Data
+    coins: [],
+    filteredCoins: [],
+
+    // Filters
+    searchQuery: '',
+    sortBy: 'rank_asc',
+    preset: 'all',
+
+    // UI
+    viewMode: 'table',       // table | card
+    density: 'normal',       // compact | normal | comfort
+
+    // Watchlist
+    watchlist: new Set(),
+
+    // Sparkline
+    sparklineCache: {},      // { coinId: { prices, timestamp } }
+    sparklineQueue: new Set(),
+    sparklineRunning: false,
+
+    // Notifications
+    notifications: [],
+    notifOpen: false,
+
+    // Coin detail
+    detailCoinId: null,
+
+    // Command palette
+    cmdOpen: false,
+    cmdSelectedIdx: 0,
+    cmdFiltered: [],
+
+    // Timers
+    timers: {
+        price: null,
+        widgets: null,
+    },
+
+    // Meta
+    lastUpdate: null,
+    isLoading: false,
+};
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function escapeRegex(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatCurrency(v) {
+    if (v === undefined || v === null || isNaN(v)) return '$0.00';
+    const n = Number(v);
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    if (abs >= 1000) return sign + '$' + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (abs >= 1) return sign + '$' + abs.toFixed(2);
+    if (abs >= 0.01) return sign + '$' + abs.toFixed(4);
+    return sign + '$' + abs.toFixed(6);
+}
+
+function formatPercent(v) {
+    if (v === undefined || v === null || isNaN(v)) return '0.00%';
+    return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+}
+
+function formatNumber(n) {
+    if (!n && n !== 0) return '۰';
+    return Number(n).toLocaleString('fa-IR');
+}
+
+function formatCompact(n) {
+    if (!n && n !== 0) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+    if (abs >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+    if (abs >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+    if (abs >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
+    return '$' + n.toFixed(2);
+}
+
+function formatTimeAgo(date) {
+    if (!date) return '—';
+    const d = new Date(date);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 60) return diff + ' ثانیه پیش';
+    if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
+    return Math.floor(diff / 86400) + ' روز پیش';
+}
+
+function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h) + str.charCodeAt(i);
+        h |= 0;
+    }
+    return Math.abs(h);
+}
+
+function estimateATR(coin) {
+    const absChange = Math.abs(coin.priceChange1d || 0);
+    return Math.max(0.5, Math.min(absChange * 1.5 + 0.5, 20));
+}
+
+function getAtrCategory(atr) {
+    if (atr < 2) return 'low';
+    if (atr < 5) return 'medium';
+    return 'high';
+}
+
+function highlightText(text, query) {
+    if (!query || !text) return escapeHtml(text);
+    try {
+        const re = new RegExp(`(${escapeRegex(query)})`, 'gi');
+        return escapeHtml(text).replace(re, '<mark>$1</mark>');
+    } catch (e) {
+        return escapeHtml(text);
+    }
+}
+
+
+// ============================================================
+// STORAGE
+// ============================================================
+const Storage = {
+    get(key, fb = null) {
+        try { return localStorage.getItem(key) ?? fb; } catch (e) { return fb; }
+    },
+    set(key, val) {
+        try { localStorage.setItem(key, val); } catch (e) {}
+    },
+    getJSON(key, fb = null) {
+        try {
+            const v = localStorage.getItem(key);
+            return v ? JSON.parse(v) : fb;
+        } catch (e) { return fb; }
+    },
+    setJSON(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    },
+    remove(key) {
+        try { localStorage.removeItem(key); } catch (e) {}
+    },
+};
+
+function loadPersisted() {
+    const vm = Storage.get(CONFIG.STORAGE.VIEW_MODE);
+    if (vm === 'table' || vm === 'card') state.viewMode = vm;
+
+    const d = Storage.get(CONFIG.STORAGE.DENSITY);
+    if (d === 'compact' || d === 'normal' || d === 'comfort') state.density = d;
+
+    const s = Storage.get(CONFIG.STORAGE.SORT);
+    if (s) state.sortBy = s;
+
+    const p = Storage.get(CONFIG.STORAGE.SELECTED_PRESET);
+    if (p) state.preset = p;
+
+    const wl = Storage.getJSON(CONFIG.STORAGE.WATCHLIST);
+    if (Array.isArray(wl)) state.watchlist = new Set(wl);
+
+    const notifs = Storage.getJSON(CONFIG.STORAGE.NOTIF);
+    if (Array.isArray(notifs)) state.notifications = notifs;
+}
+
+function persistWatchlist() {
+    Storage.setJSON(CONFIG.STORAGE.WATCHLIST, Array.from(state.watchlist));
+}
+
+function persistNotifications() {
+    Storage.setJSON(CONFIG.STORAGE.NOTIF, state.notifications.slice(0, 50));
+}
+
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type = 'info', duration = 2800) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const colors = {
+        success: '#22c55e', error: '#ef4444',
+        warning: '#f59e0b', info: '#6366f1'
+    };
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 240px;
+        max-width: 400px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="
+            display:inline-flex;align-items:center;justify-content:center;
+            width:24px;height:24px;min-width:24px;border-radius:7px;
+            background:${colors[type]}20;color:${colors[type]};
+            flex-shrink:0;
+        ">${icons[type]}</span>
+        <span style="flex:1;line-height:1.5;">${escapeHtml(msg)}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+
+// ============================================================
+// NOTIFICATION CENTER
+// ============================================================
+function addNotification(type, title, message, options = {}) {
+    const notif = {
+        id: uid(),
+        type,               // success | error | warning | info
+        title,
+        message,
+        timestamp: new Date().toISOString(),
+        read: false,
+    };
+
+    state.notifications.unshift(notif);
+    if (state.notifications.length > 50) {
+        state.notifications = state.notifications.slice(0, 50);
+    }
+    persistNotifications();
+    renderNotifications();
+
+    if (options.toast !== false) {
+        showToast(title + (message ? ' — ' + message : ''), type, 3000);
+    }
+
+    // ارسال به Global
+    if (options.forwardToGlobal !== false) {
+        try {
+            const existing = JSON.parse(localStorage.getItem(CONFIG.STORAGE.GLOBAL_NOTIF) || '[]');
+            existing.unshift({
+                id: notif.id,
+                level: type === 'error' ? 'critical' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info',
+                category: 'system',
+                title: notif.title,
+                message: notif.message,
+                timestamp: Date.now(),
+                read: false,
+                source: 'market',
+            });
+            if (existing.length > 50) existing.length = 50;
+            localStorage.setItem(CONFIG.STORAGE.GLOBAL_NOTIF, JSON.stringify(existing));
+        } catch (e) {}
+    }
+}
+
+function clearNotifications() {
+    state.notifications = [];
+    persistNotifications();
+    renderNotifications();
+}
+
+
+// ============================================================
+// API WRAPPER
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        try {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' },
+                ...options,
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.warn(`[API] ${url}:`, err.message);
+            return { success: false, error: err.message };
+        }
+    },
+
+    async getCoins(limit = 250) {
+        const url = `${CONFIG.API.COINS}?limit=${limit}`;
+        const result = await this.request(url);
+        if (result.success && Array.isArray(result.data)) {
+            try {
+                sessionStorage.setItem(CONFIG.STORAGE.COINS_CACHE, JSON.stringify({
+                    data: result.data,
+                    timestamp: Date.now(),
+                }));
+            } catch (e) {}
+        }
+        return result;
+    },
+
+    getCachedCoins(maxAgeMs = 5 * 60 * 1000) {
+        try {
+            const raw = sessionStorage.getItem(CONFIG.STORAGE.COINS_CACHE);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed.timestamp || !Array.isArray(parsed.data)) return null;
+            if (Date.now() - parsed.timestamp > maxAgeMs) return null;
+            return parsed.data;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    async getOHLCV(coin, interval = '1h', range = '1mo', limit = 100, minCandles = 20) {
+        const params = new URLSearchParams({
+            coin: coin,
+            interval: interval,
+            range: range,
+            limit: String(limit),
+            min_candles: String(minCandles),
+        });
+        return this.request(`${CONFIG.API.OHLCV}?${params}`);
+    },
+
+    async getFearGreed() {
+        return this.request(CONFIG.API.FEAR_GREED);
+    },
+
+    async getBTCDominance() {
+        return this.request(CONFIG.API.BTC_DOM);
+    },
+
+    async getGlobalMarket() {
+        return this.request(CONFIG.API.GLOBAL_MARKET);
+    },
+};
+
+
+// ============================================================
+// COIN LOADING
+// ============================================================
+async function loadCoins(force = false) {
+    if (state.isLoading) return false;
+    state.isLoading = true;
+
+    // ۱. اول از cache (اگر force نبود)
+    if (!force) {
+        const cached = API.getCachedCoins();
+        if (cached && cached.length > 0) {
+            state.coins = normalizeCoins(cached);
+            state.lastUpdate = Date.now();
+            state.isLoading = false;
+            return true;
+        }
+    }
+
+    // ۲. از API
+    const res = await API.getCoins(CONFIG.COINS_LIMIT);
+
+    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        state.coins = normalizeCoins(res.data);
+        state.lastUpdate = Date.now();
+        state.isLoading = false;
+        return true;
+    }
+
+    // ۳. اگر API خطا داد، از cache قدیمی استفاده کن (اگر داشت)
+    if (state.coins.length === 0) {
+        const fallbackCache = API.getCachedCoins(24 * 60 * 60 * 1000);
+        if (fallbackCache && fallbackCache.length > 0) {
+            state.coins = normalizeCoins(fallbackCache);
+            state.lastUpdate = Date.now();
+            state.isLoading = false;
+            return true;
+        }
+    }
+
+    state.isLoading = false;
+    return false;
+}
+
+function normalizeCoins(rawCoins) {
+    return rawCoins
+        .filter(c => c.id && c.symbol)
+        .map(c => ({
+            id: c.id,
+            symbol: (c.symbol || '').toUpperCase(),
+            name: c.name || c.symbol || '',
+            rank: c.rank || 999,
+            price: parseFloat(c.price) || 0,
+            priceChange1h: parseFloat(c.priceChange1h) || 0,
+            priceChange1d: parseFloat(c.priceChange1d) || 0,
+            priceChange7d: parseFloat(c.priceChange1w) || 0,
+            priceChange30d: parseFloat(c.priceChange1m) || 0,
+            high24h: parseFloat(c.high24h) || 0,
+            low24h: parseFloat(c.low24h) || 0,
+            volume: parseFloat(c.volume) || 0,
+            marketCap: parseFloat(c.marketCap) || 0,
+        }));
+}
+
+
+// ============================================================
+// FILTER + SORT LOGIC
+// ============================================================
+function applyFilters() {
+    let coins = [...state.coins];
+
+    // ===== Preset Filters =====
+    if (state.preset === 'gainers') {
+        coins = coins.filter(c => (c.priceChange1d || 0) > 0);
+        coins.sort((a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0));
+    } else if (state.preset === 'losers') {
+        coins = coins.filter(c => (c.priceChange1d || 0) < 0);
+        coins.sort((a, b) => (a.priceChange1d || 0) - (b.priceChange1d || 0));
+    } else if (state.preset === 'volume') {
+        coins = coins.filter(c => (c.volume || 0) > 1e6);
+        coins.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    } else if (state.preset === 'volatile') {
+        coins = coins.filter(c => estimateATR(c) > 3);
+        coins.sort((a, b) => estimateATR(b) - estimateATR(a));
+    } else if (state.preset === 'mcap') {
+        coins = coins.filter(c => (c.marketCap || 0) > 1e9);
+        coins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+    } else if (state.preset === 'watchlist') {
+        coins = coins.filter(c => state.watchlist.has(c.id));
+    } else if (state.preset === 'top50') {
+        coins = coins.filter(c => c.rank <= 50);
+        coins.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+    }
+
+    // ===== Search =====
+    if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        coins = coins.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.symbol.toLowerCase().includes(q) ||
+            c.id.toLowerCase().includes(q)
+        );
+    }
+
+    // ===== Sort (اگر preset != همه و صریحاً sort نکرده) =====
+    const sortApplied = state.preset === 'all' ||
+        ['rank_asc', 'name_asc'].includes(state.sortBy);
+
+    if (state.preset === 'all' || sortApplied) {
+        const sorters = {
+            'rank_asc': (a, b) => (a.rank || 999) - (b.rank || 999),
+            'price_desc': (a, b) => (b.price || 0) - (a.price || 0),
+            'price_asc': (a, b) => (a.price || 0) - (b.price || 0),
+            'change_desc': (a, b) => (b.priceChange1d || 0) - (a.priceChange1d || 0),
+            'change_asc': (a, b) => (a.priceChange1d || 0) - (b.priceChange1d || 0),
+            'change7d_desc': (a, b) => (b.priceChange7d || 0) - (a.priceChange7d || 0),
+            'change7d_asc': (a, b) => (a.priceChange7d || 0) - (b.priceChange7d || 0),
+            'volume_desc': (a, b) => (b.volume || 0) - (a.volume || 0),
+            'marketcap_desc': (a, b) => (b.marketCap || 0) - (a.marketCap || 0),
+            'atr_desc': (a, b) => estimateATR(b) - estimateATR(a),
+            'name_asc': (a, b) => (a.name || '').localeCompare(b.name || ''),
+        };
+
+        if (sorters[state.sortBy]) {
+            coins.sort(sorters[state.sortBy]);
+        }
+    }
+
+    state.filteredCoins = coins;
+}
+
+function updatePresetBadges() {
+    const setBadge = (id, val) => {
+        const el = $(id);
+        if (el) el.textContent = formatNumber(val);
+    };
+
+    const total = state.coins.length;
+    const gainers = state.coins.filter(c => (c.priceChange1d || 0) > 0).length;
+    const losers = state.coins.filter(c => (c.priceChange1d || 0) < 0).length;
+    const highVol = state.coins.filter(c => (c.volume || 0) > 1e6).length;
+    const volatile = state.coins.filter(c => estimateATR(c) > 3).length;
+    const highMcap = state.coins.filter(c => (c.marketCap || 0) > 1e9).length;
+    const wl = state.watchlist.size;
+
+    setBadge('#badgeAll', total);
+    setBadge('#badgeGainers', gainers);
+    setBadge('#badgeLosers', losers);
+    setBadge('#badgeVolume', highVol);
+    setBadge('#badgeVolatile', volatile);
+    setBadge('#badgeMcap', highMcap);
+    setBadge('#badgeWatchlist', wl);
+}
+
+
+// ============================================================
+// WATCHLIST
+// ============================================================
+function toggleWatchlist(coinId) {
+    if (state.watchlist.has(coinId)) {
+        state.watchlist.delete(coinId);
+        persistWatchlist();
+        return false;
+    }
+    state.watchlist.add(coinId);
+    persistWatchlist();
+    return true;
+}
+
+
+// ============================================================
+// SPARKLINE CACHE (sessionStorage)
+// ============================================================
+const SparklineCache = {
+    get(coinId) {
+        try {
+            const raw = sessionStorage.getItem(CONFIG.STORAGE.SPARKLINE_PREFIX + coinId);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed.timestamp || !Array.isArray(parsed.prices)) return null;
+            if (Date.now() - parsed.timestamp > CONFIG.SPARKLINE_CACHE_TTL) {
+                sessionStorage.removeItem(CONFIG.STORAGE.SPARKLINE_PREFIX + coinId);
+                return null;
+            }
+            return parsed.prices;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    set(coinId, prices) {
+        try {
+            sessionStorage.setItem(
+                CONFIG.STORAGE.SPARKLINE_PREFIX + coinId,
+                JSON.stringify({ prices, timestamp: Date.now() })
+            );
+        } catch (e) {}
+    },
+
+    clear() {
+        try {
+            Object.keys(sessionStorage)
+                .filter(k => k.startsWith(CONFIG.STORAGE.SPARKLINE_PREFIX))
+                .forEach(k => sessionStorage.removeItem(k));
+        } catch (e) {}
+    },
+};
+
+
+// ============================================================
+// RENDER HELPERS (icons + skeleton)
+// ============================================================
+const SVG_ICONS = {
+    arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>',
+    arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+    dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="12" x2="18" y2="12"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    starFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    emptySearch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+};
+
+
+// ============================================================
+// EXPOSE TO NEXT PARTS
+// ============================================================
+window.__market = {
+    CONFIG, state, Storage,
+    $, $$,
+    escapeHtml, escapeRegex,
+    formatCurrency, formatPercent, formatNumber, formatCompact,
+    formatTimeAgo, uid, hashString,
+    estimateATR, getAtrCategory, highlightText,
+    showToast,
+    addNotification, clearNotifications,
+    API,
+    loadCoins, normalizeCoins,
+    applyFilters, updatePresetBadges,
+    toggleWatchlist,
+    SparklineCache,
+    SVG_ICONS,
+    loadPersisted, persistWatchlist, persistNotifications,
+};
+
+console.log('✅ Market Part 1 (Core) loaded');
+
+})();
+</script>
+
+<script>
+// ============================================================
+// MARKET PAGE v3.0 — PART 2: RENDER
+// Widgets + Table + Cards + Sparkline + Coin Detail + Auto-refresh
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__marketPart2Loaded) return;
+window.__marketPart2Loaded = true;
+
+if (!window.__market) {
+    console.error('❌ Market Part 1 not loaded');
+    return;
+}
+
+const {
+    CONFIG, state, Storage,
+    $, $$,
+    escapeHtml, escapeRegex,
+    formatCurrency, formatPercent, formatNumber, formatCompact,
+    formatTimeAgo, uid, hashString,
+    estimateATR, getAtrCategory, highlightText,
+    showToast,
+    addNotification,
+    API,
+    loadCoins, normalizeCoins,
+    applyFilters, updatePresetBadges,
+    toggleWatchlist,
+    SparklineCache,
+    SVG_ICONS,
+} = window.__market;
+
+
+// ============================================================
+// WIDGETS RENDER
+// ============================================================
+async function loadWidgets() {
+    // Fear & Greed
+    try {
+        const res = await API.getFearGreed();
+        if (res.success && res.data) {
+            renderFearGreed(res.data);
+        }
+    } catch (e) {
+        console.warn('Fear & Greed failed:', e);
+    }
+
+    // Global Market
+    try {
+        const res = await API.getGlobalMarket();
+        if (res.success && res.data) {
+            renderGlobalMarket(res.data);
+        }
+    } catch (e) {
+        console.warn('Global Market failed:', e);
+    }
+
+    // BTC Dominance (اگر Global Market نداد)
+    const btcDomEl = $('#mwBtcDom');
+    if (btcDomEl && btcDomEl.textContent === '—') {
+        try {
+            const res = await API.getBTCDominance();
+            if (res.success && res.data) {
+                let value = 50;
+                if (Array.isArray(res.data.data) && res.data.data.length > 0) {
+                    const lastPair = res.data.data[res.data.data.length - 1];
+                    value = parseFloat(lastPair[1]) || 50;
+                } else if (typeof res.data.value === 'number') {
+                    value = res.data.value;
+                }
+                renderBtcDominance(value);
+            }
+        } catch (e) {
+            console.warn('BTC Dominance failed:', e);
+        }
+    }
+}
+
+function renderFearGreed(data) {
+    const v = Number(data.value) || 50;
+    const valEl = $('#mwFearGreed');
+    const barEl = $('#mwFearGreedBar');
+    const hintEl = $('#mwFearGreedHint');
+
+    if (!valEl) return;
+
+    valEl.textContent = formatNumber(v);
+
+    let cls = 'warning';
+    let valCls = 'warning';
+    if (v < 25) { cls = 'danger'; valCls = 'down'; }
+    else if (v < 45) { cls = 'warning'; valCls = 'warning'; }
+    else if (v < 55) { cls = 'warning'; valCls = 'warning'; }
+    else if (v < 75) { cls = 'good'; valCls = 'up'; }
+    else { cls = 'good'; valCls = 'up'; }
+
+    valEl.className = 'mw-value ' + valCls;
+    if (hintEl) hintEl.textContent = data.classification || '—';
+    if (barEl) {
+        barEl.className = 'mw-gauge-fill ' + cls;
+        setTimeout(() => { barEl.style.width = v + '%'; }, 100);
+    }
+}
+
+function renderGlobalMarket(data) {
+    if (data.btc_dominance) {
+        renderBtcDominance(data.btc_dominance);
+    }
+
+    // Market Cap
+    const mcEl = $('#mwMarketCap');
+    const mcHintEl = $('#mwMarketCapHint');
+    if (mcEl && data.market_cap) {
+        mcEl.textContent = formatCompact(data.market_cap);
+        if (mcHintEl) {
+            const ch = data.market_cap_change_24h || 0;
+            mcHintEl.textContent = formatPercent(ch) + ' امروز';
+            mcHintEl.style.color = ch >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+    }
+
+    // Volume
+    const volEl = $('#mwVolume');
+    const volHintEl = $('#mwVolumeHint');
+    if (volEl && data.volume_24h) {
+        volEl.textContent = formatCompact(data.volume_24h);
+        if (volHintEl) {
+            const ch = data.volume_change_24h || 0;
+            volHintEl.textContent = formatPercent(ch) + ' نسبت به ۲۴h قبل';
+            volHintEl.style.color = ch >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+    }
+
+    // ETH Dominance
+    const ethEl = $('#mwEthDom');
+    const ethHintEl = $('#mwEthDomHint');
+    const ethBarEl = $('#mwEthDomBar');
+    if (ethEl && data.eth_dominance) {
+        ethEl.textContent = data.eth_dominance.toFixed(1) + '٪';
+        if (ethHintEl) ethHintEl.textContent = 'از کل بازار';
+        if (ethBarEl) {
+            setTimeout(() => { ethBarEl.style.width = data.eth_dominance + '%'; }, 100);
+        }
+    }
+
+    // Active Coins
+    const acEl = $('#mwActiveCoins');
+    const acHintEl = $('#mwActiveCoinsHint');
+    if (acEl && data.active_cryptocurrencies) {
+        acEl.textContent = formatNumber(data.active_cryptocurrencies);
+        if (acHintEl) acHintEl.textContent = 'ارز فعال';
+    }
+}
+
+function renderBtcDominance(value) {
+    const el = $('#mwBtcDom');
+    const hintEl = $('#mwBtcDomHint');
+    const barEl = $('#mwBtcDomBar');
+    if (!el) return;
+
+    el.textContent = value.toFixed(1) + '٪';
+    if (hintEl) hintEl.textContent = 'از کل بازار';
+    if (barEl) {
+        setTimeout(() => { barEl.style.width = value + '%'; }, 100);
+    }
+}
+
+
+// ============================================================
+// SPARKLINE GENERATOR
+// ============================================================
+function generateSparklineFromPrices(prices, width = 100, height = 28) {
+    if (!prices || prices.length < 2) {
+        return '';
+    }
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min || 1;
+    const stepX = width / (prices.length - 1);
+
+    const points = prices.map((v, i) => {
+        const x = i * stepX;
+        const y = height - ((v - min) / range) * (height - 4) - 2;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    const isUp = prices[prices.length - 1] >= prices[0];
+    const color = isUp ? 'var(--success)' : 'var(--danger)';
+
+    // خط افقی مقایسه (شروع)
+    const startY = height - ((prices[0] - min) / range) * (height - 4) - 2;
+
+    return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <line x1="0" y1="${startY.toFixed(1)}" x2="${width}" y2="${startY.toFixed(1)}"
+              stroke="var(--border-strong)" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.5"/>
+        <polyline points="${points}" fill="none" stroke="${color}"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+}
+
+function generateSparklineFromChange(coin, width = 100, height = 28) {
+    // fallback: ۲۰ نقطه بر اساس change
+    const seed = hashString(coin.id);
+    let s = seed;
+    const random = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+    const points = 20;
+    const values = [50];
+    for (let i = 1; i < points; i++) {
+        values.push(values[i - 1] + (random() - 0.5) * 15);
+    }
+
+    // اعمال trend بر اساس change
+    const trend = (coin.priceChange7d || coin.priceChange1d || 0) / 10;
+    for (let i = 0; i < values.length; i++) {
+        values[i] += trend * (i / values.length) * 20;
+    }
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const stepX = width / (points - 1);
+
+    const pts = values.map((v, i) => {
+        const x = i * stepX;
+        const y = height - ((v - min) / range) * (height - 4) - 2;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    const isUp = (coin.priceChange7d || coin.priceChange1d || 0) >= 0;
+    const color = isUp ? 'var(--success)' : 'var(--danger)';
+
+    return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <polyline points="${pts}" fill="none" stroke="${color}"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+    </svg>`;
+}
+
+async function loadSparklineFor(coinId, container) {
+    if (!container) return;
+
+    // اول از cache
+    let prices = SparklineCache.get(coinId);
+    if (prices) {
+        container.innerHTML = generateSparklineFromPrices(prices, container.clientWidth || 100, 28);
+        return;
+    }
+
+    // نمایش loading
+    container.innerHTML = '<div class="sparkline-loading">...</div>';
+
+    // از API
+    const coin = state.coins.find(c => c.id === coinId);
+    if (!coin) return;
+
+    try {
+        const res = await API.getOHLCV(coinId, '1h', '1mo', 30, 20);
+
+        if (res.success && Array.isArray(res.data) && res.data.length >= 2) {
+            prices = res.data.map(c => parseFloat(c.close)).filter(p => !isNaN(p));
+            if (prices.length >= 2) {
+                SparklineCache.set(coinId, prices);
+                container.innerHTML = generateSparklineFromPrices(prices, container.clientWidth || 100, 28);
+                return;
+            }
+        }
+
+        // fallback: از change بساز
+        container.innerHTML = generateSparklineFromChange(coin, container.clientWidth || 100, 28);
+    } catch (e) {
+        container.innerHTML = generateSparklineFromChange(coin, container.clientWidth || 100, 28);
+    }
+}
+
+function queueSparkline(coinId, container) {
+    // با IntersectionObserver کار می‌کند
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                observer.disconnect();
+                loadSparklineFor(coinId, container);
+            }
+        });
+    }, { rootMargin: '100px' });
+    observer.observe(container);
+}
+
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+function renderTable() {
+    const tbody = $('#coinsTableBody');
+    const table = $('#coinsTable');
+    if (!tbody) return;
+
+    // Density
+    if (table) {
+        table.classList.toggle('compact', state.density === 'compact');
+    }
+
+    if (state.filteredCoins.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="12">
+                    <div class="empty-state">
+                        <div class="empty-icon">${SVG_ICONS.emptySearch}</div>
+                        <div class="empty-title">نتیجه‌ای یافت نشد</div>
+                        <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        updateCounters();
+        return;
+    }
+
+    const query = state.searchQuery.trim();
+
+    tbody.innerHTML = state.filteredCoins.map(coin => {
+        const change24 = coin.priceChange1d || 0;
+        const change7 = coin.priceChange7d || 0;
+        const change30 = coin.priceChange30d || 0;
+
+        const cls24 = change24 > 0 ? 'up' : change24 < 0 ? 'down' : 'neutral';
+        const cls7 = change7 > 0 ? 'up' : change7 < 0 ? 'down' : 'neutral';
+        const cls30 = change30 > 0 ? 'up' : change30 < 0 ? 'down' : 'neutral';
+
+        const icon24 = change24 > 0 ? SVG_ICONS.arrowUp : change24 < 0 ? SVG_ICONS.arrowDown : SVG_ICONS.dash;
+        const icon7 = change7 > 0 ? SVG_ICONS.arrowUp : change7 < 0 ? SVG_ICONS.arrowDown : SVG_ICONS.dash;
+        const icon30 = change30 > 0 ? SVG_ICONS.arrowUp : change30 < 0 ? SVG_ICONS.arrowDown : SVG_ICONS.dash;
+
+        const isWatched = state.watchlist.has(coin.id);
+        const atr = estimateATR(coin);
+        const atrCat = getAtrCategory(atr);
+
+        const symbolHtml = query ? highlightText(coin.symbol, query) : escapeHtml(coin.symbol);
+        const nameHtml = query ? highlightText(coin.name, query) : escapeHtml(coin.name);
+
+        return `
+            <tr data-coin-id="${escapeHtml(coin.id)}">
+                <td>
+                    <div class="rank-cell">#${coin.rank}</div>
+                </td>
+                <td>
+                    <div class="coin-cell">
+                        <div class="coin-icon-sm">${escapeHtml(coin.symbol.slice(0, 3))}</div>
+                        <div class="coin-cell-info">
+                            <span class="coin-cell-symbol">${symbolHtml}</span>
+                            <span class="coin-cell-name">${nameHtml}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="price-cell" data-price-coin="${escapeHtml(coin.id)}" data-price="${coin.price}">
+                        ${formatCurrency(coin.price)}
+                    </span>
+                </td>
+                <td>
+                    <span class="change-cell ${cls24}">
+                        ${icon24}${formatPercent(change24)}
+                    </span>
+                </td>
+                <td class="hide-lg">
+                    <span class="change-cell ${cls7}">
+                        ${icon7}${formatPercent(change7)}
+                    </span>
+                </td>
+                <td class="hide-xl">
+                    <span class="change-cell ${cls30}">
+                        ${icon30}${formatPercent(change30)}
+                    </span>
+                </td>
+                <td class="hide-md">
+                    <div class="hl-cell">
+                        <span class="hl-high">▲ ${formatCurrency(coin.high24h)}</span>
+                        <span class="hl-low">▼ ${formatCurrency(coin.low24h)}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="volume-cell">${formatCompact(coin.volume)}</span>
+                </td>
+                <td class="hide-sm">
+                    <span class="marketcap-cell">${formatCompact(coin.marketCap)}</span>
+                </td>
+                <td class="hide-md">
+                    <span class="atr-cell ${atrCat}">${atr.toFixed(2)}٪</span>
+                </td>
+                <td class="hide-lg">
+                    <div class="sparkline-cell" data-sparkline="${escapeHtml(coin.id)}"></div>
+                </td>
+                <td class="star-cell">
+                    <button class="star-btn ${isWatched ? 'active' : ''}"
+                            data-watch="${escapeHtml(coin.id)}"
+                            title="${isWatched ? 'حذف از Watchlist' : 'افزودن به Watchlist'}">
+                        ${isWatched ? SVG_ICONS.starFill : SVG_ICONS.star}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    updateCounters();
+    bindTableEvents();
+    loadVisibleSparklines();
+}
+
+function bindTableEvents() {
+    const tbody = $('#coinsTableBody');
+    if (!tbody) return;
+
+    // Row click → detail
+    tbody.querySelectorAll('tr[data-coin-id]').forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.star-btn')) return;
+            openCoinDetail(row.dataset.coinId);
+        });
+    });
+
+    // Star
+    tbody.querySelectorAll('.star-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const added = toggleWatchlist(btn.dataset.watch);
+            const coin = state.coins.find(c => c.id === btn.dataset.watch);
+
+            btn.classList.toggle('active', added);
+            btn.innerHTML = added ? SVG_ICONS.starFill : SVG_ICONS.star;
+
+            updatePresetBadges();
+
+            showToast(
+                added ? `⭐ ${coin?.symbol} به Watchlist اضافه شد` : `حذف شد`,
+                added ? 'success' : 'info',
+                1800
+            );
+
+            if (state.preset === 'watchlist') {
+                applyFilters();
+                renderAll();
+            }
+        });
+    });
+}
+
+function loadVisibleSparklines() {
+    const cells = $$('.sparkline-cell[data-sparkline]');
+    cells.forEach(cell => {
+        queueSparkline(cell.dataset.sparkline, cell);
+    });
+}
+
+
+// ============================================================
+// RENDER GRID (Card View)
+// ============================================================
+function renderGrid() {
+    const grid = $('#gridWrap');
+    if (!grid) return;
+
+    if (state.filteredCoins.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <div class="empty-icon">${SVG_ICONS.emptySearch}</div>
+                <div class="empty-title">نتیجه‌ای یافت نشد</div>
+                <div class="empty-message">فیلتر یا جستجو را تغییر دهید</div>
+            </div>
+        `;
+        updateCounters();
+        return;
+    }
+
+    const query = state.searchQuery.trim();
+
+    grid.innerHTML = state.filteredCoins.map((coin, i) => {
+        const change24 = coin.priceChange1d || 0;
+        const change7 = coin.priceChange7d || 0;
+        const change30 = coin.priceChange30d || 0;
+
+        const cls24 = change24 > 0 ? 'up' : change24 < 0 ? 'down' : 'neutral';
+        const cls7 = change7 > 0 ? 'up' : change7 < 0 ? 'down' : 'neutral';
+        const cls30 = change30 > 0 ? 'up' : change30 < 0 ? 'down' : 'neutral';
+
+        const icon24 = change24 > 0 ? SVG_ICONS.arrowUp : change24 < 0 ? SVG_ICONS.arrowDown : SVG_ICONS.dash;
+        const isWatched = state.watchlist.has(coin.id);
+        const atr = estimateATR(coin);
+        const atrCat = getAtrCategory(atr);
+        const atrClass = atrCat === 'low' ? 'muted' : atrCat === 'medium' ? 'warning' : 'down';
+        const cardCls = change24 > 0 ? 'up' : change24 < 0 ? 'down' : '';
+
+        const symbolHtml = query ? highlightText(coin.symbol, query) : escapeHtml(coin.symbol);
+        const nameHtml = query ? highlightText(coin.name, query) : escapeHtml(coin.name);
+
+        const delay = Math.min(i * 0.015, 0.5);
+
+        return `
+            <div class="coin-card ${cardCls}" data-coin-id="${escapeHtml(coin.id)}" style="animation-delay:${delay}s;">
+                <button class="coin-card-star ${isWatched ? 'active' : ''}"
+                        data-watch="${escapeHtml(coin.id)}"
+                        title="${isWatched ? 'حذف' : 'افزودن'}">
+                    ${isWatched ? SVG_ICONS.starFill : SVG_ICONS.star}
+                </button>
+
+                <div class="coin-card-header">
+                    <div class="coin-card-icon">${escapeHtml(coin.symbol.slice(0, 3))}</div>
+                    <div class="coin-card-title">
+                        <div class="coin-card-symbol">${symbolHtml}</div>
+                        <div class="coin-card-name">${nameHtml}</div>
+                    </div>
+                    <span class="coin-card-rank">#${coin.rank}</span>
+                </div>
+
+                <div class="coin-card-price-row">
+                    <div class="coin-card-price" data-price-coin="${escapeHtml(coin.id)}" data-price="${coin.price}">
+                        ${formatCurrency(coin.price)}
+                    </div>
+                    <div class="coin-card-change ${cls24}">
+                        ${icon24}${formatPercent(change24)}
+                    </div>
+                </div>
+
+                <div class="coin-card-chart" data-sparkline="${escapeHtml(coin.id)}"></div>
+
+                <div class="coin-card-stats">
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">۷d</span>
+                        <span class="coin-card-stat-value ${cls7}">${formatPercent(change7)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">۳۰d</span>
+                        <span class="coin-card-stat-value ${cls30}">${formatPercent(change30)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">حجم ۲۴h</span>
+                        <span class="coin-card-stat-value muted">${formatCompact(coin.volume)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">مارکت‌کپ</span>
+                        <span class="coin-card-stat-value muted">${formatCompact(coin.marketCap)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">High ۲۴h</span>
+                        <span class="coin-card-stat-value up">${formatCurrency(coin.high24h)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">Low ۲۴h</span>
+                        <span class="coin-card-stat-value down">${formatCurrency(coin.low24h)}</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">نوسان</span>
+                        <span class="coin-card-stat-value ${atrClass}">${atr.toFixed(2)}٪</span>
+                    </div>
+                    <div class="coin-card-stat">
+                        <span class="coin-card-stat-label">رتبه</span>
+                        <span class="coin-card-stat-value muted">#${coin.rank}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    updateCounters();
+    bindGridEvents();
+    loadVisibleSparklines();
+}
+
+function bindGridEvents() {
+    const grid = $('#gridWrap');
+    if (!grid) return;
+
+    grid.querySelectorAll('.coin-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.coin-card-star')) return;
+            openCoinDetail(card.dataset.coinId);
+        });
+    });
+
+    grid.querySelectorAll('.coin-card-star').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const added = toggleWatchlist(btn.dataset.watch);
+            const coin = state.coins.find(c => c.id === btn.dataset.watch);
+
+            btn.classList.toggle('active', added);
+            btn.innerHTML = added ? SVG_ICONS.starFill : SVG_ICONS.star;
+
+            updatePresetBadges();
+
+            showToast(
+                added ? `⭐ ${coin?.symbol} اضافه شد` : `حذف شد`,
+                added ? 'success' : 'info',
+                1800
+            );
+
+            if (state.preset === 'watchlist') {
+                applyFilters();
+                renderAll();
+            }
+        });
+    });
+}
+
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+    if (state.viewMode === 'card') {
+        const tw = $('#tableWrap');
+        const gw = $('#gridWrap');
+        if (tw) tw.style.display = 'none';
+        if (gw) gw.style.display = 'grid';
+        renderGrid();
+    } else {
+        const tw = $('#tableWrap');
+        const gw = $('#gridWrap');
+        if (tw) tw.style.display = 'block';
+        if (gw) gw.style.display = 'none';
+        renderTable();
+    }
+}
+
+function updateCounters() {
+    const resEl = $('#resultCount');
+    const totEl = $('#totalCount');
+    if (resEl) resEl.textContent = formatNumber(state.filteredCoins.length);
+    if (totEl) totEl.textContent = formatNumber(state.coins.length);
+
+    // Meta
+    const meta = $('#pageMeta');
+    if (meta) {
+        const updateText = state.lastUpdate
+            ? formatTimeAgo(state.lastUpdate)
+            : 'در حال بارگذاری';
+        meta.textContent = `${formatNumber(state.coins.length)} ارز · آخرین بروزرسانی: ${updateText}`;
+    }
+}
+
+
+// ============================================================
+// COIN DETAIL MODAL
+// ============================================================
+function openCoinDetail(coinId) {
+    const coin = state.coins.find(c => c.id === coinId);
+    if (!coin) return;
+
+    state.detailCoinId = coinId;
+
+    const icon = $('#detailIcon');
+    const symbol = $('#detailSymbol');
+    const name = $('#detailName');
+
+    if (icon) icon.textContent = coin.symbol.slice(0, 3);
+    if (symbol) symbol.textContent = `${coin.symbol}/USDT`;
+    if (name) name.textContent = coin.name;
+
+    // Body
+    const body = $('#detailBody');
+    if (body) {
+        const change24 = coin.priceChange1d || 0;
+        const change7 = coin.priceChange7d || 0;
+        const change30 = coin.priceChange30d || 0;
+
+        const cls24 = change24 > 0 ? 'up' : change24 < 0 ? 'down' : 'up';
+        const cls7 = change7 > 0 ? 'up' : change7 < 0 ? 'down' : 'up';
+        const cls30 = change30 > 0 ? 'up' : change30 < 0 ? 'down' : 'up';
+
+        body.innerHTML = `
+            <div class="coin-detail-price-hero">
+                <div class="hero-price" id="detailHeroPrice">${formatCurrency(coin.price)}</div>
+                <div class="hero-change ${cls24}" id="detailHeroChange">
+                    ${change24 >= 0 ? '+' : ''}${formatPercent(change24)}
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono-font);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">
+                    نمودار ۳۰ روز اخیر
+                </div>
+                <span class="data-source-badge loading" id="detailSourceBadge">...</span>
+            </div>
+
+            <div class="coin-detail-chart" id="detailChart">
+                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:12px;">
+                    در حال بارگذاری...
+                </div>
+            </div>
+
+            <div class="coin-detail-grid">
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">رتبه</span>
+                    <span class="coin-detail-value">#${coin.rank}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">تغییر ۲۴h</span>
+                    <span class="coin-detail-value ${cls24}">${formatPercent(change24)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">تغییر ۷d</span>
+                    <span class="coin-detail-value ${cls7}">${formatPercent(change7)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">تغییر ۳۰d</span>
+                    <span class="coin-detail-value ${cls30}">${formatPercent(change30)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">High ۲۴h</span>
+                    <span class="coin-detail-value up">${formatCurrency(coin.high24h)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">Low ۲۴h</span>
+                    <span class="coin-detail-value down">${formatCurrency(coin.low24h)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">حجم ۲۴h</span>
+                    <span class="coin-detail-value">${formatCompact(coin.volume)}</span>
+                </div>
+                <div class="coin-detail-item">
+                    <span class="coin-detail-label">مارکت‌کپ</span>
+                    <span class="coin-detail-value">${formatCompact(coin.marketCap)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    $('#coinDetailModal').classList.add('open');
+
+    // بارگذاری sparkline
+    loadDetailChart(coinId);
+}
+
+async function loadDetailChart(coinId) {
+    const chart = $('#detailChart');
+    const badge = $('#detailSourceBadge');
+    if (!chart) return;
+
+    let prices = SparklineCache.get(coinId);
+
+    if (!prices) {
+        try {
+            const res = await API.getOHLCV(coinId, '1d', '3mo', 90, 30);
+
+            if (res.success && Array.isArray(res.data) && res.data.length >= 5) {
+                prices = res.data.map(c => parseFloat(c.close)).filter(p => !isNaN(p));
+                if (prices.length >= 5) {
+                    SparklineCache.set(coinId, prices);
+                }
+
+                // بج منبع داده
+                if (badge && res.source) {
+                    badge.className = 'data-source-badge ' + res.source;
+                    badge.textContent = res.source;
+                }
+            }
+        } catch (e) {
+            console.warn('Detail chart failed:', e);
+        }
+    } else if (badge) {
+        badge.className = 'data-source-badge DB';
+        badge.textContent = 'CACHE';
+    }
+
+    if (!prices || prices.length < 5) {
+        chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:12px;">داده کافی نیست</div>';
+        if (badge) {
+            badge.className = 'data-source-badge DB_FALLBACK';
+            badge.textContent = 'N/A';
+        }
+        return;
+    }
+
+    // رسم با ابعاد بزرگ
+    const width = chart.clientWidth || 400;
+    const height = chart.clientHeight - 12 || 148;
+    chart.innerHTML = generateSparklineFromPrices(prices, width, height);
+}
+
+function closeCoinDetail() {
+    $('#coinDetailModal')?.classList.remove('open');
+    state.detailCoinId = null;
+}
+
+
+// ============================================================
+// NOTIFICATIONS RENDER
+// ============================================================
+function renderNotifications() {
+    const list = $('#notifList');
+    const empty = $('#notifEmpty');
+    const badge = $('#notifBadge');
+
+    if (!list) return;
+
+    const unread = state.notifications.filter(n => !n.read).length;
+
+    if (badge) {
+        badge.textContent = unread > 99 ? '۹۹+' : unread.toLocaleString('fa-IR');
+        badge.style.display = unread > 0 ? 'flex' : 'none';
+    }
+
+    if (state.notifications.length === 0) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = 'flex';
+        return;
+    }
+
+    if (empty) empty.style.display = 'none';
+
+    const iconMap = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        danger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
+
+    list.innerHTML = state.notifications.slice(0, 20).map(n => {
+        const icon = iconMap[n.type] || iconMap.info;
+        return `
+            <div class="notif-item ${n.type}">
+                <div class="notif-item-icon">${icon}</div>
+                <div class="notif-item-body">
+                    <div class="notif-item-title">${escapeHtml(n.title)}</div>
+                    <div class="notif-item-msg">${escapeHtml(n.message)}</div>
+                    <div class="notif-item-time">${formatTimeAgo(n.timestamp)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function markNotificationsRead() {
+    state.notifications.forEach(n => n.read = true);
+    persistNotifications();
+    renderNotifications();
+}
+
+
+// ============================================================
+// PRICE UPDATER (Polling + Flash)
+// ============================================================
+async function refreshPrices() {
+    if (state.coins.length === 0) return;
+
+    try {
+        const res = await API.getCoins(CONFIG.COINS_LIMIT);
+        if (!res.success || !Array.isArray(res.data)) return;
+
+        const updates = {};
+        res.data.forEach(c => {
+            if (c.id) {
+                updates[c.id] = {
+                    price: parseFloat(c.price) || 0,
+                    change1d: parseFloat(c.priceChange1d) || 0,
+                };
+            }
+        });
+
+        // آپدیت state
+        state.coins.forEach(coin => {
+            if (updates[coin.id]) {
+                coin.price = updates[coin.id].price;
+                coin.priceChange1d = updates[coin.id].change1d;
+            }
+        });
+
+        state.lastUpdate = Date.now();
+
+        // آپدیت DOM (بدون re-render)
+        $$('[data-price-coin]').forEach(el => {
+            const coinId = el.dataset.priceCoin;
+            const coin = state.coins.find(c => c.id === coinId);
+            if (!coin) return;
+
+            const oldPrice = parseFloat(el.dataset.price || '0');
+            const newPrice = coin.price;
+
+            if (Math.abs(newPrice - oldPrice) > 0.000001) {
+                el.classList.remove('flash-up', 'flash-down');
+                void el.offsetWidth;
+                el.classList.add(newPrice > oldPrice ? 'flash-up' : 'flash-down');
+            }
+
+            el.textContent = formatCurrency(newPrice);
+            el.dataset.price = newPrice;
+        });
+
+        updateCounters();
+    } catch (e) {
+        // silent
+    }
+}
+
+function startPriceUpdater() {
+    if (state.timers.price) clearInterval(state.timers.price);
+    state.timers.price = setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
+        refreshPrices();
+    }, CONFIG.PRICE_UPDATE_INTERVAL);
+}
+
+function startWidgetsUpdater() {
+    if (state.timers.widgets) clearInterval(state.timers.widgets);
+    state.timers.widgets = setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
+        loadWidgets();
+    }, CONFIG.WIDGET_UPDATE_INTERVAL);
+}
+
+
+// ============================================================
+// EXPOSE TO NEXT PART
+// ============================================================
+window.__marketPart2 = {
+    loadWidgets,
+    renderFearGreed, renderGlobalMarket, renderBtcDominance,
+    renderTable, renderGrid, renderAll, updateCounters,
+    generateSparklineFromPrices, generateSparklineFromChange,
+    loadSparklineFor, queueSparkline,
+    openCoinDetail, closeCoinDetail, loadDetailChart,
+    renderNotifications, markNotificationsRead,
+    refreshPrices, startPriceUpdater, startWidgetsUpdater,
+};
+
+Object.assign(window.__market, window.__marketPart2);
+
+console.log('✅ Market Part 2 (Render) loaded');
+
+})();
+</script>
+
+<script>
+// ============================================================
+// MARKET PAGE v3.0 — PART 3: EVENTS + INIT
+// Search + Filters + Sort + View Toggle + Command Palette + Keyboard + Init
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__marketPart3Loaded) return;
+window.__marketPart3Loaded = true;
+
+if (!window.__market || !window.__marketPart2) {
+    console.error('❌ Market Part 1 or 2 not loaded');
+    return;
+}
+
+const {
+    CONFIG, state, Storage,
+    $, $$,
+    escapeHtml,
+    formatCurrency, formatPercent, formatNumber, formatCompact,
+    formatTimeAgo,
+    showToast,
+    addNotification, clearNotifications,
+    API,
+    loadCoins,
+    applyFilters, updatePresetBadges,
+    SparklineCache,
+    loadPersisted, persistWatchlist, persistNotifications,
+    loadWidgets,
+    renderAll, updateCounters, renderNotifications, markNotificationsRead,
+    closeCoinDetail, refreshPrices, startPriceUpdater, startWidgetsUpdater,
+} = window.__market;
+
+
+// ============================================================
+// SEARCH
+// ============================================================
+let _searchTimer = null;
+
+function setupSearch() {
+    const input = $('#searchInput');
+    const clear = $('#searchClear');
+
+    if (input) {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (clear) clear.classList.toggle('visible', val.length > 0);
+
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(() => {
+                state.searchQuery = val.trim();
+                applyFilters();
+                renderAll();
+            }, 200);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                input.value = '';
+                state.searchQuery = '';
+                if (clear) clear.classList.remove('visible');
+                applyFilters();
+                renderAll();
+                input.blur();
+            }
+        });
+    }
+
+    if (clear) {
+        clear.addEventListener('click', () => {
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            state.searchQuery = '';
+            clear.classList.remove('visible');
+            applyFilters();
+            renderAll();
+        });
+    }
+
+    // Ctrl+K برای focus
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+            e.preventDefault();
+            input?.focus();
+        }
+    });
+}
+
+
+// ============================================================
+// PRESET FILTERS
+// ============================================================
+function setupPresets() {
+    $$('#presetBar .preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('#presetBar .preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            state.preset = btn.dataset.preset;
+            Storage.set(CONFIG.STORAGE.SELECTED_PRESET, state.preset);
+
+            applyFilters();
+            renderAll();
+        });
+    });
+}
+
+
+// ============================================================
+// SORT
+// ============================================================
+function setupSort() {
+    const select = $('#sortSelect');
+    if (!select) return;
+
+    // مقدار اولیه
+    select.value = state.sortBy;
+
+    select.addEventListener('change', (e) => {
+        state.sortBy = e.target.value;
+        Storage.set(CONFIG.STORAGE.SORT, state.sortBy);
+
+        // اگه preset خاصی فعال بود، لغو کن و «همه» رو فعال کن
+        if (state.preset !== 'all' && ['rank_asc', 'name_asc'].includes(state.sortBy)) {
+            state.preset = 'all';
+            $$('#presetBar .preset-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.preset === 'all');
+            });
+        }
+
+        applyFilters();
+        renderAll();
+    });
+}
+
+function setupSortHeaders() {
+    $$('#coinsTable th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            const map = {
+                rank: 'rank_asc',
+                name: 'name_asc',
+                price: state.sortBy === 'price_desc' ? 'price_asc' : 'price_desc',
+                change: state.sortBy === 'change_desc' ? 'change_asc' : 'change_desc',
+                change7d: state.sortBy === 'change7d_desc' ? 'change7d_asc' : 'change7d_desc',
+                change30d: 'change_desc',
+                volume: 'volume_desc',
+                marketcap: 'marketcap_desc',
+                atr: 'atr_desc',
+            };
+
+            const newSort = map[key] || 'rank_asc';
+            state.sortBy = newSort;
+            Storage.set(CONFIG.STORAGE.SORT, state.sortBy);
+
+            // Sync select
+            const select = $('#sortSelect');
+            if (select) select.value = newSort;
+
+            // Reset preset
+            if (state.preset !== 'all') {
+                state.preset = 'all';
+                $$('#presetBar .preset-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.preset === 'all');
+                });
+            }
+
+            // Update active th
+            $$('#coinsTable th.sortable').forEach(t => {
+                t.classList.remove('active');
+                const ic = t.querySelector('.sort-icon');
+                if (ic) ic.textContent = '▼';
+            });
+            th.classList.add('active');
+            const ic = th.querySelector('.sort-icon');
+            if (ic) {
+                ic.textContent = newSort.endsWith('_asc') ? '▲' : '▼';
+            }
+
+            applyFilters();
+            renderAll();
+        });
+    });
+}
+
+
+// ============================================================
+// VIEW TOGGLE (Table / Card)
+// ============================================================
+function setupViewToggle() {
+    $$('#viewToggle .view-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('#viewToggle .view-toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            state.viewMode = btn.dataset.view;
+            Storage.set(CONFIG.STORAGE.VIEW_MODE, state.viewMode);
+
+            // مخفی کردن density اگر card
+            const densityWrap = $('#densityToggle');
+            if (densityWrap) {
+                densityWrap.style.display = state.viewMode === 'card' ? 'none' : 'inline-flex';
+            }
+
+            renderAll();
+        });
+    });
+
+    // Initial state
+    $$('#viewToggle .view-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === state.viewMode);
+    });
+
+    const densityWrap = $('#densityToggle');
+    if (densityWrap) {
+        densityWrap.style.display = state.viewMode === 'card' ? 'none' : 'inline-flex';
+    }
+}
+
+
+// ============================================================
+// DENSITY
+// ============================================================
+function setupDensity() {
+    $$('#densityToggle .density-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('#densityToggle .density-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            state.density = btn.dataset.density;
+            Storage.set(CONFIG.STORAGE.DENSITY, state.density);
+
+            if (state.viewMode === 'table') {
+                renderAll();
+            }
+        });
+    });
+
+    // Initial
+    $$('#densityToggle .density-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.density === state.density);
+    });
+}
+
+
+// ============================================================
+// REFRESH
+// ============================================================
+async function refreshAll(showToastMsg = true) {
+    if (showToastMsg) showToast('در حال بروزرسانی...', 'info', 1500);
+
+    // پاک کردن sparkline cache
+    SparklineCache.clear();
+
+    const ok = await loadCoins(true);
+
+    if (!ok) {
+        showToast('خطا در بروزرسانی', 'error', 3000);
+        addNotification('error', 'خطا در بروزرسانی', 'اتصال به API برقرار نشد', { toast: false });
+        return;
+    }
+
+    updatePresetBadges();
+    applyFilters();
+    renderAll();
+    loadWidgets();
+
+    if (showToastMsg) showToast('✅ بروزرسانی شد', 'success', 1500);
+}
+
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCSV() {
+    if (state.filteredCoins.length === 0) {
+        showToast('داده‌ای برای دانلود نیست', 'warning', 2000);
+        return;
+    }
+
+    const headers = [
+        'Rank', 'Symbol', 'Name', 'Price', 'Change 24h', 'Change 7d',
+        'Change 30d', 'High 24h', 'Low 24h', 'Volume 24h', 'Market Cap'
+    ];
+
+    const rows = state.filteredCoins.map(c => [
+        c.rank,
+        c.symbol,
+        c.name,
+        c.price,
+        c.priceChange1d,
+        c.priceChange7d,
+        c.priceChange30d,
+        c.high24h,
+        c.low24h,
+        c.volume,
+        c.marketCap,
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(v => {
+            const s = String(v ?? '');
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
+        }).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `market_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`✅ ${formatNumber(state.filteredCoins.length)} ارز دانلود شد`, 'success', 2500);
+    addNotification('success', 'خروجی CSV', `${state.filteredCoins.length} ارز ذخیره شد`, { toast: false });
+}
+
+
+// ============================================================
+// NOTIFICATIONS UI
+// ============================================================
+function setupNotifications() {
+    const bell = $('#notifBell');
+    const dropdown = $('#notifDropdown');
+    const clearBtn = $('#notifClearBtn');
+
+    bell?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.notifOpen = !state.notifOpen;
+        dropdown?.classList.toggle('open', state.notifOpen);
+
+        if (state.notifOpen) {
+            setTimeout(() => markNotificationsRead(), 800);
+        }
+    });
+
+    clearBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearNotifications();
+        showToast('اعلان‌ها پاک شدند', 'info', 1500);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#notifWrap')) {
+            dropdown?.classList.remove('open');
+            state.notifOpen = false;
+        }
+    });
+}
+
+
+// ============================================================
+// COMMAND PALETTE
+// ============================================================
+const COMMANDS = [
+    {
+        id: 'refresh', group: 'عملیات',
+        title: 'بروزرسانی',
+        desc: 'بارگذاری مجدد داده‌ها',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>',
+        action: () => refreshAll(),
+    },
+    {
+        id: 'search', group: 'عملیات',
+        title: 'جستجو',
+        desc: 'جستجوی ارز',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+        action: () => $('#searchInput')?.focus(),
+    },
+    {
+        id: 'export', group: 'عملیات',
+        title: 'خروجی CSV',
+        desc: 'دانلود لیست فیلترشده',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+        action: exportCSV,
+    },
+    {
+        id: 'view-table', group: 'نمایش',
+        title: 'نمایش جدول',
+        desc: 'تغییر به حالت جدول',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+        action: () => {
+            state.viewMode = 'table';
+            Storage.set(CONFIG.STORAGE.VIEW_MODE, 'table');
+            $$('#viewToggle .view-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'table'));
+            const dw = $('#densityToggle');
+            if (dw) dw.style.display = 'inline-flex';
+            renderAll();
+        },
+    },
+    {
+        id: 'view-card', group: 'نمایش',
+        title: 'نمایش کارت',
+        desc: 'تغییر به حالت کارت',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+        action: () => {
+            state.viewMode = 'card';
+            Storage.set(CONFIG.STORAGE.VIEW_MODE, 'card');
+            $$('#viewToggle .view-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'card'));
+            const dw = $('#densityToggle');
+            if (dw) dw.style.display = 'none';
+            renderAll();
+        },
+    },
+    {
+        id: 'preset-gainers', group: 'فیلترها',
+        title: 'بیشترین رشد',
+        desc: 'فیلتر: gainers',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>',
+        action: () => {
+            state.preset = 'gainers';
+            $$('#presetBar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === 'gainers'));
+            applyFilters();
+            renderAll();
+        },
+    },
+    {
+        id: 'preset-losers', group: 'فیلترها',
+        title: 'بیشترین افت',
+        desc: 'فیلتر: losers',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+        action: () => {
+            state.preset = 'losers';
+            $$('#presetBar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === 'losers'));
+            applyFilters();
+            renderAll();
+        },
+    },
+    {
+        id: 'preset-watchlist', group: 'فیلترها',
+        title: 'Watchlist',
+        desc: 'نمایش فقط علاقه‌مندی‌ها',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+        action: () => {
+            state.preset = 'watchlist';
+            $$('#presetBar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === 'watchlist'));
+            applyFilters();
+            renderAll();
+        },
+    },
+];
+
+function openCmdPalette() {
+    $('#cmdOverlay')?.classList.add('open');
+    const input = $('#cmdInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    state.cmdSelectedIdx = 0;
+    state.cmdFiltered = COMMANDS.slice();
+    renderCmdList();
+}
+
+function closeCmdPalette() {
+    $('#cmdOverlay')?.classList.remove('open');
+}
+
+function renderCmdList() {
+    const list = $('#cmdList');
+    if (!list) return;
+
+    if (!state.cmdFiltered || state.cmdFiltered.length === 0) {
+        list.innerHTML = '<div class="cmd-empty">نتیجه‌ای یافت نشد</div>';
+        return;
+    }
+
+    const groups = {};
+    state.cmdFiltered.forEach(c => {
+        if (!groups[c.group]) groups[c.group] = [];
+        groups[c.group].push(c);
+    });
+
+    let html = '';
+    let idx = 0;
+    for (const [g, items] of Object.entries(groups)) {
+        html += `<div class="cmd-group-title">${escapeHtml(g)}</div>`;
+        items.forEach(cmd => {
+            const sel = idx === state.cmdSelectedIdx ? 'selected' : '';
+            html += `
+                <div class="cmd-item ${sel}" data-cmd-idx="${idx}">
+                    <div class="cmd-item-icon">${cmd.icon}</div>
+                    <div class="cmd-item-main">
+                        <div class="cmd-item-title">${escapeHtml(cmd.title)}</div>
+                        <div class="cmd-item-desc">${escapeHtml(cmd.desc)}</div>
+                    </div>
+                </div>
+            `;
+            idx++;
+        });
+    }
+    list.innerHTML = html;
+
+    list.querySelectorAll('.cmd-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const i = parseInt(item.dataset.cmdIdx, 10);
+            closeCmdPalette();
+            setTimeout(() => state.cmdFiltered[i]?.action?.(), 100);
+        });
+    });
+}
+
+function filterCmd(query) {
+    const q = query.toLowerCase().trim();
+    state.cmdFiltered = q
+        ? COMMANDS.filter(c =>
+            c.title.toLowerCase().includes(q) ||
+            c.desc.toLowerCase().includes(q))
+        : COMMANDS.slice();
+    state.cmdSelectedIdx = 0;
+    renderCmdList();
+}
+
+function setupCommandPalette() {
+    $('#cmdPaletteBtn')?.addEventListener('click', openCmdPalette);
+
+    $('#cmdOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'cmdOverlay') closeCmdPalette();
+    });
+
+    $('#cmdInput')?.addEventListener('input', (e) => filterCmd(e.target.value));
+}
+
+
+// ============================================================
+// SCROLL TO TOP
+// ============================================================
+function setupScrollTop() {
+    const btn = $('#scrollTopBtn');
+    if (!btn) return;
+
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('show', window.scrollY > 400);
+    });
+
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+function setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+        const isInput = e.target.matches('input, textarea, select');
+        const mod = e.ctrlKey || e.metaKey;
+
+        // Escape
+        if (e.key === 'Escape') {
+            closeCmdPalette();
+            closeCoinDetail();
+            $('#notifDropdown')?.classList.remove('open');
+            state.notifOpen = false;
+            return;
+        }
+
+        // Ctrl+K → Command Palette
+        if (mod && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            if ($('#cmdOverlay')?.classList.contains('open')) closeCmdPalette();
+            else openCmdPalette();
+            return;
+        }
+
+        // Ctrl+/ → Focus search
+        if (mod && e.key === '/') {
+            e.preventDefault();
+            $('#searchInput')?.focus();
+            return;
+        }
+
+        // Ctrl+R → Refresh
+        if (mod && e.key.toLowerCase() === 'r' && !isInput) {
+            e.preventDefault();
+            refreshAll();
+            return;
+        }
+
+        // / → Focus search (وقتی input نیست)
+        if (e.key === '/' && !isInput) {
+            e.preventDefault();
+            $('#searchInput')?.focus();
+            return;
+        }
+
+        // Navigation در cmd palette
+        if ($('#cmdOverlay')?.classList.contains('open')) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                state.cmdSelectedIdx = Math.min(state.cmdSelectedIdx + 1, (state.cmdFiltered?.length || 0) - 1);
+                renderCmdList();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                state.cmdSelectedIdx = Math.max(state.cmdSelectedIdx - 1, 0);
+                renderCmdList();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const cmd = state.cmdFiltered?.[state.cmdSelectedIdx];
+                if (cmd) {
+                    closeCmdPalette();
+                    setTimeout(() => cmd.action(), 100);
+                }
+            }
+        }
+    });
+}
+
+
+// ============================================================
+// DETAIL MODAL EVENTS
+// ============================================================
+function setupDetailModal() {
+    $('#detailClose')?.addEventListener('click', closeCoinDetail);
+    $('#detailCloseBtn')?.addEventListener('click', closeCoinDetail);
+
+    $('#detailAnalyzeBtn')?.addEventListener('click', () => {
+        const coinId = state.detailCoinId;
+        if (!coinId) return;
+
+        // ذخیره انتخاب
+        try {
+            localStorage.setItem('analyzer_selected_coin', coinId);
+        } catch (e) {}
+
+        // انتقال به تب تحلیل
+        closeCoinDetail();
+
+        try {
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'navigate',
+                    tab: 'analyze',
+                    coinId: coinId,
+                }, '*');
+            } else {
+                window.location.href = '/analyzer/analyze';
+            }
+        } catch (e) {
+            window.location.href = '/analyzer/analyze';
+        }
+    });
+
+    $('#coinDetailModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'coinDetailModal') closeCoinDetail();
+    });
+}
+
+
+// ============================================================
+// HEADER ACTION BUTTONS
+// ============================================================
+function setupHeaderActions() {
+    $('#refreshBtn')?.addEventListener('click', () => refreshAll(true));
+    $('#exportBtn')?.addEventListener('click', exportCSV);
+}
+
+
+// ============================================================
+// VISIBILITY
+// ============================================================
+function setupVisibility() {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && state.coins.length > 0) {
+            const age = state.lastUpdate ? Date.now() - state.lastUpdate : Infinity;
+            // اگر بیش از ۵ دقیقه از آخرین بروزرسانی گذشته
+            if (age > 5 * 60 * 1000) {
+                refreshPrices();
+            }
+        }
+    });
+}
+
+
+// ============================================================
+// MESSAGE FROM PARENT
+// ============================================================
+function setupMessages() {
+    window.addEventListener('message', (e) => {
+        if (e.data?.type === 'theme-changed') {
+            if (e.data.theme) {
+                document.documentElement.setAttribute('data-theme', e.data.theme);
+            }
+            if (e.data.color) {
+                document.documentElement.setAttribute('data-color', e.data.color);
+            }
+        }
+        if (e.data?.type === 'refresh') {
+            refreshAll(false);
+        }
+        if (e.data?.type === 'watchlist-updated') {
+            // reload watchlist
+            try {
+                const wl = JSON.parse(localStorage.getItem(CONFIG.STORAGE.WATCHLIST) || '[]');
+                state.watchlist = new Set(wl);
+                updatePresetBadges();
+                if (state.preset === 'watchlist') {
+                    applyFilters();
+                    renderAll();
+                }
+            } catch (err) {}
+        }
+    });
+}
+
+
+// ============================================================
+// AUTO-DETECT VIEW MODE (Mobile → Card)
+// ============================================================
+function applyAutoViewMode() {
+    const saved = Storage.get(CONFIG.STORAGE.VIEW_MODE);
+    if (saved) return; // کاربر انتخاب کرده
+
+    // اول بار: اگر موبایل → card
+    if (window.innerWidth <= 640) {
+        state.viewMode = 'card';
+        $$('#viewToggle .view-toggle-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.view === 'card');
+        });
+        const dw = $('#densityToggle');
+        if (dw) dw.style.display = 'none';
+    }
+}
+
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log('%c 📊 Market v3.0 ',
+        'background: linear-gradient(135deg, #06b6d4, #6366f1); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;');
+
+    // Load persisted
+    loadPersisted();
+
+    // Auto view mode (اگر کاربر قبلاً انتخاب نکرده)
+    applyAutoViewMode();
+
+    // Show loader
+    // (loader در ابتدا نمایش داده می‌شود)
+
+    // Load coins
+    const ok = await loadCoins(false);
+
+    if (!ok || state.coins.length === 0) {
+        showToast('خطا در دریافت لیست ارزها', 'error', 5000);
+        addNotification('error', 'خطای بارگذاری', 'اتصال به CoinStats برقرار نشد', { toast: false });
+        $('#initialLoader')?.classList.add('hidden');
+        return;
+    }
+
+    // Preset active
+    $$('#presetBar .preset-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.preset === state.preset);
+    });
+
+    // Sync sort select
+    const select = $('#sortSelect');
+    if (select) select.value = state.sortBy;
+
+    // Update badges
+    updatePresetBadges();
+
+    // Apply filters
+    applyFilters();
+
+    // Render
+    renderAll();
+    renderNotifications();
+
+    // Load widgets (async — بدون انتظار)
+    loadWidgets();
+
+    // Setup UI events
+    setupSearch();
+    setupPresets();
+    setupSort();
+    setupSortHeaders();
+    setupViewToggle();
+    setupDensity();
+    setupNotifications();
+    setupCommandPalette();
+    setupScrollTop();
+    setupKeyboard();
+    setupDetailModal();
+    setupHeaderActions();
+    setupVisibility();
+    setupMessages();
+
+    // Start timers
+    startPriceUpdater();
+    startWidgetsUpdater();
+
+    // Hide loader
+    setTimeout(() => {
+        $('#initialLoader')?.classList.add('hidden');
+    }, 300);
+
+    // Welcome toast
+    setTimeout(() => {
+        showToast(`👋 ${formatNumber(state.coins.length)} ارز بارگذاری شد`, 'success', 3000);
+    }, 700);
+
+    console.log('✅ Market v3.0 ready');
+}
+
+
+// ============================================================
+// BOOT
+// ============================================================
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+// Cleanup
+window.__marketCleanup = function() {
+    Object.values(state.timers).forEach(t => {
+        if (t) clearInterval(t);
+    });
+    SparklineCache.clear();
+    window.__marketPart1Loaded = false;
+    window.__marketPart2Loaded = false;
+    window.__marketPart3Loaded = false;
+};
+
+console.log('✅ Market Part 3 (Events + Init) loaded');
+
+})();
+</script>
+</body>
+</html>
