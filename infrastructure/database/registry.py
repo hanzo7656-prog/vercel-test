@@ -57,7 +57,7 @@ class DatabaseRegistry:
         self._databases: Dict[str, DatabaseBase] = {}
         self._roles: Dict[str, str] = {}
         self._config: Dict[str, Any] = {}
-        self._registered_at: datetime = datetime.now()
+        self._registered_at: datetime = utc_now()
         
         # آمار reconnect
         self._reconnect_count: int = 0
@@ -185,7 +185,7 @@ class DatabaseRegistry:
         if auto_reconnect and not db.is_connected():
             logger.warning(f"⚠️ Database '{name}' disconnected, reconnecting...")
             self._reconnect_count += 1
-            self._last_reconnect = datetime.now()
+          w  self._last_reconnect = utc_now()
             
             try:
                 if db.connect():
@@ -366,28 +366,30 @@ class DatabaseRegistry:
             if h.get("quota", {}).get("status") == "critical"
         )
         
-        return {
-            "total_databases": total,
-            "connected": connected,
-            "disconnected": total - connected,
-            "ping_ok": ping_ok,
-            "by_type": by_type,
-            "uptime_seconds": int(
-                (datetime.now() - self._registered_at).total_seconds()
-            ),
-            "reconnect_count": self._reconnect_count,
-            "last_reconnect": (
-                self._last_reconnect.isoformat()
-                if self._last_reconnect else None
-            ),
-            "quota": {
-                "total_used_mb": round(total_used_mb, 2),
-                "warnings": warnings,
-                "criticals": criticals,
-            },
-            "databases": health,
-            "timestamp": datetime.now().isoformat(),
-        }
+        now_utc = utc_now()
+
+    return {
+        "total_databases": total,
+        "connected": connected,
+        "disconnected": total - connected,
+        "ping_ok": ping_ok,
+        "by_type": by_type,
+        "uptime_seconds": int(
+            (now_utc - self._registered_at).total_seconds()
+        ),
+        "reconnect_count": self._reconnect_count,
+        "last_reconnect": (
+            self._last_reconnect.isoformat() + "Z"
+            if self._last_reconnect else None
+        ),
+        "quota": {
+            "total_used_mb": round(total_used_mb, 2),
+            "warnings": warnings,
+            "criticals": criticals,
+        },
+        "databases": health,
+        "timestamp": now_utc.isoformat() + "Z",
+    }
     
     def get_health_summary(self) -> Dict[str, Any]:
         """خلاصه سلامت (بدون اطلاعات جزئی)"""
@@ -398,7 +400,7 @@ class DatabaseRegistry:
             "connected": sum(1 for h in health.values() if h.get("connected")),
             "disconnected": sum(1 for h in health.values() if not h.get("connected")),
             "status": "healthy" if all(h.get("connected") for h in health.values()) else "degraded",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utc_now().isoformat() + "Z",
         }
     
     def reconnect_all(self) -> Dict[str, bool]:
@@ -421,7 +423,7 @@ class DatabaseRegistry:
                     results[name] = db.connect()
                     if results[name]:
                         self._reconnect_count += 1
-                        self._last_reconnect = datetime.now()
+                        self._last_reconnect = utc_now()
             except Exception as e:
                 logger.error(f"❌ Reconnect error for '{name}': {e}")
                 results[name] = False
