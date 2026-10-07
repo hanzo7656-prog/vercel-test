@@ -764,10 +764,15 @@ class ApiClient {
      * @param {string} range - '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'
      * @param {number} limit - حداکثر تعداد (پیش‌فرض: 1000)
      */
-    async getOHLCV(coin, interval = '1h', range = '1mo', limit = 1000) {
-        return this.request(
-            `/api/coinstats/ohlcv?coin=${encodeURIComponent(coin)}&interval=${interval}&range=${range}&limit=${limit}`
-        );
+    async getOHLCV(coin, interval = '1h', range = '1mo', limit = 1000, minCandles = 50) {
+        const params = new URLSearchParams({
+            coin,
+            interval,
+            range,
+            limit,
+            min_candles: minCandles,
+        });
+        return this.request(`/api/coinstats/ohlcv?${params}`);
     },
 
     /**
