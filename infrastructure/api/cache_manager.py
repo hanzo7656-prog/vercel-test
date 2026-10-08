@@ -1,7 +1,7 @@
 # infrastructure/api/cache_manager.py
 # ============================================================
-# مدیریت کش با دو Redis - نسخه ۳.۰
-# Dual Redis + Auto-Failover + Startup Check + Command Tracking
+# مدیریت کش با دو Redis - نسخه ۳.۱
+# Dual Redis + Auto-Failover + Session Migration + Startup Check
 # ============================================================
 
 import json
@@ -33,6 +33,12 @@ BACKUP_CACHE_NAME = "cache_backup"
 class DualRedisClient:
     """
     Wrapper روی دو RedisManager که سوئیچ خودکار انجام می‌دهد.
+    
+    ویژگی‌ها:
+        - Startup check (سوئیچ خودکار در راه‌اندازی)
+        - Failover روی خطای quota
+        - Session migration بین Redis ها
+        - Periodic recovery check
     """
 
     def __init__(self):
@@ -58,6 +64,7 @@ class DualRedisClient:
             "primary_uses": 0,
             "backup_uses": 0,
             "manual_switches": 0,
+            "sessions_migrated": 0,
         }
 
         # ⚡ Startup check
@@ -103,6 +110,12 @@ class DualRedisClient:
                         f"switching to '{BACKUP_CACHE_NAME}' at startup"
                     )
 
+                    # 🆕 تلاش برای migrate session ها
+                    self._migrate_sessions(
+                        db, 
+                        registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
+                    )
+
                     other = registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
                     if other is not None and other.is_connected():
                         self._active_name = BACKUP_CACHE_NAME
@@ -123,6 +136,56 @@ class DualRedisClient:
 
         except Exception as e:
             logger.error(f"❌ Cache: startup check error: {e}")
+
+    # ------------------------------------------------------------
+    # Session migration
+    # ------------------------------------------------------------
+
+    def _migrate_sessions(self, old_db: Any, new_db: Any) -> int:
+        """
+        کپی session های کاربران از Redis قدیم به جدید
+        
+        این کار از logout شدن کاربران هنگام سوئیچ جلوگیری می‌کند.
+        """
+        if old_db is None or new_db is None:
+            return 0
+        
+        try:
+            if not old_db.is_connected() or not new_db.is_connected():
+                return 0
+            
+            session_keys = old_db.scan_keys("session:*", count=200)
+            
+            if not session_keys:
+                return 0
+            
+            logger.info(
+                f"🔄 Cache: migrating {len(session_keys)} sessions "
+                f"to '{self._get_other_name()}'"
+            )
+            
+            migrated = 0
+            for key in session_keys:
+                try:
+                    value = old_db.get(key)
+                    ttl = old_db.ttl(key)
+                    
+                    if value is not None:
+                        if ttl and ttl > 0:
+                            new_db.set(key, value, ttl)
+                        else:
+                            new_db.set(key, value, 86400)
+                        migrated += 1
+                except Exception:
+                    continue
+            
+            self._stats["sessions_migrated"] += migrated
+            logger.info(f"✅ Cache: migrated {migrated} sessions")
+            return migrated
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Cache: session migration failed: {e}")
+            return 0
 
     # ------------------------------------------------------------
     # Client resolution
@@ -184,17 +247,23 @@ class DualRedisClient:
         other = self._get_other_name()
 
         try:
-            db = registry.get(other, auto_reconnect=True)
-            if db is None or not db.is_connected():
+            old_db = self._client or self._resolve_client()
+            new_db = registry.get(other, auto_reconnect=True)
+            
+            if new_db is None or not new_db.is_connected():
                 logger.error(
                     f"❌ Cache: cannot switch to '{other}' — not connected"
                 )
                 return False
 
+            # 🆕 migrate session ها قبل از سوئیچ
+            if old_db is not None:
+                self._migrate_sessions(old_db, new_db)
+
             with self._lock:
                 old = self._active_name
                 self._active_name = other
-                self._client = db
+                self._client = new_db
                 self._failover_count += 1
                 self._stats["failovers"] += 1
                 self._command_count = 0
@@ -359,6 +428,15 @@ class DualRedisClient:
         def _do(db): return db.scan_keys(pattern, count)
         return self._safe_operation("scan_keys", _do) or []
 
+    def ttl(self, key: str) -> int:
+        def _do(db): return db.ttl(key)
+        result = self._safe_operation("ttl", _do)
+        return result if isinstance(result, int) else -2
+
+    def expire(self, key: str, ttl: int) -> bool:
+        def _do(db): return db.expire(key, ttl)
+        return bool(self._safe_operation("expire", _do))
+
     def flush(self) -> bool:
         def _do(db): return db.flush()
         logger.warning("⚠️ Cache: FLUSH requested!")
@@ -379,7 +457,7 @@ class DualRedisClient:
         سوئیچ دستی بین دو Redis
         
         Args:
-            target: 'cache' یا 'cache_backup' یا 'auto' (سوئیچ به دیگری)
+            target: 'cache' یا 'cache_backup' یا 'auto'
         """
         if target == "auto":
             target = self._get_other_name()
@@ -397,17 +475,22 @@ class DualRedisClient:
                 "active": self._active_name,
             }
 
-        db = registry.get(target, auto_reconnect=True)
-        if db is None or not db.is_connected():
+        new_db = registry.get(target, auto_reconnect=True)
+        if new_db is None or not new_db.is_connected():
             return {
                 "success": False,
                 "error": f"Target '{target}' not available",
             }
 
+        old_db = self._client or self._resolve_client()
+        
+        # 🆕 migrate session ها
+        self._migrate_sessions(old_db, new_db)
+
         with self._lock:
             old = self._active_name
             self._active_name = target
-            self._client = db
+            self._client = new_db
             self._failover_count += 1
             self._stats["failovers"] += 1
             self._stats["manual_switches"] += 1
@@ -435,8 +518,6 @@ class DualRedisClient:
         if total > 0:
             hit_ratio = round(self._stats["hits"] / total * 100, 2)
 
-        now_iso = datetime.now(timezone.utc).isoformat()
-
         return {
             **self._stats,
             "connected": self.is_connected(),
@@ -455,7 +536,7 @@ class DualRedisClient:
                 ).isoformat()
                 if self._last_error_at else None
             ),
-            "timestamp": now_iso,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def get_detailed_stats(self) -> Dict[str, Any]:
@@ -468,10 +549,12 @@ class DualRedisClient:
         }
 
         for name in (PRIMARY_CACHE_NAME, BACKUP_CACHE_NAME):
+            key = "primary" if name == PRIMARY_CACHE_NAME else "backup"
+            
             try:
                 db = registry.get(name, auto_reconnect=False)
                 if db is None:
-                    result[name if name == PRIMARY_CACHE_NAME else "backup"] = {
+                    result[key] = {
                         "name": name,
                         "registered": False,
                     }
@@ -481,6 +564,7 @@ class DualRedisClient:
                     "name": name,
                     "registered": True,
                     "connected": db.is_connected(),
+                    "is_active": (name == self._active_name),
                 }
 
                 if db.is_connected():
@@ -506,11 +590,9 @@ class DualRedisClient:
                     except Exception as e:
                         info_block["error"] = str(e)
 
-                key = "primary" if name == PRIMARY_CACHE_NAME else "backup"
                 result[key] = info_block
 
             except Exception as e:
-                key = "primary" if name == PRIMARY_CACHE_NAME else "backup"
                 result[key] = {
                     "name": name,
                     "error": str(e),
@@ -520,7 +602,7 @@ class DualRedisClient:
 
 
 # ============================================================
-# CacheManager (public interface — همان قبلی)
+# CacheManager (public interface — بدون تغییر)
 # ============================================================
 
 class CacheManager:
@@ -535,7 +617,7 @@ class CacheManager:
         if not hasattr(self, '_initialized'):
             self._initialized = True
             self._redis = DualRedisClient()
-            logger.info("✅ CacheManager v3.0 initialized (Dual Redis)")
+            logger.info("✅ CacheManager v3.1 initialized (Dual Redis + Session Migration)")
 
     # ------------------------------------------------------------
     # ۵ متد قبلی (بدون تغییر)
@@ -583,7 +665,7 @@ class CacheManager:
             }
 
     # ------------------------------------------------------------
-    # متدهای جدید (اختیاری)
+    # متدهای اضافی
     # ------------------------------------------------------------
 
     def is_connected(self) -> bool:
@@ -615,6 +697,18 @@ class CacheManager:
             return self._redis.scan_keys(pattern, count)
         except Exception:
             return []
+
+    def ttl(self, key: str) -> int:
+        try:
+            return self._redis.ttl(key)
+        except Exception:
+            return -2
+
+    def expire(self, key: str, ttl: int) -> bool:
+        try:
+            return self._redis.expire(key, ttl)
+        except Exception:
+            return False
 
     # ------------------------------------------------------------
     # ادمین
