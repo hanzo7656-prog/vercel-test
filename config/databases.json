@@ -1,7 +1,7 @@
 {
-  "version": "3.0",
-  "generated_at": "2026-09-13",
-  "description": "تنظیمات کامل دیتابیس‌ها با Quota Management",
+  "version": "3.1",
+  "generated_at": "2026-10-08",
+  "description": "تنظیمات کامل دیتابیس‌ها با Quota Management + Dual Redis",
   
   "databases": {
     "primary": {
@@ -382,8 +382,8 @@
     "cache": {
       "type": "redis",
       "enabled": true,
-      "description": "کش، session، rate limit - Upstash",
-      "mode": "rest",
+      "description": "کش، session، rate limit - Upstash (Primary)",
+      "mode": "tcp",
       
       "connection": {
         "url": "https://chief-buck-93038.upstash.io",
@@ -456,6 +456,51 @@
       },
       
       "roles": ["cache", "session", "ratelimit", "pubsub"]
+    },
+    
+    "cache_backup": {
+      "type": "redis",
+      "enabled": true,
+      "description": "کش پشتیبان - Upstash (Fallback)",
+      "mode": "tcp",
+      
+      "connection": {
+        "url": "https://hardy-tahr-212869.upstash.io",
+        "token": "gQAAAAAAAz-FAAIgcDI3NmFjNDhjY2U3Y2Y0YjFhYmQ3MzI5ZWQ2MmMwNjE3ZQ",
+        "redis_url": "rediss://default:gQAAAAAAAz-FAAIgcDI3NmFjNDhjY2U3Y2Y0YjFhYmQ3MzI5ZWQ2MmMwNjE3ZQ@hardy-tahr-212869.upstash.io:6379"
+      },
+      
+      "pool": {
+        "max_connections": 10,
+        "socket_timeout": 10,
+        "socket_connect_timeout": 10,
+        "retry_on_timeout": true,
+        "health_check_interval": 30
+      },
+      
+      "retry": {
+        "max_attempts": 3,
+        "base_delay": 0.5,
+        "max_delay": 5
+      },
+      
+      "health_check": {
+        "interval": 30,
+        "timeout": 5,
+        "auto_reconnect": true
+      },
+      
+      "quota": {
+        "total_mb": 256,
+        "reserved_mb": 56,
+        "usable_mb": 200,
+        "warn_threshold_percent": 75,
+        "critical_threshold_percent": 90,
+        "auto_cleanup": true,
+        "cleanup_before_percent": 95
+      },
+      
+      "roles": ["cache_backup"]
     }
   },
   
@@ -494,7 +539,8 @@
     "session": "cache",
     "temp_data": "cache",
     "ratelimit": "cache",
-    "pubsub": "cache"
+    "pubsub": "cache",
+    "cache_backup": "cache_backup"
   },
   
   "default": "primary",
