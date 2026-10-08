@@ -143,6 +143,10 @@ class DatabaseFactory:
             },
             "cache": {
                 "redis_url": "UPSTASH_REDIS_URL_FULL",
+                "readonly_redis_url": "UPSTASH_REDIS_URL_READONLY",
+            },
+            "cache_backup": {
+                "redis_url": "UPSTASH_REDIS_URL_BACKUP",
             },
         }
 
@@ -299,7 +303,13 @@ class DatabaseFactory:
                     databases = dict(registry._databases)
 
                 for name, db in databases.items():
-                    # 🆕 از _test_connection استفاده کن (نه is_connected)
+                # ⛔ Skip Redis — از health check صرف‌نظر کن
+                # (خودش در ensure_connection هر بار بررسی می‌شود)
+                    db_type = db.config.get("type", "")
+                    if db_type == "redis":
+                        continue
+
+                    # از _test_connection استفاده کن (نه is_connected)
                     if hasattr(db, '_test_connection'):
                         if not db._test_connection():
                             logger.warning(
