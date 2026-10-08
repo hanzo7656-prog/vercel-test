@@ -1,7 +1,7 @@
 # infrastructure/auth/auth_manager.py
 # ============================================================
-# مدیریت احراز هویت - نسخه ۳.۲
-# 🆕 استفاده از RedisManager به جای اتصال مستقیم به localhost
+# مدیریت احراز هویت - نسخه ۳.۳
+# 🆕 استفاده از CacheManager (Dual Redis) به جای get_cache
 # ============================================================
 
 import os
@@ -21,8 +21,9 @@ class AuthManager:
     """
     مدیریت احراز هویت با پشتیبانی از Session
 
-    نسخه ۳.۲:
-        - استفاده از RedisManager (get_cache) به جای اتصال مستقیم
+    نسخه ۳.۳:
+        - استفاده از CacheManager (Dual Redis)
+        - Session migration خودکار بین Redis ها
         - لاگ کامل برای تشخیص
     """
 
@@ -56,13 +57,13 @@ class AuthManager:
         self._sessions: Dict[str, Dict] = {}
         self._session_ttl = 86400  # ۲۴ ساعت
 
-        # 🆕 اتصال به RedisManager
+        # 🆕 اتصال به CacheManager (Dual Redis)
         self._redis = None
         self._use_redis = False
         self._init_redis()
 
         logger.info(
-            f"✅ AuthManager v3.2 initialized "
+            f"✅ AuthManager v3.3 initialized "
             f"(redis={'enabled' if self._use_redis else 'disabled'})"
         )
 
@@ -71,22 +72,25 @@ class AuthManager:
     # ============================================================
 
     def _init_redis(self) -> None:
+        """اتصال به CacheManager (Dual Redis)"""
         try:
-            logger.info("🔗 AuthManager: connecting to Redis via RedisManager...")
-            from infrastructure.database import get_cache
-            cache = get_cache()
+            logger.info("🔗 AuthManager: connecting to CacheManager (Dual Redis)...")
+            
+            # 🆕 استفاده از cache_manager به جای get_cache
+            from infrastructure.api.cache_manager import cache_manager
+            cache = cache_manager
 
             if cache is None:
-                logger.warning("⚠️ AuthManager: get_cache() returned None")
+                logger.warning("⚠️ AuthManager: cache_manager returned None")
                 logger.info("📝 Using in-memory session storage")
                 return
 
             if not cache.is_connected():
-                logger.warning("⚠️ AuthManager: RedisManager not connected")
+                logger.warning("⚠️ AuthManager: cache_manager not connected")
                 logger.info("📝 Using in-memory session storage")
                 return
 
-            # 🆕 تست با dict (چون RedisManager با json round-trip کار می‌کند)
+            # تست با dict
             try:
                 cache.set("auth:ping", {"ok": True}, ttl=5)
                 val = cache.get("auth:ping")
@@ -102,14 +106,25 @@ class AuthManager:
 
             self._redis = cache
             self._use_redis = True
-            logger.info("✅ AuthManager: Redis session storage enabled (via RedisManager)")
+            
+            # لاگ اضافی — ببین روی کدام Redis فعال است
+            try:
+                stats = cache.get_stats()
+                active = stats.get("active_redis", "unknown")
+                logger.info(
+                    f"✅ AuthManager: Session storage enabled via CacheManager "
+                    f"(active_redis={active})"
+                )
+            except Exception:
+                logger.info("✅ AuthManager: Session storage enabled via CacheManager")
 
         except ImportError as e:
-            logger.warning(f"⚠️ AuthManager: cannot import get_cache: {e}")
+            logger.warning(f"⚠️ AuthManager: cannot import cache_manager: {e}")
             logger.info("📝 Using in-memory session storage")
         except Exception as e:
             logger.warning(f"⚠️ AuthManager: Redis init error: {e}")
             logger.info("📝 Using in-memory session storage")
+
     # ============================================================
     # Session Storage Helpers
     # ============================================================
@@ -357,11 +372,11 @@ class AuthManager:
 
     def get_storage_info(self) -> Dict[str, Any]:
         """
-        🆕 اطلاعات storage برای دیباگ
+        اطلاعات storage برای دیباگ
 
         استفاده: /api/auth/storage-info
         """
-        return {
+        info = {
             "use_redis": self._use_redis,
             "redis_available": self._redis is not None,
             "redis_connected": (
@@ -373,6 +388,22 @@ class AuthManager:
             "session_ttl": self._session_ttl,
             "storage_type": "redis" if self._use_redis else "memory",
         }
+
+        # 🆕 اطلاعات Dual Redis
+        try:
+            from infrastructure.api.cache_manager import cache_manager
+            cache_stats = cache_manager.get_stats()
+            info["cache"] = {
+                "active_redis": cache_stats.get("active_redis"),
+                "failover_count": cache_stats.get("failover_count"),
+                "command_usage_percent": cache_stats.get("command_usage_percent"),
+                "hits": cache_stats.get("hits"),
+                "misses": cache_stats.get("misses"),
+            }
+        except Exception as e:
+            info["cache_error"] = str(e)
+
+        return info
 
 
 # ============================================================
@@ -411,7 +442,7 @@ def require_auth(role: str = None):
                         'error': 'Authentication required',
                         'redirect': '/login'
                     }), 401
-                return redirect('/login')  # ← ← ← مستقیم، بدون url_for
+                return redirect('/login')
 
             auth = get_auth()
             session_data = auth.get_session(session_id)
@@ -424,7 +455,7 @@ def require_auth(role: str = None):
                         'error': 'Invalid or expired session',
                         'redirect': '/login'
                     }), 401
-                return redirect('/login')  # ← ← ← مستقیم
+                return redirect('/login')
 
             if role:
                 user_role = session_data.get('role', 'guest')
@@ -435,7 +466,7 @@ def require_auth(role: str = None):
                             'success': False,
                             'error': f'Role {role} required'
                         }), 403
-                    return redirect('/403')  # ← ← ← مستقیم
+                    return redirect('/403')
 
             request.user = {
                 'username': session_data.get('username'),
