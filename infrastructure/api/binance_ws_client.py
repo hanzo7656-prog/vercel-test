@@ -78,14 +78,6 @@ class BinanceWSClient:
 
         # Cache (با try/except چون ممکن است Redis آماده نباشد)
         self.cache = None
-        try:
-            self.cache = get_cache()
-            print(f"[BinanceWS] Cache: {self.cache}", flush=True)
-            logger.info(f"[BinanceWS] Cache: {self.cache}")
-        except Exception as e:
-            print(f"[BinanceWS] ⚠️ Cache init error: {e}", flush=True)
-            logger.warning(f"[BinanceWS] ⚠️ Cache init error: {e}")
-
         # State
         self._orderbooks: Dict[str, Dict[str, Any]] = {}
         self._prices: Dict[str, Dict[str, Any]] = {}
@@ -365,7 +357,6 @@ class BinanceWSClient:
                 if snapshot:
                     with self._lock:
                         self._orderbooks[symbol] = snapshot
-                    self._cache_orderbook(symbol, snapshot)
                     print(f"[BinanceWS][{symbol}] ✅ snapshot fetched", flush=True)
                     logger.info(f"[BinanceWS][{symbol}] ✅ snapshot fetched")
                 else:
@@ -578,9 +569,6 @@ class BinanceWSClient:
                     "best_ask": best_ask,
                     "timestamp": now_iso,
                 }
-
-            self._cache_orderbook(symbol, orderbook)
-            self._cache_price(symbol, mid_price, best_bid, best_ask)
 
         except Exception as e:
             print(f"[BinanceWS][{symbol}] ❌ process error: {e}", flush=True)
