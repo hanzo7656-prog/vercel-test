@@ -1,0 +1,3507 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="indigo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>مدیریت داده | سیستم تحلیلگر</title>
+
+<!-- FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'indigo';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#6366f1';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   DATA MANAGEMENT — CSS
+   ============================================================ */
+
+/* ---------- VARIABLES ---------- */
+:root {
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 76px;
+
+    --neon-green: #22c55e;
+    --neon-cyan: #06b6d4;
+    --neon-purple: #6366f1;
+    --neon-gradient: linear-gradient(90deg,
+        var(--neon-green) 0%,
+        var(--neon-cyan) 50%,
+        var(--neon-purple) 100%);
+}
+
+/* ---------- Color Themes ---------- */
+html[data-color="indigo"]  { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; }
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; }
+html[data-color="violet"]  { --primary: #a855f7; --primary-dark: #9333ea; --primary-light: #c084fc; --primary-rgb: 168, 85, 247; }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+html[data-color="custom"]  { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+
+/* ---------- Dark Theme ---------- */
+html[data-theme="dark"] {
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(var(--primary-rgb), 0.1);
+    --chart-grid: rgba(148, 163, 184, 0.08);
+    --chart-text: #8b9bb4;
+}
+
+/* ---------- Light Theme ---------- */
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+    --shadow-focus: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    --success: #16a34a;
+    --success-dark: #15803d;
+    --warning: #d97706;
+    --warning-dark: #b45309;
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --info: #0891b2;
+    --success-bg: rgba(22, 163, 74, 0.08);
+    --warning-bg: rgba(217, 119, 6, 0.08);
+    --danger-bg: rgba(220, 38, 38, 0.08);
+    --info-bg: rgba(8, 145, 178, 0.08);
+    --primary-bg: rgba(var(--primary-rgb), 0.08);
+    --chart-grid: rgba(15, 23, 42, 0.06);
+    --chart-text: #5c6b82;
+}
+
+/* ---------- Reset ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--transition), color var(--transition);
+}
+
+::selection { background: var(--primary); color: white; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+.main-content {
+    margin-right: var(--sidebar-width, 280px);
+    min-height: 100vh;
+    padding-bottom: 60px;
+    transition: margin-right var(--transition-slow);
+}
+
+@media (min-width: 769px) {
+    .main-content.expanded { margin-right: var(--sidebar-collapsed, 76px); }
+}
+
+@media (max-width: 768px) {
+    .main-content { margin-right: 0; padding-top: 56px; }
+}
+
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (max-width: 1024px) { .container { padding: 10px 16px; gap: 10px; } }
+@media (max-width: 768px)  { .container { padding: 10px 12px; gap: 9px; } }
+@media (max-width: 480px)  { .container { padding: 8px 10px; gap: 8px; } }
+
+
+/* ============================================================
+   STICKY HEADER
+   ============================================================ */
+.header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: linear-gradient(to bottom, var(--bg-page) 75%, transparent);
+    padding: 4px 0 8px;
+    margin: 0 0 2px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    min-height: 38px;
+}
+
+.header-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breadcrumb a { color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+.breadcrumb a:hover { color: var(--primary-light); }
+.breadcrumb-sep { opacity: 0.5; font-size: 9px; }
+.breadcrumb-current { color: var(--text-light); font-weight: 500; }
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Header Actions ---- */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.status-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.status-pill.live-clock {
+    font-family: var(--mono-font);
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 10.5px;
+    padding: 5px 8px;
+}
+
+.status-pill.live-clock svg {
+    width: 12px;
+    height: 12px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.status-pill.live-clock .clock-text {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .status-pill.live-clock .clock-text { display: inline; }
+}
+
+/* Auto Toggle */
+.toggle-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.toggle-pill:hover { border-color: var(--border-strong); }
+
+.toggle-pill.active {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+    color: var(--primary-light);
+}
+
+.toggle-pill .toggle-text {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .toggle-pill .toggle-text { display: inline; }
+}
+
+.toggle-dot {
+    width: 18px;
+    height: 11px;
+    background: var(--border-strong);
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.toggle-dot::after {
+    content: '';
+    position: absolute;
+    top: 1.5px;
+    right: 1.5px;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.25s var(--ease-spring);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-pill.active .toggle-dot { background: var(--primary); }
+.toggle-pill.active .toggle-dot::after { transform: translateX(-7px); }
+
+.icon-btn-sm {
+    width: 28px;
+    height: 28px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.icon-btn-sm:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.icon-btn-sm svg { width: 13px; height: 13px; }
+
+
+/* ============================================================
+   TABS NAV
+   ============================================================ */
+.tabs-nav {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 2px 2px;
+    scroll-behavior: smooth;
+}
+
+.tabs-nav::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s var(--transition);
+    flex-shrink: 0;
+}
+
+.tab-btn:hover { background: var(--bg-hover); color: var(--text-light); }
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+    cursor: default;
+}
+
+.tab-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+    .tab-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
+        gap: 5px;
+    }
+    .tab-btn svg { width: 12px; height: 12px; }
+}
+
+
+/* ============================================================
+   STATS ROW
+   ============================================================ */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .stats-row { grid-template-columns: 1fr; } }
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s var(--transition);
+    animation: cardIn 0.4s ease backwards;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.04s; }
+.stat-card:nth-child(2) { animation-delay: 0.08s; }
+.stat-card:nth-child(3) { animation-delay: 0.12s; }
+.stat-card:nth-child(4) { animation-delay: 0.16s; }
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+}
+
+.stat-card:hover::before { opacity: 1; }
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    transition: transform 0.3s;
+}
+
+.stat-card:hover .stat-icon { transform: scale(1.08) rotate(-4deg); }
+.stat-icon svg { width: 19px; height: 19px; }
+
+.stat-icon.primary { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
+.stat-icon.success { background: linear-gradient(135deg, var(--success-dark), var(--success)); }
+.stat-icon.warning { background: linear-gradient(135deg, var(--warning-dark), var(--warning)); }
+.stat-icon.info    { background: linear-gradient(135deg, #0891b2, #06b6d4); }
+.stat-icon.danger  { background: linear-gradient(135deg, var(--danger-dark), var(--danger)); }
+
+.stat-info { flex: 1; min-width: 0; }
+
+.stat-label {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-light);
+    line-height: 1.1;
+    font-family: var(--mono-font);
+    letter-spacing: -0.4px;
+}
+
+.stat-meta {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    font-family: var(--mono-font);
+}
+
+
+/* ============================================================
+   SPLIT LAYOUT
+   ============================================================ */
+.split-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 900px) { .split-layout { grid-template-columns: 1fr; } }
+
+
+/* ============================================================
+   PANEL
+   ============================================================ */
+.panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.25s;
+    animation: cardIn 0.4s ease backwards;
+}
+
+.panel:hover { border-color: var(--border-strong); }
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.panel-title svg {
+    width: 13px;
+    height: 13px;
+    color: var(--primary-light);
+}
+
+.panel-count {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+}
+
+.panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.panel-link {
+    font-size: 11px;
+    color: var(--primary-light);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: gap 0.2s;
+    padding: 0;
+    font-weight: 600;
+}
+
+.panel-link:hover { gap: 7px; }
+.panel-link svg { width: 11px; height: 11px; }
+
+.panel-body { padding: 12px 14px; }
+.panel-body.no-padding { padding: 0; }
+
+
+/* ============================================================
+   CHART
+   ============================================================ */
+.chart-body {
+    position: relative;
+    height: 240px;
+    width: 100%;
+}
+
+.chart-body canvas { display: block; }
+
+
+/* ============================================================
+   QUOTA LIST
+   ============================================================ */
+.quota-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.quota-list::-webkit-scrollbar { width: 4px; }
+.quota-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.quota-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.18s;
+    cursor: pointer;
+    position: relative;
+}
+
+.quota-item:last-child { border-bottom: none; }
+
+.quota-item:hover {
+    background: var(--bg-hover);
+    padding-right: 18px;
+}
+
+.quota-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 110px;
+    flex-shrink: 0;
+}
+
+.quota-name {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quota-name svg { width: 12px; height: 12px; color: var(--primary-light); }
+
+.quota-type {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-family: var(--mono-font);
+}
+
+.quota-bar-wrapper {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.quota-bar {
+    height: 8px;
+    background: var(--bg-hover-strong);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.quota-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s var(--transition);
+    position: relative;
+}
+
+.quota-bar-fill.healthy {
+    background: linear-gradient(90deg, var(--success-dark), var(--success));
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.quota-bar-fill.warning {
+    background: linear-gradient(90deg, var(--warning-dark), var(--warning));
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.quota-bar-fill.critical {
+    background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    animation: criticalPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes criticalPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+.quota-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.quota-percent {
+    font-weight: 700;
+    font-size: 12px;
+    min-width: 45px;
+    text-align: left;
+    font-family: var(--mono-font);
+    flex-shrink: 0;
+}
+
+.quota-percent.healthy { color: var(--success); }
+.quota-percent.warning { color: var(--warning); }
+.quota-percent.critical { color: var(--danger); }
+
+.quota-reset-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    flex-shrink: 0;
+    padding: 0;
+    opacity: 0;
+}
+
+.quota-item:hover .quota-reset-btn { opacity: 1; }
+
+.quota-reset-btn:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+}
+
+.quota-reset-btn svg { width: 12px; height: 12px; }
+
+.quota-empty {
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+}
+
+.quota-empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quota-empty-icon svg { width: 24px; height: 24px; }
+
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+.router-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.router-stat {
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.router-stat-label {
+    font-size: 9.5px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    font-family: var(--mono-font);
+}
+
+.router-stat-value {
+    font-family: var(--mono-font);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+}
+
+.router-stat-value.primary { color: var(--primary-light); }
+.router-stat-value.success { color: var(--success); }
+.router-stat-value.warning { color: var(--warning); }
+.router-stat-value.danger { color: var(--danger); }
+
+.router-rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.router-rules-list::-webkit-scrollbar { width: 4px; }
+.router-rules-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.router-rule-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    transition: all 0.15s;
+    border-right: 3px solid transparent;
+}
+
+.router-rule-item:hover {
+    border-color: var(--border-strong);
+    border-right-color: var(--primary);
+    transform: translateX(-2px);
+}
+
+.router-rule-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 7px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.router-rule-icon svg { width: 12px; height: 12px; }
+
+.router-rule-content { flex: 1; min-width: 0; }
+
+.router-rule-name {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.router-rule-target {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-family: var(--mono-font);
+}
+
+.router-rule-badge {
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.router-rule-badge.primary { background: var(--primary-bg); color: var(--primary-light); }
+.router-rule-badge.success { background: var(--success-bg); color: var(--success); }
+.router-rule-badge.warning { background: var(--warning-bg); color: var(--warning); }
+
+.router-empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   REGISTRY SUMMARY
+   ============================================================ */
+.registry-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.registry-item {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.registry-item:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.registry-item-label {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+    font-family: var(--mono-font);
+}
+
+.registry-item-value {
+    font-family: var(--mono-font);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+}
+
+.registry-item-value.primary { color: var(--primary-light); }
+.registry-item-value.success { color: var(--success); }
+.registry-item-value.warning { color: var(--warning); }
+.registry-item-value.danger { color: var(--danger); }
+
+.registry-services {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.registry-service {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    transition: all 0.2s;
+}
+
+.registry-service:hover {
+    border-color: var(--border-strong);
+    transform: translateX(-2px);
+}
+
+.registry-service-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.registry-service-dot.healthy { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.registry-service-dot.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+.registry-service-dot.danger  { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+.registry-service-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.registry-service-name {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.registry-service-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    margin-top: 2px;
+}
+
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1500;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.28s var(--ease-spring);
+    overflow: hidden;
+}
+
+.modal.modal-sm { max-width: 420px; }
+
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 0;
+}
+
+.modal-title svg { width: 15px; height: 15px; color: var(--primary-light); flex-shrink: 0; }
+
+.modal-title-info {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.modal-close:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    min-height: 0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+.form-group { margin-bottom: 16px; }
+.form-group:last-child { margin-bottom: 0; }
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.18s;
+}
+
+.form-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.form-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+/* Slider */
+.slider-container { padding: 6px 0; }
+
+.slider-value {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-family: var(--mono-font);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-light);
+}
+
+.slider-unit {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.slider {
+    width: 100%;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-hover-strong);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px var(--primary);
+    transition: transform 0.2s;
+}
+
+.slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+.slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 8px var(--primary);
+}
+
+.slider-range {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-faint);
+    font-family: var(--mono-font);
+}
+
+
+/* ============================================================
+   CONFIRM DIALOG
+   ============================================================ */
+.confirm-body {
+    padding: 26px 22px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.confirm-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon.danger { background: var(--danger-bg); color: var(--danger); }
+.confirm-icon svg { width: 26px; height: 26px; }
+
+.confirm-title { font-size: 16px; font-weight: 700; color: var(--text-light); }
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    text-align: center;
+}
+
+.confirm-desc code {
+    font-family: var(--mono-font);
+    background: var(--bg-hover);
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--primary-light);
+    font-size: 11.5px;
+}
+
+/* Type-to-confirm */
+.type-confirm-wrap {
+    margin-top: 10px;
+    text-align: right;
+    width: 100%;
+}
+
+.type-confirm-label {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.type-confirm-label code {
+    font-family: var(--mono-font);
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: 5px;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.type-confirm-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    transition: all 0.18s;
+    direction: ltr;
+}
+
+.type-confirm-input:focus { border-color: var(--primary); }
+.type-confirm-input.valid { border-color: var(--success); background: var(--success-bg); }
+.type-confirm-input.invalid { border-color: var(--danger); animation: shake 0.4s; }
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.18s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.btn svg { width: 13px; height: 13px; }
+
+.btn-ghost {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--text-light);
+}
+
+.btn-ghost:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.btn-ghost.danger {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-ghost.danger:hover {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+    background: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100002;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: calc(100vw - 48px);
+}
+
+.toast {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text-light);
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+    max-width: 380px;
+    pointer-events: auto;
+    animation: toastIn 0.35s var(--ease-spring);
+    border-inline-start: 3px solid var(--primary);
+}
+
+.toast.success { border-inline-start-color: var(--success); }
+.toast.error   { border-inline-start-color: var(--danger); }
+.toast.warning { border-inline-start-color: var(--warning); }
+.toast.info    { border-inline-start-color: var(--info); }
+
+.toast-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast.success .toast-icon { background: var(--success-bg); color: var(--success); }
+.toast.error   .toast-icon { background: var(--danger-bg);  color: var(--danger); }
+.toast.warning .toast-icon { background: var(--warning-bg); color: var(--warning); }
+.toast.info    .toast-icon { background: var(--info-bg);    color: var(--info); }
+
+.toast-icon svg { width: 12px; height: 12px; }
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+    to { opacity: 0; transform: translateY(20px) scale(0.95); }
+}
+
+.toast.removing { animation: toastOut 0.3s ease forwards; }
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+
+/* ============================================================
+   NEON SPINNER
+   ============================================================ */
+.neon-spinner {
+    --size: 1px;
+    --speed: 1.3s;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    font-size: calc(9 * var(--size));
+    color: var(--primary-light);
+    text-indent: -9999em;
+    transform: translateZ(0);
+    animation: neonMulShdSpin var(--speed) infinite linear;
+    will-change: box-shadow;
+    display: inline-block;
+}
+
+@keyframes neonMulShdSpin {
+    0%, 100% {
+        box-shadow:
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
+    }
+}
+
+
+/* ============================================================
+   INLINE LOADER
+   ============================================================ */
+.inline-loader {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 12, 22, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 100;
+    border-radius: inherit;
+    animation: inlineFadeIn 0.2s ease;
+    pointer-events: auto;
+}
+
+[data-theme="light"] .inline-loader {
+    background: rgba(246, 248, 252, 0.75);
+}
+
+.inline-loader.active { display: flex; }
+
+@keyframes inlineFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.inline-loader .neon-spinner {
+    --size: 1px;
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   MODAL LOADER
+   ============================================================ */
+.modal-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(3, 7, 18, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: modalFadeIn 0.3s ease;
+    direction: rtl;
+    font-family: var(--ui-font);
+}
+
+[data-theme="light"] .modal-loader {
+    background: rgba(246, 248, 252, 0.75);
+}
+
+.modal-loader.active { display: flex; }
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-card {
+    position: relative;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 22px;
+    padding: 32px 26px 24px;
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    animation: modalCardIn 0.45s var(--ease-spring);
+    overflow: hidden;
+}
+
+@keyframes modalCardIn {
+    from { opacity: 0; transform: scale(0.88) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle at 60% 40%,
+        rgba(34, 197, 94, 0.06) 0%,
+        rgba(6, 182, 212, 0.08) 30%,
+        rgba(99, 102, 241, 0.06) 60%,
+        transparent 75%
+    );
+    animation: modalBreath 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes modalBreath {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.9; }
+    50% { transform: rotate(180deg) scale(1.12); opacity: 1; }
+}
+
+.modal-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12%;
+    right: 12%;
+    height: 2px;
+    background: var(--neon-gradient);
+    background-size: 200% 100%;
+    border-radius: 0 0 3px 3px;
+    opacity: 0.6;
+    animation: neonBorderFlow 3s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes neonBorderFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+.modal-spinner-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.modal-spinner-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
+    animation: spinnerAura 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes spinnerAura {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 1; }
+}
+
+.modal-spinner-wrapper .neon-spinner {
+    --size: 1px;
+    font-size: 10px;
+}
+
+.modal-message {
+    position: relative;
+    z-index: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-align: center;
+    min-height: 22px;
+    line-height: 1.4;
+    letter-spacing: -0.2px;
+    padding: 0 4px;
+}
+
+.modal-submessage {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-align: center;
+    min-height: 16px;
+    line-height: 1.4;
+    font-family: var(--mono-font);
+}
+
+.modal-progress {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 6px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+[data-theme="light"] .modal-progress {
+    background: rgba(15, 23, 42, 0.08);
+}
+
+.modal-progress-fill {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--neon-gradient);
+    background-size: 200% auto;
+    border-radius: 9999px;
+    transition: width 0.4s var(--transition);
+    animation: progressFlow 3s ease infinite;
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.5), 0 0 24px rgba(99, 102, 241, 0.3);
+    overflow: hidden;
+}
+
+.modal-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+    animation: progressShimmer 1.6s linear infinite;
+}
+
+@keyframes progressFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes progressShimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+}
+
+.modal-percent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    color: var(--primary-light);
+    text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.4);
+    margin-top: -4px;
+    letter-spacing: -0.3px;
+}
+
+.modal-percent .percent-value {
+    font-size: 18px;
+    letter-spacing: -0.5px;
+}
+
+.modal-percent .percent-symbol {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-shadow: none;
+}
+
+.modal-loader.success .modal-card {
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(34, 197, 94, 0.15) inset, 0 0 40px rgba(34, 197, 94, 0.15);
+}
+
+.modal-loader.success .modal-message { color: var(--success); }
+
+.modal-loader.success .modal-progress-fill {
+    background: linear-gradient(90deg, var(--success), #16a34a, var(--success));
+    background-size: 200% auto;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+.modal-loader.success .neon-spinner { color: var(--success); }
+.modal-loader.success .modal-percent { color: var(--success); }
+
+.modal-loader.error .modal-card { border-color: rgba(239, 68, 68, 0.4); }
+.modal-loader.error .modal-message { color: var(--danger); }
+.modal-loader.error .neon-spinner { color: var(--danger); }
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    .page-title { font-size: 15px; }
+    .stat-value { font-size: 16px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-icon { width: 36px; height: 36px; min-width: 36px; }
+    .stat-icon svg { width: 17px; height: 17px; }
+    .router-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-body { height: 200px; }
+    .quota-item { padding: 10px 12px; gap: 10px; }
+    .quota-item-info { min-width: 90px; }
+    .quota-reset-btn { opacity: 1; }
+}
+
+@media (max-height: 500px) and (max-width: 1024px) and (orientation: landscape) {
+    .container { padding: 10px 14px; }
+    .chart-body { height: 180px; }
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV CONTAINER -->
+<div id="navContainer"></div>
+
+<!-- MAIN CONTENT -->
+<main class="main-content" id="mainContent">
+    <div class="container">
+
+        <!-- ═══════════ STICKY HEADER ═══════════ -->
+        <div class="header-wrap">
+            <div class="header-top">
+                <div class="header-title-block">
+                    <nav class="breadcrumb">
+                        <a href="/frontend/db_overview.html">دیتابیس</a>
+                        <span class="breadcrumb-sep">/</span>
+                        <span class="breadcrumb-current">مدیریت داده</span>
+                    </nav>
+                    <h1 class="page-title">مدیریت داده</h1>
+                </div>
+
+                <div class="header-actions">
+                    <!-- Live Clock -->
+                    <div class="status-pill live-clock" id="liveClock">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span class="clock-text" id="liveClockText">—</span>
+                    </div>
+
+                    <!-- Auto Refresh Toggle -->
+                    <div class="toggle-pill active" id="autoRefreshToggle" title="بروزرسانی خودکار">
+                        <div class="toggle-dot"></div>
+                        <span class="toggle-text">Auto</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <nav class="tabs-nav" id="tabsNav">
+                <button class="tab-btn" data-tab="overview" data-href="/frontend/db_overview.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9"/>
+                        <rect x="14" y="3" width="7" height="5"/>
+                        <rect x="14" y="12" width="7" height="9"/>
+                        <rect x="3" y="16" width="7" height="5"/>
+                    </svg>
+                    <span>Overview</span>
+                </button>
+
+                <button class="tab-btn" data-tab="postgresql" data-href="/frontend/db_tabs/postgresql.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span>PostgreSQL</span>
+                </button>
+
+                <button class="tab-btn" data-tab="redis" data-href="/frontend/db_tabs/redis.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <span>Redis</span>
+                </button>
+
+                <button class="tab-btn active" data-tab="data">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="m19 9-5 5-4-4-3 3"/>
+                    </svg>
+                    <span>Data Management</span>
+                </button>
+
+                <button class="tab-btn" data-tab="search" data-href="/frontend/db_tabs/search.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <span>Search</span>
+                </button>
+            </nav>
+        </div>
+
+
+        <!-- ═══════════ STATS ROW ═══════════ -->
+        <section class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">کل سهمیه</div>
+                    <div class="stat-value" id="statTotal">—</div>
+                    <div class="stat-meta" id="statTotalMeta">—</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                        <path d="m3.3 7 8.7 5 8.7-5"/>
+                        <path d="M12 22V12"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">مصرف‌شده</div>
+                    <div class="stat-value" id="statUsed">—</div>
+                    <div class="stat-meta" id="statUsedMeta">—</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">آزاد</div>
+                    <div class="stat-value" id="statFree">—</div>
+                    <div class="stat-meta" id="statFreeMeta">—</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon info">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">دیتابیس‌ها</div>
+                    <div class="stat-value" id="statDbs">—</div>
+                    <div class="stat-meta" id="statDbsMeta">—</div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ═══════════ QUOTA CHART + LIST ═══════════ -->
+        <div class="split-layout">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 2a10 10 0 0 1 10 10"/>
+                        </svg>
+                        <span>توزیع سهمیه</span>
+                    </div>
+                    <span class="panel-count" id="quotaChartHint">—</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-body">
+                        <canvas id="quotaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v18"/>
+                            <path d="M3 9h18"/>
+                            <path d="M3 15h18"/>
+                        </svg>
+                        <span>لیست سهمیه‌ها</span>
+                        <span class="panel-count" id="quotaListCount">—</span>
+                    </div>
+                    <div class="panel-actions">
+                        <button class="icon-btn-sm" id="resetAllQuotasBtn" title="ریست همه">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-body no-padding">
+                    <div class="quota-list" id="quotaList"></div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ═══════════ ROUTER STATS ═══════════ -->
+        <section class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="19" r="3"/>
+                        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>
+                        <circle cx="18" cy="5" r="3"/>
+                    </svg>
+                    <span>Router Activity</span>
+                </div>
+                <button class="panel-link" data-refresh="router">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-body">
+                <div class="router-stats-grid" id="routerStatsGrid"></div>
+                <div class="router-rules-list" id="routerRulesList"></div>
+            </div>
+        </section>
+
+
+        <!-- ═══════════ REGISTRY SUMMARY ═══════════ -->
+        <section class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    <span>Registry Summary</span>
+                </div>
+                <span class="panel-count" id="registryHint">—</span>
+            </div>
+            <div class="panel-body">
+                <div class="registry-summary" id="registrySummary"></div>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+
+<!-- ═══════════ MODAL: Edit Quota ═══════════ -->
+<div class="modal-overlay" id="quotaModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9"/>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+                <span>ویرایش سهمیه</span>
+                <span class="modal-title-info" id="quotaModalDb">—</span>
+            </div>
+            <button class="modal-close" data-close-modal="quotaModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">حداکثر سهمیه (MB)</label>
+                <div class="slider-container">
+                    <div class="slider-value">
+                        <span id="quotaSliderValue">500</span>
+                        <span class="slider-unit">MB</span>
+                    </div>
+                    <input type="range" class="slider" id="quotaSlider" min="100" max="5000" step="50" value="500">
+                    <div class="slider-range">
+                        <span>100 MB</span>
+                        <span>5 GB</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">آستانه هشدار (درصد)</label>
+                <input type="number" class="form-input" id="quotaWarnInput" value="75" min="50" max="99">
+                <div class="form-hint">هشدار زمانی که مصرف از این درصد عبور کرد</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">آستانه بحرانی (درصد)</label>
+                <input type="number" class="form-input" id="quotaCriticalInput" value="90" min="50" max="99">
+                <div class="form-hint">وضعیت بحرانی زمانی که مصرف از این درصد عبور کرد</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost danger" id="quotaResetBtn" style="margin-left: auto;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+                <span>ریست</span>
+            </button>
+            <button class="btn btn-ghost" data-close-modal="quotaModal">انصراف</button>
+            <button class="btn btn-primary" id="quotaSave">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>ذخیره</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════ MODAL: Reset All (type-to-confirm) ═══════════ -->
+<div class="modal-overlay" id="resetAllModal">
+    <div class="modal modal-sm">
+        <div class="confirm-body">
+            <div class="confirm-icon danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+            </div>
+            <div class="confirm-title">ریست همه سهمیه‌ها؟</div>
+            <div class="confirm-desc">
+                این عملیات تمام تنظیمات سهمیه‌ها را به حالت پیش‌فرض بازمی‌گرداند.
+            </div>
+
+            <div class="type-confirm-wrap">
+                <label class="type-confirm-label">
+                    برای تأیید، عبارت <code>RESET ALL</code> را تایپ کن:
+                </label>
+                <input type="text" class="type-confirm-input" id="resetAllInput" placeholder="RESET ALL" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close-modal="resetAllModal">انصراف</button>
+            <button class="btn btn-danger" id="resetAllConfirm" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>تأیید و ریست</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════ MODAL: Confirm ═══════════ -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-sm">
+        <div class="confirm-body">
+            <div class="confirm-icon" id="confirmIcon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="confirm-title" id="confirmTitle">تأیید</div>
+            <div class="confirm-desc" id="confirmDesc">—</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close-modal="confirmModal">انصراف</button>
+            <button class="btn btn-danger" id="confirmOkBtn">تأیید</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════ TOAST CONTAINER ═══════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+
+<!-- ═══════════ INLINE LOADER ═══════════ -->
+<div class="inline-loader" id="globalInlineLoader" style="display:none;">
+    <span class="neon-spinner"></span>
+</div>
+
+
+<!-- ═══════════ MODAL LOADER ═══════════ -->
+<div class="modal-loader" id="globalModalLoader" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-spinner-wrapper">
+            <span class="neon-spinner"></span>
+        </div>
+        <div class="modal-message" id="modalLoaderMessage">در حال انجام...</div>
+        <div class="modal-submessage" id="modalLoaderSubMessage">لطفاً صبر کنید</div>
+        <div class="modal-progress" id="modalLoaderProgress" style="display:none;">
+            <div class="modal-progress-fill" id="modalLoaderProgressFill"></div>
+        </div>
+        <div class="modal-percent" id="modalLoaderPercent" style="display:none;">
+            <span class="percent-value" id="modalLoaderPercentValue">۰</span>
+            <span class="percent-symbol">٪</span>
+        </div>
+    </div>
+</div>
+<script>
+// ============================================================
+// DATA MANAGEMENT — JavaScript
+// ============================================================
+
+(function() {
+'use strict';
+
+// ============================================================
+// UTILS
+// ============================================================
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+function toPersian(num) {
+    return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function formatBytes(mb) {
+    if (mb === undefined || mb === null || isNaN(mb)) return '—';
+    const v = Number(mb);
+    if (v >= 1024) return (v / 1024).toFixed(2) + ' GB';
+    return v.toFixed(1) + ' MB';
+}
+
+function formatNumber(n) {
+    if (n === undefined || n === null || isNaN(n)) return '—';
+    const v = Number(n);
+    if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(2) + 'B';
+    if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+    if (v >= 1_000) return (v / 1_000).toFixed(1) + 'K';
+    return v.toLocaleString('en-US');
+}
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function getQuotaLevel(percent) {
+    if (percent >= 85) return 'critical';
+    if (percent >= 65) return 'warning';
+    return 'healthy';
+}
+
+const ICONS = {
+    database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    router: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>',
+    reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+};
+
+
+// ============================================================
+// API LAYER
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        const config = {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            ...options,
+        };
+        try {
+            const response = await fetch(url, config);
+            const data = await response.json();
+            return data;
+        } catch (err) {
+            console.error(`[API] ${url}:`, err);
+            return { success: false, error: err.message };
+        }
+    },
+
+    // Quota
+    getAllQuotas() { return this.request('/api/db/quota'); },
+    getQuotaStats() { return this.request('/api/db/quota/stats'); },
+    getQuota(db) { return this.request(`/api/db/quota/${db}`); },
+    getQuotaStatus(db) { return this.request(`/api/db/quota/${db}/status`); },
+    setQuota(db, data) {
+        return this.request(`/api/db/quota/${db}`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    setTableQuota(db, table, data) {
+        return this.request(`/api/db/quota/${db}/table/${table}`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    resetQuota(db) {
+        return this.request(`/api/db/quota/${db}`, { method: 'DELETE' });
+    },
+    resetAllQuotas() {
+        return this.request('/api/db/quota', { method: 'DELETE' });
+    },
+
+    // Router
+    getRouterStats() { return this.request('/api/db/router/stats'); },
+    getRouterRules() { return this.request('/api/db/router/rules'); },
+
+    // Registry
+    getRegistrySummary() { return this.request('/api/db/registry/summary'); },
+};
+
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(message, type = 'info', duration = 3000) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: ICONS.check,
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: ICONS.alert,
+        info: ICONS.info,
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-message">${escapeHtml(message)}</div>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+
+// ============================================================
+// LOADING SYSTEM
+// ============================================================
+const Loading = {
+    _inlineContainers: new Map(),
+    _modalTimer: null,
+    _modalOptions: null,
+
+    showInline(container) {
+        const el = typeof container === 'string' ? $(container) : container;
+        if (!el) return;
+
+        if (!this._inlineContainers.has(el)) {
+            const loader = el.querySelector(':scope > .inline-loader');
+            if (loader) {
+                this._inlineContainers.set(el, loader);
+            } else {
+                const newLoader = $('#globalInlineLoader').cloneNode(true);
+                newLoader.id = '';
+                newLoader.style.display = '';
+                if (getComputedStyle(el).position === 'static') {
+                    el.style.position = 'relative';
+                }
+                el.appendChild(newLoader);
+                this._inlineContainers.set(el, newLoader);
+            }
+        }
+
+        const loader = this._inlineContainers.get(el);
+        if (loader) loader.classList.add('active');
+    },
+
+    hideInline(container) {
+        const el = typeof container === 'string' ? $(container) : container;
+        if (!el) return;
+        const loader = this._inlineContainers.get(el);
+        if (loader) loader.classList.remove('active');
+    },
+
+    showModal(options = {}) {
+        const modal = $('#globalModalLoader');
+        if (!modal) return;
+
+        const {
+            message = 'در حال انجام...',
+            subMessage = 'لطفاً صبر کنید',
+            showProgress = false,
+            showPercent = false,
+            duration = null,
+            onComplete = null,
+        } = options;
+
+        $('#modalLoaderMessage').textContent = message;
+        $('#modalLoaderSubMessage').textContent = subMessage;
+
+        if (showProgress) {
+            $('#modalLoaderProgress').style.display = 'block';
+            $('#modalLoaderProgressFill').style.width = '0%';
+        } else {
+            $('#modalLoaderProgress').style.display = 'none';
+        }
+
+        if (showPercent) {
+            $('#modalLoaderPercent').style.display = 'flex';
+            $('#modalLoaderPercentValue').textContent = '۰';
+        } else {
+            $('#modalLoaderPercent').style.display = 'none';
+        }
+
+        modal.style.display = 'flex';
+        modal.classList.remove('success', 'error');
+        document.body.style.overflow = 'hidden';
+
+        this._modalOptions = options;
+        this._modalStartTime = Date.now();
+
+        if (duration) {
+            const update = () => {
+                if (modal.style.display === 'none') return;
+                const elapsed = Date.now() - this._modalStartTime;
+                const pct = Math.min((elapsed / duration) * 100, 100);
+
+                if (showProgress) {
+                    $('#modalLoaderProgressFill').style.width = pct + '%';
+                }
+                if (showPercent) {
+                    $('#modalLoaderPercentValue').textContent = toPersian(Math.round(pct));
+                }
+
+                if (pct < 100) {
+                    this._modalTimer = setTimeout(update, 50);
+                } else {
+                    this.completeModal();
+                }
+            };
+            update();
+        }
+    },
+
+    completeModal() {
+        const modal = $('#globalModalLoader');
+        if (!modal || modal.style.display === 'none') return;
+
+        modal.classList.add('success');
+        $('#modalLoaderMessage').textContent = 'انجام شد';
+        $('#modalLoaderSubMessage').textContent = 'با موفقیت تکمیل شد';
+        $('#modalLoaderProgressFill').style.width = '100%';
+        if ($('#modalLoaderPercent').style.display !== 'none') {
+            $('#modalLoaderPercentValue').textContent = toPersian(100);
+        }
+
+        setTimeout(() => {
+            const onComplete = this._modalOptions?.onComplete;
+            this.hideModal();
+            if (onComplete) {
+                try { onComplete(); } catch (e) { console.error(e); }
+            }
+        }, 700);
+    },
+
+    hideModal() {
+        const modal = $('#globalModalLoader');
+        if (!modal) return;
+
+        if (this._modalTimer) {
+            clearTimeout(this._modalTimer);
+            this._modalTimer = null;
+        }
+
+        modal.style.display = 'none';
+        modal.classList.remove('success', 'error');
+        document.body.style.overflow = '';
+        this._modalOptions = null;
+    },
+};
+
+
+// ============================================================
+// NAV LOADER
+// ============================================================
+async function loadNav() {
+    const container = $('#navContainer');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/frontend/components/nav.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('script').forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        console.log('✅ Nav loaded');
+    } catch (err) {
+        console.error('Failed to load nav:', err);
+    }
+}
+
+function setupNavListeners() {
+    window.addEventListener('nav:toggle-sidebar', (e) => {
+        const collapsed = e.detail?.collapsed;
+        const main = $('#mainContent');
+        if (main) main.classList.toggle('expanded', !!collapsed);
+    });
+
+    window.addEventListener('nav:ready', () => {
+        const sidebar = document.querySelector('.nav-sidebar');
+        if (sidebar && sidebar.classList.contains('nav-collapsed')) {
+            $('#mainContent')?.classList.add('expanded');
+        }
+    });
+}
+
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    quotas: null,
+    quotaStats: null,
+    routerStats: null,
+    routerRules: [],
+    registrySummary: null,
+    editingDb: null,
+    confirmCallback: null,
+    charts: { quota: null },
+    timers: { clock: null, autoRefresh: null },
+    autoRefresh: true,
+};
+
+
+// ============================================================
+// LIVE CLOCK
+// ============================================================
+function startLiveClock() {
+    const el = $('#liveClockText');
+    if (!el) return;
+
+    const update = () => {
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-US', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
+        const date = now.toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric'
+        });
+        el.textContent = `${time} • ${date}`;
+    };
+
+    update();
+    if (state.timers.clock) clearInterval(state.timers.clock);
+    state.timers.clock = setInterval(update, 1000);
+}
+
+
+// ============================================================
+// RENDER: STATS
+// ============================================================
+function renderStats() {
+    const stats = state.quotaStats || {};
+    const quotas = state.quotas || {};
+
+    // محاسبه کل
+    let totalMb = 0;
+    let usedMb = 0;
+    const dbCount = Object.keys(quotas).length;
+
+    Object.entries(quotas).forEach(([name, info]) => {
+        const q = info.quota || {};
+        const s = info.status || {};
+        totalMb += q.total_mb ?? q.max_mb ?? 500;
+        usedMb += s.used_mb ?? q.used_mb ?? 0;
+    });
+
+    // اگه stats از API مستقیم اومده، اولویت بده
+    if (stats.total_mb !== undefined) totalMb = stats.total_mb;
+    if (stats.used_mb !== undefined) usedMb = stats.used_mb;
+
+    const freeMb = totalMb - usedMb;
+    const usedPercent = totalMb > 0 ? ((usedMb / totalMb) * 100).toFixed(1) : 0;
+    const freePercent = (100 - parseFloat(usedPercent)).toFixed(1);
+
+    $('#statTotal').textContent = formatBytes(totalMb);
+    $('#statTotalMeta').textContent = `${toPersian(dbCount)} دیتابیس`;
+
+    $('#statUsed').textContent = formatBytes(usedMb);
+    $('#statUsedMeta').textContent = `${toPersian(usedPercent)}٪ از کل`;
+
+    $('#statFree').textContent = formatBytes(freeMb);
+    $('#statFreeMeta').textContent = `${toPersian(freePercent)}٪ باقی‌مانده`;
+
+    $('#statDbs').textContent = toPersian(dbCount);
+
+    // Critical count
+    let criticalCount = 0;
+    Object.values(quotas).forEach(info => {
+        const q = info.quota || {};
+        const s = info.status || {};
+        const used = s.used_mb ?? q.used_mb ?? 0;
+        const total = q.total_mb ?? q.max_mb ?? 500;
+        const pct = total > 0 ? (used / total) * 100 : 0;
+        if (pct >= 85) criticalCount++;
+    });
+
+    $('#statDbsMeta').textContent = criticalCount > 0
+        ? `${toPersian(criticalCount)} در وضعیت بحرانی`
+        : 'همه در وضعیت سالم';
+}
+
+
+// ============================================================
+// RENDER: QUOTA LIST
+// ============================================================
+function renderQuotaList() {
+    const list = $('#quotaList');
+    if (!list) return;
+
+    const quotas = state.quotas || {};
+    const entries = Object.entries(quotas);
+
+    $('#quotaListCount').textContent = toPersian(entries.length);
+
+    if (entries.length === 0) {
+        list.innerHTML = `
+            <div class="quota-empty">
+                <div class="quota-empty-icon">${ICONS.database}</div>
+                <div>هیچ دیتابیسی یافت نشد</div>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = entries.map(([name, info]) => {
+        const q = info.quota || {};
+        const s = info.status || {};
+
+        const used = s.used_mb ?? q.used_mb ?? 0;
+        const total = q.total_mb ?? q.max_mb ?? 500;
+        const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+        const level = getQuotaLevel(percent);
+
+        return `
+            <div class="quota-item" data-db="${escapeHtml(name)}">
+                <div class="quota-item-info">
+                    <div class="quota-name">
+                        ${ICONS.database}
+                        ${escapeHtml(name)}
+                    </div>
+                    <div class="quota-type">${escapeHtml(q.type || q.engine || 'database')}</div>
+                </div>
+
+                <div class="quota-bar-wrapper">
+                    <div class="quota-bar">
+                        <div class="quota-bar-fill ${level}" style="width: 0%;" data-target-width="${percent}%"></div>
+                    </div>
+                    <div class="quota-info">
+                        <span>${formatBytes(used)} / ${formatBytes(total)}</span>
+                    </div>
+                </div>
+
+                <div class="quota-percent ${level}">${toPersian(percent)}%</div>
+
+                <button class="quota-reset-btn" data-reset="${escapeHtml(name)}" title="ریست">
+                    ${ICONS.reset}
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    // انیمیت نوارها
+    setTimeout(() => {
+        $$('.quota-bar-fill').forEach(bar => {
+            bar.style.width = bar.dataset.targetWidth;
+        });
+    }, 200);
+
+    // کلیک روی آیتم → باز کردن modal ویرایش
+    $$('.quota-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.quota-reset-btn')) return;
+            openQuotaModal(item.dataset.db);
+        });
+    });
+
+    // دکمه ریست
+    $$('.quota-reset-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const dbName = btn.dataset.reset;
+
+            const ok = await showConfirm(
+                `ریست سهمیه ${dbName}؟`,
+                `سهمیه دیتابیس <code>${escapeHtml(dbName)}</code> به مقادیر پیش‌فرض بازمی‌گردد.`
+            );
+
+            if (!ok) return;
+
+            Loading.showModal({
+                message: 'در حال ریست...',
+                subMessage: dbName,
+                showProgress: true,
+                duration: 1200,
+            });
+
+            const res = await API.resetQuota(dbName);
+
+            if (res.success) {
+                Loading.completeModal();
+                showToast(`سهمیه ${dbName} ریست شد`, 'success', 1800);
+                await refreshAll();
+            } else {
+                Loading.hideModal();
+                showToast(res.error || 'خطا در ریست', 'error', 2000);
+            }
+        });
+    });
+}
+
+
+// ============================================================
+// RENDER: QUOTA CHART
+// ============================================================
+function getChartColors() {
+    const style = getComputedStyle(document.documentElement);
+    return {
+        primary: style.getPropertyValue('--primary').trim() || '#6366f1',
+        info: style.getPropertyValue('--info').trim() || '#06b6d4',
+        warning: style.getPropertyValue('--warning').trim() || '#f59e0b',
+        success: style.getPropertyValue('--success').trim() || '#22c55e',
+        danger: style.getPropertyValue('--danger').trim() || '#ef4444',
+        text: style.getPropertyValue('--chart-text').trim() || '#8b9bb4',
+        grid: style.getPropertyValue('--chart-grid').trim() || 'rgba(148,163,184,0.08)',
+    };
+}
+
+function initQuotaChart() {
+    const canvas = $('#quotaChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    Chart.defaults.font.family = "'Vazirmatn', system-ui, sans-serif";
+    Chart.defaults.font.size = 11;
+
+    const c = getChartColors();
+
+    state.charts.quota = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+                borderColor: 'transparent',
+                borderWidth: 0,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            animation: { animateRotate: true, animateScale: false, duration: 700, easing: 'easeOutQuart' },
+            layout: { padding: 4 },
+            plugins: {
+                legend: {
+                    position: 'right',
+                    rtl: true,
+                    labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 10,
+                        font: { size: 11, weight: '500' },
+                        color: c.text,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    }
+                },
+                tooltip: {
+                    rtl: true,
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${formatBytes(ctx.parsed)} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateQuotaChart() {
+    if (!state.charts.quota) return;
+    const c = getChartColors();
+
+    const quotas = state.quotas || {};
+    const entries = Object.entries(quotas);
+
+    const labels = [];
+    const data = [];
+
+    entries.forEach(([name, info]) => {
+        const q = info.quota || {};
+        const s = info.status || {};
+        const used = s.used_mb ?? q.used_mb ?? 0;
+        labels.push(name);
+        data.push(used);
+    });
+
+    const colors = [c.primary, c.info, c.warning, c.danger, c.success, '#a855f7', '#ec4899'];
+
+    state.charts.quota.data.labels = labels;
+    state.charts.quota.data.datasets[0].data = data;
+    state.charts.quota.data.datasets[0].backgroundColor = labels.map((_, i) => colors[i % colors.length]);
+    state.charts.quota.update('active');
+
+    $('#quotaChartHint').textContent = `${toPersian(labels.length)} دیتابیس`;
+}
+
+
+// ============================================================
+// RENDER: ROUTER
+// ============================================================
+function renderRouter() {
+    const statsGrid = $('#routerStatsGrid');
+    const rulesList = $('#routerRulesList');
+
+    if (!statsGrid) return;
+
+    const stats = state.routerStats || {};
+
+    const statItems = [
+        { label: 'کل Routes', value: formatNumber(stats.total_routes ?? 0), class: 'primary' },
+        { label: 'Failovers', value: formatNumber(stats.failovers ?? 0), class: (stats.failovers || 0) > 0 ? 'warning' : 'success' },
+        { label: 'Active', value: formatNumber(stats.active_routes ?? stats.total_routes ?? 0), class: 'success' },
+    ];
+
+    statsGrid.innerHTML = statItems.map(s => `
+        <div class="router-stat">
+            <span class="router-stat-label">${s.label}</span>
+            <span class="router-stat-value ${s.class}">${s.value}</span>
+        </div>
+    `).join('');
+
+    // Rules
+    if (rulesList) {
+        const rules = state.routerRules || [];
+        const rulesArr = Array.isArray(rules)
+            ? rules
+            : Object.entries(rules).map(([k, v]) => ({ name: k, target: v }));
+
+        if (rulesArr.length === 0) {
+            rulesList.innerHTML = '<div class="router-empty">قانونی تعریف نشده</div>';
+        } else {
+            rulesList.innerHTML = rulesArr.slice(0, 10).map(rule => `
+                <div class="router-rule-item">
+                    <div class="router-rule-icon">${ICONS.router}</div>
+                    <div class="router-rule-content">
+                        <div class="router-rule-name">${escapeHtml(rule.name || rule.key || '—')}</div>
+                        <div class="router-rule-target">→ ${escapeHtml(String(rule.target || rule.value || '—'))}</div>
+                    </div>
+                    <span class="router-rule-badge primary">active</span>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+
+// ============================================================
+// RENDER: REGISTRY
+// ============================================================
+function renderRegistry() {
+    const container = $('#registrySummary');
+    if (!container) return;
+
+    const r = state.registrySummary || {};
+
+    const items = [
+        { label: 'کل دیتابیس‌ها', value: r.total_databases ?? 0, class: 'primary' },
+        { label: 'فعال', value: r.active ?? 0, class: 'success' },
+        { label: 'سالم', value: r.healthy ?? 0, class: 'success' },
+        { label: 'حجم کل', value: formatBytes(r.total_size_mb ?? 0), class: 'info', isFormatted: true },
+    ];
+
+    let html = items.map(item => `
+        <div class="registry-item">
+            <div class="registry-item-label">${item.label}</div>
+            <div class="registry-item-value ${item.class}">
+                ${item.isFormatted ? item.value : toPersian(item.value)}
+            </div>
+        </div>
+    `).join('');
+
+    // Services list اگه وجود داره
+    if (r.services && Array.isArray(r.services) && r.services.length > 0) {
+        html += `
+            <div class="registry-services">
+                ${r.services.map(svc => `
+                    <div class="registry-service">
+                        <span class="registry-service-dot ${svc.status || 'healthy'}"></span>
+                        <div class="registry-service-info">
+                            <div class="registry-service-name">${escapeHtml(svc.name || svc.id || '—')}</div>
+                            <div class="registry-service-meta">
+                                ${escapeHtml(svc.version || '—')} • ${escapeHtml(svc.uptime || '—')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+
+    $('#registryHint').textContent = toPersian(r.total_databases ?? 0) + ' DB';
+}
+
+
+// ============================================================
+// QUOTA MODAL
+// ============================================================
+function openQuotaModal(dbName) {
+    const info = state.quotas?.[dbName];
+    if (!info) {
+        showToast('اطلاعات دیتابیس یافت نشد', 'error', 1500);
+        return;
+    }
+
+    const q = info.quota || {};
+    const s = info.status || {};
+
+    state.editingDb = dbName;
+
+    const totalMb = q.total_mb ?? q.max_mb ?? 500;
+    const warnThreshold = q.warn_threshold ?? 75;
+    const criticalThreshold = q.critical_threshold ?? 90;
+
+    $('#quotaModalDb').textContent = dbName;
+    $('#quotaSlider').value = totalMb;
+    $('#quotaSliderValue').textContent = toPersian(totalMb);
+    $('#quotaWarnInput').value = warnThreshold;
+    $('#quotaCriticalInput').value = criticalThreshold;
+
+    openModal('quotaModal');
+}
+
+function setupQuotaModal() {
+    const modal = $('#quotaModal');
+    const slider = $('#quotaSlider');
+    const valueEl = $('#quotaSliderValue');
+
+    const close = () => {
+        closeModal('quotaModal');
+        state.editingDb = null;
+    };
+
+    slider?.addEventListener('input', () => {
+        valueEl.textContent = toPersian(slider.value);
+    });
+
+    $('#quotaSave')?.addEventListener('click', async () => {
+        if (!state.editingDb) return;
+
+        const btn = $('#quotaSave');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span style="opacity:0.7;">در حال ذخیره...</span>';
+
+        const data = {
+            total_mb: parseInt(slider.value, 10),
+            warn_threshold: parseInt($('#quotaWarnInput').value, 10) || 75,
+            critical_threshold: parseInt($('#quotaCriticalInput').value, 10) || 90,
+        };
+
+        const res = await API.setQuota(state.editingDb, data);
+
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+
+        if (res.success) {
+            showToast(`سهمیه ${state.editingDb} بروزرسانی شد`, 'success', 1800);
+            const dbName = state.editingDb;
+            close();
+            await refreshAll();
+        } else {
+            showToast(res.error || 'خطا در ذخیره', 'error', 2000);
+        }
+    });
+
+    $('#quotaResetBtn')?.addEventListener('click', async () => {
+        if (!state.editingDb) return;
+        const dbName = state.editingDb;
+        close();
+
+        const ok = await showConfirm(
+            `ریست سهمیه ${dbName}؟`,
+            `سهمیه دیتابیس <code>${escapeHtml(dbName)}</code> به مقادیر پیش‌فرض بازمی‌گردد.`
+        );
+
+        if (!ok) return;
+
+        Loading.showModal({
+            message: 'در حال ریست...',
+            subMessage: dbName,
+            showProgress: true,
+            duration: 1200,
+        });
+
+        const res = await API.resetQuota(dbName);
+
+        if (res.success) {
+            Loading.completeModal();
+            showToast(`سهمیه ${dbName} ریست شد`, 'success', 1800);
+            await refreshAll();
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در ریست', 'error', 2000);
+        }
+    });
+}
+
+
+// ============================================================
+// RESET ALL MODAL
+// ============================================================
+function setupResetAllModal() {
+    const modal = $('#resetAllModal');
+    const input = $('#resetAllInput');
+    const confirmBtn = $('#resetAllConfirm');
+
+    const open = () => {
+        openModal('resetAllModal');
+        input.value = '';
+        input.classList.remove('valid', 'invalid');
+        confirmBtn.disabled = true;
+        setTimeout(() => input.focus(), 250);
+    };
+
+    const close = () => {
+        closeModal('resetAllModal');
+        input.value = '';
+        input.classList.remove('valid', 'invalid');
+        confirmBtn.disabled = true;
+    };
+
+    $('#resetAllQuotasBtn')?.addEventListener('click', open);
+
+    input?.addEventListener('input', () => {
+        const val = input.value.trim();
+        const matches = val === 'RESET ALL';
+        const hasValue = val.length > 0;
+
+        input.classList.toggle('valid', matches);
+        input.classList.toggle('invalid', hasValue && !matches);
+        confirmBtn.disabled = !matches;
+    });
+
+    input?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !confirmBtn.disabled) confirmBtn.click();
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+        if (confirmBtn.disabled) return;
+
+        confirmBtn.disabled = true;
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<span style="opacity:0.7;">در حال ریست...</span>';
+
+        const res = await API.resetAllQuotas();
+
+        if (res.success) {
+            Loading.completeModal();
+            close();
+            showToast('همه سهمیه‌ها ریست شدند', 'success', 2000);
+            await refreshAll();
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در ریست', 'error', 2000);
+        }
+
+        confirmBtn.innerHTML = originalText;
+        confirmBtn.disabled = false;
+    });
+
+    // اضافه کردن کلوز دکمه‌ها
+    $$('[data-close-modal="resetAllModal"]').forEach(btn => {
+        btn.addEventListener('click', close);
+    });
+
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('open')) close();
+    });
+}
+
+
+// ============================================================
+// CONFIRM MODAL
+// ============================================================
+function showConfirm(title, desc, isDanger = true) {
+    return new Promise((resolve) => {
+        $('#confirmTitle').textContent = title;
+        $('#confirmDesc').innerHTML = desc;
+
+        const icon = $('#confirmIcon');
+        if (isDanger) icon.classList.add('danger');
+        else icon.classList.remove('danger');
+
+        state.confirmCallback = (result) => resolve(result);
+        openModal('confirmModal');
+    });
+}
+
+function setupConfirmModal() {
+    $('#confirmOkBtn')?.addEventListener('click', () => {
+        closeModal('confirmModal');
+        if (state.confirmCallback) {
+            const cb = state.confirmCallback;
+            state.confirmCallback = null;
+            cb(true);
+        }
+    });
+
+    $$('[data-close-modal="confirmModal"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (state.confirmCallback) {
+                const cb = state.confirmCallback;
+                state.confirmCallback = null;
+                cb(false);
+            }
+        });
+    });
+
+    const modal = $('#confirmModal');
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            if (state.confirmCallback) {
+                const cb = state.confirmCallback;
+                state.confirmCallback = null;
+                cb(false);
+            }
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('open')) {
+            if (state.confirmCallback) {
+                const cb = state.confirmCallback;
+                state.confirmCallback = null;
+                cb(false);
+            }
+        }
+    });
+}
+
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+}
+
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+}
+
+function setupModals() {
+    $$('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
+    });
+
+    $$('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                // اگه confirmCallback هست، نذار بستن بدون callback
+                if (overlay.id === 'confirmModal' && state.confirmCallback) return;
+                if (overlay.id === 'resetAllModal') return; // برای این یکی جدا handle شده
+                overlay.classList.remove('open');
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            $$('.modal-overlay.open').forEach(m => {
+                if (m.id === 'confirmModal' || m.id === 'resetAllModal') return;
+                m.classList.remove('open');
+            });
+        }
+    });
+}
+
+
+// ============================================================
+// DATA LOADERS
+// ============================================================
+async function loadQuotas() {
+    const [q, qs] = await Promise.all([
+        API.getAllQuotas(),
+        API.getQuotaStats(),
+    ]);
+
+    if (q.success) state.quotas = q.data || {};
+    if (qs.success) state.quotaStats = qs.data || {};
+}
+
+async function loadRouter() {
+    const [stats, rules] = await Promise.all([
+        API.getRouterStats(),
+        API.getRouterRules(),
+    ]);
+
+    if (stats.success) state.routerStats = stats.data || {};
+    if (rules.success) state.routerRules = rules.data || [];
+}
+
+async function loadRegistry() {
+    const res = await API.getRegistrySummary();
+    if (res.success) state.registrySummary = res.data || {};
+}
+
+
+// ============================================================
+// REFRESH
+// ============================================================
+async function refreshAll(showLoader = false) {
+    if (showLoader) {
+        Loading.showModal({
+            message: 'بروزرسانی...',
+            subMessage: 'در حال بارگذاری داده‌ها',
+            showProgress: true,
+            duration: 2000,
+        });
+    }
+
+    try {
+        await Promise.allSettled([
+            loadQuotas(),
+            loadRouter(),
+            loadRegistry(),
+        ]);
+
+        renderStats();
+        renderQuotaList();
+        updateQuotaChart();
+        renderRouter();
+        renderRegistry();
+
+    } catch (e) {
+        console.error('Refresh error:', e);
+    }
+
+    if (showLoader) {
+        Loading.completeModal();
+    }
+}
+
+
+// ============================================================
+// EVENT BINDINGS
+// ============================================================
+function bindEvents() {
+    // Auto Refresh Toggle
+    $('#autoRefreshToggle')?.addEventListener('click', function() {
+        state.autoRefresh = !state.autoRefresh;
+        this.classList.toggle('active', state.autoRefresh);
+        setupAutoRefresh();
+        showToast(state.autoRefresh ? 'بروزرسانی خودکار فعال' : 'بروزرسانی خودکار غیرفعال', 'info', 1500);
+    });
+
+    // Router Refresh
+    $('[data-refresh="router"]')?.addEventListener('click', async () => {
+        await loadRouter();
+        renderRouter();
+        showToast('Router بروزرسانی شد', 'success', 1500);
+    });
+
+    // Tab Navigation
+    $$('.tab-btn[data-href]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.location.href = btn.dataset.href;
+        });
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+        const isInput = e.target.matches('input, textarea, select');
+        const mod = e.ctrlKey || e.metaKey;
+
+        if (mod && e.key.toLowerCase() === 'r' && !isInput) {
+            e.preventDefault();
+            refreshAll(true);
+        }
+    });
+}
+
+
+// ============================================================
+// AUTO REFRESH
+// ============================================================
+function setupAutoRefresh() {
+    if (state.timers.autoRefresh) {
+        clearInterval(state.timers.autoRefresh);
+        state.timers.autoRefresh = null;
+    }
+
+    startLiveClock();
+
+    if (!state.autoRefresh) return;
+
+    state.timers.autoRefresh = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            loadQuotas().then(() => {
+                renderStats();
+                renderQuotaList();
+                updateQuotaChart();
+            });
+            loadRouter().then(() => renderRouter());
+        }
+    }, 30000);
+}
+
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log(
+        '%c Data Management ',
+        'background: linear-gradient(135deg, #6366f1, #818cf8); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
+    );
+
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Vazirmatn', 'JetBrains Mono', system-ui, sans-serif";
+        Chart.defaults.font.size = 11;
+    }
+
+    setupNavListeners();
+    await loadNav();
+
+    setTimeout(() => {
+        initQuotaChart();
+    }, 200);
+
+    await refreshAll(false);
+
+    bindEvents();
+    setupModals();
+    setupQuotaModal();
+    setupResetAllModal();
+    setupConfirmModal();
+    setupAutoRefresh();
+
+    setTimeout(() => {
+        showToast('👋 صفحه مدیریت داده آماده است', 'info', 2500);
+    }, 500);
+}
+
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+})();
+</script>
+</body>
+</html>
