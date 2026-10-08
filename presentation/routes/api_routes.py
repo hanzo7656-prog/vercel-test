@@ -4475,7 +4475,183 @@ def debug_processes():
         logger.error(f"Debug processes error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================
+# CACHE MONITORING & CONTROL (Dual Redis)
+# ============================================================
 
+@api_bp.route('/debug/cache/stats', methods=['GET'])
+@require_auth('admin')
+def cache_stats():
+    """
+    آمار کامل cache (Dual Redis)
+    
+    Returns:
+        {
+            success: true,
+            data: {
+                hits, misses, sets, deletes, errors,
+                hit_ratio, active_redis, command_count,
+                command_usage_percent, failover_count,
+                last_error, last_error_at
+            }
+        }
+    """
+    try:
+        from infrastructure.api.cache_manager import cache_manager
+        
+        stats = cache_manager.get_stats()
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Cache stats error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/detailed', methods=['GET'])
+@require_auth('admin')
+def cache_detailed():
+    """
+    آمار دقیق از هر دو Redis (primary + backup)
+    
+    Returns:
+        {
+            success: true,
+            data: {
+                active: "cache" | "cache_backup",
+                failover_count: N,
+                primary: { ... },
+                backup: { ... }
+            }
+        }
+    """
+    try:
+        from infrastructure.api.cache_manager import cache_manager
+        
+        stats = cache_manager.get_detailed_stats()
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Cache detailed error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/switch', methods=['POST'])
+@require_auth('admin')
+def cache_switch():
+    """
+    سوئیچ دستی بین Redis ها
+    
+    Body (JSON):
+        { "target": "cache" | "cache_backup" | "auto" }
+    
+    Examples:
+        - {"target": "auto"} → سوئیچ به Redis دیگر
+        - {"target": "cache_backup"} → سوئیچ به backup
+        - {"target": "cache"} → سوئیچ به primary
+    """
+    try:
+        from infrastructure.api.cache_manager import cache_manager
+        
+        data = request.json or {}
+        target = data.get('target', 'auto')
+        
+        result = cache_manager.force_switch(target)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'data': result,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Switch failed'),
+                'data': result,
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"Cache switch error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/active', methods=['GET'])
+@require_auth('admin')
+def cache_active():
+    """
+    Redis فعلی
+    
+    Returns:
+        {
+            success: true,
+            data: {
+                active: "cache" | "cache_backup",
+                connected: true,
+                command_usage_percent: N
+            }
+        }
+    """
+    try:
+        from infrastructure.api.cache_manager import cache_manager
+        
+        stats = cache_manager.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'active': stats.get('active_redis'),
+                'connected': stats.get('connected'),
+                'command_count': stats.get('command_count'),
+                'command_usage_percent': stats.get('command_usage_percent'),
+                'failover_count': stats.get('failover_count'),
+            },
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Cache active error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/debug/cache/health', methods=['GET'])
+def cache_health():
+    """
+    بررسی سلامت cache (بدون auth برای health check)
+    
+    Returns:
+        { "status": "ok" | "degraded" | "error", "active": "...", ... }
+    """
+    try:
+        from infrastructure.api.cache_manager import cache_manager
+        
+        stats = cache_manager.get_stats()
+        connected = stats.get('connected', False)
+        usage = stats.get('command_usage_percent', 0)
+        
+        if not connected:
+            status = "error"
+        elif usage > 90:
+            status = "degraded"
+        else:
+            status = "ok"
+        
+        return jsonify({
+            'status': status,
+            'active': stats.get('active_redis'),
+            'connected': connected,
+            'command_usage_percent': usage,
+            'failover_count': stats.get('failover_count'),
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+        }), 500
 
 # ============================================================
 # ۲. اندپوینت اجرای دستورات (اصلاح شده با پشتیبانی از ۳ حالت)
