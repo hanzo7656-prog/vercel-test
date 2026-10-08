@@ -1,0 +1,5755 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="indigo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>Redis | سیستم تحلیلگر</title>
+
+<!-- FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'indigo';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#6366f1';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   REDIS PAGE — CSS
+   ============================================================ */
+
+/* ---------- VARIABLES ---------- */
+:root {
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 76px;
+
+    --neon-green: #22c55e;
+    --neon-cyan: #06b6d4;
+    --neon-purple: #6366f1;
+    --neon-gradient: linear-gradient(90deg,
+        var(--neon-green) 0%,
+        var(--neon-cyan) 50%,
+        var(--neon-purple) 100%);
+}
+
+/* ---------- Color Themes ---------- */
+html[data-color="indigo"]  { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; }
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; }
+html[data-color="violet"]  { --primary: #a855f7; --primary-dark: #9333ea; --primary-light: #c084fc; --primary-rgb: 168, 85, 247; }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+html[data-color="custom"]  { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; }
+
+/* ---------- Dark Theme ---------- */
+html[data-theme="dark"] {
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(var(--primary-rgb), 0.1);
+
+    /* TYPE COLORS */
+    --type-string: #06b6d4;
+    --type-hash:   #a855f7;
+    --type-list:   #22c55e;
+    --type-set:    #f59e0b;
+    --type-zset:   #ec4899;
+    --type-stream: #14b8a6;
+
+    /* CHART COLORS */
+    --chart-text: #8b9bb4;
+    --chart-grid: rgba(148, 163, 184, 0.08);
+    --chart-tooltip-bg: rgba(0, 0, 0, 0.88);
+    --chart-tooltip-text: #ffffff;
+    --chart-tooltip-border: rgba(148, 163, 184, 0.2);
+}
+
+/* ---------- Light Theme ---------- */
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+    --shadow-focus: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+    --success: #16a34a;
+    --success-dark: #15803d;
+    --warning: #d97706;
+    --warning-dark: #b45309;
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --info: #0891b2;
+    --success-bg: rgba(22, 163, 74, 0.08);
+    --warning-bg: rgba(217, 119, 6, 0.08);
+    --danger-bg: rgba(220, 38, 38, 0.08);
+    --info-bg: rgba(8, 145, 178, 0.08);
+    --primary-bg: rgba(var(--primary-rgb), 0.08);
+
+    /* TYPE COLORS */
+    --type-string: #0891b2;
+    --type-hash:   #9333ea;
+    --type-list:   #16a34a;
+    --type-set:    #d97706;
+    --type-zset:   #db2777;
+    --type-stream: #0d9488;
+
+    /* CHART COLORS */
+    --chart-text: #5c6b82;
+    --chart-grid: rgba(15, 23, 42, 0.06);
+    --chart-tooltip-bg: rgba(255, 255, 255, 0.98);
+    --chart-tooltip-text: #0d1421;
+    --chart-tooltip-border: rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- Reset ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--transition), color var(--transition);
+}
+
+::selection { background: var(--primary); color: white; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+.main-content {
+    margin-right: var(--sidebar-width, 280px);
+    min-height: 100vh;
+    padding-bottom: 60px;
+    transition: margin-right var(--transition-slow);
+}
+
+@media (min-width: 769px) {
+    .main-content.expanded { margin-right: var(--sidebar-collapsed, 76px); }
+}
+
+@media (max-width: 768px) {
+    .main-content { margin-right: 0; padding-top: 56px; }
+}
+
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+@media (max-width: 1024px) { .container { padding: 10px 16px; gap: 10px; } }
+@media (max-width: 768px)  { .container { padding: 10px 12px; gap: 10px; } }
+@media (max-width: 480px)  { .container { padding: 8px 10px; gap: 8px; } }
+
+
+/* ============================================================
+   STICKY HEADER
+   ============================================================ */
+.header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: linear-gradient(to bottom, var(--bg-page) 75%, transparent);
+    padding: 4px 0 8px;
+    margin: 0 0 2px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    min-height: 38px;
+}
+
+.header-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breadcrumb a { color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+.breadcrumb a:hover { color: var(--primary-light); }
+.breadcrumb-sep { opacity: 0.5; font-size: 9px; }
+.breadcrumb-current { color: var(--text-light); font-weight: 500; }
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.icon-btn-sm {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.icon-btn-sm:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.icon-btn-sm.spinning svg { animation: spin 0.7s linear infinite; }
+.icon-btn-sm svg { width: 14px; height: 14px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* ============================================================
+   TABS NAV
+   ============================================================ */
+.tabs-nav {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 2px 2px;
+    scroll-behavior: smooth;
+}
+
+.tabs-nav::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s var(--transition);
+    flex-shrink: 0;
+}
+
+.tab-btn:hover { background: var(--bg-hover); color: var(--text-light); }
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+    cursor: default;
+}
+
+.tab-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+    .tab-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
+        gap: 5px;
+    }
+    .tab-btn svg { width: 12px; height: 12px; }
+}
+
+
+/* ============================================================
+   INSTANT FEEDBACK TOAST (Top)
+   ============================================================ */
+.toast-instant {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-30px) scale(0.95);
+    z-index: 100003;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+.toast-instant.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.toast-instant-content {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 18px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(var(--primary-rgb), 0.08) inset;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    white-space: nowrap;
+}
+
+.toast-instant-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 6px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast-instant-icon svg { width: 12px; height: 12px; }
+
+@media (max-width: 640px) {
+    .toast-instant-content {
+        font-size: 12px;
+        padding: 9px 14px;
+    }
+    .toast-instant {
+        top: 70px;
+        max-width: calc(100vw - 24px);
+    }
+    .toast-instant-content {
+        white-space: normal;
+        text-align: right;
+    }
+}
+
+
+/* ============================================================
+   DUAL REDIS SECTION
+   ============================================================ */
+.dual-redis-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dual-redis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 900px) {
+    .dual-redis-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ============================================================
+   REDIS CARD
+   ============================================================ */
+.redis-card {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: all 0.25s var(--transition);
+    animation: cardIn 0.4s ease backwards;
+    overflow: hidden;
+}
+
+.redis-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+    transition: opacity 0.3s;
+}
+
+.redis-card.active {
+    border-color: rgba(var(--primary-rgb), 0.35);
+    box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.15);
+}
+
+.redis-card.active::before {
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 1;
+    animation: cardPulse 2s ease-in-out infinite;
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+.redis-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.redis-card-title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.redis-status-indicator {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.redis-status-indicator .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: all 0.3s;
+}
+
+.redis-status-indicator.active .status-dot {
+    background: var(--success);
+    box-shadow: 0 0 12px var(--success);
+}
+
+.redis-status-indicator.standby .status-dot {
+    background: var(--text-dim);
+    box-shadow: 0 0 8px rgba(148, 163, 184, 0.3);
+}
+
+.redis-status-indicator.active::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid var(--success);
+    animation: pulseRing 2s ease-out infinite;
+}
+
+@keyframes pulseRing {
+    0% { transform: scale(0.8); opacity: 0.9; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.redis-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-light);
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+.redis-card-subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
+.redis-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.redis-card-badge.active {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.redis-card-badge.standby {
+    background: var(--bg-hover-strong);
+    color: var(--text-dim);
+    border: 1px solid var(--border-strong);
+}
+
+.redis-card-badge.danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    animation: criticalPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes criticalPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+
+/* ============================================================
+   METRIC BLOCK
+   ============================================================ */
+.metric-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.metric-label-block {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.metric-label-block svg {
+    width: 13px;
+    height: 13px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+}
+
+.metric-value {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+.metric-bar {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: var(--bg-hover-strong);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s var(--transition), background 0.3s;
+    position: relative;
+}
+
+.metric-bar-fill.healthy {
+    background: linear-gradient(90deg, var(--success-dark), var(--success));
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.metric-bar-fill.warning {
+    background: linear-gradient(90deg, var(--warning-dark), var(--warning));
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.metric-bar-fill.critical {
+    background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    animation: criticalPulse 1.5s ease-in-out infinite;
+}
+
+.metric-bar-threshold {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--danger);
+    box-shadow: 0 0 6px var(--danger);
+    border-radius: 1px;
+    z-index: 2;
+}
+
+.metric-bar-threshold::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--danger);
+}
+
+.metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 10.5px;
+    font-family: var(--mono-font);
+}
+
+.metric-footer > span:first-child {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.metric-hint {
+    color: var(--text-faint);
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   RESET BLOCK
+   ============================================================ */
+.reset-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+}
+
+.reset-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.reset-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+}
+
+.reset-title svg {
+    width: 13px;
+    height: 13px;
+    color: var(--primary-light);
+}
+
+.reset-value {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-light);
+    white-space: nowrap;
+}
+
+.reset-month-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-hover-strong);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.reset-month-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+    transition: width 1s var(--transition);
+}
+
+.reset-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 10.5px;
+    font-family: var(--mono-font);
+}
+
+.reset-footer > span:first-child {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+
+/* ============================================================
+   SWITCH ACTIVITY BAR
+   ============================================================ */
+.switch-activity-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+
+.switch-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.switch-info-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.switch-info-item svg {
+    width: 14px;
+    height: 14px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.switch-info-label {
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
+.switch-info-value {
+    font-family: var(--mono-font);
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.switch-info-value.success { color: var(--success); }
+.switch-info-value.warning { color: var(--warning); }
+.switch-info-value.danger { color: var(--danger); }
+
+.switch-manual-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    background: var(--primary-bg);
+    border: 1px solid var(--primary);
+    border-radius: 9px;
+    color: var(--primary-light);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.switch-manual-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.switch-manual-btn svg { width: 14px; height: 14px; }
+
+@media (max-width: 640px) {
+    .switch-info { gap: 12px; flex-direction: column; align-items: flex-start; }
+    .switch-info-item { width: 100%; }
+}
+
+
+/* ============================================================
+   CHARTS GRID
+   ============================================================ */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ============================================================
+   PANEL
+   ============================================================ */
+.panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    overflow: hidden;
+    transition: border-color 0.25s;
+    animation: cardIn 0.4s ease backwards;
+}
+
+.panel:hover { border-color: var(--border-strong); }
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.panel-title svg {
+    width: 13px;
+    height: 13px;
+    color: var(--primary-light);
+}
+
+.panel-count {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+}
+
+.panel-link {
+    font-size: 11px;
+    color: var(--primary-light);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: gap 0.2s;
+    padding: 0;
+    font-weight: 600;
+}
+
+.panel-link:hover { gap: 7px; }
+.panel-link svg { width: 11px; height: 11px; }
+
+.panel-body { padding: 12px 14px; }
+.panel-body.no-padding { padding: 0; }
+
+
+/* ============================================================
+   CHART CONTAINER
+   ============================================================ */
+.chart-container {
+    position: relative;
+    height: 240px;
+    width: 100%;
+}
+
+.chart-container canvas { display: block; }
+
+
+/* ============================================================
+   NAMESPACE TREE
+   ============================================================ */
+.namespace-tree {
+    display: flex;
+    flex-direction: column;
+    max-height: 480px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.namespace-tree::-webkit-scrollbar { width: 4px; }
+.namespace-tree::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.tree-group {
+    margin-bottom: 2px;
+}
+
+.tree-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.tree-group-header:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+}
+
+.tree-group.open .tree-group-header {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+}
+
+.tree-toggle {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: transform 0.25s var(--ease-spring);
+    flex-shrink: 0;
+}
+
+.tree-group.open .tree-toggle {
+    transform: rotate(-90deg);
+}
+
+.tree-toggle svg { width: 12px; height: 12px; }
+
+.tree-icon {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 7px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tree-group.open .tree-icon {
+    background: var(--primary);
+    color: white;
+}
+
+.tree-icon svg { width: 12px; height: 12px; }
+
+.tree-group-name {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-group-count {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary-light);
+    background: var(--primary-bg);
+    padding: 2px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.tree-group-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.tree-group-header:hover .tree-group-actions {
+    opacity: 1;
+}
+
+.tree-group-action {
+    width: 24px;
+    height: 24px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.tree-group-action:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.tree-group-action.danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.tree-group-action svg { width: 11px; height: 11px; }
+
+.tree-children {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 0 6px 32px;
+    max-height: 400px;
+    overflow-y: auto;
+    border-right: 2px solid var(--border);
+    margin-right: 18px;
+    margin-top: 4px;
+    display: none;
+}
+
+.tree-group.open .tree-children {
+    display: flex;
+}
+
+.tree-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+
+.tree-child:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    transform: translateX(-2px);
+}
+
+.tree-child-key {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    color: var(--text-light);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-child-type {
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 5px;
+    text-transform: lowercase;
+    flex-shrink: 0;
+}
+
+.tree-child-type.string { background: var(--type-string); color: white; }
+.tree-child-type.hash   { background: var(--type-hash);   color: white; }
+.tree-child-type.list   { background: var(--type-list);   color: white; }
+.tree-child-type.set    { background: var(--type-set);    color: white; }
+.tree-child-type.zset   { background: var(--type-zset);   color: white; }
+
+
+/* ============================================================
+   KEYS EXPLORER
+   ============================================================ */
+.keys-explorer-panel {
+    overflow: hidden;
+}
+
+.keys-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-input);
+    flex-wrap: wrap;
+}
+
+/* Pattern Search */
+.pattern-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 200px;
+}
+
+.pattern-search-icon {
+    position: absolute;
+    right: 12px;
+    width: 14px;
+    height: 14px;
+    color: var(--text-dim);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+.pattern-search-input {
+    width: 100%;
+    padding: 8px 36px 8px 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.18s;
+    direction: ltr;
+    text-align: left;
+}
+
+.pattern-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.pattern-search-input::placeholder {
+    color: var(--text-faint);
+    font-family: var(--ui-font);
+    direction: rtl;
+    text-align: right;
+}
+
+.pattern-clear {
+    position: absolute;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.pattern-clear:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.pattern-clear svg { width: 11px; height: 11px; }
+
+/* Type Filters */
+.type-filters {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+
+.type-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+}
+
+.type-filter-btn:hover {
+    color: var(--text-light);
+    background: var(--bg-hover);
+}
+
+.type-filter-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+}
+
+.type-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.type-dot.string { background: var(--type-string); }
+.type-dot.hash   { background: var(--type-hash); }
+.type-dot.list   { background: var(--type-list); }
+.type-dot.set    { background: var(--type-set); }
+.type-dot.zset   { background: var(--type-zset); }
+
+.type-filter-btn.active .type-dot {
+    background: white;
+}
+
+.type-filter-count {
+    font-family: var(--mono-font);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--bg-hover-strong);
+    min-width: 20px;
+    text-align: center;
+}
+
+.type-filter-btn.active .type-filter-count {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* TTL Filters */
+.ttl-filters {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.ttl-filter-btn {
+    width: 32px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    padding: 0;
+    position: relative;
+}
+
+.ttl-filter-btn:hover {
+    color: var(--text-light);
+    background: var(--bg-hover);
+}
+
+.ttl-filter-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+}
+
+.ttl-filter-btn svg { width: 15px; height: 15px; }
+
+
+/* ============================================================
+   SORT DROPDOWN
+   ============================================================ */
+.sort-dropdown {
+    position: relative;
+}
+
+.sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.sort-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-bg);
+    color: var(--primary-light);
+}
+
+.sort-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.sort-label-prefix {
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.sort-btn .chevron {
+    width: 11px;
+    height: 11px;
+    transition: transform 0.25s;
+    color: var(--primary-light);
+    opacity: 0.7;
+}
+
+.sort-dropdown.open .sort-btn .chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+.sort-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 180px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 11px;
+    box-shadow: var(--shadow-lg);
+    padding: 5px;
+    z-index: 200;
+    display: none;
+    animation: cardPop 0.2s var(--ease-spring);
+}
+
+.sort-dropdown.open .sort-menu {
+    display: block;
+}
+
+@keyframes cardPop {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sort-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    text-align: right;
+}
+
+.sort-option:hover {
+    background: var(--bg-hover);
+    color: var(--text-light);
+}
+
+.sort-option.active {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    font-weight: 600;
+}
+
+.sort-option svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.sort-option > span {
+    flex: 1;
+}
+
+.sort-option .sort-check {
+    width: 14px;
+    height: 14px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    color: var(--primary-light);
+}
+
+.sort-option.active .sort-check {
+    opacity: 1;
+}
+
+
+/* ============================================================
+   VIEW TOGGLE
+   ============================================================ */
+.view-toggle {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.view-btn {
+    width: 32px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    padding: 0;
+}
+
+.view-btn:hover {
+    color: var(--text-light);
+    background: var(--bg-hover);
+}
+
+.view-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+}
+
+.view-btn svg { width: 14px; height: 14px; }
+
+
+/* ============================================================
+   KEYS CONTAINER — GRID MODE
+   ============================================================ */
+.keys-container {
+    padding: 14px;
+    min-height: 200px;
+}
+
+.keys-container.view-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .keys-container.view-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+    }
+}
+
+.key-card {
+    position: relative;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s var(--transition);
+    animation: cardIn 0.3s ease backwards;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.key-card:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.key-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.key-card:hover::before { opacity: 1; }
+
+.key-card.type-string::before { background: var(--type-string); }
+.key-card.type-hash::before   { background: var(--type-hash); }
+.key-card.type-list::before   { background: var(--type-list); }
+.key-card.type-set::before    { background: var(--type-set); }
+.key-card.type-zset::before   { background: var(--type-zset); }
+
+.key-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.key-card-type-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: lowercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.key-card-type-badge.string { background: var(--type-string); color: white; }
+.key-card-type-badge.hash   { background: var(--type-hash);   color: white; }
+.key-card-type-badge.list   { background: var(--type-list);   color: white; }
+.key-card-type-badge.set    { background: var(--type-set);    color: white; }
+.key-card-type-badge.zset   { background: var(--type-zset);   color: white; }
+
+.key-card-type-badge svg { width: 9px; height: 9px; }
+
+.key-card-ttl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.key-card-ttl svg { width: 11px; height: 11px; }
+.key-card-ttl.expiring-soon { color: var(--danger); }
+.key-card-ttl.expiring      { color: var(--warning); }
+.key-card-ttl.persistent    { color: var(--text-faint); }
+
+.key-card-name {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+}
+
+.key-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+}
+
+.key-card-size {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--info);
+}
+
+/* TTL Ring */
+.ttl-ring {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.ttl-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ttl-ring-bg {
+    fill: none;
+    stroke: var(--bg-hover-strong);
+    stroke-width: 3;
+}
+
+.ttl-ring-fill {
+    fill: none;
+    stroke: var(--success);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease, stroke 0.3s;
+}
+
+.ttl-ring-fill.warning { stroke: var(--warning); }
+.ttl-ring-fill.danger  { stroke: var(--danger); }
+.ttl-ring-fill.persistent { stroke: var(--text-faint); stroke-dasharray: 2, 4; }
+
+
+/* ============================================================
+   KEYS CONTAINER — LIST MODE
+   ============================================================ */
+.keys-container.view-list {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.keys-container.view-list .key-card {
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 11px 14px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+}
+
+.keys-container.view-list .key-card:last-child {
+    border-bottom: none;
+}
+
+.keys-container.view-list .key-card::before {
+    width: 3px;
+}
+
+.keys-container.view-list .key-card:hover {
+    background: var(--bg-hover);
+    transform: none;
+    box-shadow: none;
+    padding-right: 18px;
+}
+
+.keys-container.view-list .key-card-header {
+    order: 2;
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+.keys-container.view-list .key-card-name {
+    order: 1;
+    flex: 1;
+    min-width: 0;
+}
+
+.keys-container.view-list .key-card-footer {
+    order: 3;
+    border-top: none;
+    padding-top: 0;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+
+/* ============================================================
+   KEYS — EMPTY STATE
+   ============================================================ */
+.keys-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 14px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.keys-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.keys-empty-icon svg { width: 28px; height: 28px; }
+
+.keys-empty-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.keys-empty-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 300px;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   KEYS PAGINATION
+   ============================================================ */
+.keys-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-input);
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.page-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 9px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-light);
+    border-color: var(--border-strong);
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.page-btn svg { width: 12px; height: 12px; }
+
+
+/* ============================================================
+   SLIDE-IN KEY PANEL
+   ============================================================ */
+.key-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 900;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.key-panel-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.key-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 480px;
+    max-width: 92vw;
+    background: var(--bg-card-solid);
+    border-right: 1px solid var(--border-strong);
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.4);
+    z-index: 950;
+    transform: translateX(-100%);
+    transition: transform 0.35s var(--ease-spring);
+    display: flex;
+    flex-direction: column;
+}
+
+.key-panel.open {
+    transform: translateX(0);
+}
+
+.key-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.key-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.key-panel-title svg {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-light);
+}
+
+.key-panel-close {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.key-panel-close:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.key-panel-close svg { width: 14px; height: 14px; }
+
+.key-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    min-height: 0;
+}
+
+.key-panel-body::-webkit-scrollbar { width: 6px; }
+.key-panel-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+.key-panel-footer {
+    display: flex;
+    gap: 6px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-input);
+    flex-shrink: 0;
+}
+
+.key-panel-action {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+}
+
+.key-panel-action:hover {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border-color: var(--primary);
+}
+
+.key-panel-action.danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.key-panel-action svg { width: 13px; height: 13px; }
+
+/* Key Details Content */
+.key-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.key-detail-item {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.key-detail-label {
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.key-detail-value {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.key-detail-value.full {
+    grid-column: 1 / -1;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.key-value-section {
+    margin-top: 4px;
+}
+
+.key-value-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+    font-family: var(--mono-font);
+}
+
+.key-value-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: var(--mono-font);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-light);
+    direction: ltr;
+    text-align: left;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.key-value-box::-webkit-scrollbar { width: 4px; height: 4px; }
+.key-value-box::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.key-value-row {
+    display: grid;
+    grid-template-columns: minmax(100px, 180px) 1fr;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    align-items: start;
+}
+
+.key-value-row:hover { background: var(--bg-hover); }
+
+.key-value-row-key {
+    color: var(--type-string);
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.key-value-row-value {
+    color: var(--text-light);
+    word-break: break-all;
+}
+
+.key-value-row-value.number { color: var(--type-string); }
+.key-value-row-value.boolean { color: var(--type-list); }
+.key-value-row-value.json { color: var(--type-set); }
+
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1500;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.28s var(--ease-spring);
+    overflow: hidden;
+}
+
+.modal.modal-sm { max-width: 420px; }
+
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 0;
+}
+
+.modal-title svg { width: 15px; height: 15px; color: var(--primary-light); flex-shrink: 0; }
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.modal-close:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    min-height: 0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+/* Confirm dialog */
+.confirm-body {
+    padding: 26px 22px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.confirm-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon.danger { background: var(--danger-bg); color: var(--danger); }
+.confirm-icon svg { width: 26px; height: 26px; }
+
+.confirm-title { font-size: 16px; font-weight: 700; color: var(--text-light); }
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    text-align: center;
+}
+
+.confirm-desc code {
+    font-family: var(--mono-font);
+    background: var(--bg-hover);
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--primary-light);
+    font-size: 11.5px;
+}
+
+/* Pattern hints list */
+.pattern-hints-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pattern-hint-item {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px 13px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.pattern-hint-item code {
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-light);
+    background: var(--primary-bg);
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.pattern-hint-item > span {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.pattern-hint-example {
+    font-family: var(--mono-font);
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 3px 8px;
+    background: var(--bg-input);
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+@media (max-width: 500px) {
+    .pattern-hint-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    .pattern-hint-example { justify-self: start; }
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.18s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.btn svg { width: 13px; height: 13px; }
+
+.btn-ghost {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--text-light);
+}
+
+.btn-ghost:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+    background: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+
+/* ============================================================
+   TOAST (Bottom)
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100002;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: calc(100vw - 48px);
+}
+
+.toast {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text-light);
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+    max-width: 380px;
+    pointer-events: auto;
+    animation: toastIn 0.35s var(--ease-spring);
+    border-inline-start: 3px solid var(--primary);
+}
+
+.toast.success { border-inline-start-color: var(--success); }
+.toast.error   { border-inline-start-color: var(--danger); }
+.toast.warning { border-inline-start-color: var(--warning); }
+.toast.info    { border-inline-start-color: var(--info); }
+
+.toast-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast.success .toast-icon { background: var(--success-bg); color: var(--success); }
+.toast.error   .toast-icon { background: var(--danger-bg);  color: var(--danger); }
+.toast.warning .toast-icon { background: var(--warning-bg); color: var(--warning); }
+.toast.info    .toast-icon { background: var(--info-bg);    color: var(--info); }
+
+.toast-icon svg { width: 12px; height: 12px; }
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+    to { opacity: 0; transform: translateY(20px) scale(0.95); }
+}
+
+.toast.removing { animation: toastOut 0.3s ease forwards; }
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+
+/* ============================================================
+   NEON SPINNER
+   ============================================================ */
+.neon-spinner {
+    --size: 1px;
+    --speed: 1.3s;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    font-size: calc(9 * var(--size));
+    color: var(--primary-light);
+    text-indent: -9999em;
+    transform: translateZ(0);
+    animation: neonMulShdSpin var(--speed) infinite linear;
+    will-change: box-shadow;
+    display: inline-block;
+}
+
+@keyframes neonMulShdSpin {
+    0%, 100% {
+        box-shadow:
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
+    }
+}
+
+
+/* ============================================================
+   INLINE LOADER
+   ============================================================ */
+.inline-loader {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 12, 22, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 100;
+    border-radius: inherit;
+    animation: inlineFadeIn 0.2s ease;
+    pointer-events: auto;
+}
+
+[data-theme="light"] .inline-loader {
+    background: rgba(246, 248, 252, 0.75);
+}
+
+.inline-loader.active { display: flex; }
+
+@keyframes inlineFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.inline-loader .neon-spinner {
+    --size: 1px;
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   MODAL LOADER
+   ============================================================ */
+.modal-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(3, 7, 18, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: modalFadeIn 0.3s ease;
+    direction: rtl;
+    font-family: var(--ui-font);
+}
+
+[data-theme="light"] .modal-loader {
+    background: rgba(246, 248, 252, 0.75);
+}
+
+.modal-loader.active { display: flex; }
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-card {
+    position: relative;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 22px;
+    padding: 32px 26px 24px;
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    animation: modalCardIn 0.45s var(--ease-spring);
+    overflow: hidden;
+}
+
+@keyframes modalCardIn {
+    from { opacity: 0; transform: scale(0.88) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle at 60% 40%,
+        rgba(34, 197, 94, 0.06) 0%,
+        rgba(6, 182, 212, 0.08) 30%,
+        rgba(99, 102, 241, 0.06) 60%,
+        transparent 75%
+    );
+    animation: modalBreath 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes modalBreath {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.9; }
+    50% { transform: rotate(180deg) scale(1.12); opacity: 1; }
+}
+
+.modal-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12%;
+    right: 12%;
+    height: 2px;
+    background: var(--neon-gradient);
+    background-size: 200% 100%;
+    border-radius: 0 0 3px 3px;
+    opacity: 0.6;
+    animation: neonBorderFlow 3s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes neonBorderFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+.modal-spinner-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.modal-spinner-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
+    animation: spinnerAura 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes spinnerAura {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 1; }
+}
+
+.modal-spinner-wrapper .neon-spinner {
+    --size: 1px;
+    font-size: 10px;
+}
+
+.modal-message {
+    position: relative;
+    z-index: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-align: center;
+    min-height: 22px;
+    line-height: 1.4;
+    letter-spacing: -0.2px;
+    padding: 0 4px;
+}
+
+.modal-submessage {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-align: center;
+    min-height: 16px;
+    line-height: 1.4;
+    font-family: var(--mono-font);
+}
+
+.modal-progress {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 6px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+[data-theme="light"] .modal-progress {
+    background: rgba(15, 23, 42, 0.08);
+}
+
+.modal-progress-fill {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--neon-gradient);
+    background-size: 200% auto;
+    border-radius: 9999px;
+    transition: width 0.4s var(--transition);
+    animation: progressFlow 3s ease infinite;
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.5), 0 0 24px rgba(99, 102, 241, 0.3);
+    overflow: hidden;
+}
+
+.modal-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+    animation: progressShimmer 1.6s linear infinite;
+}
+
+@keyframes progressFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes progressShimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+}
+
+.modal-percent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    font-family: var(--mono-font);
+    font-weight: 700;
+    color: var(--primary-light);
+    text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.4);
+    margin-top: -4px;
+    letter-spacing: -0.3px;
+}
+
+.modal-percent .percent-value {
+    font-size: 18px;
+    letter-spacing: -0.5px;
+}
+
+.modal-percent .percent-symbol {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-shadow: none;
+}
+
+.modal-loader.success .modal-card {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.modal-loader.success .modal-message { color: var(--success); }
+
+.modal-loader.success .modal-progress-fill {
+    background: linear-gradient(90deg, var(--success), #16a34a, var(--success));
+    background-size: 200% auto;
+}
+
+.modal-loader.success .neon-spinner { color: var(--success); }
+.modal-loader.success .modal-percent { color: var(--success); }
+
+.modal-loader.error .modal-card { border-color: rgba(239, 68, 68, 0.4); }
+.modal-loader.error .modal-message { color: var(--danger); }
+.modal-loader.error .neon-spinner { color: var(--danger); }
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    .page-title { font-size: 15px; }
+    .redis-card { padding: 13px; gap: 12px; }
+    .redis-card-title { font-size: 14px; }
+    .chart-container { height: 200px; }
+    .switch-info { gap: 10px; }
+    .switch-info-item { font-size: 11.5px; }
+    .keys-controls { padding: 10px 12px; gap: 6px; }
+    .type-filter-btn span:not(.type-filter-count):not(.type-dot) {
+        display: none;
+    }
+    .key-panel { width: 100vw; }
+    .key-detail-grid { grid-template-columns: 1fr; }
+    .tree-group-actions { opacity: 1; }
+    .sort-label-prefix { display: none; }
+}
+
+@media (max-height: 500px) and (max-width: 1024px) and (orientation: landscape) {
+    .container { padding: 10px 14px; }
+    .dual-redis-grid { gap: 8px; }
+    .chart-container { height: 180px; }
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV CONTAINER -->
+<div id="navContainer"></div>
+
+<!-- MAIN CONTENT -->
+<main class="main-content" id="mainContent">
+    <div class="container">
+
+        <!-- ═══════════ STICKY HEADER ═══════════ -->
+        <div class="header-wrap">
+            <div class="header-top">
+                <div class="header-title-block">
+                    <nav class="breadcrumb">
+                        <a href="/database/">دیتابیس</a>
+                        <span class="breadcrumb-sep">/</span>
+                        <span class="breadcrumb-current">Redis</span>
+                    </nav>
+                    <h1 class="page-title">Redis Explorer</h1>
+                </div>
+
+                <div class="header-actions">
+                    <button class="icon-btn-sm" id="refreshBtn" title="بروزرسانی (Ctrl+R)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="tabs-nav" id="tabsNav">
+                <button class="tab-btn" data-tab="overview" data-href="/database/">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9"/>
+                        <rect x="14" y="3" width="7" height="5"/>
+                        <rect x="14" y="12" width="7" height="9"/>
+                        <rect x="3" y="16" width="7" height="5"/>
+                    </svg>
+                    <span>Overview</span>
+                </button>
+
+                <button class="tab-btn" data-tab="postgresql" data-href="/database/postgresql.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span>PostgreSQL</span>
+                </button>
+
+                <button class="tab-btn active" data-tab="redis">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <span>Redis</span>
+                </button>
+
+                <button class="tab-btn" data-tab="data" data-href="/database/data_management.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="m19 9-5 5-4-4-3 3"/>
+                    </svg>
+                    <span>Data Management</span>
+                </button>
+
+                <button class="tab-btn" data-tab="search" data-href="/database/search.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <span>Search</span>
+                </button>
+            </nav>
+        </div>
+
+
+        <!-- ═══════════════════════════════════════════════════
+             SECTION 1: DUAL REDIS DASHBOARD
+             ═══════════════════════════════════════════════════ -->
+        <section class="dual-redis-section">
+            <div class="dual-redis-grid">
+
+                <!-- ══ Redis A (Primary) ══ -->
+                <div class="redis-card" id="redisCardPrimary">
+                    <div class="redis-card-header">
+                        <div class="redis-card-title-block">
+                            <div class="redis-status-indicator" id="redisPrimaryIndicator">
+                                <span class="status-dot"></span>
+                            </div>
+                            <div>
+                                <div class="redis-card-title">Redis A</div>
+                                <div class="redis-card-subtitle" id="redisPrimaryRole">در حال بارگذاری...</div>
+                            </div>
+                        </div>
+                        <div class="redis-card-badge" id="redisPrimaryBadge">—</div>
+                    </div>
+
+                    <div class="metric-block" data-metric="commands">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="16 18 22 12 16 6"/>
+                                    <polyline points="8 6 2 12 8 18"/>
+                                </svg>
+                                <span class="metric-label">Commands</span>
+                            </div>
+                            <span class="metric-value" id="redisPrimaryCommands">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisPrimaryCommandsBar" style="width: 0%;"></div>
+                            <div class="metric-bar-threshold" style="right: 4%;" title="نقطه سوییچ"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisPrimaryCommandsPercent">—</span>
+                            <span class="metric-hint">سوییچ در ۴۸۰K</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-block" data-metric="memory">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                    <rect x="9" y="9" width="6" height="6"/>
+                                    <line x1="9" y1="1" x2="9" y2="4"/>
+                                    <line x1="15" y1="1" x2="15" y2="4"/>
+                                    <line x1="9" y1="20" x2="9" y2="23"/>
+                                    <line x1="15" y1="20" x2="15" y2="23"/>
+                                    <line x1="20" y1="9" x2="23" y2="9"/>
+                                    <line x1="20" y1="14" x2="23" y2="14"/>
+                                    <line x1="1" y1="9" x2="4" y2="9"/>
+                                    <line x1="1" y1="14" x2="4" y2="14"/>
+                                </svg>
+                                <span class="metric-label">Memory</span>
+                            </div>
+                            <span class="metric-value" id="redisPrimaryMemory">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisPrimaryMemoryBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisPrimaryMemoryPercent">—</span>
+                            <span class="metric-hint">حداکثر 256 MB</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-block" data-metric="bandwidth">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                    <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                </svg>
+                                <span class="metric-label">Bandwidth</span>
+                            </div>
+                            <span class="metric-value" id="redisPrimaryBandwidth">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisPrimaryBandwidthBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisPrimaryBandwidthPercent">—</span>
+                            <span class="metric-hint">حداکثر 10 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="reset-block">
+                        <div class="reset-header">
+                            <div class="reset-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span>ریست بعدی</span>
+                            </div>
+                            <span class="reset-value" id="redisPrimaryResetTime">—</span>
+                        </div>
+                        <div class="reset-month-bar">
+                            <div class="reset-month-fill" id="redisPrimaryMonthBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="reset-footer">
+                            <span id="redisPrimaryMonthPercent">—</span>
+                            <span class="metric-hint">از ماه گذشته</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- ══ Redis B (Backup) ══ -->
+                <div class="redis-card" id="redisCardBackup">
+                    <div class="redis-card-header">
+                        <div class="redis-card-title-block">
+                            <div class="redis-status-indicator" id="redisBackupIndicator">
+                                <span class="status-dot"></span>
+                            </div>
+                            <div>
+                                <div class="redis-card-title">Redis B</div>
+                                <div class="redis-card-subtitle" id="redisBackupRole">در حال بارگذاری...</div>
+                            </div>
+                        </div>
+                        <div class="redis-card-badge" id="redisBackupBadge">—</div>
+                    </div>
+
+                    <div class="metric-block" data-metric="commands">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="16 18 22 12 16 6"/>
+                                    <polyline points="8 6 2 12 8 18"/>
+                                </svg>
+                                <span class="metric-label">Commands</span>
+                            </div>
+                            <span class="metric-value" id="redisBackupCommands">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisBackupCommandsBar" style="width: 0%;"></div>
+                            <div class="metric-bar-threshold" style="right: 4%;" title="نقطه سوییچ"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisBackupCommandsPercent">—</span>
+                            <span class="metric-hint">سوییچ در ۴۸۰K</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-block" data-metric="memory">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                    <rect x="9" y="9" width="6" height="6"/>
+                                    <line x1="9" y1="1" x2="9" y2="4"/>
+                                    <line x1="15" y1="1" x2="15" y2="4"/>
+                                    <line x1="9" y1="20" x2="9" y2="23"/>
+                                    <line x1="15" y1="20" x2="15" y2="23"/>
+                                    <line x1="20" y1="9" x2="23" y2="9"/>
+                                    <line x1="20" y1="14" x2="23" y2="14"/>
+                                    <line x1="1" y1="9" x2="4" y2="9"/>
+                                    <line x1="1" y1="14" x2="4" y2="14"/>
+                                </svg>
+                                <span class="metric-label">Memory</span>
+                            </div>
+                            <span class="metric-value" id="redisBackupMemory">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisBackupMemoryBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisBackupMemoryPercent">—</span>
+                            <span class="metric-hint">حداکثر 256 MB</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-block" data-metric="bandwidth">
+                        <div class="metric-header">
+                            <div class="metric-label-block">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                    <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                </svg>
+                                <span class="metric-label">Bandwidth</span>
+                            </div>
+                            <span class="metric-value" id="redisBackupBandwidth">—</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill healthy" id="redisBackupBandwidthBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-footer">
+                            <span id="redisBackupBandwidthPercent">—</span>
+                            <span class="metric-hint">حداکثر 10 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="reset-block">
+                        <div class="reset-header">
+                            <div class="reset-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span>ریست بعدی</span>
+                            </div>
+                            <span class="reset-value" id="redisBackupResetTime">—</span>
+                        </div>
+                        <div class="reset-month-bar">
+                            <div class="reset-month-fill" id="redisBackupMonthBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="reset-footer">
+                            <span id="redisBackupMonthPercent">—</span>
+                            <span class="metric-hint">از ماه گذشته</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ══ Switch Activity Bar ══ -->
+            <div class="switch-activity-bar">
+                <div class="switch-info">
+                    <div class="switch-info-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                        </svg>
+                        <span class="switch-info-label">Failovers این ماه:</span>
+                        <span class="switch-info-value" id="failoverCount">—</span>
+                    </div>
+                    <div class="switch-info-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span class="switch-info-label">آخرین سوییچ:</span>
+                        <span class="switch-info-value" id="lastSwitchTime">—</span>
+                    </div>
+                    <div class="switch-info-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a10 10 0 0 0-10 10c0 5 4 8 10 10 6-2 10-5 10-10A10 10 0 0 0 12 2z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        <span class="switch-info-label">Auto-Switch:</span>
+                        <span class="switch-info-value success" id="autoSwitchStatus">—</span>
+                    </div>
+                </div>
+
+                <button class="switch-manual-btn" id="manualSwitchBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="17 1 21 5 17 9"/>
+                        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                        <polyline points="7 23 3 19 7 15"/>
+                        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                    </svg>
+                    <span>سوییچ دستی</span>
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ═══════════════════════════════════════════════════
+             SECTION 2: CHARTS
+             ═══════════════════════════════════════════════════ -->
+        <section class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 2a10 10 0 0 1 10 10"/>
+                        </svg>
+                        <span>Type Distribution</span>
+                    </div>
+                    <span class="panel-count" id="typesChartHint">—</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="typesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3v18h18"/>
+                            <rect x="7" y="10" width="3" height="8"/>
+                            <rect x="12" y="6" width="3" height="12"/>
+                            <rect x="17" y="13" width="3" height="5"/>
+                        </svg>
+                        <span>Top Namespaces</span>
+                    </div>
+                    <span class="panel-count" id="namespacesChartHint">—</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="namespacesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ═══════════════════════════════════════════════════
+             SECTION 3: NAMESPACE TREE
+             ═══════════════════════════════════════════════════ -->
+        <section class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+                    </svg>
+                    <span>Namespace Tree</span>
+                    <span class="panel-count" id="namespaceCount">—</span>
+                </div>
+                <button class="panel-link" id="treeExpandAll">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 3 21 3 21 9"/>
+                        <polyline points="9 21 3 21 3 15"/>
+                        <line x1="21" y1="3" x2="14" y2="10"/>
+                        <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                    <span>باز کردن همه</span>
+                </button>
+            </div>
+            <div class="panel-body no-padding">
+                <div class="namespace-tree" id="namespaceTree"></div>
+            </div>
+        </section>
+
+
+        <!-- ═══════════════════════════════════════════════════
+             SECTION 4: KEYS EXPLORER
+             ═══════════════════════════════════════════════════ -->
+        <section class="panel keys-explorer-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
+                        <path d="m21 2-9.6 9.6"/>
+                        <circle cx="7.5" cy="15.5" r="5.5"/>
+                    </svg>
+                    <span>Keys Explorer</span>
+                    <span class="panel-count" id="keysCount">—</span>
+                </div>
+            </div>
+
+            <!-- Controls Bar -->
+            <div class="keys-controls">
+
+                <!-- Pattern Search -->
+                <div class="pattern-search-wrap">
+                    <svg class="pattern-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" class="pattern-search-input" id="patternInput" placeholder="Pattern (user:*, *:session, cache:?:feed)">
+                    <button class="pattern-clear" id="patternClear" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Type Filters -->
+                <div class="type-filters" id="typeFilters">
+                    <button class="type-filter-btn active" data-type="all">
+                        <span>همه</span>
+                        <span class="type-filter-count" id="countAll">0</span>
+                    </button>
+                    <button class="type-filter-btn" data-type="string">
+                        <span class="type-dot string"></span>
+                        <span>string</span>
+                        <span class="type-filter-count" id="countString">0</span>
+                    </button>
+                    <button class="type-filter-btn" data-type="hash">
+                        <span class="type-dot hash"></span>
+                        <span>hash</span>
+                        <span class="type-filter-count" id="countHash">0</span>
+                    </button>
+                    <button class="type-filter-btn" data-type="list">
+                        <span class="type-dot list"></span>
+                        <span>list</span>
+                        <span class="type-filter-count" id="countList">0</span>
+                    </button>
+                    <button class="type-filter-btn" data-type="set">
+                        <span class="type-dot set"></span>
+                        <span>set</span>
+                        <span class="type-filter-count" id="countSet">0</span>
+                    </button>
+                    <button class="type-filter-btn" data-type="zset">
+                        <span class="type-dot zset"></span>
+                        <span>zset</span>
+                        <span class="type-filter-count" id="countZset">0</span>
+                    </button>
+                </div>
+
+                <!-- TTL Filters -->
+                <div class="ttl-filters" id="ttlFilters">
+                    <button class="ttl-filter-btn active" data-ttl="all" title="همه کلیدها">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                            <polyline points="2 17 12 22 22 17"/>
+                            <polyline points="2 12 12 17 22 12"/>
+                        </svg>
+                    </button>
+                    <button class="ttl-filter-btn" data-ttl="active" title="کلیدهای دارای TTL">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 22h14"/>
+                            <path d="M5 2h14"/>
+                            <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+                            <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+                        </svg>
+                    </button>
+                    <button class="ttl-filter-btn" data-ttl="persistent" title="کلیدهای بدون انقضا">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Sort Dropdown -->
+                <div class="sort-dropdown" id="sortDropdown">
+                    <button class="sort-btn" id="sortBtn" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"/>
+                            <path d="M3 12h10"/>
+                            <path d="M3 18h6"/>
+                        </svg>
+                        <span class="sort-label-prefix">مرتب‌سازی:</span>
+                        <span id="sortLabel">نام</span>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <div class="sort-menu" id="sortMenu">
+                        <button class="sort-option active" data-sort="name" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M3 12h10"/>
+                                <path d="M3 18h6"/>
+                            </svg>
+                            <span>نام</span>
+                            <svg class="sort-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </button>
+                        <button class="sort-option" data-sort="size" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                            </svg>
+                            <span>حجم</span>
+                            <svg class="sort-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </button>
+                        <button class="sort-option" data-sort="ttl" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>TTL</span>
+                            <svg class="sort-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </button>
+                        <button class="sort-option" data-sort="type" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 7V4h16v3"/>
+                                <path d="M9 20h6"/>
+                                <path d="M12 4v16"/>
+                            </svg>
+                            <span>نوع</span>
+                            <svg class="sort-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="view-toggle" id="viewToggle">
+                    <button class="view-btn active" data-view="grid" title="نمایش Grid">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/>
+                            <rect x="14" y="3" width="7" height="7" rx="1"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1"/>
+                            <rect x="14" y="14" width="7" height="7" rx="1"/>
+                        </svg>
+                    </button>
+                    <button class="view-btn" data-view="list" title="نمایش List">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Keys Container -->
+            <div class="keys-container" id="keysContainer"></div>
+
+            <!-- Pagination -->
+            <div class="keys-pagination" id="keysPagination" style="display: none;"></div>
+        </section>
+
+    </div>
+</main>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE-IN PANEL: Key Details
+     ═══════════════════════════════════════════════════ -->
+<div class="key-panel-overlay" id="keyPanelOverlay"></div>
+<aside class="key-panel" id="keyPanel">
+    <div class="key-panel-header">
+        <div class="key-panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
+                <path d="m21 2-9.6 9.6"/>
+                <circle cx="7.5" cy="15.5" r="5.5"/>
+            </svg>
+            <span>جزئیات کلید</span>
+        </div>
+        <button class="key-panel-close" id="keyPanelClose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="key-panel-body" id="keyPanelBody"></div>
+
+    <div class="key-panel-footer">
+        <button class="key-panel-action" id="keyPanelCopy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>کپی JSON</span>
+        </button>
+        <button class="key-panel-action" id="keyPanelExport">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Export</span>
+        </button>
+        <button class="key-panel-action danger" id="keyPanelDelete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+            <span>حذف</span>
+        </button>
+    </div>
+</aside>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: Confirm
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-sm">
+        <div class="confirm-body">
+            <div class="confirm-icon" id="confirmIcon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="confirm-title" id="confirmTitle">تأیید</div>
+            <div class="confirm-desc" id="confirmDesc">—</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close-modal="confirmModal">انصراف</button>
+            <button class="btn btn-danger" id="confirmOkBtn">تأیید</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: Pattern Search Hints
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="patternHelpModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>راهنمای Pattern</span>
+            </div>
+            <button class="modal-close" data-close-modal="patternHelpModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="pattern-hints-list">
+                <div class="pattern-hint-item">
+                    <code>*</code>
+                    <span>هر کاراکتری (صفر یا بیشتر)</span>
+                    <span class="pattern-hint-example">user:*</span>
+                </div>
+                <div class="pattern-hint-item">
+                    <code>?</code>
+                    <span>یک کاراکتر</span>
+                    <span class="pattern-hint-example">cache:?:feed</span>
+                </div>
+                <div class="pattern-hint-item">
+                    <code>[abc]</code>
+                    <span>یکی از این کاراکترها</span>
+                    <span class="pattern-hint-example">user:[123]</span>
+                </div>
+                <div class="pattern-hint-item">
+                    <code>[a-z]</code>
+                    <span>یک کاراکتر از این بازه</span>
+                    <span class="pattern-hint-example">session:[a-z]</span>
+                </div>
+                <div class="pattern-hint-item">
+                    <code>\x</code>
+                    <span>escape کاراکتر خاص</span>
+                    <span class="pattern-hint-example">user:\*</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" data-close-modal="patternHelpModal">بستن</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     INSTANT FEEDBACK TOAST (بالای صفحه)
+     ═══════════════════════════════════════════════════ -->
+<div class="toast-instant" id="instantToast">
+    <div class="toast-instant-content">
+        <div class="toast-instant-icon" id="instantToastIcon"></div>
+        <span id="instantToastText"></span>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     TOAST CONTAINER (پایین صفحه)
+     ═══════════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     INLINE LOADER
+     ═══════════════════════════════════════════════════ -->
+<div class="inline-loader" id="globalInlineLoader" style="display:none;">
+    <span class="neon-spinner"></span>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL LOADER
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-loader" id="globalModalLoader" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-spinner-wrapper">
+            <span class="neon-spinner"></span>
+        </div>
+        <div class="modal-message" id="modalLoaderMessage">در حال انجام...</div>
+        <div class="modal-submessage" id="modalLoaderSubMessage">لطفاً صبر کنید</div>
+        <div class="modal-progress" id="modalLoaderProgress" style="display:none;">
+            <div class="modal-progress-fill" id="modalLoaderProgressFill"></div>
+        </div>
+        <div class="modal-percent" id="modalLoaderPercent" style="display:none;">
+            <span class="percent-value" id="modalLoaderPercentValue">۰</span>
+            <span class="percent-symbol">٪</span>
+        </div>
+    </div>
+</div>
+<script>
+// ============================================================
+// REDIS PAGE — JavaScript (Complete)
+// ============================================================
+
+(function() {
+'use strict';
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const CONSTANTS = {
+    COMMANDS_LIMIT: 500000,
+    COMMANDS_SWITCH_THRESHOLD: 480000,
+    MEMORY_LIMIT_MB: 256,
+    BANDWIDTH_LIMIT_GB: 10,
+    KEYS_PER_PAGE: 30,
+    MIN_PATTERN_LENGTH: 1,
+};
+
+
+// ============================================================
+// UTILS
+// ============================================================
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+function toPersian(num) {
+    return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function formatNumber(n) {
+    if (n === undefined || n === null || isNaN(n)) return '—';
+    const v = Number(n);
+    if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(2) + 'B';
+    if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+    if (v >= 1_000) return (v / 1_000).toFixed(1) + 'K';
+    return v.toLocaleString('en-US');
+}
+
+function formatCompact(n) {
+    if (n === undefined || n === null || isNaN(n)) return '—';
+    const v = Number(n);
+    if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+    if (v >= 1_000) return (v / 1_000).toFixed(1) + 'K';
+    return v.toLocaleString('en-US');
+}
+
+function formatBytes(bytes) {
+    if (bytes === undefined || bytes === null || isNaN(bytes)) return '—';
+    const v = Number(bytes);
+    if (v >= 1024 ** 3) return (v / 1024 ** 3).toFixed(2) + ' GB';
+    if (v >= 1024 ** 2) return (v / 1024 ** 2).toFixed(2) + ' MB';
+    if (v >= 1024) return (v / 1024).toFixed(1) + ' KB';
+    return v + ' B';
+}
+
+function formatBytesToGB(bytes) {
+    if (!bytes || isNaN(bytes)) return '0';
+    const gb = bytes / (1024 ** 3);
+    if (gb >= 1) return gb.toFixed(2);
+    const mb = bytes / (1024 ** 2);
+    return mb.toFixed(0) + ' MB';
+}
+
+function formatTTL(seconds) {
+    if (seconds === null || seconds === undefined || seconds === -1) {
+        return { text: '∞', class: 'persistent', seconds: -1 };
+    }
+    if (seconds < 60) return { text: seconds + 's', class: 'expiring-soon', seconds };
+    if (seconds < 3600) return { text: Math.floor(seconds / 60) + 'm', class: 'expiring', seconds };
+    if (seconds < 86400) return { text: Math.floor(seconds / 3600) + 'h', class: '', seconds };
+    return { text: Math.floor(seconds / 86400) + 'd', class: '', seconds };
+}
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function getCSSVar(name) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name).trim();
+}
+
+function getThresholdLevel(percent) {
+    if (percent >= 96) return 'critical';
+    if (percent >= 80) return 'critical';
+    if (percent >= 60) return 'warning';
+    return 'healthy';
+}
+
+
+// ============================================================
+// RESET COUNTDOWN
+// ============================================================
+function getNextReset() {
+    const now = new Date();
+    return new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth() + 1,
+        1,
+        0, 0, 0
+    ));
+}
+
+function getResetCountdown() {
+    const next = getNextReset();
+    const now = new Date();
+    const diff = next - now;
+
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return { days, hours, minutes, seconds };
+}
+
+function formatCountdown(countdown) {
+    if (countdown.days > 0) {
+        return `${toPersian(countdown.days)} روز و ${toPersian(countdown.hours)} ساعت`;
+    }
+    if (countdown.hours > 0) {
+        return `${toPersian(countdown.hours)} ساعت و ${toPersian(countdown.minutes)} دقیقه`;
+    }
+    if (countdown.minutes > 0) {
+        return `${toPersian(countdown.minutes)} دقیقه و ${toPersian(countdown.seconds)} ثانیه`;
+    }
+    return `${toPersian(countdown.seconds)} ثانیه`;
+}
+
+function getMonthProgress() {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        1,
+        0, 0, 0
+    ));
+    const nextMonth = getNextReset();
+
+    const total = nextMonth - monthStart;
+    const elapsed = now - monthStart;
+
+    return Math.min(100, Math.max(0, (elapsed / total) * 100));
+}
+
+
+// ============================================================
+// ICONS
+// ============================================================
+const ICONS = {
+    database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
+    sort: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h10"/><path d="M3 18h6"/></svg>',
+    grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+};
+
+const TYPE_ICONS = {
+    string: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg>',
+    hash:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></svg>',
+    list:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.5"/><circle cx="3.5" cy="12" r="1.5"/><circle cx="3.5" cy="18" r="1.5"/></svg>',
+    set:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="12" cy="17" r="3"/></svg>',
+    zset:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M6 12h12"/><path d="M9 18h6"/></svg>',
+    stream: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg>',
+};
+
+function getTypeIcon(type) {
+    return TYPE_ICONS[type] || TYPE_ICONS.string;
+}
+
+
+// ============================================================
+// API LAYER
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        const config = {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            ...options,
+        };
+        try {
+            const response = await fetch(url, config);
+            const data = await response.json();
+            return data;
+        } catch (err) {
+            console.error(`[API] ${url}:`, err);
+            return { success: false, error: err.message };
+        }
+    },
+
+    getCacheDetailed() { return this.request('/api/debug/cache/detailed'); },
+    getCacheStats() { return this.request('/api/debug/cache/stats'); },
+    getCacheActive() { return this.request('/api/debug/cache/active'); },
+    cacheSwitch(target) {
+        return this.request('/api/debug/cache/switch', {
+            method: 'POST',
+            body: JSON.stringify({ target }),
+        });
+    },
+
+    getKeys(pattern = '*', limit = 100) {
+        const qs = new URLSearchParams({ pattern, limit });
+        return this.request(`/api/db/redis/keys?${qs}`);
+    },
+    getKey(key) { return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}`); },
+    deleteKey(key) {
+        return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}`, { method: 'DELETE' });
+    },
+    getRedisStats() { return this.request('/api/db/redis/stats'); },
+    getNamespaces() { return this.request('/api/db/redis/namespaces'); },
+    clearNamespace(ns) {
+        return this.request(`/api/db/redis/namespace/${encodeURIComponent(ns)}`, { method: 'DELETE' });
+    },
+    exportKey(key) {
+        return this.request(`/api/db/redis/keys/${encodeURIComponent(key)}/export`);
+    },
+};
+
+
+// ============================================================
+// TOAST (Bottom — طولانی)
+// ============================================================
+function showToast(message, type = 'info', duration = 3000) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: ICONS.check,
+        error: ICONS.close,
+        warning: ICONS.alert,
+        info: ICONS.info,
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-message">${escapeHtml(message)}</div>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+
+// ============================================================
+// INSTANT FEEDBACK TOAST (Top — کوتاه)
+// ============================================================
+let _instantToastTimer = null;
+
+function showInstantFeedback(message, iconType = 'check') {
+    const toast = $('#instantToast');
+    const iconEl = $('#instantToastIcon');
+    const textEl = $('#instantToastText');
+    if (!toast) return;
+
+    // پاک کردن تایمر قبلی — فقط یکی نشون بده
+    if (_instantToastTimer) {
+        clearTimeout(_instantToastTimer);
+    }
+
+    // آیکن‌ها
+    const iconMap = {
+        check: ICONS.check,
+        filter: ICONS.filter,
+        sort: ICONS.sort,
+        grid: ICONS.grid,
+        list: ICONS.list,
+        clock: ICONS.clock,
+        info: ICONS.info,
+    };
+
+    if (iconEl) iconEl.innerHTML = iconMap[iconType] || iconMap.check;
+    if (textEl) textEl.textContent = message;
+
+    // نمایش
+    toast.classList.add('show');
+
+    // مخفی کردن بعد از 1400ms
+    _instantToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 1400);
+}
+
+
+// ============================================================
+// COPY
+// ============================================================
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('کپی شد', 'success', 1500);
+    } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('کپی شد', 'success', 1500);
+        } catch {
+            showToast('خطا در کپی', 'error', 1500);
+        }
+        ta.remove();
+    }
+}
+
+
+// ============================================================
+// LOADING SYSTEM
+// ============================================================
+const Loading = {
+    _inlineContainers: new Map(),
+    _modalTimer: null,
+    _modalOptions: null,
+
+    showInline(container) {
+        const el = typeof container === 'string' ? $(container) : container;
+        if (!el) return;
+
+        if (!this._inlineContainers.has(el)) {
+            const loader = el.querySelector(':scope > .inline-loader');
+            if (loader) {
+                this._inlineContainers.set(el, loader);
+            } else {
+                const newLoader = $('#globalInlineLoader').cloneNode(true);
+                newLoader.id = '';
+                newLoader.style.display = '';
+                if (getComputedStyle(el).position === 'static') {
+                    el.style.position = 'relative';
+                }
+                el.appendChild(newLoader);
+                this._inlineContainers.set(el, newLoader);
+            }
+        }
+
+        const loader = this._inlineContainers.get(el);
+        if (loader) loader.classList.add('active');
+    },
+
+    hideInline(container) {
+        const el = typeof container === 'string' ? $(container) : container;
+        if (!el) return;
+        const loader = this._inlineContainers.get(el);
+        if (loader) loader.classList.remove('active');
+    },
+
+    showModal(options = {}) {
+        const modal = $('#globalModalLoader');
+        if (!modal) return;
+
+        const {
+            message = 'در حال انجام...',
+            subMessage = 'لطفاً صبر کنید',
+            showProgress = false,
+            showPercent = false,
+            duration = null,
+            onComplete = null,
+        } = options;
+
+        $('#modalLoaderMessage').textContent = message;
+        $('#modalLoaderSubMessage').textContent = subMessage;
+
+        if (showProgress) {
+            $('#modalLoaderProgress').style.display = 'block';
+            $('#modalLoaderProgressFill').style.width = '0%';
+        } else {
+            $('#modalLoaderProgress').style.display = 'none';
+        }
+
+        if (showPercent) {
+            $('#modalLoaderPercent').style.display = 'flex';
+            $('#modalLoaderPercentValue').textContent = '۰';
+        } else {
+            $('#modalLoaderPercent').style.display = 'none';
+        }
+
+        modal.style.display = 'flex';
+        modal.classList.remove('success', 'error');
+        document.body.style.overflow = 'hidden';
+
+        this._modalOptions = options;
+        this._modalStartTime = Date.now();
+
+        if (duration) {
+            const update = () => {
+                if (modal.style.display === 'none') return;
+                const elapsed = Date.now() - this._modalStartTime;
+                const pct = Math.min((elapsed / duration) * 100, 100);
+
+                if (showProgress) {
+                    $('#modalLoaderProgressFill').style.width = pct + '%';
+                }
+                if (showPercent) {
+                    $('#modalLoaderPercentValue').textContent = toPersian(Math.round(pct));
+                }
+
+                if (pct < 100) {
+                    this._modalTimer = setTimeout(update, 50);
+                } else {
+                    this.completeModal();
+                }
+            };
+            update();
+        }
+    },
+
+    completeModal() {
+        const modal = $('#globalModalLoader');
+        if (!modal || modal.style.display === 'none') return;
+
+        modal.classList.add('success');
+        $('#modalLoaderMessage').textContent = 'انجام شد';
+        $('#modalLoaderSubMessage').textContent = 'با موفقیت تکمیل شد';
+        $('#modalLoaderProgressFill').style.width = '100%';
+        if ($('#modalLoaderPercent').style.display !== 'none') {
+            $('#modalLoaderPercentValue').textContent = toPersian(100);
+        }
+
+        setTimeout(() => {
+            const onComplete = this._modalOptions?.onComplete;
+            this.hideModal();
+            if (onComplete) {
+                try { onComplete(); } catch (e) { console.error(e); }
+            }
+        }, 700);
+    },
+
+    hideModal() {
+        const modal = $('#globalModalLoader');
+        if (!modal) return;
+
+        if (this._modalTimer) {
+            clearTimeout(this._modalTimer);
+            this._modalTimer = null;
+        }
+
+        modal.style.display = 'none';
+        modal.classList.remove('success', 'error');
+        document.body.style.overflow = '';
+        this._modalOptions = null;
+    },
+};
+
+
+// ============================================================
+// NAV LOADER
+// ============================================================
+async function loadNav() {
+    const container = $('#navContainer');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/frontend/components/nav.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('script').forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+    } catch (err) {
+        console.error('Failed to load nav:', err);
+    }
+}
+
+function setupNavListeners() {
+    window.addEventListener('nav:toggle-sidebar', (e) => {
+        const collapsed = e.detail?.collapsed;
+        const main = $('#mainContent');
+        if (main) main.classList.toggle('expanded', !!collapsed);
+    });
+
+    // ⭐ تغییر تم → آپدیت رنگ نمودارها
+    window.addEventListener('nav:theme-changed', () => {
+        setTimeout(() => {
+            updateChartsForTheme();
+        }, 100);
+    });
+
+    window.addEventListener('nav:ready', () => {
+        const sidebar = document.querySelector('.nav-sidebar');
+        if (sidebar && sidebar.classList.contains('nav-collapsed')) {
+            $('#mainContent')?.classList.add('expanded');
+        }
+    });
+}
+
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    dualRedis: {
+        active: null,
+        primary: null,
+        backup: null,
+        failoverCount: 0,
+        lastSwitch: null,
+    },
+    keys: [],
+    filteredKeys: [],
+    namespaces: [],
+    currentPage: 1,
+    currentType: 'all',
+    currentTTL: 'all',
+    currentSort: 'name',
+    currentView: 'grid',
+    currentPattern: '*',
+    searchTerm: '',
+    treeOpenGroups: new Set(),
+    currentKey: null,
+    charts: {
+        types: null,
+        namespaces: null,
+    },
+    confirmCallback: null,
+    resetCountdownTimer: null,
+};
+
+
+// ============================================================
+// DUAL REDIS — LOADING
+// ============================================================
+async function loadDualRedis() {
+    try {
+        const res = await API.getCacheDetailed();
+
+        if (res.success && res.data) {
+            state.dualRedis.active = res.data.active || 'cache';
+            state.dualRedis.failoverCount = res.data.failover_count || 0;
+            state.dualRedis.lastSwitch = res.data.last_switch || null;
+            state.dualRedis.primary = normalizeRedisStats(res.data.primary);
+            state.dualRedis.backup = normalizeRedisStats(res.data.backup);
+            return true;
+        }
+
+        const fallbackRes = await API.getRedisStats();
+        if (fallbackRes.success && fallbackRes.data) {
+            state.dualRedis.primary = normalizeRedisStats(fallbackRes.data);
+            state.dualRedis.active = 'cache';
+            state.dualRedis.backup = null;
+        }
+        return false;
+    } catch (err) {
+        console.error('Dual Redis load error:', err);
+        return false;
+    }
+}
+
+function normalizeRedisStats(raw) {
+    if (!raw) return null;
+
+    if (raw.commands_used !== undefined || raw.commands !== undefined) {
+        return {
+            connected: raw.connected !== false,
+            commandsUsed: raw.commands_used || raw.commands || 0,
+            commandsLimit: raw.commands_limit || CONSTANTS.COMMANDS_LIMIT,
+            memoryUsedBytes: raw.memory_used_bytes || raw.memory_bytes || 0,
+            memoryLimitBytes: (raw.memory_limit_mb || CONSTANTS.MEMORY_LIMIT_MB) * 1024 * 1024,
+            bandwidthUsedBytes: raw.bandwidth_used_bytes || 0,
+            bandwidthLimitBytes: (raw.bandwidth_limit_gb || CONSTANTS.BANDWIDTH_LIMIT_GB) * 1024 ** 3,
+            uptime: raw.uptime || '—',
+        };
+    }
+
+    const info = raw.info || raw;
+    const memUsed = info.used_memory || info.memory_used || 0;
+    const memTotal = info.maxmemory || info.memory_limit || (CONSTANTS.MEMORY_LIMIT_MB * 1024 * 1024);
+
+    return {
+        connected: raw.connected !== false,
+        commandsUsed: info.total_commands_processed || info.commands || 0,
+        commandsLimit: CONSTANTS.COMMANDS_LIMIT,
+        memoryUsedBytes: memUsed,
+        memoryLimitBytes: memTotal,
+        bandwidthUsedBytes: 0,
+        bandwidthLimitBytes: CONSTANTS.BANDWIDTH_LIMIT_GB * (1024 ** 3),
+        uptime: info.uptime_in_seconds ? formatUptime(info.uptime_in_seconds) : (raw.uptime || '—'),
+    };
+}
+
+function formatUptime(seconds) {
+    if (!seconds) return '—';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    if (days > 0) return `${days}d ${hours}h`;
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${mins}m`;
+}
+
+
+// ============================================================
+// DUAL REDIS — RENDERING
+// ============================================================
+function renderDualRedis() {
+    const { active, primary, backup, failoverCount, lastSwitch } = state.dualRedis;
+
+    renderRedisCard('Primary', primary, active === 'cache');
+    renderRedisCard('Backup', backup, active === 'cache_backup');
+
+    const failoverEl = $('#failoverCount');
+    if (failoverEl) {
+        failoverEl.textContent = toPersian(failoverCount);
+        failoverEl.className = 'switch-info-value ' + (failoverCount > 3 ? 'warning' : '');
+    }
+
+    const lastSwitchEl = $('#lastSwitchTime');
+    if (lastSwitchEl) {
+        if (lastSwitch) {
+            const diff = Math.floor((Date.now() - new Date(lastSwitch).getTime()) / 1000);
+            if (diff < 60) lastSwitchEl.textContent = 'همین الآن';
+            else if (diff < 3600) lastSwitchEl.textContent = toPersian(Math.floor(diff / 60)) + ' دقیقه پیش';
+            else if (diff < 86400) lastSwitchEl.textContent = toPersian(Math.floor(diff / 3600)) + ' ساعت پیش';
+            else lastSwitchEl.textContent = toPersian(Math.floor(diff / 86400)) + ' روز پیش';
+        } else {
+            lastSwitchEl.textContent = 'بدون سوییچ';
+        }
+    }
+
+    const autoSwitchEl = $('#autoSwitchStatus');
+    if (autoSwitchEl) {
+        autoSwitchEl.textContent = 'فعال';
+        autoSwitchEl.className = 'switch-info-value success';
+    }
+
+    const switchBtn = $('#manualSwitchBtn');
+    if (switchBtn) {
+        const targetLabel = active === 'cache' ? 'Redis B' : 'Redis A';
+        switchBtn.querySelector('span').textContent = `سوییچ به ${targetLabel}`;
+    }
+}
+
+function renderRedisCard(slot, data, isActive) {
+    const prefix = slot === 'Primary' ? 'redisPrimary' : 'redisBackup';
+
+    const indicator = $(`#${prefix}Indicator`);
+    if (indicator) {
+        indicator.className = 'redis-status-indicator ' + (isActive ? 'active' : 'standby');
+    }
+
+    const roleEl = $(`#${prefix}Role`);
+    if (roleEl) {
+        roleEl.textContent = isActive
+            ? 'فعال (Primary)'
+            : (data ? 'آماده (Standby)' : 'در دسترس نیست');
+    }
+
+    const badge = $(`#${prefix}Badge`);
+    if (badge) {
+        if (isActive) {
+            badge.className = 'redis-card-badge active';
+            badge.textContent = 'فعال';
+        } else if (data) {
+            badge.className = 'redis-card-badge standby';
+            badge.textContent = 'Standby';
+        } else {
+            badge.className = 'redis-card-badge danger';
+            badge.textContent = 'قطع';
+        }
+    }
+
+    const card = $(`#redisCard${slot}`);
+    if (card) card.classList.toggle('active', isActive);
+
+    if (!data) {
+        ['Commands', 'Memory', 'Bandwidth'].forEach(metric => {
+            const valEl = $(`#${prefix}${metric}`);
+            if (valEl) valEl.textContent = '—';
+            const barEl = $(`#${prefix}${metric}Bar`);
+            if (barEl) barEl.style.width = '0%';
+            const pctEl = $(`#${prefix}${metric}Percent`);
+            if (pctEl) pctEl.textContent = '—';
+        });
+        return;
+    }
+
+    // Commands
+    const commandsPct = data.commandsLimit > 0
+        ? (data.commandsUsed / data.commandsLimit) * 100 : 0;
+    renderMetric(prefix, 'Commands', data.commandsUsed, data.commandsLimit, commandsPct, 'commands');
+
+    // Memory
+    const memoryPct = data.memoryLimitBytes > 0
+        ? (data.memoryUsedBytes / data.memoryLimitBytes) * 100 : 0;
+    renderMetric(prefix, 'Memory', data.memoryUsedBytes, data.memoryLimitBytes, memoryPct, 'bytes');
+
+    // Bandwidth
+    const bandwidthPct = data.bandwidthLimitBytes > 0
+        ? (data.bandwidthUsedBytes / data.bandwidthLimitBytes) * 100 : 0;
+    renderMetric(prefix, 'Bandwidth', data.bandwidthUsedBytes, data.bandwidthLimitBytes, bandwidthPct, 'bandwidth');
+}
+
+function renderMetric(prefix, metric, used, limit, percent, format) {
+    const valEl = $(`#${prefix}${metric}`);
+    if (valEl) {
+        if (format === 'commands') {
+            valEl.textContent = `${formatCompact(used)} / ${formatCompact(limit)}`;
+        } else if (format === 'bandwidth') {
+            valEl.textContent = `${formatBytesToGB(used)} / ${formatBytesToGB(limit)}`;
+        } else {
+            valEl.textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
+        }
+    }
+
+    const barEl = $(`#${prefix}${metric}Bar`);
+    if (barEl) {
+        const level = getThresholdLevel(percent);
+        barEl.className = 'metric-bar-fill ' + level;
+        barEl.style.width = Math.min(percent, 100).toFixed(1) + '%';
+    }
+
+    const pctEl = $(`#${prefix}${metric}Percent`);
+    if (pctEl) {
+        pctEl.textContent = toPersian(percent.toFixed(1)) + '٪';
+    }
+}
+
+
+// ============================================================
+// RESET COUNTDOWN
+// ============================================================
+function startResetCountdown() {
+    if (state.resetCountdownTimer) {
+        clearInterval(state.resetCountdownTimer);
+    }
+
+    const update = () => {
+        const countdown = getResetCountdown();
+        const monthProgress = getMonthProgress();
+
+        const countdownText = formatCountdown(countdown);
+        const monthPct = monthProgress.toFixed(1);
+
+        ['redisPrimary', 'redisBackup'].forEach(prefix => {
+            const timeEl = $(`#${prefix}ResetTime`);
+            if (timeEl) timeEl.textContent = countdownText;
+
+            const barEl = $(`#${prefix}MonthBar`);
+            if (barEl) barEl.style.width = monthProgress + '%';
+
+            const pctEl = $(`#${prefix}MonthPercent`);
+            if (pctEl) pctEl.textContent = toPersian(monthPct) + '٪';
+        });
+    };
+
+    update();
+    state.resetCountdownTimer = setInterval(update, 1000);
+}
+
+
+// ============================================================
+// CHARTS
+// ============================================================
+function getChartTheme() {
+    return {
+        primary: getCSSVar('--primary') || '#6366f1',
+        string: getCSSVar('--type-string') || '#06b6d4',
+        hash: getCSSVar('--type-hash') || '#a855f7',
+        list: getCSSVar('--type-list') || '#22c55e',
+        set: getCSSVar('--type-set') || '#f59e0b',
+        zset: getCSSVar('--type-zset') || '#ec4899',
+        stream: getCSSVar('--type-stream') || '#14b8a6',
+        text: getCSSVar('--chart-text') || '#8b9bb4',
+        grid: getCSSVar('--chart-grid') || 'rgba(148,163,184,0.08)',
+        tooltipBg: getCSSVar('--chart-tooltip-bg') || 'rgba(0,0,0,0.88)',
+        tooltipText: getCSSVar('--chart-tooltip-text') || '#ffffff',
+        tooltipBorder: getCSSVar('--chart-tooltip-border') || 'rgba(148,163,184,0.2)',
+    };
+}
+
+function initTypesChart() {
+    const canvas = $('#typesChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    Chart.defaults.font.family = "'Vazirmatn', 'JetBrains Mono', system-ui, sans-serif";
+    Chart.defaults.font.size = 11;
+
+    const theme = getChartTheme();
+
+    state.charts.types = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [
+                    theme.string, theme.hash, theme.list,
+                    theme.set, theme.zset, theme.stream,
+                ],
+                borderColor: 'transparent',
+                borderWidth: 0,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            animation: { animateRotate: true, animateScale: false, duration: 700, easing: 'easeOutQuart' },
+            layout: { padding: 8 },
+            plugins: {
+                legend: {
+                    position: 'right',
+                    rtl: true,
+                    labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 10,
+                        font: { size: 11, weight: '500' },
+                        color: theme.text,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    }
+                },
+                tooltip: {
+                    rtl: true,
+                    backgroundColor: theme.tooltipBg,
+                    titleColor: theme.tooltipText,
+                    bodyColor: theme.tooltipText,
+                    borderColor: theme.tooltipBorder,
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${ctx.parsed.toLocaleString('fa-IR')} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function initNamespacesChart() {
+    const canvas = $('#namespacesChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const theme = getChartTheme();
+
+    state.charts.namespaces = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Keys',
+                data: [],
+                backgroundColor: theme.primary,
+                borderRadius: 6,
+                borderSkipped: false,
+                maxBarThickness: 32,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            animation: { duration: 500, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    rtl: true,
+                    backgroundColor: theme.tooltipBg,
+                    titleColor: theme.tooltipText,
+                    bodyColor: theme.tooltipText,
+                    borderColor: theme.tooltipBorder,
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.parsed.x.toLocaleString('fa-IR')} کلید`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: theme.grid, drawBorder: false },
+                    ticks: { color: theme.text, font: { size: 10 } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: theme.text, font: { size: 11, weight: '600' } }
+                }
+            }
+        }
+    });
+}
+
+function updateChartsForTheme() {
+    const theme = getChartTheme();
+
+    if (state.charts.types) {
+        const chart = state.charts.types;
+        chart.data.datasets[0].backgroundColor = [
+            theme.string, theme.hash, theme.list,
+            theme.set, theme.zset, theme.stream,
+        ];
+        if (chart.options.plugins.legend?.labels) {
+            chart.options.plugins.legend.labels.color = theme.text;
+        }
+        chart.options.plugins.tooltip.backgroundColor = theme.tooltipBg;
+        chart.options.plugins.tooltip.titleColor = theme.tooltipText;
+        chart.options.plugins.tooltip.bodyColor = theme.tooltipText;
+        chart.options.plugins.tooltip.borderColor = theme.tooltipBorder;
+        chart.update('none');
+    }
+
+    if (state.charts.namespaces) {
+        const chart = state.charts.namespaces;
+        chart.data.datasets[0].backgroundColor = theme.primary;
+        if (chart.options.scales.x) {
+            chart.options.scales.x.ticks.color = theme.text;
+            chart.options.scales.x.grid.color = theme.grid;
+        }
+        if (chart.options.scales.y) {
+            chart.options.scales.y.ticks.color = theme.text;
+        }
+        chart.options.plugins.tooltip.backgroundColor = theme.tooltipBg;
+        chart.options.plugins.tooltip.titleColor = theme.tooltipText;
+        chart.options.plugins.tooltip.bodyColor = theme.tooltipText;
+        chart.options.plugins.tooltip.borderColor = theme.tooltipBorder;
+        chart.update('none');
+    }
+}
+
+function updateTypesChart() {
+    if (!state.charts.types) return;
+
+    const typeCounts = {};
+    state.keys.forEach(k => {
+        typeCounts[k.type] = (typeCounts[k.type] || 0) + 1;
+    });
+
+    const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+    state.charts.types.data.labels = sortedTypes.map(([t]) => t);
+    state.charts.types.data.datasets[0].data = sortedTypes.map(([, c]) => c);
+    state.charts.types.update('active');
+
+    const hintEl = $('#typesChartHint');
+    if (hintEl) hintEl.textContent = toPersian(sortedTypes.length) + ' نوع';
+}
+
+function updateNamespacesChart() {
+    if (!state.charts.namespaces) return;
+
+    const nsCounts = {};
+    state.keys.forEach(k => {
+        const ns = k.key.split(':')[0] || 'default';
+        nsCounts[ns] = (nsCounts[ns] || 0) + 1;
+    });
+
+    const topNs = Object.entries(nsCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+
+    state.charts.namespaces.data.labels = topNs.map(([n]) => n);
+    state.charts.namespaces.data.datasets[0].data = topNs.map(([, c]) => c);
+    state.charts.namespaces.update('active');
+
+    const hintEl = $('#namespacesChartHint');
+    if (hintEl) hintEl.textContent = 'Top ' + toPersian(topNs.length);
+}
+
+
+// ============================================================
+// KEYS DATA
+// ============================================================
+async function loadKeysData() {
+    try {
+        const [keysRes, nsRes] = await Promise.all([
+            API.getKeys('*', 500),
+            API.getNamespaces(),
+        ]);
+
+        if (keysRes.success && Array.isArray(keysRes.data)) {
+            state.keys = keysRes.data.map(k => ({
+                key: k.key || k.name || '',
+                type: k.type || 'string',
+                ttl: k.ttl !== undefined ? k.ttl : -1,
+                size: k.size || k.memory_bytes || 0,
+                preview: k.preview || null,
+            })).filter(k => k.key);
+        } else if (keysRes.success && keysRes.data?.keys) {
+            state.keys = keysRes.data.keys.map(k => ({
+                key: k.key || k.name || '',
+                type: k.type || 'string',
+                ttl: k.ttl !== undefined ? k.ttl : -1,
+                size: k.size || 0,
+            })).filter(k => k.key);
+        }
+
+        if (nsRes.success && nsRes.data) {
+            if (Array.isArray(nsRes.data)) {
+                state.namespaces = nsRes.data;
+            } else if (typeof nsRes.data === 'object') {
+                state.namespaces = Object.entries(nsRes.data).map(([name, info]) => ({
+                    name,
+                    count: info.count || 0,
+                    memory: info.memory || 0,
+                }));
+            }
+        }
+    } catch (e) {
+        console.error('Keys load error:', e);
+    }
+}
+
+
+// ============================================================
+// FILTERS
+// ============================================================
+function applyFilters() {
+    let keys = [...state.keys];
+
+    if (state.currentPattern && state.currentPattern !== '*') {
+        const regex = patternToRegex(state.currentPattern);
+        keys = keys.filter(k => regex.test(k.key));
+    }
+
+    if (state.searchTerm) {
+        const term = state.searchTerm.toLowerCase();
+        keys = keys.filter(k => k.key.toLowerCase().includes(term));
+    }
+
+    if (state.currentType !== 'all') {
+        keys = keys.filter(k => k.type === state.currentType);
+    }
+
+    if (state.currentTTL === 'active') {
+        keys = keys.filter(k => k.ttl > 0);
+    } else if (state.currentTTL === 'persistent') {
+        keys = keys.filter(k => k.ttl === -1 || k.ttl === null || k.ttl === undefined);
+    }
+
+    const sortBy = state.currentSort;
+    keys.sort((a, b) => {
+        if (sortBy === 'name') return a.key.localeCompare(b.key);
+        if (sortBy === 'size') return (b.size || 0) - (a.size || 0);
+        if (sortBy === 'ttl') {
+            const aTtl = a.ttl === -1 ? Infinity : a.ttl;
+            const bTtl = b.ttl === -1 ? Infinity : b.ttl;
+            return aTtl - bTtl;
+        }
+        if (sortBy === 'type') return a.type.localeCompare(b.type);
+        return 0;
+    });
+
+    state.filteredKeys = keys;
+}
+
+function patternToRegex(pattern) {
+    let regex = '';
+    for (let i = 0; i < pattern.length; i++) {
+        const c = pattern[i];
+        if (c === '*') regex += '.*';
+        else if (c === '?') regex += '.';
+        else if (c === '[') {
+            const closeIdx = pattern.indexOf(']', i);
+            if (closeIdx > -1) {
+                regex += pattern.slice(i, closeIdx + 1);
+                i = closeIdx;
+            } else {
+                regex += '\\[';
+            }
+        } else if (/[.+^${}()|\\]/.test(c)) {
+            regex += '\\' + c;
+        } else {
+            regex += c;
+        }
+    }
+    try {
+        return new RegExp('^' + regex + '$');
+    } catch {
+        return new RegExp('.');
+    }
+}
+
+
+// ============================================================
+// KEYS EXPLORER — RENDER
+// ============================================================
+function renderKeysExplorer() {
+    applyFilters();
+
+    const container = $('#keysContainer');
+    const countEl = $('#keysCount');
+    const paginationEl = $('#keysPagination');
+
+    if (!container) return;
+
+    if (countEl) countEl.textContent = toPersian(state.filteredKeys.length);
+
+    updateTypeFilterCounts();
+
+    if (state.filteredKeys.length === 0) {
+        container.className = 'keys-container';
+        container.innerHTML = `
+            <div class="keys-empty">
+                <div class="keys-empty-icon">${ICONS.key}</div>
+                <div class="keys-empty-title">هیچ کلیدی یافت نشد</div>
+                <div class="keys-empty-desc">
+                    ${state.currentPattern !== '*' || state.searchTerm || state.currentType !== 'all'
+                        ? 'فیلترها را تغییر دهید یا pattern دیگری امتحان کنید'
+                        : 'هیچ کلیدی در Redis موجود نیست'}
+                </div>
+            </div>
+        `;
+        if (paginationEl) paginationEl.style.display = 'none';
+        return;
+    }
+
+    container.className = `keys-container view-${state.currentView}`;
+
+    const total = state.filteredKeys.length;
+    const totalPages = Math.ceil(total / CONSTANTS.KEYS_PER_PAGE);
+    const page = Math.min(state.currentPage, totalPages);
+    const start = (page - 1) * CONSTANTS.KEYS_PER_PAGE;
+    const end = Math.min(start + CONSTANTS.KEYS_PER_PAGE, total);
+    const pageKeys = state.filteredKeys.slice(start, end);
+
+    if (state.currentView === 'grid') {
+        container.innerHTML = pageKeys.map((key, idx) => renderKeyCard(key, start + idx)).join('');
+    } else {
+        container.innerHTML = pageKeys.map((key, idx) => renderKeyRow(key, start + idx)).join('');
+    }
+
+    attachKeyHandlers();
+    renderPagination(total, page, totalPages);
+}
+
+function updateTypeFilterCounts() {
+    const counts = { all: state.keys.length, string: 0, hash: 0, list: 0, set: 0, zset: 0 };
+
+    state.keys.forEach(k => {
+        if (counts[k.type] !== undefined) counts[k.type]++;
+    });
+
+    $('#countAll').textContent = toPersian(counts.all);
+    $('#countString').textContent = toPersian(counts.string);
+    $('#countHash').textContent = toPersian(counts.hash);
+    $('#countList').textContent = toPersian(counts.list);
+    $('#countSet').textContent = toPersian(counts.set);
+    $('#countZset').textContent = toPersian(counts.zset);
+}
+
+function renderKeyCard(key, idx) {
+    const ttlInfo = formatTTL(key.ttl);
+    const ttlPercent = getTTLPercent(key.ttl);
+    const ttlClass = ttlInfo.class || '';
+
+    return `
+        <div class="key-card type-${key.type}" data-key="${escapeHtml(key.key)}" data-idx="${idx}" style="animation-delay: ${(idx % 10) * 0.02}s;">
+            <div class="key-card-header">
+                <span class="key-card-type-badge ${key.type}">
+                    ${getTypeIcon(key.type)}
+                    ${escapeHtml(key.type)}
+                </span>
+                <span class="key-card-ttl ${ttlClass}">
+                    ${ICONS.clock}
+                    ${escapeHtml(ttlInfo.text)}
+                </span>
+            </div>
+            <div class="key-card-name" title="${escapeHtml(key.key)}">
+                ${escapeHtml(key.key)}
+            </div>
+            <div class="key-card-footer">
+                <span class="key-card-size">${formatBytes(key.size)}</span>
+                ${renderTTLRing(ttlPercent, ttlClass)}
+            </div>
+        </div>
+    `;
+}
+
+function renderKeyRow(key, idx) {
+    const ttlInfo = formatTTL(key.ttl);
+    const ttlPercent = getTTLPercent(key.ttl);
+    const ttlClass = ttlInfo.class || '';
+
+    return `
+        <div class="key-card type-${key.type}" data-key="${escapeHtml(key.key)}" data-idx="${idx}" style="animation-delay: ${(idx % 15) * 0.02}s;">
+            <div class="key-card-name" title="${escapeHtml(key.key)}">
+                ${escapeHtml(key.key)}
+            </div>
+            <div class="key-card-header">
+                <span class="key-card-type-badge ${key.type}">
+                    ${getTypeIcon(key.type)}
+                    ${escapeHtml(key.type)}
+                </span>
+                <span class="key-card-ttl ${ttlClass}">
+                    ${ICONS.clock}
+                    ${escapeHtml(ttlInfo.text)}
+                </span>
+            </div>
+            <div class="key-card-footer">
+                <span class="key-card-size">${formatBytes(key.size)}</span>
+                ${renderTTLRing(ttlPercent, ttlClass)}
+            </div>
+        </div>
+    `;
+}
+
+function getTTLPercent(ttl) {
+    if (!ttl || ttl === -1) return 0;
+    const maxTTL = 86400;
+    return Math.min(100, Math.max(0, (ttl / maxTTL) * 100));
+}
+
+function renderTTLRing(percent, cls) {
+    const radius = 9;
+    const circumference = 2 * Math.PI * radius;
+    const dashoffset = circumference * (1 - percent / 100);
+
+    let ringClass = '';
+    if (cls === 'persistent') ringClass = 'persistent';
+    else if (cls === 'expiring-soon') ringClass = 'danger';
+    else if (cls === 'expiring') ringClass = 'warning';
+
+    return `
+        <div class="ttl-ring">
+            <svg viewBox="0 0 24 24">
+                <circle class="ttl-ring-bg" cx="12" cy="12" r="${radius}"/>
+                <circle class="ttl-ring-fill ${ringClass}"
+                        cx="12" cy="12" r="${radius}"
+                        stroke-dasharray="${circumference}"
+                        stroke-dashoffset="${dashoffset}"/>
+            </svg>
+        </div>
+    `;
+}
+
+function attachKeyHandlers() {
+    $$('.key-card').forEach(card => {
+        card.addEventListener('click', () => {
+            openKeyPanel(card.dataset.key);
+        });
+    });
+}
+
+function renderPagination(total, current, totalPages) {
+    const el = $('#keysPagination');
+    if (!el) return;
+
+    if (totalPages <= 1) {
+        el.style.display = 'none';
+        return;
+    }
+
+    el.style.display = 'flex';
+
+    const start = (current - 1) * CONSTANTS.KEYS_PER_PAGE + 1;
+    const end = Math.min(current * CONSTANTS.KEYS_PER_PAGE, total);
+
+    let pages = [];
+    if (totalPages <= 7) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        if (current <= 4) pages = [1, 2, 3, 4, 5, '...', totalPages];
+        else if (current >= totalPages - 3) pages = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+        else pages = [1, '...', current - 1, current, current + 1, '...', totalPages];
+    }
+
+    el.innerHTML = `
+        <div class="pagination-info">
+            نمایش ${toPersian(start)} تا ${toPersian(end)} از ${toPersian(total)}
+        </div>
+        <div class="pagination-controls">
+            <button class="page-btn" data-page="prev" ${current === 1 ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            ${pages.map(p => {
+                if (p === '...') return `<span style="color:var(--text-dim);padding:0 4px;">…</span>`;
+                return `<button class="page-btn ${p === current ? 'active' : ''}" data-page="${p}">${toPersian(p)}</button>`;
+            }).join('')}
+            <button class="page-btn" data-page="next" ${current === totalPages ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+    `;
+
+    el.querySelectorAll('.page-btn[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const p = btn.dataset.page;
+            if (p === 'prev') state.currentPage = Math.max(1, state.currentPage - 1);
+            else if (p === 'next') state.currentPage = Math.min(totalPages, state.currentPage + 1);
+            else state.currentPage = parseInt(p, 10);
+            renderKeysExplorer();
+            $('#keysContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+}
+
+
+// ============================================================
+// NAMESPACE TREE
+// ============================================================
+function buildNamespaceTree() {
+    const groups = {};
+
+    state.keys.forEach(k => {
+        const ns = k.key.split(':')[0] || 'default';
+        if (!groups[ns]) {
+            groups[ns] = { name: ns, keys: [], count: 0, memory: 0 };
+        }
+        groups[ns].keys.push(k);
+        groups[ns].count++;
+        groups[ns].memory += k.size || 0;
+    });
+
+    return Object.values(groups).sort((a, b) => b.count - a.count);
+}
+
+function renderNamespaceTree() {
+    const container = $('#namespaceTree');
+    const countEl = $('#namespaceCount');
+    if (!container) return;
+
+    const groups = buildNamespaceTree();
+    if (countEl) countEl.textContent = toPersian(groups.length);
+
+    if (groups.length === 0) {
+        container.innerHTML = `
+            <div class="keys-empty" style="padding: 40px 20px;">
+                <div class="keys-empty-icon">${ICONS.folder}</div>
+                <div class="keys-empty-title">هیچ namespace‌ای یافت نشد</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = groups.map(group => {
+        const isOpen = state.treeOpenGroups.has(group.name);
+        return `
+            <div class="tree-group ${isOpen ? 'open' : ''}" data-ns="${escapeHtml(group.name)}">
+                <div class="tree-group-header">
+                    <span class="tree-toggle">${ICONS.chevron}</span>
+                    <span class="tree-icon">${ICONS.folder}</span>
+                    <span class="tree-group-name">${escapeHtml(group.name)}:</span>
+                    <span class="tree-group-count">${toPersian(group.count)}</span>
+                    <div class="tree-group-actions">
+                        <button class="tree-group-action" data-ns-filter="${escapeHtml(group.name)}" title="فیلتر">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        </button>
+                        <button class="tree-group-action danger" data-ns-clear="${escapeHtml(group.name)}" title="حذف همه">
+                            ${ICONS.trash}
+                        </button>
+                    </div>
+                </div>
+                <div class="tree-children">
+                    ${group.keys.slice(0, 20).map(k => `
+                        <div class="tree-child" data-key="${escapeHtml(k.key)}">
+                            <span class="tree-child-key">${escapeHtml(k.key)}</span>
+                            <span class="tree-child-type ${k.type}">${escapeHtml(k.type)}</span>
+                        </div>
+                    `).join('')}
+                    ${group.keys.length > 20 ? `<div style="padding: 6px 10px; font-size: 10.5px; color: var(--text-dim); font-family: var(--mono-font);">+ ${toPersian(group.keys.length - 20)} کلید دیگر</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    attachTreeHandlers();
+}
+
+function attachTreeHandlers() {
+    $$('.tree-group-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+            if (e.target.closest('.tree-group-action')) return;
+
+            const group = header.closest('.tree-group');
+            const ns = group.dataset.ns;
+
+            if (state.treeOpenGroups.has(ns)) {
+                state.treeOpenGroups.delete(ns);
+                group.classList.remove('open');
+            } else {
+                state.treeOpenGroups.add(ns);
+                group.classList.add('open');
+            }
+        });
+    });
+
+    $$('[data-ns-filter]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterByNamespace(btn.dataset.nsFilter);
+        });
+    });
+
+    $$('[data-ns-clear]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearNamespaceAction(btn.dataset.nsClear);
+        });
+    });
+
+    $$('.tree-child').forEach(child => {
+        child.addEventListener('click', () => {
+            openKeyPanel(child.dataset.key);
+        });
+    });
+}
+
+function filterByNamespace(ns) {
+    const input = $('#patternInput');
+    const pattern = `${ns}:*`;
+
+    if (input) {
+        input.value = pattern;
+        input.focus();
+    }
+
+    state.currentPattern = pattern;
+    state.currentPage = 1;
+
+    const clearBtn = $('#patternClear');
+    if (clearBtn) clearBtn.style.display = 'flex';
+
+    renderKeysExplorer();
+    $('#keysContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    showInstantFeedback(`فیلتر: ${ns}:*`, 'filter');
+}
+
+async function clearNamespaceAction(ns) {
+    const count = state.keys.filter(k => k.key.startsWith(ns + ':')).length;
+
+    const ok = await showConfirm(
+        `پاک کردن namespace "${ns}"؟`,
+        `تعداد <code>${toPersian(count)}</code> کلید از namespace <code>${escapeHtml(ns)}</code> حذف خواهند شد. این عملیات قابل بازگشت نیست.`
+    );
+
+    if (!ok) return;
+
+    Loading.showModal({
+        message: 'در حال حذف...',
+        subMessage: `پاک کردن ${ns}`,
+        showProgress: true,
+        duration: 2000,
+    });
+
+    const res = await API.clearNamespace(ns);
+
+    if (res.success) {
+        Loading.completeModal();
+        showToast(`تعداد ${toPersian(res.deleted || count)} کلید حذف شد`, 'success', 2500);
+        await refreshAll();
+    } else {
+        Loading.hideModal();
+        showToast(res.error || 'خطا در حذف', 'error', 2500);
+    }
+}
+
+
+// ============================================================
+// KEY PANEL
+// ============================================================
+async function openKeyPanel(keyName) {
+    const panel = $('#keyPanel');
+    const overlay = $('#keyPanelOverlay');
+    const body = $('#keyPanelBody');
+
+    if (!panel || !overlay) return;
+
+    panel.classList.add('open');
+    overlay.classList.add('open');
+
+    body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 20px;">
+            <span class="neon-spinner" style="font-size: 10px;"></span>
+            <span style="font-size: 12.5px; color: var(--text-muted);">در حال بارگذاری...</span>
+        </div>
+    `;
+
+    try {
+        const res = await API.getKey(keyName);
+
+        if (!res.success) {
+            body.innerHTML = `
+                <div class="keys-empty">
+                    <div class="keys-empty-icon">${ICONS.alert}</div>
+                    <div class="keys-empty-title">خطا در بارگذاری</div>
+                    <div class="keys-empty-desc">${escapeHtml(res.error || 'کلید یافت نشد')}</div>
+                </div>
+            `;
+            return;
+        }
+
+        state.currentKey = res.data || { key: keyName };
+        renderKeyPanel(state.currentKey);
+    } catch (err) {
+        console.error('Key panel error:', err);
+        body.innerHTML = `
+            <div class="keys-empty">
+                <div class="keys-empty-icon">${ICONS.alert}</div>
+                <div class="keys-empty-title">خطا</div>
+            </div>
+        `;
+    }
+}
+
+function renderKeyPanel(data) {
+    const body = $('#keyPanelBody');
+    if (!body) return;
+
+    const keyName = data.key || '—';
+    const keyType = data.type || 'string';
+    const ttl = data.ttl ?? -1;
+    const value = data.value;
+
+    const stateKey = state.keys.find(k => k.key === keyName);
+    const size = stateKey?.size || 0;
+    const ttlInfo = formatTTL(ttl);
+
+    let valueHtml = '';
+
+    if (keyType === 'string') {
+        valueHtml = `<div class="key-value-box">${escapeHtml(value || '')}</div>`;
+    } else if (keyType === 'hash') {
+        const obj = value || {};
+        valueHtml = `
+            <div class="key-value-box">
+                ${Object.entries(obj).map(([k, v]) => `
+                    <div class="key-value-row">
+                        <span class="key-value-row-key">${escapeHtml(k)}</span>
+                        <span class="key-value-row-value">${escapeHtml(String(v))}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else if (keyType === 'list' || keyType === 'set') {
+        const arr = Array.isArray(value) ? value : [];
+        valueHtml = `
+            <div class="key-value-box">
+                ${arr.map((v, i) => `
+                    <div class="key-value-row">
+                        <span class="key-value-row-key">[${i}]</span>
+                        <span class="key-value-row-value">${escapeHtml(String(v))}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else if (keyType === 'zset') {
+        const arr = Array.isArray(value) ? value : [];
+        valueHtml = `
+            <div class="key-value-box">
+                ${arr.map(item => `
+                    <div class="key-value-row">
+                        <span class="key-value-row-key">${escapeHtml(item.member || item)}</span>
+                        <span class="key-value-row-value number">score: ${item.score ?? '—'}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        valueHtml = `<div class="key-value-box">${escapeHtml(JSON.stringify(value, null, 2))}</div>`;
+    }
+
+    body.innerHTML = `
+        <div class="key-detail-grid">
+            <div class="key-detail-item">
+                <div class="key-detail-label">Key</div>
+                <div class="key-detail-value full">${escapeHtml(keyName)}</div>
+            </div>
+            <div class="key-detail-item">
+                <div class="key-detail-label">Type</div>
+                <div class="key-detail-value" style="color: var(--type-${keyType});">${escapeHtml(keyType)}</div>
+            </div>
+            <div class="key-detail-item">
+                <div class="key-detail-label">TTL</div>
+                <div class="key-detail-value ${ttlInfo.class}">
+                    ${ttlInfo.text === '∞' ? 'بدون انقضا' : ttlInfo.text}
+                </div>
+            </div>
+            <div class="key-detail-item">
+                <div class="key-detail-label">Size</div>
+                <div class="key-detail-value">${formatBytes(size)}</div>
+            </div>
+        </div>
+
+        <div class="key-value-section">
+            <div class="key-value-title">Value</div>
+            ${valueHtml}
+        </div>
+    `;
+}
+
+function closeKeyPanel() {
+    $('#keyPanel')?.classList.remove('open');
+    $('#keyPanelOverlay')?.classList.remove('open');
+    state.currentKey = null;
+}
+
+function setupKeyPanel() {
+    $('#keyPanelClose')?.addEventListener('click', closeKeyPanel);
+    $('#keyPanelOverlay')?.addEventListener('click', closeKeyPanel);
+
+    $('#keyPanelCopy')?.addEventListener('click', () => {
+        if (!state.currentKey) return;
+        copyToClipboard(JSON.stringify(state.currentKey, null, 2));
+    });
+
+    $('#keyPanelExport')?.addEventListener('click', async () => {
+        if (!state.currentKey) return;
+
+        Loading.showModal({
+            message: 'در حال export...',
+            subMessage: state.currentKey.key,
+            showProgress: true,
+            duration: 1200,
+        });
+
+        const res = await API.exportKey(state.currentKey.key);
+
+        if (res.success) {
+            Loading.completeModal();
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${state.currentKey.key.replace(/[:/]/g, '_')}-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('خروجی دانلود شد', 'success', 1800);
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در export', 'error', 2000);
+        }
+    });
+
+    $('#keyPanelDelete')?.addEventListener('click', async () => {
+        if (!state.currentKey) return;
+        const keyName = state.currentKey.key;
+
+        const ok = await showConfirm(
+            'حذف کلید؟',
+            `آیا مطمئنی می‌خوای کلید <code>${escapeHtml(keyName)}</code> را حذف کنی؟`
+        );
+
+        if (!ok) return;
+
+        Loading.showModal({
+            message: 'در حال حذف...',
+            subMessage: keyName,
+            showProgress: true,
+            duration: 1200,
+        });
+
+        const res = await API.deleteKey(keyName);
+
+        if (res.success) {
+            Loading.completeModal();
+            closeKeyPanel();
+            showToast('کلید حذف شد', 'success', 1800);
+            await refreshAll();
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در حذف', 'error', 2000);
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && $('#keyPanel')?.classList.contains('open')) {
+            closeKeyPanel();
+        }
+    });
+}
+
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+}
+
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+}
+
+function showConfirm(title, desc, isDanger = true) {
+    return new Promise((resolve) => {
+        $('#confirmTitle').textContent = title;
+        $('#confirmDesc').innerHTML = desc;
+
+        const icon = $('#confirmIcon');
+        if (isDanger) icon.classList.add('danger');
+        else icon.classList.remove('danger');
+
+        state.confirmCallback = (result) => resolve(result);
+        openModal('confirmModal');
+    });
+}
+
+function setupConfirmModal() {
+    $('#confirmOkBtn')?.addEventListener('click', () => {
+        closeModal('confirmModal');
+        if (state.confirmCallback) {
+            const cb = state.confirmCallback;
+            state.confirmCallback = null;
+            cb(true);
+        }
+    });
+
+    $$('[data-close-modal="confirmModal"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            closeModal('confirmModal');
+            if (state.confirmCallback) {
+                const cb = state.confirmCallback;
+                state.confirmCallback = null;
+                cb(false);
+            }
+        });
+    });
+
+    const modal = $('#confirmModal');
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal('confirmModal');
+            if (state.confirmCallback) {
+                const cb = state.confirmCallback;
+                state.confirmCallback = null;
+                cb(false);
+            }
+        }
+    });
+}
+
+function setupPatternHelpModal() {
+    const modal = $('#patternHelpModal');
+    if (!modal) return;
+
+    $$('[data-close-modal="patternHelpModal"]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal('patternHelpModal'));
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal('patternHelpModal');
+    });
+}
+
+
+// ============================================================
+// MANUAL SWITCH
+// ============================================================
+async function manualSwitch() {
+    const active = state.dualRedis.active;
+    const targetName = active === 'cache' ? 'Redis B' : 'Redis A';
+    const target = active === 'cache' ? 'cache_backup' : 'cache';
+
+    const ok = await showConfirm(
+        `سوییچ به ${targetName}؟`,
+        `ترافیک فعلی از <code>${active === 'cache' ? 'Redis A' : 'Redis B'}</code> به <code>${targetName}</code> منتقل می‌شود.`,
+        false
+    );
+
+    if (!ok) return;
+
+    Loading.showModal({
+        message: `در حال سوییچ به ${targetName}...`,
+        subMessage: 'لطفاً صبر کنید',
+        showProgress: true,
+        duration: 2500,
+    });
+
+    const res = await API.cacheSwitch(target);
+
+    if (res.success) {
+        Loading.completeModal();
+        showToast(`سوییچ به ${targetName} انجام شد`, 'success', 2500);
+        await refreshAll();
+    } else {
+        Loading.hideModal();
+        showToast(res.error || 'خطا در سوییچ', 'error', 3000);
+    }
+}
+
+
+// ============================================================
+// EVENT BINDINGS
+// ============================================================
+function bindEvents() {
+    // ═══ Refresh ═══
+    $('#refreshBtn')?.addEventListener('click', async () => {
+        const btn = $('#refreshBtn');
+        btn.classList.add('spinning');
+        await refreshAll();
+        btn.classList.remove('spinning');
+        showToast('بروزرسانی شد', 'success', 1500);
+    });
+
+    // ═══ Manual Switch ═══
+    $('#manualSwitchBtn')?.addEventListener('click', manualSwitch);
+
+    // ═══ Tabs ═══
+    $$('.tab-btn[data-href]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.location.href = btn.dataset.href;
+        });
+    });
+
+    // ═══ Pattern Input ═══
+    const patternInput = $('#patternInput');
+    const patternClear = $('#patternClear');
+
+    if (patternInput) {
+        let debounce;
+        patternInput.addEventListener('input', (e) => {
+            clearTimeout(debounce);
+            debounce = setTimeout(() => {
+                const val = e.target.value.trim();
+
+                if (val.length === 0) {
+                    state.currentPattern = '*';
+                    patternClear.style.display = 'none';
+                } else {
+                    state.currentPattern = val;
+                    patternClear.style.display = 'flex';
+                }
+
+                state.currentPage = 1;
+                renderKeysExplorer();
+            }, 300);
+        });
+
+        patternInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                patternInput.value = '';
+                state.currentPattern = '*';
+                patternClear.style.display = 'none';
+                state.currentPage = 1;
+                renderKeysExplorer();
+                showInstantFeedback('پاک شد', 'info');
+            }
+        });
+    }
+
+    patternClear?.addEventListener('click', () => {
+        patternInput.value = '';
+        state.currentPattern = '*';
+        patternClear.style.display = 'none';
+        state.currentPage = 1;
+        renderKeysExplorer();
+        showInstantFeedback('Pattern پاک شد', 'info');
+    });
+
+    // ═══ Type Filters ═══
+    $$('.type-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.currentType = btn.dataset.type;
+            state.currentPage = 1;
+
+            $$('.type-filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+
+            const labels = {
+                all: 'نمایش همه انواع',
+                string: 'فیلتر: فقط string',
+                hash: 'فیلتر: فقط hash',
+                list: 'فیلتر: فقط list',
+                set: 'فیلتر: فقط set',
+                zset: 'فیلتر: فقط zset',
+            };
+            showInstantFeedback(labels[state.currentType] || 'فیلتر اعمال شد', 'filter');
+
+            renderKeysExplorer();
+        });
+    });
+
+    // ═══ TTL Filters ═══
+    $$('.ttl-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.currentTTL = btn.dataset.ttl;
+            state.currentPage = 1;
+
+            $$('.ttl-filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+
+            const labels = {
+                all: 'همه کلیدها',
+                active: 'فقط کلیدهای دارای TTL',
+                persistent: 'فقط کلیدهای بدون انقضا',
+            };
+            showInstantFeedback(labels[state.currentTTL] || 'اعمال شد', 'clock');
+
+            renderKeysExplorer();
+        });
+    });
+
+    // ═══ Sort Dropdown ═══
+    const sortDropdown = $('#sortDropdown');
+    const sortBtn = $('#sortBtn');
+
+    sortBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = sortDropdown.classList.toggle('open');
+        if (isOpen) {
+            showInstantFeedback('انتخاب مرتب‌سازی', 'sort');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!sortDropdown?.contains(e.target)) {
+            sortDropdown?.classList.remove('open');
+        }
+    });
+
+    $$('.sort-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            state.currentSort = opt.dataset.sort;
+            state.currentPage = 1;
+
+            $$('.sort-option').forEach(o => o.classList.toggle('active', o === opt));
+
+            const labels = {
+                name: 'نام',
+                size: 'حجم',
+                ttl: 'TTL',
+                type: 'نوع',
+            };
+            $('#sortLabel').textContent = labels[state.currentSort] || 'نام';
+
+            sortDropdown.classList.remove('open');
+
+            showInstantFeedback(`مرتب‌سازی: ${labels[state.currentSort]}`, 'sort');
+
+            renderKeysExplorer();
+        });
+    });
+
+    // ═══ View Toggle ═══
+    $$('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.currentView = btn.dataset.view;
+            $$('.view-btn').forEach(b => b.classList.toggle('active', b === btn));
+
+            showInstantFeedback(
+                `نمایش: ${state.currentView === 'grid' ? 'Grid' : 'List'}`,
+                state.currentView === 'grid' ? 'grid' : 'list'
+            );
+
+            renderKeysExplorer();
+        });
+    });
+
+    // ═══ Tree Expand All ═══
+    $('#treeExpandAll')?.addEventListener('click', () => {
+        const groups = buildNamespaceTree();
+        const allOpen = state.treeOpenGroups.size === groups.length;
+
+        if (allOpen) {
+            state.treeOpenGroups.clear();
+            $('#treeExpandAll').querySelector('span').textContent = 'باز کردن همه';
+            showInstantFeedback('بستن همه', 'info');
+        } else {
+            groups.forEach(g => state.treeOpenGroups.add(g.name));
+            $('#treeExpandAll').querySelector('span').textContent = 'بستن همه';
+            showInstantFeedback('باز کردن همه', 'info');
+        }
+        renderNamespaceTree();
+    });
+
+    // ═══ Keyboard ═══
+    document.addEventListener('keydown', (e) => {
+        const isInput = e.target.matches('input, textarea, select');
+        const mod = e.ctrlKey || e.metaKey;
+
+        if (mod && e.key.toLowerCase() === 'r' && !isInput) {
+            e.preventDefault();
+            refreshAll(true);
+        }
+    });
+}
+
+
+// ============================================================
+// REFRESH ALL
+// ============================================================
+async function refreshAll(showLoader = false) {
+    if (showLoader) {
+        Loading.showModal({
+            message: 'بروزرسانی...',
+            subMessage: 'در حال بارگذاری داده‌ها',
+            showProgress: true,
+            duration: 2000,
+        });
+    }
+
+    try {
+        await Promise.allSettled([
+            loadDualRedis(),
+            loadKeysData(),
+        ]);
+
+        renderDualRedis();
+        renderKeysExplorer();
+        renderNamespaceTree();
+        updateTypesChart();
+        updateNamespacesChart();
+
+    } catch (e) {
+        console.error('Refresh error:', e);
+    }
+
+    if (showLoader) {
+        Loading.completeModal();
+    }
+}
+
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log(
+        '%c Redis Explorer ',
+        'background: linear-gradient(135deg, #6366f1, #818cf8); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
+    );
+
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Vazirmatn', 'JetBrains Mono', system-ui, sans-serif";
+        Chart.defaults.font.size = 11;
+    }
+
+    setupNavListeners();
+    await loadNav();
+
+    setTimeout(() => {
+        initTypesChart();
+        initNamespacesChart();
+    }, 200);
+
+    await refreshAll(false);
+
+    bindEvents();
+    setupConfirmModal();
+    setupPatternHelpModal();
+    setupKeyPanel();
+    startResetCountdown();
+
+    setTimeout(() => {
+        showToast('صفحه Redis آماده است', 'info', 2000);
+    }, 500);
+}
+
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+})();
+</script>
+</body>
+</html>
