@@ -975,6 +975,55 @@ class ApiClient {
         });
     }
 
+
+    // ============================================================
+    // 🆕 Cache Monitoring & Control (Dual Redis)
+    // ============================================================
+
+    /**
+     * آمار کلی cache (Dual Redis)
+     * @returns {Promise<Object>} stats
+     */
+    getCacheStats() {
+        return this.request('/api/debug/cache/stats');
+    }
+
+    /**
+     * آمار دقیق از هر دو Redis (primary + backup)
+     * @returns {Promise<Object>} detailed stats
+     */
+    getCacheDetailed() {
+        return this.request('/api/debug/cache/detailed');
+    }
+
+    /**
+     * Redis فعلی (خلاصه)
+     * @returns {Promise<Object>} active info
+     */
+    getCacheActive() {
+        return this.request('/api/debug/cache/active');
+    }
+
+    /**
+     * سوئیچ دستی بین Redis ها
+     * @param {string} target - 'cache' | 'cache_backup' | 'auto'
+     * @returns {Promise<Object>} switch result
+     */
+    switchCache(target = 'auto') {
+        return this.request('/api/debug/cache/switch', {
+            method: 'POST',
+            body: JSON.stringify({ target })
+        });
+    }
+
+    /**
+     * Health check cache (بدون auth)
+     * @returns {Promise<Object>} health status
+     */
+    getCacheHealth() {
+        return this.request('/api/debug/cache/health');
+    }
+    
     // ============================================================
     // ۳۰. دیباگ (DEBUG)
     // ============================================================
