@@ -1,6 +1,7 @@
 # presentation/routes/web_routes.py
 # ============================================================
 # Web Routes - صفحات HTML (با مسیر frontend/)
+# نسخه ۲.۰ — پشتیبانی کامل از db_tabs
 # ============================================================
 
 from flask import Blueprint, send_from_directory, redirect, request, jsonify
@@ -33,13 +34,11 @@ def home():
             user = auth_manager.get_session(session_id)
             
             if user:
-                # session معتبره → داشبورد
                 logger.info(f"✅ home(): valid session → /dashboard")
                 return redirect('/dashboard')
         except Exception as e:
             logger.warning(f"⚠️ home(): session check failed: {e}")
     
-    # هر حالت دیگه‌ای (بدون session / session نامعتبر) → login
     logger.debug(f"🔒 home(): no valid session → /login")
     return redirect('/login')
 
@@ -52,7 +51,8 @@ def home():
 def login_page():
     """صفحه ورود"""
     return send_from_directory('frontend', 'index.html')
-    
+
+
 # ============================================================
 # ۳. صفحات با احراز هویت
 # ============================================================
@@ -94,8 +94,6 @@ def analyzer_tabs(filename):
     return send_from_directory('frontend/analyzer_tabs', filename)
 
 
-# (اختیاری) روت‌های SPA برای URL تمیز
-# اگه می‌خوای URL مثل /analyzer/analyze کار کنه بدون .html
 @web_bp.route('/analyzer/analyze')
 @require_auth()
 def analyzer_analyze_route():
@@ -110,10 +108,9 @@ def analyzer_portfolio_route():
     return send_from_directory('frontend', 'analyzer.html')
 
 
-#====================
-#model
-#==================
-
+# ============================================================
+# ۳.۵. صفحه مدل (Model)
+# ============================================================
 
 @web_bp.route('/model')
 @require_auth()
@@ -121,11 +118,58 @@ def model():
     return send_from_directory('frontend', 'model.html')
 
 
+# ============================================================
+# ۳.۶. صفحه دیتابیس (Database Overview)
+# ============================================================
+
 @web_bp.route('/database')
 @require_auth()
 def database():
-    return send_from_directory('frontend', 'database.html')
+    """
+    صفحه اصلی مدیریت دیتابیس (db_overview.html)
+    
+    URL: /database
+    File: frontend/db_overview.html
+    """
+    return send_from_directory('frontend', 'db_overview.html')
 
+
+# ============================================================
+# ۳.۷. تب‌های دیتابیس (db_tabs)
+# ============================================================
+
+@web_bp.route('/database/<path:filename>')
+@require_auth()
+def db_tabs_files(filename):
+    """
+    سرویس صفحات db_tabs از پوشه frontend/db_tabs/
+    
+    Examples:
+        /database/postgresql.html       → frontend/db_tabs/postgresql.html
+        /database/redis.html            → frontend/db_tabs/redis.html
+        /database/search.html           → frontend/db_tabs/search.html
+        /database/data_management.html  → frontend/db_tabs/data_management.html
+    
+    ⚠️ نکته: این route باید بعد از /database باشه (ترتیب مهمه)
+    """
+    # امنیت: جلوگیری از path traversal
+    if '..' in filename or filename.startswith('/'):
+        logger.warning(f"⚠️ db_tabs_files: blocked suspicious path: {filename}")
+        return redirect('/404')
+    
+    file_path = os.path.join('frontend/db_tabs', filename)
+    
+    if not os.path.exists(file_path):
+        logger.warning(f"⚠️ db_tabs_files: file not found: {file_path}")
+        return redirect('/404')
+    
+    logger.debug(f"📄 db_tabs_files: serving {file_path}")
+    return send_from_directory('frontend/db_tabs', filename)
+
+
+# ============================================================
+# ۳.۸. سایر صفحات اصلی
+# ============================================================
 
 @web_bp.route('/alerts')
 @require_auth()
@@ -185,21 +229,38 @@ def js_files(filename):
 
 @web_bp.route('/components/<path:filename>')
 def components_files(filename):
-    """سرویس فایل‌های کامپوننت"""
+    """
+    سرویس فایل‌های کامپوننت
+    
+    Examples:
+        /components/nav.html            → frontend/components/nav.html
+        /components/sidebar.html        → frontend/components/sidebar.html
+    """
     return send_from_directory('frontend/components', filename)
 
 
 @web_bp.route('/nav.html')
 def nav():
-    """سرویس فایل منو"""
+    """سرویس فایل منو (backward compatibility)"""
     return send_from_directory('frontend', 'nav.html')
 
 
 @web_bp.route('/<path:filename>.html')
 def html_pages(filename):
-    """سرویس صفحات HTML دلخواه"""
-    if os.path.exists(f'frontend/{filename}.html'):
+    """
+    سرویس صفحات HTML دلخواه
+    
+    ⚠️ این route باید آخر همه باشه (catch-all)
+    
+    Examples:
+        /dashboard.html → frontend/dashboard.html
+        /model.html     → frontend/model.html
+    """
+    file_path = f'frontend/{filename}.html'
+    
+    if os.path.exists(file_path):
         return send_from_directory('frontend', f'{filename}.html')
+    
     return redirect('/404')
 
 
@@ -220,7 +281,10 @@ def login_post():
             password = data.get('password', '').strip()
         
         if not username or not password:
-            return jsonify({'success': False, 'error': 'لطفاً نام کاربری و رمز عبور را وارد کنید'}), 400
+            return jsonify({
+                'success': False,
+                'error': 'لطفاً نام کاربری و رمز عبور را وارد کنید'
+            }), 400
         
         auth_manager = get_auth()
         result = auth_manager.login(username, password)
@@ -241,10 +305,11 @@ def login_post():
         return jsonify(result), 401
         
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Login error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'خطا در پردازش درخواست'}), 500
+        return jsonify({
+            'success': False,
+            'error': 'خطا در پردازش درخواست'
+        }), 500
 
 
 # ============================================================
