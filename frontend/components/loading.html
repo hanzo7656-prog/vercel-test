@@ -12,7 +12,7 @@
 
 <style>
 /* ============================================================
-   SPLASH LOADER v6.1 — Transparency-First + Retry on Cards
+   SPLASH LOADER v6.2 — Layout Fix + Auth Redirect Guard
    ============================================================ */
 
 /* ---------- Color Themes ---------- */
@@ -222,7 +222,7 @@ body {
 }
 
 /* ============================================================
-   MAIN CARD
+   MAIN CARD — ✅ FIXED LAYOUT
    ============================================================ */
 .splash-card {
     position: relative;
@@ -234,31 +234,24 @@ body {
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--border-strong);
     border-radius: 24px;
-    padding: 32px 28px 24px;
+    padding: 28px 26px 20px;
     box-shadow:
         var(--shadow-lg),
         0 0 0 1px rgba(255, 255, 255, 0.03) inset;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
     animation: cardIn 0.6s var(--ease-spring);
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
-    overflow-x: hidden;
+
+    /* ✅ Layout Fix: کارت هیچوقت overflow نکنه */
+    max-height: calc(100vh - 32px);
+    min-height: 0;
+    overflow: hidden;
 }
 
-.splash-card::-webkit-scrollbar { width: 4px; }
-.splash-card::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-
 @keyframes cardIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ============================================================
@@ -268,13 +261,14 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    flex-shrink: 0;              /* ✅ hero shrink نشه */
 }
 
 .orbital-wrapper {
     position: relative;
-    width: 140px;
-    height: 140px;
+    width: 120px;
+    height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -314,9 +308,9 @@ body {
 
 .orbital-logo {
     position: relative;
-    width: 90px;
-    height: 90px;
-    border-radius: 26px;
+    width: 78px;
+    height: 78px;
+    border-radius: 22px;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
     display: flex;
     align-items: center;
@@ -330,8 +324,8 @@ body {
 }
 
 .orbital-logo svg {
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     animation: logoSpin 20s linear infinite;
 }
 
@@ -373,12 +367,8 @@ body {
 }
 
 @keyframes orbit {
-    from {
-        transform: rotate(0deg) translateX(65px) rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg) translateX(65px) rotate(-360deg);
-    }
+    from { transform: rotate(0deg) translateX(56px) rotate(0deg); }
+    to   { transform: rotate(360deg) translateX(56px) rotate(-360deg); }
 }
 
 /* ============================================================
@@ -386,7 +376,7 @@ body {
    ============================================================ */
 .splash-title {
     text-align: center;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: var(--text-light);
     letter-spacing: -0.3px;
@@ -426,18 +416,19 @@ body {
 }
 
 /* ============================================================
-   STATS BAR
+   STATS BAR — ✅ FIXED (shrink-proof)
    ============================================================ */
 .splash-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    padding: 12px;
+    padding: 10px;
     background: var(--bg-hover);
     border: 1px solid var(--border);
     border-radius: 14px;
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;              /* ✅ stats shrink نشه */
 }
 
 .splash-stats::before {
@@ -445,10 +436,7 @@ body {
     position: absolute;
     top: 0; right: 0; left: 0;
     height: 2px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--primary) 50%,
-        transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, var(--primary) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2.5s linear infinite;
     opacity: 0.6;
@@ -463,7 +451,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     padding: 4px;
     position: relative;
     min-width: 0;
@@ -480,19 +468,19 @@ body {
 }
 
 .stat-icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     color: var(--primary-light);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 
-.stat-icon svg { width: 14px; height: 14px; }
+.stat-icon svg { width: 13px; height: 13px; }
 
 .stat-label {
-    font-size: 10px;
+    font-size: 9.5px;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -503,7 +491,7 @@ body {
 }
 
 .stat-value {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-light);
     font-family: var(--mono-font);
     font-weight: 700;
@@ -518,7 +506,7 @@ body {
 .stat-value.primary { color: var(--primary-light); }
 
 /* ============================================================
-   STEPS LIST
+   STEPS LIST — ✅ FIXED (flex + scroll)
    ============================================================ */
 .splash-steps {
     display: flex;
@@ -528,30 +516,38 @@ body {
     border-radius: 14px;
     background: var(--bg-hover);
     border: 1px solid var(--border);
-    max-height: 320px;
+
+    /* ✅ Layout Fix: فضای باقی‌مانده رو پر کن */
+    flex: 1 1 auto;
+    min-height: 100px;
+    max-height: 360px;
     overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
 }
 
 .splash-steps::-webkit-scrollbar { width: 4px; }
 .splash-steps::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
+/* ============================================================
+   STEP ITEM
+   ============================================================ */
 .step-item {
     display: grid;
-    grid-template-columns: 26px 1fr auto;
+    grid-template-columns: 24px 1fr auto;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 9px;
+    padding: 9px 11px;
     border-radius: 10px;
     transition: background 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
     position: relative;
     overflow: hidden;
     background: transparent;
     border: 1px solid transparent;
+    flex-shrink: 0;
 }
 
-.step-item.is-pending {
-    opacity: 0.6;
-}
+.step-item.is-pending { opacity: 0.6; }
 
 .step-item.is-active {
     background: var(--primary-bg);
@@ -561,9 +557,7 @@ body {
 }
 
 @keyframes stepActiveGlow {
-    0%, 100% {
-        box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.1) inset;
-    }
+    0%, 100% { box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.1) inset; }
     50% {
         box-shadow:
             0 0 0 1px rgba(var(--primary-rgb), 0.15) inset,
@@ -600,9 +594,9 @@ body {
 
 /* Icon */
 .step-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -616,15 +610,9 @@ body {
     position: relative;
 }
 
-.step-icon svg {
-    width: 13px;
-    height: 13px;
-}
+.step-icon svg { width: 12px; height: 12px; }
 
-.step-item.is-pending .step-icon {
-    background: var(--bg-hover);
-    color: var(--text-faint);
-}
+.step-item.is-pending .step-icon { background: var(--bg-hover); color: var(--text-faint); }
 
 .step-item.is-active .step-icon {
     background: var(--primary);
@@ -632,13 +620,9 @@ body {
     box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
 }
 
-.step-item.is-active .step-icon svg {
-    animation: spin 1.2s linear infinite;
-}
+.step-item.is-active .step-icon svg { animation: spin 1.2s linear infinite; }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .step-item.is-done .step-icon {
     background: var(--success);
@@ -652,10 +636,7 @@ body {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-.step-item.is-skipped .step-icon {
-    background: var(--warning);
-    color: white;
-}
+.step-item.is-skipped .step-icon { background: var(--warning); color: white; }
 
 .step-item.is-warning .step-icon {
     background: var(--warning);
@@ -672,12 +653,12 @@ body {
 .step-content {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
 }
 
 .step-name {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-light);
     display: flex;
@@ -689,7 +670,6 @@ body {
 }
 
 .step-item.is-pending .step-name { color: var(--text-muted); }
-.step-item.is-done .step-name { color: var(--text-light); }
 .step-item.is-skipped .step-name { color: var(--text-dim); text-decoration: line-through; }
 
 .step-hint {
@@ -710,10 +690,7 @@ body {
     animation: pulseWarning 1.5s ease-in-out infinite;
 }
 
-.step-hint .error-text {
-    color: var(--danger);
-    font-weight: 700;
-}
+.step-hint .error-text { color: var(--danger); font-weight: 700; }
 
 .step-progress {
     height: 4px;
@@ -738,10 +715,7 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.4) 50%,
-        transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s linear infinite;
 }
@@ -756,13 +730,18 @@ body {
     100% { transform: translateX(400%); }
 }
 
-/* Right side info */
+/* ============================================================
+   STEP INFO — ✅ FIXED (min-width for retry button)
+   ============================================================ */
 .step-info {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
+    justify-content: center;
+    gap: 5px;
     flex-shrink: 0;
+    min-width: 82px;             /* ✅ فضای کافی برای دکمه */
+    min-height: 24px;
 }
 
 .step-time {
@@ -771,6 +750,7 @@ body {
     font-family: var(--mono-font);
     font-weight: 700;
     white-space: nowrap;
+    line-height: 1;
 }
 
 .step-item.is-active .step-time { color: var(--primary-light); }
@@ -779,14 +759,17 @@ body {
 .step-item.is-skipped .step-time { color: var(--warning); }
 .step-item.is-warning .step-time { color: var(--warning); }
 
+/* ============================================================
+   STEP ACTION BTN (retry / skip) — ✅ FIXED
+   ============================================================ */
 .step-action-btn {
-    padding: 4px 10px;
+    padding: 5px 11px;
     background: var(--bg-card-solid);
     border: 1px solid var(--border-strong);
     border-radius: 7px;
     color: var(--text-light);
     font-family: var(--ui-font);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
@@ -794,6 +777,9 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    line-height: 1;
+    min-height: 26px;
+    flex-shrink: 0;
 }
 
 .step-action-btn:hover {
@@ -801,22 +787,22 @@ body {
     border-color: var(--primary);
     color: white;
     transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
 }
 
 .step-action-btn.retry {
-    background: var(--warning);
+    background: linear-gradient(135deg, var(--warning), var(--warning-dark));
     border-color: var(--warning);
     color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
 }
 
 .step-action-btn.retry:hover {
     background: var(--warning-dark);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
 }
 
-.step-action-btn svg {
-    width: 10px;
-    height: 10px;
-}
+.step-action-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
 
 /* Done checkmark animation */
 .step-item.is-done .step-icon::after {
@@ -830,27 +816,25 @@ body {
 }
 
 @keyframes checkPop {
-    0% {
-        opacity: 0.8;
-        transform: scale(0.7);
-    }
-    100% {
-        opacity: 0;
-        transform: scale(1.3);
-    }
+    0% { opacity: 0.8; transform: scale(0.7); }
+    100% { opacity: 0; transform: scale(1.3); }
 }
 
 /* ============================================================
-   FOOTER ACTIONS
+   FOOTER ACTIONS — ✅ FIXED (always visible)
    ============================================================ */
 .splash-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding-top: 4px;
+    padding-top: 12px;
     border-top: 1px solid var(--border);
     flex-wrap: wrap;
+    flex-shrink: 0;              /* ✅ هیچوقت shrink نشه */
+    position: relative;
+    z-index: 2;
+    margin-top: auto;
 }
 
 .actions-left,
@@ -887,9 +871,7 @@ body {
     transform: translateY(-1px);
 }
 
-.action-btn:active {
-    transform: translateY(0);
-}
+.action-btn:active { transform: translateY(0); }
 
 .action-btn svg {
     width: 13px;
@@ -915,10 +897,7 @@ body {
     color: white;
 }
 
-.action-btn.warning:hover {
-    background: var(--warning-dark);
-    transform: translateY(-1px);
-}
+.action-btn.warning:hover { background: var(--warning-dark); }
 
 .action-btn.danger {
     background: transparent;
@@ -1038,9 +1017,7 @@ body {
     animation: fadeIn 0.25s ease;
 }
 
-.splash-error-modal.open {
-    display: flex;
-}
+.splash-error-modal.open { display: flex; }
 
 @keyframes fadeIn {
     from { opacity: 0; }
@@ -1051,13 +1028,13 @@ body {
     background: var(--bg-card-solid);
     border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 20px;
-    padding: 28px 24px;
+    padding: 26px 22px;
     max-width: 480px;
     width: 100%;
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     align-items: center;
     text-align: center;
     animation: cardIn 0.4s var(--ease-spring);
@@ -1077,9 +1054,9 @@ body {
 }
 
 .error-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
     background: var(--danger);
     color: white;
     display: flex;
@@ -1091,10 +1068,7 @@ body {
     z-index: 1;
 }
 
-.error-icon svg {
-    width: 30px;
-    height: 30px;
-}
+.error-icon svg { width: 28px; height: 28px; }
 
 @keyframes errorBounce {
     0%, 100% { transform: translateY(0); }
@@ -1103,7 +1077,7 @@ body {
 }
 
 .error-title {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-light);
     position: relative;
@@ -1111,7 +1085,7 @@ body {
 }
 
 .error-step-name {
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-muted);
     font-family: var(--mono-font);
     background: var(--bg-hover);
@@ -1127,7 +1101,7 @@ body {
     background: var(--danger-bg);
     border: 1px solid rgba(239, 68, 68, 0.2);
     border-radius: 12px;
-    padding: 14px;
+    padding: 12px 14px;
     width: 100%;
     font-family: var(--mono-font);
     word-break: break-word;
@@ -1150,11 +1124,11 @@ body {
 
 .error-actions .action-btn {
     flex: 1;
-    min-width: 110px;
+    min-width: 100px;
 }
 
 /* ============================================================
-   CONFIRM MODAL (برای انصراف)
+   CONFIRM MODAL
    ============================================================ */
 .splash-confirm-modal {
     position: fixed;
@@ -1176,22 +1150,22 @@ body {
     background: var(--bg-card-solid);
     border: 1px solid var(--border-strong);
     border-radius: 20px;
-    padding: 28px 24px;
+    padding: 26px 22px;
     max-width: 420px;
     width: 100%;
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     align-items: center;
     text-align: center;
     animation: cardIn 0.4s var(--ease-spring);
 }
 
 .confirm-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 18px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
     background: var(--warning);
     color: white;
     display: flex;
@@ -1200,14 +1174,9 @@ body {
     box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4);
 }
 
-.confirm-icon svg { width: 28px; height: 28px; }
+.confirm-icon svg { width: 26px; height: 26px; }
 
-.confirm-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text-light);
-}
-
+.confirm-title { font-size: 16px; font-weight: 700; color: var(--text-light); }
 .confirm-desc {
     font-size: 12.5px;
     color: var(--text-muted);
@@ -1223,7 +1192,7 @@ body {
 
 .confirm-actions .action-btn {
     flex: 1;
-    min-width: 110px;
+    min-width: 100px;
 }
 
 /* ============================================================
@@ -1270,60 +1239,76 @@ body {
 }
 
 /* ============================================================
-   RESPONSIVE
+   RESPONSIVE — ✅ FIXED
    ============================================================ */
 @media (max-width: 640px) {
-    .splash-root { padding: 16px; }
-    .splash-card { padding: 24px 18px 20px; gap: 18px; border-radius: 20px; }
-    .orbital-wrapper { width: 120px; height: 120px; }
-    .orbital-logo { width: 76px; height: 76px; border-radius: 22px; }
-    .orbital-logo svg { width: 36px; height: 36px; }
-    .splash-title { font-size: 16px; }
-    .stat-value { font-size: 12.5px; }
+    .splash-root { padding: 12px; }
+    .splash-card {
+        padding: 20px 16px 16px;
+        gap: 12px;
+        border-radius: 18px;
+        max-height: calc(100vh - 24px);
+    }
+    .orbital-wrapper { width: 100px; height: 100px; }
+    .orbital-logo { width: 64px; height: 64px; border-radius: 18px; }
+    .orbital-logo svg { width: 30px; height: 30px; }
+    .orbital-dot {
+        animation: orbit 3.5s linear infinite;
+    }
+    @keyframes orbit {
+        from { transform: rotate(0deg) translateX(46px) rotate(0deg); }
+        to   { transform: rotate(360deg) translateX(46px) rotate(-360deg); }
+    }
+    .splash-title { font-size: 15px; }
+    .splash-subtitle { font-size: 11px; }
+    .splash-stats { padding: 8px; gap: 4px; }
+    .stat-value { font-size: 12px; }
     .stat-label { font-size: 9px; }
-    .step-name { font-size: 12px; }
-    .step-item { grid-template-columns: 22px 1fr auto; gap: 8px; padding: 9px 10px; }
+    .stat-icon { width: 14px; height: 14px; }
+    .stat-icon svg { width: 11px; height: 11px; }
+    .step-name { font-size: 11.5px; }
+    .step-item {
+        grid-template-columns: 22px 1fr auto;
+        gap: 8px;
+        padding: 8px 9px;
+    }
     .step-icon { width: 22px; height: 22px; border-radius: 7px; }
     .step-icon svg { width: 11px; height: 11px; }
+    .step-info { min-width: 72px; gap: 4px; }
+    .step-action-btn { padding: 4px 9px; font-size: 10.5px; min-height: 24px; }
     .action-btn { padding: 8px 10px; font-size: 11px; }
     .splash-hint { display: none; }
+    .splash-steps { max-height: 240px; min-height: 100px; }
 }
 
 @media (max-width: 400px) {
     .splash-stats { grid-template-columns: 1fr 1fr; }
-    .stat-item:nth-child(3) {
-        grid-column: 1 / -1;
-    }
+    .stat-item:nth-child(3) { grid-column: 1 / -1; }
     .stat-item:nth-child(3)::after { display: none; }
     .splash-actions { flex-direction: column-reverse; }
     .actions-left, .actions-right { width: 100%; }
     .action-btn { flex: 1; }
+    .orbital-wrapper { width: 90px; height: 90px; }
+    .orbital-logo { width: 58px; height: 58px; border-radius: 16px; }
+    .orbital-logo svg { width: 26px; height: 26px; }
+}
+
+@media (max-height: 700px) {
+    .splash-card { padding: 20px 20px 16px; gap: 12px; }
     .orbital-wrapper { width: 100px; height: 100px; }
     .orbital-logo { width: 64px; height: 64px; border-radius: 18px; }
     .orbital-logo svg { width: 30px; height: 30px; }
+    .splash-steps { max-height: 220px; min-height: 100px; }
 }
 
-@media (max-height: 600px) {
-    .splash-steps { max-height: 180px; }
-    .splash-card { gap: 14px; padding: 22px 20px 18px; }
-    .orbital-wrapper { width: 100px; height: 100px; }
-    .orbital-logo { width: 64px; height: 64px; border-radius: 18px; }
-    .orbital-logo svg { width: 30px; height: 30px; }
-    .splash-hint { display: none; }
-}
-
-@media (max-height: 500px) and (orientation: landscape) {
-    .splash-root { padding: 12px; }
-    .splash-card { padding: 16px; gap: 12px; border-radius: 16px; max-width: 700px; }
+@media (max-height: 550px) {
+    .splash-stats { display: none; }
+    .splash-steps { max-height: 160px; min-height: 80px; }
     .orbital-wrapper { width: 80px; height: 80px; }
     .orbital-logo { width: 52px; height: 52px; border-radius: 14px; }
     .orbital-logo svg { width: 24px; height: 24px; }
     .splash-title { font-size: 14px; }
-    .splash-steps { max-height: 120px; }
     .splash-hint { display: none; }
-    .splash-stats { padding: 8px; }
-    .stat-icon { width: 16px; height: 16px; }
-    .stat-value { font-size: 11px; }
 }
 
 /* ============================================================
@@ -1334,17 +1319,9 @@ body {
     filter: grayscale(0.5);
 }
 
-.splash-root.paused .orbital-logo svg {
-    animation-play-state: paused;
-}
-
-.splash-root.paused .orbital-dot {
-    animation-play-state: paused;
-}
-
-.splash-root.paused .step-item.is-active .step-icon svg {
-    animation-play-state: paused;
-}
+.splash-root.paused .orbital-logo svg { animation-play-state: paused; }
+.splash-root.paused .orbital-dot { animation-play-state: paused; }
+.splash-root.paused .step-item.is-active .step-icon svg { animation-play-state: paused; }
 
 .splash-root.paused .splash-subtitle::before {
     animation-play-state: paused;
@@ -1352,17 +1329,13 @@ body {
     box-shadow: 0 0 8px var(--warning);
 }
 
-.splash-root.paused .splash-subtitle {
-    color: var(--warning);
-}
+.splash-root.paused .splash-subtitle { color: var(--warning); }
 
 /* ============================================================
    REDUCED MOTION
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
@@ -1513,13 +1486,13 @@ body {
 </div>
 
 <!-- ============================================================
-     ERROR MODAL
+     ERROR MODAL — ✅ با دکمه ورود مجدد
      ============================================================ -->
 <div class="splash-error-modal" id="errorModal" role="dialog" aria-modal="true">
 
     <div class="error-card">
 
-        <div class="error-icon">
+        <div class="error-icon" id="errorIcon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
@@ -1560,6 +1533,16 @@ body {
                 <span data-splash-i18n="abortAll">توقف کامل</span>
             </button>
 
+            <!-- ✅ دکمه ورود مجدد (فقط برای خطای احراز هویت) -->
+            <button class="action-btn primary" id="btnLogin" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                <span>ورود مجدد</span>
+            </button>
+
         </div>
 
     </div>
@@ -1567,7 +1550,7 @@ body {
 </div>
 
 <!-- ============================================================
-     CONFIRM MODAL (انصراف از بارگذاری)
+     CONFIRM MODAL (انصراف)
      ============================================================ -->
 <div class="splash-confirm-modal" id="confirmModal" role="dialog" aria-modal="true">
 
@@ -1610,23 +1593,16 @@ body {
     <kbd>Esc</kbd>
     <span data-splash-i18n="hintAbort">انصراف</span>
 </div>
-
 <script>
 // ============================================================
-// Splash Loader v6.1 — PART 1: Core + Rendering
-// State + I18N + Steps + Retry on Cards + Progress Ring
+// Splash Loader v6.2 — PART 1: Core + Rendering
 // ============================================================
 (function() {
 'use strict';
 
-// جلوگیری از اجرای دوباره
 if (window.__splashPart1Loaded) return;
 window.__splashPart1Loaded = true;
 
-
-// ============================================================
-// UTILS
-// ============================================================
 const $  = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
 
@@ -1679,6 +1655,7 @@ const I18N = {
         hintSkip: 'رد کردن',
         hintAbort: 'انصراف',
         errorTitle: 'خطا در بارگذاری',
+        errorAuth: 'نشست منقضی شده',
         errorUnknown: 'خطای نامشخص',
         errorTimeout: 'زمان انتظار تمام شد',
         errorCritical: 'این مرحله حیاتی است و باید تکمیل شود',
@@ -1723,6 +1700,7 @@ const I18N = {
         hintSkip: 'Skip',
         hintAbort: 'Abort',
         errorTitle: 'Loading Error',
+        errorAuth: 'Session Expired',
         errorUnknown: 'Unknown error',
         errorTimeout: 'Request timeout',
         errorCritical: 'This step is critical and must complete',
@@ -1773,7 +1751,6 @@ function applyI18n() {
         else if (state.status === 'running') subtitle.textContent = t('subtitle');
     }
 
-    // Stat labels
     const statLabels = $$('.stat-label');
     const keys = ['statTime', 'statProgress', 'statStep'];
     statLabels.forEach((el, idx) => {
@@ -1786,36 +1763,27 @@ function applyI18n() {
 // STATE
 // ============================================================
 const state = {
-    // Steps
     steps: [],
     currentIndex: 0,
-    status: 'idle',   // idle | running | paused | error | success | aborted
+    status: 'idle',
     paused: false,
     aborted: false,
     completed: false,
     errorShown: false,
     skipAllFlag: false,
-
-    // Timing
     startTime: 0,
     stepStartTime: 0,
     totalEstimatedWeight: 0,
-
-    // Timers
     updateIntervalId: null,
     stepIntervalId: null,
-
-    // Callbacks
     onComplete: null,
     onAbort: null,
-
-    // Config
     slowThreshold: 1.5,
 };
 
 
 // ============================================================
-// PRESET STEPS
+// PRESET STEPS — ✅ stepUser اصلاح شده
 // ============================================================
 function getPresetSteps() {
     return [
@@ -1840,7 +1808,7 @@ function getPresetSteps() {
             },
         },
 
-        // ۲. اطلاعات کاربر (بحرانی)
+        // ۲. اطلاعات کاربر — ✅ FIX: به جای redirect فوری، خطای auth throw می‌کند
         {
             id: 'user',
             nameKey: 'stepUser',
@@ -1849,14 +1817,20 @@ function getPresetSteps() {
             hint: 'hintFetching',
             check: async () => {
                 const res = await fetch('/api/user', { credentials: 'include' });
+
                 if (res.status === 401) {
-                    window.location.href = '/login';
-                    throw new Error('نشست منقضی شده است');
+                    // ✅ به جای window.location.href، خطای خاص throw کن
+                    const err = new Error('نشست شما منقضی شده است. لطفاً دوباره وارد شوید.');
+                    err.isAuthError = true;
+                    err.shouldRedirect = true;
+                    throw err;
                 }
+
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     throw new Error(data.error || 'خطا در دریافت اطلاعات کاربر');
                 }
+
                 try {
                     localStorage.setItem('username', data.data?.username || '');
                     localStorage.setItem('user_role', data.data?.role || 'user');
@@ -1963,7 +1937,7 @@ function getPresetSteps() {
             },
         },
 
-        // ۸. رندر (بحرانی، ولی سریع)
+        // ۸. رندر
         {
             id: 'render',
             nameKey: 'stepRender',
@@ -2131,7 +2105,7 @@ function estimateRemainingTime() {
 
 
 // ============================================================
-// UPDATE STATS BAR
+// UPDATE STATS
 // ============================================================
 function updateStats() {
     const statTime = $('#statTime');
@@ -2168,10 +2142,9 @@ function updateStats() {
 
 
 // ============================================================
-// RENDER SINGLE STEP HTML
+// RENDER SINGLE STEP
 // ============================================================
 function renderStepHtml(step, idx) {
-    // تعیین وضعیت — order matters!
     const isError   = step.status === 'error';
     const isSkipped = step.status === 'skipped';
     const isWarning = step.status === 'warning';
@@ -2179,7 +2152,6 @@ function renderStepHtml(step, idx) {
     const isActive  = idx === state.currentIndex && state.status === 'running' && step.status === 'active';
     const isPending = !isError && !isSkipped && !isWarning && !isDone && !isActive;
 
-    // Status class
     let statusClass = 'is-pending';
     if (isError)        statusClass = 'is-error';
     else if (isSkipped) statusClass = 'is-skipped';
@@ -2187,7 +2159,6 @@ function renderStepHtml(step, idx) {
     else if (isDone)    statusClass = 'is-done';
     else if (isActive)  statusClass = 'is-active';
 
-    // Icon
     const icon = isError   ? ICONS.error
                : isSkipped ? ICONS.skipped
                : isWarning ? ICONS.warning
@@ -2195,7 +2166,6 @@ function renderStepHtml(step, idx) {
                : isActive  ? ICONS.spinner
                : ICONS.pending;
 
-    // Time text
     let timeText = '';
     if (step.actualDuration) {
         timeText = formatMs(step.actualDuration);
@@ -2209,7 +2179,6 @@ function renderStepHtml(step, idx) {
         timeText = '~' + formatMs(step.weight);
     }
 
-    // Hint text
     let hintText = '';
     if (isActive) {
         const hintKey = step.hint || 'hintLoading';
@@ -2229,21 +2198,17 @@ function renderStepHtml(step, idx) {
         hintText = t('stepPending');
     }
 
-    // Hint color class
     const hintClass = isError ? 'error-text' : isWarning ? 'warning-text' : '';
 
-    // Progress bar
     const showProgress = isActive;
     const progressPercent = step.currentProgress
         ? (step.currentProgress.current / step.currentProgress.total) * 100
         : 0;
     const indeterminate = isActive && !step.currentProgress;
 
-    // Action button — ORDER MATTERS: error first (retry), then active (skip)
     let actionBtn = '';
 
     if (isError) {
-        // ✅ دکمه retry برای همه خطاها (بحرانی و غیر-بحرانی)
         actionBtn = `
             <button class="step-action-btn retry" data-retry-step="${idx}" title="${t('retry')}">
                 ${ICONS.retry}
@@ -2251,7 +2216,6 @@ function renderStepHtml(step, idx) {
             </button>
         `;
     } else if (isActive && !step.critical) {
-        // دکمه skip فقط در حالت active و غیر-بحرانی
         actionBtn = `
             <button class="step-action-btn" data-skip-step="${idx}" title="${t('skip')}">
                 <span>${t('skip')}</span>
@@ -2283,13 +2247,12 @@ function renderStepHtml(step, idx) {
 
 
 // ============================================================
-// RENDER STEPS — INCREMENTAL (بدون re-render کامل)
+// RENDER STEPS — INCREMENTAL
 // ============================================================
 function renderSteps() {
     const container = $('#splashSteps');
     if (!container) return;
 
-    // اگر تعداد آیتم‌ها با تعداد steps نمی‌خورد → کامل بازسازی کن
     if (container.children.length !== state.steps.length) {
         container.innerHTML = state.steps
             .map((step, idx) => renderStepHtml(step, idx))
@@ -2298,12 +2261,10 @@ function renderSteps() {
         return;
     }
 
-    // در غیر این صورت → فقط آیتم‌های تغییر یافته را آپدیت کن
     state.steps.forEach((step, idx) => {
         const existing = container.querySelector(`[data-step-idx="${idx}"]`);
         if (!existing) return;
 
-        // ساخت HTML جدید در یک wrapper موقت
         const temp = document.createElement('div');
         temp.innerHTML = renderStepHtml(step, idx);
         const newEl = temp.firstElementChild;
@@ -2312,7 +2273,6 @@ function renderSteps() {
         const oldClass = existing.className;
         const newClass = newEl.className;
 
-        // اگر status کلاس عوض شده → icon و class را آپدیت کن
         if (oldClass !== newClass) {
             existing.className = newClass;
 
@@ -2321,7 +2281,6 @@ function renderSteps() {
             if (oldIcon && newIcon) oldIcon.innerHTML = newIcon.innerHTML;
         }
 
-        // hint را همیشه آپدیت کن (چون ممکنه متنش عوض شده باشد)
         const oldHint = existing.querySelector('.step-hint');
         const newHint = newEl.querySelector('.step-hint');
         if (oldHint && newHint) {
@@ -2329,20 +2288,16 @@ function renderSteps() {
             oldHint.innerHTML = newHint.innerHTML;
         }
 
-        // time را آپدیت کن
         const oldTime = existing.querySelector('.step-time');
         const newTime = newEl.querySelector('.step-time');
         if (oldTime && newTime) oldTime.textContent = newTime.textContent;
 
-        // progress را آپدیت کن (فقط اگر وجود داشت)
         const oldProg = existing.querySelector('.step-progress');
         const newProg = newEl.querySelector('.step-progress');
         if (oldProg && newProg) {
             const oldFill = oldProg.querySelector('.step-progress-fill');
             const newFill = newProg.querySelector('.step-progress-fill');
-            if (oldFill && newFill) {
-                oldFill.style.width = newFill.style.width;
-            }
+            if (oldFill && newFill) oldFill.style.width = newFill.style.width;
             oldProg.classList.toggle('indeterminate', newProg.classList.contains('indeterminate'));
         } else if (newProg && !oldProg) {
             const content = existing.querySelector('.step-content');
@@ -2351,7 +2306,6 @@ function renderSteps() {
             oldProg.remove();
         }
 
-        // دکمه‌ی عملیات (retry/skip) را آپدیت کن
         const oldInfo = existing.querySelector('.step-info');
         const newInfo = newEl.querySelector('.step-info');
         if (oldInfo && newInfo) {
@@ -2359,13 +2313,8 @@ function renderSteps() {
             const newBtn = newInfo.querySelector('.step-action-btn');
             const oldTimeEl = oldInfo.querySelector('.step-time');
 
-            // پاک کردن دکمه قدیمی
             if (oldBtn) oldBtn.remove();
-
-            // اضافه کردن دکمه جدید (اگر هست)
             if (newBtn) oldInfo.appendChild(newBtn);
-
-            // اطمینان از اینکه زمان اول است
             if (oldTimeEl) oldInfo.prepend(oldTimeEl);
         }
     });
@@ -2375,30 +2324,28 @@ function renderSteps() {
 
 
 // ============================================================
-// BIND STEP ACTIONS (retry + skip روی کارت‌ها)
+// BIND STEP ACTIONS
 // ============================================================
 function bindStepActions() {
     const container = $('#splashSteps');
     if (!container) return;
 
-    // Retry
     container.querySelectorAll('[data-retry-step]').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             const idx = parseInt(btn.dataset.retryStep, 10);
             if (idx === state.currentIndex) {
-                retryCurrentStep();
+                if (window.__splashRetry) window.__splashRetry();
             }
         };
     });
 
-    // Skip
     container.querySelectorAll('[data-skip-step]').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             const idx = parseInt(btn.dataset.skipStep, 10);
             if (idx === state.currentIndex) {
-                skipCurrentStep();
+                if (window.__splashSkip) window.__splashSkip();
             }
         };
     });
@@ -2430,8 +2377,7 @@ console.log('✅ Splash Part 1 (Core + Rendering) loaded');
 </script>
 <script>
 // ============================================================
-// Splash Loader v6.1 — PART 2: Run + Events + Confirm + Init
-// RunLoop + Retry + Skip + Confirm Modal + Init + API
+// Splash Loader v6.2 — PART 2: Run + Events + Confirm + Init
 // ============================================================
 (function() {
 'use strict';
@@ -2459,7 +2405,6 @@ const {
 } = window.__splashPart1;
 
 
-// برای setLang
 function setLang(lang) {
     if (lang !== 'fa' && lang !== 'en') lang = 'fa';
     window.__splashPart1.currentLang = lang;
@@ -2470,16 +2415,17 @@ function setLang(lang) {
 
 
 // ============================================================
-// RUN SINGLE STEP
+// RUN SINGLE STEP — ✅ FIX: ذخیره shouldRedirect
 // ============================================================
 async function runStep(idx) {
     const step = state.steps[idx];
     if (!step) return { success: false };
 
-    // Reset step state
     step.status = 'active';
     step.currentProgress = null;
     step.errorMessage = null;
+    step.isAuthError = false;
+    step.shouldRedirect = false;
 
     state.stepStartTime = Date.now();
     state.status = 'running';
@@ -2487,11 +2433,9 @@ async function runStep(idx) {
     renderSteps();
     updateStats();
 
-    // Subtitle
     const subtitle = $('#splashSubtitle');
     if (subtitle) subtitle.textContent = t('subtitle');
 
-    // Progress callback
     const progressCallback = (current, total) => {
         step.currentProgress = { current, total };
         renderSteps();
@@ -2514,7 +2458,6 @@ async function runStep(idx) {
         renderSteps();
         updateStats();
 
-        // Small UX pause
         await new Promise(r => setTimeout(r, 120));
 
         return { success: true, result };
@@ -2523,8 +2466,9 @@ async function runStep(idx) {
         step.actualDuration = Date.now() - state.stepStartTime;
         step.status = 'error';
         step.errorMessage = err.message || t('errorUnknown');
+        step.isAuthError = err.isAuthError || false;
+        step.shouldRedirect = err.shouldRedirect || false;
 
-        // ⚠️ مهم: وضعیت را از running خارج کن
         state.status = 'error';
 
         renderSteps();
@@ -2591,11 +2535,12 @@ function retryCurrentStep() {
     step.status = 'pending';
     step.errorMessage = null;
     step.currentProgress = null;
+    step.isAuthError = false;
+    step.shouldRedirect = false;
 
     state.errorShown = false;
     closeErrorModal();
 
-    // ✅ برگرداندن وضعیت به running
     state.status = 'running';
 
     renderSteps();
@@ -2608,17 +2553,15 @@ function retryCurrentStep() {
 
 
 // ============================================================
-// ERROR MODAL (فقط برای خطاهای بحرانی)
+// ERROR MODAL — ✅ FIX: مدیریت خطای احراز هویت
 // ============================================================
 function showErrorModal(step) {
-    // برای خطاهای غیر-بحرانی، هیچ modal ای باز نکن
-    // کاربر میتواند از دکمه retry روی کارت استفاده کند
-    if (!step.critical) {
+    // برای خطاهای غیر-بحرانی که نیاز به redirect ندارن → هیچ modal باز نکن
+    if (!step.critical && !step.shouldRedirect) {
         state.errorShown = false;
         return;
     }
 
-    // خطای بحرانی → modal
     state.errorShown = true;
 
     const modal = $('#errorModal');
@@ -2626,13 +2569,48 @@ function showErrorModal(step) {
     const message = $('#errorMessage');
     const title = $('#errorTitle');
     const skipAllBtn = $('#btnSkipAll');
+    const retryBtn = $('#btnRetry');
+    const loginBtn = $('#btnLogin');
+    const errorIcon = $('#errorIcon');
 
-    if (title) title.textContent = t('errorCritical');
-    if (stepName) stepName.textContent = step.nameKey ? t(step.nameKey) : (step.name || '—');
-    if (message) message.textContent = step.errorMessage || t('errorUnknown');
+    // ✅ خطای احراز هویت — حالت خاص
+    if (step.shouldRedirect) {
+        if (title) title.textContent = t('errorAuth');
+        if (stepName) stepName.textContent = step.nameKey ? t(step.nameKey) : (step.name || '—');
+        if (message) message.textContent = step.errorMessage || 'برای ادامه دوباره وارد شوید';
+        if (retryBtn) retryBtn.style.display = 'none';
+        if (skipAllBtn) skipAllBtn.style.display = 'none';
+        if (loginBtn) loginBtn.style.display = 'inline-flex';
 
-    // برای خطای بحرانی، «رد همه» مخفی است
-    if (skipAllBtn) skipAllBtn.style.display = 'none';
+        // آیکون متفاوت برای auth error
+        if (errorIcon) {
+            errorIcon.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            `;
+        }
+    } else {
+        // خطای بحرانی معمولی
+        if (title) title.textContent = t('errorCritical');
+        if (stepName) stepName.textContent = step.nameKey ? t(step.nameKey) : (step.name || '—');
+        if (message) message.textContent = step.errorMessage || t('errorUnknown');
+        if (skipAllBtn) skipAllBtn.style.display = 'none';
+        if (retryBtn) retryBtn.style.display = 'inline-flex';
+        if (loginBtn) loginBtn.style.display = 'none';
+
+        // آیکون warning معمولی
+        if (errorIcon) {
+            errorIcon.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            `;
+        }
+    }
 
     if (modal) modal.classList.add('open');
 }
@@ -2676,7 +2654,6 @@ function confirmAbort() {
 }
 
 function abortLoading() {
-    // به جای confirm() بومی → modal سفارشی
     openAbortConfirmModal();
 }
 
@@ -2743,13 +2720,11 @@ function resumeLoading() {
 function startTimers() {
     stopTimers();
 
-    // Update stats + step speed every 100ms
     state.updateIntervalId = setInterval(() => {
         if (state.status === 'running') {
             updateStats();
             checkStepSpeed();
 
-            // update active step time display (بدون re-render کامل)
             const activeEl = $('.step-item.is-active, .step-item.is-warning');
             if (activeEl) {
                 const timeEl = activeEl.querySelector('.step-time');
@@ -2780,13 +2755,11 @@ async function runLoop() {
     if (state.aborted || state.completed) return;
     if (state.status === 'paused' || state.status === 'error') return;
 
-    // All done?
     if (state.currentIndex >= state.steps.length) {
         await completeLoading();
         return;
     }
 
-    // Skip-all: auto-skip non-critical
     if (state.skipAllFlag) {
         const step = state.steps[state.currentIndex];
         if (step && !step.critical) {
@@ -2811,19 +2784,16 @@ async function runLoop() {
         updateStats();
         setTimeout(() => runLoop(), 100);
     } else {
-        // خطا رخ داد
-        if (result.step.critical) {
-            // خطای بحرانی → modal
+        if (result.step.critical || result.step.shouldRedirect) {
             showErrorModal(result.step);
         }
-        // خطای غیر-بحرانی: هیچ modal ای باز نمیشود؛
-        // کاربر میتواند روی کارت step دکمه retry یا skip بزند
+        // برای خطاهای غیر-بحرانی، دکمه retry روی کارت ظاهر می‌شود
     }
 }
 
 
 // ============================================================
-// COMPLETE LOADING
+// COMPLETE
 // ============================================================
 async function completeLoading() {
     if (state.completed) return;
@@ -2882,6 +2852,10 @@ async function completeLoading() {
 // ============================================================
 function bindEvents() {
 
+    // ✅ اکسپوز برای دکمه‌های روی کارت‌ها
+    window.__splashRetry = retryCurrentStep;
+    window.__splashSkip = skipCurrentStep;
+
     // Pause/Resume
     $('#btnPause')?.addEventListener('click', () => {
         if (state.status === 'paused') resumeLoading();
@@ -2925,6 +2899,11 @@ function bindEvents() {
         abortLoading();
     });
 
+    // ✅ Error modal — Login (برای خطای احراز هویت)
+    $('#btnLogin')?.addEventListener('click', () => {
+        window.location.href = '/login';
+    });
+
     // Confirm modal
     $('#confirmYes')?.addEventListener('click', confirmAbort);
     $('#confirmNo')?.addEventListener('click', closeAbortConfirmModal);
@@ -2932,12 +2911,11 @@ function bindEvents() {
         if (e.target.id === 'confirmModal') closeAbortConfirmModal();
     });
 
-    // Error modal overlay click (بستن با کلیک روی پس‌زمینه — فقط اگه غیر-بحرانی باشد)
+    // Error modal overlay click
     $('#errorModal')?.addEventListener('click', (e) => {
         if (e.target.id === 'errorModal') {
             const step = state.steps[state.currentIndex];
-            // اگر بحرانی نیست، می‌توان بست
-            if (step && !step.critical) {
+            if (step && !step.critical && !step.shouldRedirect) {
                 closeErrorModal();
                 state.errorShown = false;
             }
@@ -2946,10 +2924,8 @@ function bindEvents() {
 
     // Keyboard
     document.addEventListener('keydown', (e) => {
-        // نادیده گرفتن وقتی کاربر در حال تایپ است
         if (e.target.matches('input, textarea')) return;
 
-        // اگر confirm modal باز است → فقط Esc و Enter
         const confirmModal = $('#confirmModal');
         if (confirmModal && confirmModal.classList.contains('open')) {
             if (e.key === 'Escape') {
@@ -2962,13 +2938,12 @@ function bindEvents() {
             return;
         }
 
-        // اگر error modal باز است → Escape
         const errorModal = $('#errorModal');
         if (errorModal && errorModal.classList.contains('open')) {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 const step = state.steps[state.currentIndex];
-                if (step && !step.critical) {
+                if (step && !step.critical && !step.shouldRedirect) {
                     closeErrorModal();
                     state.errorShown = false;
                 }
@@ -2976,10 +2951,8 @@ function bindEvents() {
             return;
         }
 
-        // در حالت success یا aborted → هیچ
         if (state.status === 'success' || state.aborted || state.completed) return;
 
-        // Space → Pause/Resume
         if (e.code === 'Space') {
             e.preventDefault();
             if (state.status === 'paused') resumeLoading();
@@ -2987,21 +2960,18 @@ function bindEvents() {
             return;
         }
 
-        // S → Skip
         if (e.key.toLowerCase() === 's') {
             e.preventDefault();
             skipCurrentStep();
             return;
         }
 
-        // R → Retry (اگه خطا داشت)
         if (e.key.toLowerCase() === 'r' && state.status === 'error') {
             e.preventDefault();
             retryCurrentStep();
             return;
         }
 
-        // Esc → Abort confirm
         if (e.key === 'Escape') {
             e.preventDefault();
             abortLoading();
@@ -3016,7 +2986,6 @@ function bindEvents() {
 const splashLoader = {
 
     async start(options = {}) {
-        // Reset state
         state.aborted = false;
         state.completed = false;
         state.errorShown = false;
@@ -3026,11 +2995,9 @@ const splashLoader = {
         state.startTime = Date.now();
         state.status = 'running';
 
-        // Lang
         const lang = options.lang || document.documentElement.lang || 'fa';
         setLang(lang);
 
-        // Steps
         const rawSteps = options.steps || getPresetSteps();
         state.steps = rawSteps.map(s => ({
             ...s,
@@ -3038,39 +3005,32 @@ const splashLoader = {
             actualDuration: null,
             errorMessage: null,
             currentProgress: null,
+            isAuthError: false,
+            shouldRedirect: false,
         }));
 
         state.totalEstimatedWeight = state.steps.reduce(
             (sum, s) => sum + (s.weight || 500), 0
         );
 
-        // Callbacks
         state.onComplete = options.onComplete || null;
         state.onAbort = options.onAbort || null;
 
-        // Reset UI
         const root = $('#splashRoot');
         if (root) {
             root.classList.remove('exit', 'success', 'paused');
             root.style.display = '';
         }
 
-        // Confirm modal بسته
         closeAbortConfirmModal();
         closeErrorModal();
 
-        // Particles
         createParticles();
-
-        // Initial render
         renderSteps();
         updateStats();
         updateProgressRing(0);
-
-        // Timers
         startTimers();
 
-        // Run
         await runLoop();
     },
 
@@ -3161,14 +3121,11 @@ if (document.readyState === 'loading') {
 }
 
 
-// ============================================================
-// LOG
-// ============================================================
 console.log(
-    '%c Splash Loader v6.1 ',
+    '%c Splash Loader v6.2 ',
     'background: linear-gradient(135deg, #6366f1, #818cf8); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
 );
-console.log('%c Retry on cards + Custom confirm modal ', 'color:#94a3b8;font-size:11px;');
+console.log('%c Layout Fix + Auth Redirect Guard ', 'color:#94a3b8;font-size:11px;');
 console.log('%c Keyboard: Space (pause) · S (skip) · R (retry) · Esc (abort) ', 'color:#94a3b8;font-size:11px;');
 
 })();
