@@ -122,23 +122,17 @@ def model():
 # ۳.۶. صفحه دیتابیس (Database Overview)
 # ============================================================
 
-@web_bp.route('/database')
+@web_bp.route('/database', strict_slashes=False)
 @require_auth()
 def database():
-    """
-    صفحه اصلی مدیریت دیتابیس (db_overview.html)
-    
-    URL: /database
-    File: frontend/db_overview.html
-    """
+    """پشتیبانی از /database و /database/"""
     return send_from_directory('frontend', 'db_overview.html')
-
 
 # ============================================================
 # ۳.۷. تب‌های دیتابیس (db_tabs)
 # ============================================================
 
-@web_bp.route('/database/<path:filename>')
+@web_bp.route('/database/<path:filename>', strict_slashes=False)
 @require_auth()
 def db_tabs_files(filename):
     """
