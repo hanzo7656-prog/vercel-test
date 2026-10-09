@@ -937,14 +937,13 @@ def pg_query(db_name):
 # ============================================================
 # REDIS ENDPOINTS
 # ============================================================
+
 @api_bp.route('/db/redis/keys', methods=['GET'])
 @require_auth()
 def redis_keys():
     """
     لیست کلیدهای Redis با filter
-    
-    ⚠️ از cache_manager استفاده می‌کنه تا active Redis رو دنبال کنه
-    (اگه Redis A پر باشه، خودش سوییچ می‌کنه به Redis B)
+    ✅ از cache_manager استفاده می‌کند → active Redis را دنبال می‌کند
     """
     try:
         from infrastructure.api.cache_manager import cache_manager
@@ -953,133 +952,120 @@ def redis_keys():
         limit = request.args.get('limit', 100, type=int)
         search = request.args.get('search', '')
         
-        # ═══ آمار active Redis ═══
-        active_name = cache_manager._redis._active_name  # "cache" یا "cache_backup"
-        stats = cache_manager.get_stats()
-        
-        # ═══ SCAN با cache_manager ═══
+        # ═══ کلیدها از Redis فعال ═══
         keys = cache_manager.scan_keys(pattern, count=200)
         
-        # filter بر اساس search
+        # filter search
         if search:
             keys = [k for k in keys if search.lower() in k.lower()]
         
         keys = keys[:limit]
         
         # ═══ اطلاعات هر کلید ═══
-        # برای get type و ttl از cache_manager._redis._client استفاده می‌کنیم
-        # (چون این متد در cache_manager وجود نداره)
-        db = cache_manager._redis._client  # ← کلاینت active
-        
         result = []
-        if db is not None:
-            for key in keys:
-                try:
-                    key_type = db.type(key)
-                    type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
-                    ttl = db.ttl(key)
-                    
-                    # preview برای string
-                    preview = None
-                    try:
-                        if type_str == 'string':
-                            val = db.get(key)
-                            if val:
-                                val_str = val.decode() if isinstance(val, bytes) else str(val)
-                                preview = val_str[:100]
-                    except Exception:
-                        pass
-                    
-                    result.append({
-                        'key': key,
-                        'type': type_str,
-                        'ttl': ttl if ttl > 0 else None,
-                        'preview': preview,
-                    })
-                except Exception as e:
-                    logger.debug(f"Key info error for {key}: {e}")
-                    continue
+        for key in keys:
+            try:
+                key_type = cache_manager.type(key)
+                ttl = cache_manager.ttl(key)
+                
+                preview = None
+                if key_type == 'string':
+                    val = cache_manager.get(key)
+                    if val is not None:
+                        val_str = val if isinstance(val, str) else str(val)
+                        preview = val_str[:100]
+                
+                result.append({
+                    'key': key,
+                    'type': key_type,
+                    'ttl': ttl if ttl > 0 else None,
+                    'preview': preview,
+                })
+            except Exception as e:
+                logger.debug(f"Key info error for {key}: {e}")
+                continue
         
         # ═══ آمار ═══
-        try:
-            info = db.info() if db is not None else {}
-            memory = info.get('used_memory_human', '—')
-            clients = info.get('connected_clients', 0)
-        except Exception:
-            memory = '—'
-            clients = 0
+        stats = cache_manager.get_stats()
+        active_name = stats.get('active_redis', 'unknown')
         
         return jsonify({
             'success': True,
             'data': result,
             'count': len(result),
-            'active_redis': active_name,  # ← نشون بده کدوم فعاله
+            'active_redis': active_name,
             'stats': {
-                'memory': memory,
-                'clients': clients,
+                'memory': '—',
+                'clients': 0,
                 'total_keys': len(keys),
                 'active': active_name,
             },
         })
     except Exception as e:
         logger.error(f"Redis keys error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500        
 
 @api_bp.route('/db/redis/keys/<path:key>', methods=['GET'])
 @require_auth()
 def redis_get_key(key):
+    """مقدار یک کلید (با تشخیص خودکار نوع)"""
     try:
         from infrastructure.api.cache_manager import cache_manager
         
-        db = cache_manager._redis._client
-        if db is None:
-            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
-        
-        key_type = db.type(key)
-        type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
-        
+        key_type = cache_manager.type(key)
         value = None
-        if type_str == 'string':
-            val = db.get(key)
-            value = val.decode() if isinstance(val, bytes) else val
-        elif type_str == 'hash':
-            val = db.hgetall(key)
-            value = {
-                k.decode() if isinstance(k, bytes) else k:
-                v.decode() if isinstance(v, bytes) else v
-                for k, v in val.items()
-            }
-        elif type_str == 'list':
-            val = db.lrange(key, 0, 50)
-            value = [v.decode() if isinstance(v, bytes) else v for v in val]
-        elif type_str == 'set':
-            val = db.smembers(key)
-            value = [v.decode() if isinstance(v, bytes) else v for v in list(val)[:50]]
-        elif type_str == 'zset':
-            val = db.zrange(key, 0, 50, withscores=True)
+        
+        if key_type == 'string':
+            value = cache_manager.get(key)
+        elif key_type == 'hash':
+            value = cache_manager.hgetall(key)
+            # decode bytes به string
+            if value:
+                value = {
+                    (k.decode() if isinstance(k, bytes) else k):
+                    (v.decode() if isinstance(v, bytes) else v)
+                    for k, v in value.items()
+                }
+        elif key_type == 'list':
+            val = cache_manager.lrange(key, 0, 50)
             value = [
-                {v.decode() if isinstance(v, bytes) else v: score}
-                for v, score in val
+                v.decode() if isinstance(v, bytes) else v
+                for v in (val or [])
+            ]
+        elif key_type == 'set':
+            val = cache_manager.smembers(key)
+            value = [
+                v.decode() if isinstance(v, bytes) else v
+                for v in (val or [])
+            ]
+        elif key_type == 'zset':
+            val = cache_manager.zrange(key, 0, 50, withscores=True)
+            value = [
+                {
+                    (v.decode() if isinstance(v, bytes) else v): score
+                }
+                for v, score in (val or [])
             ]
         
-        ttl = db.ttl(key)
+        ttl = cache_manager.ttl(key)
         
         return jsonify({
             'success': True,
             'data': {
                 'key': key,
-                'type': type_str,
+                'type': key_type,
                 'value': value,
                 'ttl': ttl if ttl > 0 else None,
             },
         })
     except Exception as e:
+        logger.error(f"Redis get key error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
+        
 @api_bp.route('/db/redis/keys/<path:key>', methods=['DELETE'])
 @require_auth('admin')
 def redis_delete_key(key):
+    """حذف یک کلید"""
     try:
         from infrastructure.api.cache_manager import cache_manager
         
@@ -1136,6 +1122,7 @@ def redis_namespaces():
 @api_bp.route('/db/redis/namespace/<namespace>', methods=['DELETE'])
 @require_auth('admin')
 def redis_clear_namespace(namespace):
+    """پاک کردن یک namespace"""
     try:
         from infrastructure.api.cache_manager import cache_manager
         
@@ -1155,7 +1142,6 @@ def redis_clear_namespace(namespace):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
         
-
 @api_bp.route('/db/redis/flush', methods=['DELETE'])
 @require_auth('admin')
 def redis_flush():
@@ -1195,33 +1181,42 @@ def redis_flush():
 @api_bp.route('/db/redis/keys/<path:key>/export', methods=['GET'])
 @require_auth()
 def redis_export_key(key):
+    """خروجی یک کلید به JSON"""
     try:
         from infrastructure.api.cache_manager import cache_manager
         
-        db = cache_manager._redis._client
-        if db is None:
-            return jsonify({'success': False, 'error': 'Redis not connected'}), 503
-        
-        key_type = db.type(key)
-        type_str = key_type.decode() if isinstance(key_type, bytes) else key_type
-        
+        key_type = cache_manager.type(key)
         value = None
-        if type_str == 'string':
-            val = db.get(key)
-            value = val.decode() if isinstance(val, bytes) else val
-        elif type_str == 'hash':
-            val = db.hgetall(key)
+        
+        if key_type == 'string':
+            value = cache_manager.get(key)
+        elif key_type == 'hash':
+            val = cache_manager.hgetall(key)
             value = {
-                k.decode() if isinstance(k, bytes) else k:
-                v.decode() if isinstance(v, bytes) else v
-                for k, v in val.items()
+                (k.decode() if isinstance(k, bytes) else k):
+                (v.decode() if isinstance(v, bytes) else v)
+                for k, v in (val or {}).items()
             }
-        elif type_str == 'list':
-            val = db.lrange(key, 0, -1)
-            value = [v.decode() if isinstance(v, bytes) else v for v in val]
-        elif type_str == 'set':
-            val = db.smembers(key)
-            value = [v.decode() if isinstance(v, bytes) else v for v in list(val)]
+        elif key_type == 'list':
+            val = cache_manager.lrange(key, 0, -1)
+            value = [
+                v.decode() if isinstance(v, bytes) else v
+                for v in (val or [])
+            ]
+        elif key_type == 'set':
+            val = cache_manager.smembers(key)
+            value = [
+                v.decode() if isinstance(v, bytes) else v
+                for v in (val or [])
+            ]
+        elif key_type == 'zset':
+            val = cache_manager.zrange(key, 0, -1, withscores=True)
+            value = [
+                {
+                    (v.decode() if isinstance(v, bytes) else v): score
+                }
+                for v, score in (val or [])
+            ]
         else:
             value = 'Unsupported type'
         
@@ -1229,7 +1224,7 @@ def redis_export_key(key):
             'success': True,
             'data': {
                 'key': key,
-                'type': type_str,
+                'type': key_type,
                 'value': value,
                 'exported_at': datetime.now(timezone.utc).isoformat(),
             },
