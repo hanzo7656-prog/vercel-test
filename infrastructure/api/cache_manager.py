@@ -1,15 +1,18 @@
 # infrastructure/api/cache_manager.py
 # ============================================================
-# مدیریت کش با دو Redis - نسخه ۳.۱
-# Dual Redis + Auto-Failover + Session Migration + Startup Check
+# مدیریت کش با دو Redis - نسخه ۳.۲
+# Dual Redis + Auto-Failover + Session Migration + Upstash REST Stats
 # ============================================================
 
 import json
 import logging
+import os
 import threading
 import time
 from typing import Any, Optional, Dict, List
 from datetime import datetime, timezone
+
+import requests  # 🆕 برای Upstash REST API
 
 from infrastructure.database.registry import registry
 
@@ -25,6 +28,113 @@ FAILOVER_CHECK_INTERVAL = 300  # ۵ دقیقه
 PRIMARY_CACHE_NAME = "cache"
 BACKUP_CACHE_NAME = "cache_backup"
 
+# ═══ Upstash REST Configuration ═══
+# از محیط می‌خونیم (توکن‌ها رو تو Render → Environment Variables ست کن)
+UPSTASH_CONFIG = {
+    PRIMARY_CACHE_NAME: {
+        "url": os.getenv(
+            "UPSTASH_PRIMARY_REST_URL",
+            "https://chief-buck-93038.upstash.io"
+        ),
+        "token": os.getenv("UPSTASH_PRIMARY_REST_TOKEN", ""),
+        "commands_limit": 500_000,
+        "memory_limit_mb": 256,
+        "bandwidth_limit_gb": 10,
+    },
+    BACKUP_CACHE_NAME: {
+        "url": os.getenv(
+            "UPSTASH_BACKUP_REST_URL",
+            "https://hardy-tahr-212869.upstash.io"
+        ),
+        "token": os.getenv("UPSTASH_BACKUP_REST_TOKEN", ""),
+        "commands_limit": 500_000,
+        "memory_limit_mb": 256,
+        "bandwidth_limit_gb": 10,
+    },
+}
+
+
+# ============================================================
+# Upstash REST API helpers
+# ============================================================
+
+def _fetch_upstash_info(name: str) -> Dict[str, str]:
+    """
+    گرفتن آمار واقعی از Upstash REST API.
+    
+    چرا REST؟ چون INFO از طریق TCP proxy Upstash آمار ناقص/اشتباه می‌ده.
+    """
+    config = UPSTASH_CONFIG.get(name)
+    if not config or not config["token"]:
+        logger.debug(f"⚠️ Upstash REST not configured for '{name}'")
+        return {}
+
+    try:
+        response = requests.get(
+            f"{config['url']}/info",
+            headers={"Authorization": f"Bearer {config['token']}"},
+            timeout=5,
+        )
+        response.raise_for_status()
+
+        info = {}
+        for line in response.text.split("\n"):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" in line:
+                key, _, value = line.partition(":")
+                info[key.strip()] = value.strip()
+
+        return info
+
+    except requests.exceptions.HTTPError as e:
+        logger.warning(f"⚠️ Upstash {name} HTTP error: {e}")
+        return {}
+    except Exception as e:
+        logger.warning(f"⚠️ Upstash {name} info error: {e}")
+        return {}
+
+
+def _fetch_upstash_dbsize(name: str) -> int:
+    """گرفتن تعداد کلیدها از Upstash REST API"""
+    config = UPSTASH_CONFIG.get(name)
+    if not config or not config["token"]:
+        return 0
+
+    try:
+        response = requests.post(
+            config["url"],
+            headers={
+                "Authorization": f"Bearer {config['token']}",
+                "Content-Type": "application/json",
+            },
+            json=["DBSIZE"],
+            timeout=5,
+        )
+        response.raise_for_status()
+        result = response.json()
+        return int(result.get("result", 0))
+
+    except Exception as e:
+        logger.debug(f"⚠️ Upstash {name} DBSIZE error: {e}")
+        return 0
+
+
+def _get_upstash_commands(name: str) -> int:
+    """
+    گرفتن تعداد commands مصرف‌شده‌ی واقعی.
+    
+    از `total_commands_processed` در INFO استفاده می‌کنه.
+    """
+    info = _fetch_upstash_info(name)
+    if not info:
+        return -1  # -1 یعنی "نمی‌دونیم"
+    try:
+        return int(info.get("total_commands_processed", 0))
+    except (ValueError, TypeError):
+        return -1
+
 
 # ============================================================
 # DualRedisClient
@@ -33,12 +143,6 @@ BACKUP_CACHE_NAME = "cache_backup"
 class DualRedisClient:
     """
     Wrapper روی دو RedisManager که سوئیچ خودکار انجام می‌دهد.
-    
-    ویژگی‌ها:
-        - Startup check (سوئیچ خودکار در راه‌اندازی)
-        - Failover روی خطای quota
-        - Session migration بین Redis ها
-        - Periodic recovery check
     """
 
     def __init__(self):
@@ -53,6 +157,7 @@ class DualRedisClient:
         self._failover_count: int = 0
         self._last_error: Optional[str] = None
         self._last_error_at: Optional[float] = None
+        self._last_switch_at: Optional[float] = None  # 🆕
 
         self._stats: Dict[str, int] = {
             "hits": 0,
@@ -70,7 +175,7 @@ class DualRedisClient:
         # ⚡ Startup check
         self._startup_check()
 
-        logger.info("✅ DualRedisClient initialized")
+        logger.info("✅ DualRedisClient v3.2 initialized")
 
     # ------------------------------------------------------------
     # Startup check
@@ -99,40 +204,46 @@ class DualRedisClient:
                     self._stats["failovers"] += 1
                 return
 
-            try:
-                info = db._client.info()
-                remote_commands = info.get("total_commands_processed", 0)
+            # 🆕 از Upstash REST API استفاده کن، نه INFO از TCP
+            remote_commands = _get_upstash_commands(PRIMARY_CACHE_NAME)
 
-                if remote_commands >= SAFE_COMMAND_LIMIT:
-                    logger.warning(
-                        f"⚠️ Cache: primary full "
-                        f"({remote_commands} commands), "
-                        f"switching to '{BACKUP_CACHE_NAME}' at startup"
-                    )
+            if remote_commands < 0:
+                # fallback: اگه REST جواب نداد، از INFO استفاده کن
+                try:
+                    info = db._client.info()
+                    remote_commands = info.get("total_commands_processed", 0)
+                except Exception as e:
+                    logger.warning(f"⚠️ Cache: startup INFO failed: {e}")
+                    remote_commands = 0
 
-                    # 🆕 تلاش برای migrate session ها
-                    self._migrate_sessions(
-                        db, 
-                        registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
-                    )
+            if remote_commands >= SAFE_COMMAND_LIMIT:
+                logger.warning(
+                    f"⚠️ Cache: primary full "
+                    f"({remote_commands} commands ≥ {SAFE_COMMAND_LIMIT}), "
+                    f"switching to '{BACKUP_CACHE_NAME}' at startup"
+                )
 
-                    other = registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
-                    if other is not None and other.is_connected():
-                        self._active_name = BACKUP_CACHE_NAME
-                        self._client = other
-                        self._failover_count += 1
-                        self._stats["failovers"] += 1
-                    else:
-                        logger.error("❌ Cache: backup not available either")
+                self._migrate_sessions(
+                    db,
+                    registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
+                )
+
+                other = registry.get(BACKUP_CACHE_NAME, auto_reconnect=False)
+                if other is not None and other.is_connected():
+                    self._active_name = BACKUP_CACHE_NAME
+                    self._client = other
+                    self._failover_count += 1
+                    self._stats["failovers"] += 1
+                    self._last_switch_at = time.time()
                 else:
-                    self._command_count = remote_commands
-                    percent = round(remote_commands / SAFE_COMMAND_LIMIT * 100, 1)
-                    logger.info(
-                        f"✅ Cache: primary OK at startup "
-                        f"({remote_commands} commands, {percent}% used)"
-                    )
-            except Exception as e:
-                logger.warning(f"⚠️ Cache: startup INFO failed: {e}")
+                    logger.error("❌ Cache: backup not available either")
+            else:
+                self._command_count = remote_commands
+                percent = round(remote_commands / SAFE_COMMAND_LIMIT * 100, 1)
+                logger.info(
+                    f"✅ Cache: primary OK at startup "
+                    f"({remote_commands} commands, {percent}% used)"
+                )
 
         except Exception as e:
             logger.error(f"❌ Cache: startup check error: {e}")
@@ -142,34 +253,28 @@ class DualRedisClient:
     # ------------------------------------------------------------
 
     def _migrate_sessions(self, old_db: Any, new_db: Any) -> int:
-        """
-        کپی session های کاربران از Redis قدیم به جدید
-        
-        این کار از logout شدن کاربران هنگام سوئیچ جلوگیری می‌کند.
-        """
         if old_db is None or new_db is None:
             return 0
-        
+
         try:
             if not old_db.is_connected() or not new_db.is_connected():
                 return 0
-            
+
             session_keys = old_db.scan_keys("session:*", count=200)
-            
             if not session_keys:
                 return 0
-            
+
             logger.info(
                 f"🔄 Cache: migrating {len(session_keys)} sessions "
                 f"to '{self._get_other_name()}'"
             )
-            
+
             migrated = 0
             for key in session_keys:
                 try:
                     value = old_db.get(key)
                     ttl = old_db.ttl(key)
-                    
+
                     if value is not None:
                         if ttl and ttl > 0:
                             new_db.set(key, value, ttl)
@@ -178,11 +283,11 @@ class DualRedisClient:
                         migrated += 1
                 except Exception:
                     continue
-            
+
             self._stats["sessions_migrated"] += migrated
             logger.info(f"✅ Cache: migrated {migrated} sessions")
             return migrated
-        
+
         except Exception as e:
             logger.warning(f"⚠️ Cache: session migration failed: {e}")
             return 0
@@ -222,24 +327,12 @@ class DualRedisClient:
         return self._command_count >= SAFE_COMMAND_LIMIT
 
     def _is_quota_error(self, err: Exception) -> bool:
-        """تشخیص خطاهای محدودیت (Command / Storage / Bandwidth)"""
         msg = str(err).lower()
         keywords = [
-            # Command Limit
-            "max requests",
-            "command limit",
-            "quota",
-            "limit exceeded",
-            "too many requests",
-            "rate limit",
-            # Storage (OOM)
-            "oom command",
-            "maxmemory",
-            "out of memory",
-            "used memory",
-            # Bandwidth
-            "bandwidth",
-            "traffic exceeded",
+            "max requests", "command limit", "quota",
+            "limit exceeded", "too many requests", "rate limit",
+            "oom command", "maxmemory", "out of memory", "used memory",
+            "bandwidth", "traffic exceeded",
         ]
         return any(k in msg for k in keywords)
 
@@ -249,14 +342,13 @@ class DualRedisClient:
         try:
             old_db = self._client or self._resolve_client()
             new_db = registry.get(other, auto_reconnect=True)
-            
+
             if new_db is None or not new_db.is_connected():
                 logger.error(
                     f"❌ Cache: cannot switch to '{other}' — not connected"
                 )
                 return False
 
-            # 🆕 migrate session ها قبل از سوئیچ
             if old_db is not None:
                 self._migrate_sessions(old_db, new_db)
 
@@ -268,6 +360,7 @@ class DualRedisClient:
                 self._stats["failovers"] += 1
                 self._command_count = 0
                 self._command_reset_at = time.time()
+                self._last_switch_at = time.time()
 
             logger.warning(
                 f"⚠️ Cache: failover '{old}' → '{other}' "
@@ -280,7 +373,6 @@ class DualRedisClient:
             return False
 
     def _check_periodic_failover(self) -> None:
-        # فقط اگر قبلاً سوئیچ کرده‌ایم (یعنی یکی پر شده)
         if self._failover_count == 0:
             return
 
@@ -300,27 +392,37 @@ class DualRedisClient:
                 if not db.connect():
                     return
 
-            try:
-                info = db._client.info()
-                remote_commands = info.get("total_commands_processed", 0)
-                used_memory = info.get("used_memory", 0)
-                max_memory = info.get("maxmemory", 0)
+            # 🆕 از REST API استفاده کن
+            remote_commands = _get_upstash_commands(other)
 
-                commands_ok = remote_commands < SAFE_COMMAND_LIMIT
+            if remote_commands < 0:
+                # fallback
+                try:
+                    info = db._client.info()
+                    remote_commands = info.get("total_commands_processed", 0)
+                except Exception:
+                    return
 
-                memory_ok = True
-                if max_memory > 0:
-                    memory_usage = used_memory / max_memory
-                    memory_ok = memory_usage < 0.9
+            commands_ok = remote_commands < SAFE_COMMAND_LIMIT
 
-                if commands_ok and memory_ok:
-                    if self._switch_to_other("periodic_check"):
-                        logger.info(
-                            f"✅ Cache: recovered to '{other}' "
-                            f"(commands: {remote_commands})"
-                        )
-            except Exception as e:
-                logger.debug(f"⚠️ Cache: periodic INFO error: {e}")
+            # memory check هم از REST
+            info = _fetch_upstash_info(other)
+            memory_ok = True
+            if info:
+                try:
+                    used = int(info.get("used_memory", 0))
+                    maxmem = int(info.get("maxmemory", 0))
+                    if maxmem > 0:
+                        memory_ok = (used / maxmem) < 0.9
+                except (ValueError, TypeError):
+                    pass
+
+            if commands_ok and memory_ok:
+                if self._switch_to_other("periodic_check"):
+                    logger.info(
+                        f"✅ Cache: recovered to '{other}' "
+                        f"(commands: {remote_commands})"
+                    )
 
         except Exception as e:
             logger.debug(f"⚠️ Cache: periodic check error: {e}")
@@ -453,20 +555,11 @@ class DualRedisClient:
     # ------------------------------------------------------------
 
     def force_switch(self, target: str) -> Dict[str, Any]:
-        """
-        سوئیچ دستی بین دو Redis
-        
-        Args:
-            target: 'cache' یا 'cache_backup' یا 'auto'
-        """
         if target == "auto":
             target = self._get_other_name()
 
         if target not in (PRIMARY_CACHE_NAME, BACKUP_CACHE_NAME):
-            return {
-                "success": False,
-                "error": f"Invalid target: {target}",
-            }
+            return {"success": False, "error": f"Invalid target: {target}"}
 
         if target == self._active_name:
             return {
@@ -483,8 +576,6 @@ class DualRedisClient:
             }
 
         old_db = self._client or self._resolve_client()
-        
-        # 🆕 migrate session ها
         self._migrate_sessions(old_db, new_db)
 
         with self._lock:
@@ -496,10 +587,9 @@ class DualRedisClient:
             self._stats["manual_switches"] += 1
             self._command_count = 0
             self._command_reset_at = time.time()
+            self._last_switch_at = time.time()
 
-        logger.warning(
-            f"🔧 Cache: MANUAL switch '{old}' → '{target}'"
-        )
+        logger.warning(f"🔧 Cache: MANUAL switch '{old}' → '{target}'")
 
         return {
             "success": True,
@@ -536,67 +626,131 @@ class DualRedisClient:
                 ).isoformat()
                 if self._last_error_at else None
             ),
+            "last_switch_at": (
+                datetime.fromtimestamp(
+                    self._last_switch_at, tz=timezone.utc
+                ).isoformat()
+                if self._last_switch_at else None
+            ),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def get_detailed_stats(self) -> Dict[str, Any]:
-        """آمار دقیق از هر دو Redis"""
+        """
+        آمار دقیق از هر دو Redis با استفاده از Upstash REST API.
+        
+        ⚠️ مهم: از REST API استفاده می‌کنیم نه INFO روی TCP،
+        چون Upstash روی TCP پروکسی stateless داره و آمار ناقص می‌ده.
+        """
         result = {
             "active": self._active_name,
             "failover_count": self._failover_count,
+            "last_switch": (
+                datetime.fromtimestamp(
+                    self._last_switch_at, tz=timezone.utc
+                ).isoformat()
+                if self._last_switch_at else None
+            ),
             "primary": None,
             "backup": None,
         }
 
-        for name in (PRIMARY_CACHE_NAME, BACKUP_CACHE_NAME):
-            key = "primary" if name == PRIMARY_CACHE_NAME else "backup"
-            
+        for name, key in [
+            (PRIMARY_CACHE_NAME, "primary"),
+            (BACKUP_CACHE_NAME, "backup"),
+        ]:
+            config = UPSTASH_CONFIG.get(name, {})
+            commands_limit = config.get("commands_limit", 500_000)
+            memory_limit_mb = config.get("memory_limit_mb", 256)
+            bandwidth_limit_gb = config.get("bandwidth_limit_gb", 10)
+
+            info_block = {
+                "name": name,
+                "registered": False,
+                "connected": False,
+                "is_active": (name == self._active_name),
+                "commands_limit": commands_limit,
+                "max_memory_mb": memory_limit_mb,
+                "bandwidth_limit_gb": bandwidth_limit_gb,
+            }
+
+            # ─── چک registry ───
             try:
                 db = registry.get(name, auto_reconnect=False)
-                if db is None:
-                    result[key] = {
-                        "name": name,
-                        "registered": False,
-                    }
-                    continue
+                if db is not None:
+                    info_block["registered"] = True
+                    info_block["connected"] = db.is_connected()
+            except Exception as e:
+                info_block["error"] = str(e)
 
-                info_block = {
-                    "name": name,
-                    "registered": True,
-                    "connected": db.is_connected(),
-                    "is_active": (name == self._active_name),
-                }
+            # ═══ آمار واقعی از Upstash REST API ═══
+            info = _fetch_upstash_info(name)
 
-                if db.is_connected():
-                    try:
-                        info = db._client.info()
-                        remote_commands = info.get("total_commands_processed", 0)
-                        used_memory = info.get("used_memory", 0)
-                        max_memory = info.get("maxmemory", 0)
+            if info:
+                try:
+                    commands = int(info.get("total_commands_processed", 0))
+                except (ValueError, TypeError):
+                    commands = 0
+
+                try:
+                    used_memory = int(info.get("used_memory", 0))
+                except (ValueError, TypeError):
+                    used_memory = 0
+
+                try:
+                    bandwidth = (
+                        int(info.get("total_net_input_bytes", 0))
+                        + int(info.get("total_net_output_bytes", 0))
+                    )
+                except (ValueError, TypeError):
+                    bandwidth = 0
+
+                info_block.update({
+                    "commands_processed": commands,
+                    "commands_percent": round(commands / commands_limit * 100, 2),
+                    "used_memory_human": info.get("used_memory_human", "0B"),
+                    "used_memory_mb": round(used_memory / (1024 * 1024), 2),
+                    "used_memory_bytes": used_memory,
+                    "memory_limit_bytes": memory_limit_mb * 1024 * 1024,
+                    "bandwidth_bytes": bandwidth,
+                    "bandwidth_gb": round(bandwidth / (1024 ** 3), 3),
+                    "connected_clients": int(info.get("connected_clients", 0)),
+                    "redis_version": info.get("redis_version", "unknown"),
+                    "uptime_seconds": int(info.get("uptime_in_seconds", 0)),
+                    "source": "upstash_rest",
+                })
+
+                # تعداد کلیدها
+                info_block["keys_count"] = _fetch_upstash_dbsize(name)
+
+            else:
+                # ─── fallback: INFO از TCP ───
+                info_block["source"] = "tcp_fallback"
+
+                try:
+                    if db is not None and db.is_connected():
+                        raw_info = db._client.info()
+                        commands = raw_info.get("total_commands_processed", 0)
+                        used_memory = raw_info.get("used_memory", 0)
 
                         info_block.update({
-                            "used_memory_human": info.get("used_memory_human", "0"),
+                            "commands_processed": commands,
+                            "commands_percent": round(commands / commands_limit * 100, 2),
+                            "used_memory_human": raw_info.get("used_memory_human", "0B"),
                             "used_memory_mb": round(used_memory / (1024 * 1024), 2),
-                            "max_memory_mb": round(max_memory / (1024 * 1024), 2) if max_memory else 0,
-                            "commands_processed": remote_commands,
-                            "commands_percent": round(
-                                remote_commands / SAFE_COMMAND_LIMIT * 100, 2
-                            ),
-                            "keys_count": info.get("db0", {}).get("keys", 0),
-                            "connected_clients": info.get("connected_clients", 0),
-                            "uptime_seconds": info.get("uptime_in_seconds", 0),
-                            "redis_version": info.get("redis_version", "unknown"),
+                            "used_memory_bytes": used_memory,
+                            "memory_limit_bytes": memory_limit_mb * 1024 * 1024,
+                            "bandwidth_bytes": 0,
+                            "bandwidth_gb": 0,
+                            "connected_clients": raw_info.get("connected_clients", 0),
+                            "redis_version": raw_info.get("redis_version", "unknown"),
+                            "uptime_seconds": raw_info.get("uptime_in_seconds", 0),
+                            "keys_count": raw_info.get("db0", {}).get("keys", 0),
                         })
-                    except Exception as e:
-                        info_block["error"] = str(e)
+                except Exception as e:
+                    info_block["error"] = str(e)
 
-                result[key] = info_block
-
-            except Exception as e:
-                result[key] = {
-                    "name": name,
-                    "error": str(e),
-                }
+            result[key] = info_block
 
         return result
 
@@ -617,12 +771,9 @@ class CacheManager:
         if not hasattr(self, '_initialized'):
             self._initialized = True
             self._redis = DualRedisClient()
-            logger.info("✅ CacheManager v3.1 initialized (Dual Redis + Session Migration)")
+            logger.info("✅ CacheManager v3.2 initialized (Upstash REST Stats)")
 
-    # ------------------------------------------------------------
-    # ۵ متد قبلی (بدون تغییر)
-    # ------------------------------------------------------------
-
+    # ─── متدهای اصلی (بدون تغییر) ───
     def get(self, key: str) -> Optional[Any]:
         try:
             return self._redis.get(key)
@@ -663,10 +814,6 @@ class CacheManager:
                 "hits": 0, "misses": 0, "sets": 0, "deletes": 0,
                 "errors": 1, "connected": False, "hit_ratio": 0.0,
             }
-
-    # ------------------------------------------------------------
-    # متدهای اضافی
-    # ------------------------------------------------------------
 
     def is_connected(self) -> bool:
         try:
@@ -710,12 +857,7 @@ class CacheManager:
         except Exception:
             return False
 
-    # ------------------------------------------------------------
-    # ادمین
-    # ------------------------------------------------------------
-
     def get_detailed_stats(self) -> Dict[str, Any]:
-        """آمار دقیق از هر دو Redis"""
         try:
             return self._redis.get_detailed_stats()
         except Exception as e:
@@ -723,7 +865,6 @@ class CacheManager:
             return {"error": str(e)}
 
     def force_switch(self, target: str) -> Dict[str, Any]:
-        """سوئیچ دستی بین Redis ها"""
         try:
             return self._redis.force_switch(target)
         except Exception as e:
