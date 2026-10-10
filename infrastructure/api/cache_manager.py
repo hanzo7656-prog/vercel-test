@@ -1,10 +1,11 @@
 # infrastructure/api/cache_manager.py
 # ============================================================
-# مدیریت کش با دو Redis - نسخه ۳.۳
-# Dual Redis + Auto-Failover + Session Migration + Upstash REST Stats
-# + Type-specific operations (hgetall, lrange, smembers, zrange, type)
+# مدیریت کش با دو Redis - نسخه ۳.۴
+# Dual Redis + Auto-Failover + Session Migration 
+# + Management API برای آمار ماهانه دقیق
 # ============================================================
 
+import base64
 import json
 import logging
 import os
@@ -28,18 +29,32 @@ SAFE_COMMAND_LIMIT = 480_000
 FAILOVER_CHECK_INTERVAL = 300
 PRIMARY_CACHE_NAME = "cache"
 BACKUP_CACHE_NAME = "cache_backup"
+MGMT_CACHE_TTL = 300  # ۵ دقیقه cache برای Management API
+
+
+# ============================================================
+# Upstash Configuration
+# ============================================================
 
 UPSTASH_CONFIG = {
     PRIMARY_CACHE_NAME: {
-        "url": os.getenv("UPSTASH_PRIMARY_REST_URL", "https://chief-buck-93038.upstash.io"),
-        "token": os.getenv("UPSTASH_PRIMARY_REST_TOKEN", ""),
+        "endpoint": "chief-buck-93038.upstash.io",
+        "rest_url": os.getenv("UPSTASH_PRIMARY_REST_URL", "https://chief-buck-93038.upstash.io"),
+        "rest_token": os.getenv("UPSTASH_PRIMARY_REST_TOKEN", ""),
+        "mgmt_email": os.getenv("UPSTASH_PRIMARY_MGMT_EMAIL", ""),
+        "mgmt_api_key": os.getenv("UPSTASH_PRIMARY_MGMT_API_KEY", ""),
+        "mgmt_db_id": os.getenv("UPSTASH_PRIMARY_DB_ID", ""),
         "commands_limit": 500_000,
         "memory_limit_mb": 256,
         "bandwidth_limit_gb": 10,
     },
     BACKUP_CACHE_NAME: {
-        "url": os.getenv("UPSTASH_BACKUP_REST_URL", "https://hardy-tahr-212869.upstash.io"),
-        "token": os.getenv("UPSTASH_BACKUP_REST_TOKEN", ""),
+        "endpoint": "hardy-tahr-212869.upstash.io",
+        "rest_url": os.getenv("UPSTASH_BACKUP_REST_URL", "https://hardy-tahr-212869.upstash.io"),
+        "rest_token": os.getenv("UPSTASH_BACKUP_REST_TOKEN", ""),
+        "mgmt_email": os.getenv("UPSTASH_BACKUP_MGMT_EMAIL", ""),
+        "mgmt_api_key": os.getenv("UPSTASH_BACKUP_MGMT_API_KEY", ""),
+        "mgmt_db_id": os.getenv("UPSTASH_BACKUP_DB_ID", ""),
         "commands_limit": 500_000,
         "memory_limit_mb": 256,
         "bandwidth_limit_gb": 10,
@@ -48,20 +63,88 @@ UPSTASH_CONFIG = {
 
 
 # ============================================================
-# Upstash REST API helpers
+# 🆕 Management API Cache
+# ============================================================
+
+_mgmt_cache: Dict[str, Dict[str, Any]] = {}
+_mgmt_cache_lock = threading.Lock()
+
+
+def _fetch_mgmt_stats(name: str, force_refresh: bool = False) -> Dict[str, Any]:
+    """
+    گرفتن آمار ماهانه از Upstash Management API.
+    
+    این آمار دقیقاً همون عددی است که توی داشبورد Upstash می‌بینی.
+    cache ۵ دقیقه‌ای دارد تا از rate limit جلوگیری شود.
+    """
+    config = UPSTASH_CONFIG.get(name, {})
+    db_id = config.get("mgmt_db_id")
+    email = config.get("mgmt_email")
+    api_key = config.get("mgmt_api_key")
+
+    if not all([db_id, email, api_key]):
+        logger.debug(f"⚠️ Management API not configured for '{name}'")
+        return {}
+
+    # ─── چک cache ───
+    with _mgmt_cache_lock:
+        now = time.time()
+        cached = _mgmt_cache.get(name)
+        if cached and not force_refresh:
+            age = now - cached.get("_cached_at", 0)
+            if age < MGMT_CACHE_TTL:
+                return cached.get("data", {})
+
+    # ─── درخواست به Management API ───
+    try:
+        auth = base64.b64encode(f"{email}:{api_key}".encode()).decode()
+        response = requests.get(
+            f"https://api.upstash.com/v2/redis/stats/{db_id}",
+            headers={"Authorization": f"Basic {auth}"},
+            timeout=10,
+        )
+
+        if response.status_code == 401:
+            logger.error(f"❌ Mgmt API 401 for '{name}': invalid credentials")
+            return {}
+        if response.status_code == 403:
+            logger.error(f"❌ Mgmt API 403 for '{name}': not native account")
+            return {}
+        if response.status_code != 200:
+            logger.warning(f"⚠️ Mgmt API {response.status_code} for '{name}'")
+            return {}
+
+        data = response.json()
+
+        # ─── ذخیره در cache ───
+        with _mgmt_cache_lock:
+            _mgmt_cache[name] = {
+                "_cached_at": now,
+                "data": data,
+            }
+
+        return data
+
+    except Exception as e:
+        logger.warning(f"⚠️ Mgmt API error for '{name}': {e}")
+        return {}
+
+
+# ============================================================
+# REST API helpers (fallback)
 # ============================================================
 
 def _fetch_upstash_info(name: str) -> Dict[str, str]:
-    """گرفتن آمار واقعی از Upstash REST API (POST / با INFO)"""
+    """گرفتن INFO از REST API (fallback)"""
     config = UPSTASH_CONFIG.get(name)
-    if not config or not config["token"]:
+    if not config or not config["rest_token"]:
         return {}
 
     try:
         response = requests.post(
-            config["url"],
+            config["rest_url"],
             headers={
-                "Authorization": f"Bearer {config['token']}",
+                "Authorization": f"Bearer {config['rest_token']}",
                 "Content-Type": "application/json",
             },
             json=["INFO"],
@@ -85,23 +168,22 @@ def _fetch_upstash_info(name: str) -> Dict[str, str]:
                 info[key.strip()] = value.strip()
 
         return info
-
     except Exception as e:
         logger.warning(f"⚠️ Upstash {name} info error: {e}")
         return {}
 
 
 def _fetch_upstash_dbsize(name: str) -> int:
-    """گرفتن تعداد کلیدها از Upstash REST API"""
+    """گرفتن تعداد کلیدها از REST API"""
     config = UPSTASH_CONFIG.get(name)
-    if not config or not config["token"]:
+    if not config or not config["rest_token"]:
         return 0
 
     try:
         response = requests.post(
-            config["url"],
+            config["rest_url"],
             headers={
-                "Authorization": f"Bearer {config['token']}",
+                "Authorization": f"Bearer {config['rest_token']}",
                 "Content-Type": "application/json",
             },
             json=["DBSIZE"],
@@ -115,7 +197,21 @@ def _fetch_upstash_dbsize(name: str) -> int:
 
 
 def _get_upstash_commands(name: str) -> int:
-    """تعداد commands مصرف‌شده‌ی واقعی"""
+    """
+    گرفتن تعداد commands مصرف‌شده‌ی واقعی.
+    
+    ⭐ اولویت ۱: Management API (دقیق مثل داشبورد)
+    ⭐ اولویت ۲: REST INFO (fallback ناقص)
+    """
+    # ─── اول Management API ───
+    mgmt = _fetch_mgmt_stats(name)
+    if mgmt and "total_monthly_requests" in mgmt:
+        try:
+            return int(mgmt["total_monthly_requests"])
+        except (ValueError, TypeError):
+            pass
+
+    # ─── fallback به REST INFO ───
     info = _fetch_upstash_info(name)
     if not info:
         return -1
@@ -160,7 +256,7 @@ class DualRedisClient:
         }
 
         self._startup_check()
-        logger.info("✅ DualRedisClient v3.3 initialized")
+        logger.info("✅ DualRedisClient v3.4 initialized")
 
     # ------------------------------------------------------------
     # Startup check
@@ -185,9 +281,11 @@ class DualRedisClient:
                     self._stats["failovers"] += 1
                 return
 
+            # ⭐ از Management API می‌خونیم (عدد واقعی)
             remote_commands = _get_upstash_commands(PRIMARY_CACHE_NAME)
 
             if remote_commands < 0:
+                # fallback
                 try:
                     info = db._client.info()
                     remote_commands = info.get("total_commands_processed", 0)
@@ -196,7 +294,7 @@ class DualRedisClient:
 
             if remote_commands >= SAFE_COMMAND_LIMIT:
                 logger.warning(
-                    f"⚠️ Cache: primary full ({remote_commands} commands), "
+                    f"⚠️ Cache: primary full ({remote_commands:,} commands), "
                     f"switching to '{BACKUP_CACHE_NAME}'"
                 )
                 self._migrate_sessions(db, registry.get(BACKUP_CACHE_NAME, auto_reconnect=False))
@@ -210,7 +308,7 @@ class DualRedisClient:
             else:
                 self._command_count = remote_commands
                 percent = round(remote_commands / SAFE_COMMAND_LIMIT * 100, 1)
-                logger.info(f"✅ Cache: primary OK ({remote_commands} commands, {percent}%)")
+                logger.info(f"✅ Cache: primary OK ({remote_commands:,} commands, {percent}%)")
         except Exception as e:
             logger.error(f"❌ Cache: startup check error: {e}")
 
@@ -326,24 +424,30 @@ class DualRedisClient:
             if not db.is_connected():
                 if not db.connect():
                     return
+
+            # ⭐ آمار واقعی از Mgmt API
             remote_commands = _get_upstash_commands(other)
+
             if remote_commands < 0:
                 try:
                     info = db._client.info()
                     remote_commands = info.get("total_commands_processed", 0)
                 except Exception:
                     return
+
             commands_ok = remote_commands < SAFE_COMMAND_LIMIT
-            info = _fetch_upstash_info(other)
+
+            # memory check از Mgmt API
+            mgmt = _fetch_mgmt_stats(other)
             memory_ok = True
-            if info:
+            if mgmt:
                 try:
-                    used = int(info.get("used_memory", 0))
-                    maxmem = int(info.get("maxmemory", 0))
-                    if maxmem > 0:
-                        memory_ok = (used / maxmem) < 0.9
+                    used = int(mgmt.get("total_monthly_storage", 0))
+                    limit_bytes = 256 * 1024 * 1024
+                    memory_ok = (used / limit_bytes) < 0.9
                 except (ValueError, TypeError):
                     pass
+
             if commands_ok and memory_ok:
                 if self._switch_to_other("periodic_check"):
                     logger.info(f"✅ Cache: recovered to '{other}'")
@@ -359,7 +463,7 @@ class DualRedisClient:
 
         if self._should_switch_preemptive():
             logger.warning(
-                f"⚠️ Cache: command threshold reached ({self._command_count}), "
+                f"⚠️ Cache: command threshold reached ({self._command_count:,}), "
                 f"preemptive failover"
             )
             if not self._switch_to_other("preemptive_threshold"):
@@ -467,11 +571,10 @@ class DualRedisClient:
         return db.is_connected()
 
     # ------------------------------------------------------------
-    # 🆕 Type-specific operations
+    # Type-specific operations
     # ------------------------------------------------------------
 
     def type(self, key: str) -> str:
-        """تشخیص نوع کلید (string, hash, list, set, zset, none)"""
         def _do(db):
             result = db._client.type(key)
             return result.decode() if isinstance(result, bytes) else result
@@ -479,55 +582,41 @@ class DualRedisClient:
         return result if result else "none"
 
     def hgetall(self, key: str) -> Dict[str, Any]:
-        """همه فیلدهای Hash"""
         def _do(db): return db._client.hgetall(key)
         result = self._safe_operation("hgetall", _do)
         return result or {}
 
-    def lrange(self, key: str, start: int = 0, end: int = -1) -> List[Any]:
-        """بخشی از List"""
-        def _do(db): return db._client.lrange(key, start, end)
-        return self._safe_operation("lrange", _do) or []
-
-    def smembers(self, key: str) -> List[Any]:
-        """همه اعضای Set"""
-        def _do(db): return db._client.smembers(key)
-        result = self._safe_operation("smembers", _do)
-        return list(result) if result else []
-
-    def zrange(
-        self,
-        key: str,
-        start: int = 0,
-        end: int = -1,
-        withscores: bool = False
-    ) -> List[Any]:
-        """بخشی از Sorted Set"""
-        def _do(db): return db._client.zrange(key, start, end, withscores=withscores)
-        return self._safe_operation("zrange", _do) or []
-
     def hget(self, key: str, field: str) -> Optional[str]:
-        """یک فیلد از Hash"""
         def _do(db): return db._client.hget(key, field)
         result = self._safe_operation("hget", _do)
         if isinstance(result, bytes):
             return result.decode()
         return result
 
+    def lrange(self, key: str, start: int = 0, end: int = -1) -> List[Any]:
+        def _do(db): return db._client.lrange(key, start, end)
+        return self._safe_operation("lrange", _do) or []
+
     def llen(self, key: str) -> int:
-        """تعداد اعضای List"""
         def _do(db): return db._client.llen(key)
         result = self._safe_operation("llen", _do)
         return result if isinstance(result, int) else 0
 
+    def smembers(self, key: str) -> List[Any]:
+        def _do(db): return db._client.smembers(key)
+        result = self._safe_operation("smembers", _do)
+        return list(result) if result else []
+
     def scard(self, key: str) -> int:
-        """تعداد اعضای Set"""
         def _do(db): return db._client.scard(key)
         result = self._safe_operation("scard", _do)
         return result if isinstance(result, int) else 0
 
+    def zrange(self, key: str, start: int = 0, end: int = -1, withscores: bool = False) -> List[Any]:
+        def _do(db): return db._client.zrange(key, start, end, withscores=withscores)
+        return self._safe_operation("zrange", _do) or []
+
     def zcard(self, key: str) -> int:
-        """تعداد اعضای Sorted Set"""
         def _do(db): return db._client.zcard(key)
         result = self._safe_operation("zcard", _do)
         return result if isinstance(result, int) else 0
@@ -575,14 +664,19 @@ class DualRedisClient:
         if total > 0:
             hit_ratio = round(self._stats["hits"] / total * 100, 2)
 
+        # آمار active Redis
+        active_commands = _get_upstash_commands(self._active_name)
+        if active_commands < 0:
+            active_commands = self._command_count
+
         return {
             **self._stats,
             "connected": self.is_connected(),
             "hit_ratio": hit_ratio,
             "active_redis": self._active_name,
-            "command_count": self._command_count,
+            "command_count": active_commands,
             "command_limit": SAFE_COMMAND_LIMIT,
-            "command_usage_percent": round(self._command_count / SAFE_COMMAND_LIMIT * 100, 2),
+            "command_usage_percent": round(active_commands / SAFE_COMMAND_LIMIT * 100, 2),
             "failover_count": self._failover_count,
             "last_error": self._last_error,
             "last_error_at": (
@@ -597,6 +691,11 @@ class DualRedisClient:
         }
 
     def get_detailed_stats(self) -> Dict[str, Any]:
+        """
+        آمار دقیق از هر دو Redis.
+        
+        ⭐ از Management API استفاده می‌کند → عدد واقعی مثل داشبورد Upstash
+        """
         result = {
             "active": self._active_name,
             "failover_count": self._failover_count,
@@ -616,6 +715,7 @@ class DualRedisClient:
 
             info_block = {
                 "name": name,
+                "endpoint": config.get("endpoint", "?"),
                 "registered": False,
                 "connected": False,
                 "is_active": (name == self._active_name),
@@ -624,6 +724,7 @@ class DualRedisClient:
                 "bandwidth_limit_gb": bandwidth_limit_gb,
             }
 
+            # ─── registry check ───
             try:
                 db = registry.get(name, auto_reconnect=False)
                 if db is not None:
@@ -632,67 +733,99 @@ class DualRedisClient:
             except Exception as e:
                 info_block["error"] = str(e)
 
-            info = _fetch_upstash_info(name)
+            # ═══ آمار واقعی از Management API ═══
+            mgmt = _fetch_mgmt_stats(name)
 
-            if info:
+            if mgmt and "total_monthly_requests" in mgmt:
                 try:
-                    commands = int(info.get("total_commands_processed", 0))
-                except (ValueError, TypeError):
-                    commands = 0
-                try:
-                    used_memory = int(info.get("used_memory", 0))
-                except (ValueError, TypeError):
-                    used_memory = 0
-                try:
-                    bandwidth = (
-                        int(info.get("total_net_input_bytes", 0))
-                        + int(info.get("total_net_output_bytes", 0))
-                    )
-                except (ValueError, TypeError):
-                    bandwidth = 0
+                    commands = int(mgmt.get("total_monthly_requests", 0))
+                    used_memory = int(mgmt.get("current_storage", 0) or 0)
+                    bandwidth = int(mgmt.get("total_monthly_bandwidth", 0) or 0)
 
-                info_block.update({
-                    "commands_processed": commands,
-                    "commands_percent": round(commands / commands_limit * 100, 2),
-                    "used_memory_human": info.get("used_memory_human", "0B"),
-                    "used_memory_mb": round(used_memory / (1024 * 1024), 2),
-                    "used_memory_bytes": used_memory,
-                    "memory_limit_bytes": memory_limit_mb * 1024 * 1024,
-                    "bandwidth_bytes": bandwidth,
-                    "bandwidth_gb": round(bandwidth / (1024 ** 3), 3),
-                    "connected_clients": int(info.get("connected_clients", 0)),
-                    "redis_version": info.get("redis_version", "unknown"),
-                    "uptime_seconds": int(info.get("uptime_in_seconds", 0)),
-                    "source": "upstash_rest",
-                })
-                info_block["keys_count"] = _fetch_upstash_dbsize(name)
+                    info_block.update({
+                        "commands_processed": commands,
+                        "commands_percent": round(commands / commands_limit * 100, 2),
+                        "used_memory_bytes": used_memory,
+                        "used_memory_mb": round(used_memory / (1024 * 1024), 2),
+                        "used_memory_human": _format_bytes(used_memory),
+                        "memory_limit_bytes": memory_limit_mb * 1024 * 1024,
+                        "bandwidth_bytes": bandwidth,
+                        "bandwidth_gb": round(bandwidth / (1024 ** 3), 3),
+                        "bandwidth_human": _format_bytes(bandwidth),
+                        "monthly_read_requests": mgmt.get("total_monthly_read_requests", 0),
+                        "monthly_write_requests": mgmt.get("total_monthly_write_requests", 0),
+                        "monthly_billing_usd": mgmt.get("total_monthly_billing", 0),
+                        "daily_net_commands": mgmt.get("daily_net_commands", 0),
+                        "daily_bandwidth": mgmt.get("dailybandwidth", 0),
+                        "source": "management_api",  # ⭐ منبع معتبر
+                    })
+
+                    # تعداد کلید از REST
+                    info_block["keys_count"] = _fetch_upstash_dbsize(name)
+
+                except (ValueError, TypeError) as e:
+                    info_block["error"] = f"parse error: {e}"
+
             else:
-                info_block["source"] = "tcp_fallback"
-                try:
-                    if db is not None and db.is_connected():
-                        raw_info = db._client.info()
-                        commands = raw_info.get("total_commands_processed", 0)
-                        used_memory = raw_info.get("used_memory", 0)
+                # ─── fallback: REST INFO ───
+                info_block["source"] = "rest_fallback"
+
+                rest_info = _fetch_upstash_info(name)
+                if rest_info:
+                    try:
+                        commands = int(rest_info.get("total_commands_processed", 0))
+                        used_memory = int(rest_info.get("used_memory", 0))
+
                         info_block.update({
                             "commands_processed": commands,
                             "commands_percent": round(commands / commands_limit * 100, 2),
-                            "used_memory_human": raw_info.get("used_memory_human", "0B"),
+                            "used_memory_human": rest_info.get("used_memory_human", "0B"),
                             "used_memory_mb": round(used_memory / (1024 * 1024), 2),
                             "used_memory_bytes": used_memory,
                             "memory_limit_bytes": memory_limit_mb * 1024 * 1024,
                             "bandwidth_bytes": 0,
                             "bandwidth_gb": 0,
+                            "connected_clients": int(rest_info.get("connected_clients", 0)),
+                            "redis_version": rest_info.get("redis_version", "unknown"),
+                            "keys_count": _fetch_upstash_dbsize(name),
+                        })
+                    except (ValueError, TypeError) as e:
+                        info_block["error"] = str(e)
+                elif db is not None and db.is_connected():
+                    try:
+                        raw_info = db._client.info()
+                        commands = raw_info.get("total_commands_processed", 0)
+                        info_block.update({
+                            "commands_processed": commands,
+                            "commands_percent": round(commands / commands_limit * 100, 2),
+                            "used_memory_human": raw_info.get("used_memory_human", "0B"),
+                            "used_memory_mb": round(raw_info.get("used_memory", 0) / (1024 * 1024), 2),
+                            "keys_count": raw_info.get("db0", {}).get("keys", 0),
                             "connected_clients": raw_info.get("connected_clients", 0),
                             "redis_version": raw_info.get("redis_version", "unknown"),
-                            "uptime_seconds": raw_info.get("uptime_in_seconds", 0),
-                            "keys_count": raw_info.get("db0", {}).get("keys", 0),
                         })
-                except Exception as e:
-                    info_block["error"] = str(e)
+                    except Exception as e:
+                        info_block["error"] = str(e)
 
             result[key] = info_block
 
         return result
+
+
+# ============================================================
+# Helper: format bytes
+# ============================================================
+
+def _format_bytes(b: int) -> str:
+    if not b:
+        return "0B"
+    if b >= 1024 ** 3:
+        return f"{b / (1024**3):.2f}GB"
+    if b >= 1024 ** 2:
+        return f"{b / (1024**2):.2f}MB"
+    if b >= 1024:
+        return f"{b / 1024:.2f}KB"
+    return f"{b}B"
 
 
 # ============================================================
@@ -711,7 +844,7 @@ class CacheManager:
         if not hasattr(self, '_initialized'):
             self._initialized = True
             self._redis = DualRedisClient()
-            logger.info("✅ CacheManager v3.3 initialized")
+            logger.info("✅ CacheManager v3.4 initialized (Management API stats)")
 
     # ─── Basic ───
     def get(self, key: str) -> Optional[Any]:
@@ -787,19 +920,17 @@ class CacheManager:
         except Exception:
             return False
 
-    # 🆕 Type-specific
+    # ─── Type-specific ───
     def type(self, key: str) -> str:
         try:
             return self._redis.type(key)
-        except Exception as e:
-            logger.error(f"❌ Cache type error: {e}")
+        except Exception:
             return "none"
 
     def hgetall(self, key: str) -> Dict[str, Any]:
         try:
             return self._redis.hgetall(key)
-        except Exception as e:
-            logger.error(f"❌ Cache hgetall error: {e}")
+        except Exception:
             return {}
 
     def hget(self, key: str, field: str) -> Optional[str]:
@@ -811,8 +942,7 @@ class CacheManager:
     def lrange(self, key: str, start: int = 0, end: int = -1) -> List[Any]:
         try:
             return self._redis.lrange(key, start, end)
-        except Exception as e:
-            logger.error(f"❌ Cache lrange error: {e}")
+        except Exception:
             return []
 
     def llen(self, key: str) -> int:
@@ -824,8 +954,7 @@ class CacheManager:
     def smembers(self, key: str) -> List[Any]:
         try:
             return self._redis.smembers(key)
-        except Exception as e:
-            logger.error(f"❌ Cache smembers error: {e}")
+        except Exception:
             return []
 
     def scard(self, key: str) -> int:
@@ -834,17 +963,10 @@ class CacheManager:
         except Exception:
             return 0
 
-    def zrange(
-        self,
-        key: str,
-        start: int = 0,
-        end: int = -1,
-        withscores: bool = False
-    ) -> List[Any]:
+    def zrange(self, key: str, start: int = 0, end: int = -1, withscores: bool = False) -> List[Any]:
         try:
             return self._redis.zrange(key, start, end, withscores=withscores)
-        except Exception as e:
-            logger.error(f"❌ Cache zrange error: {e}")
+        except Exception:
             return []
 
     def zcard(self, key: str) -> int:
