@@ -1097,18 +1097,14 @@ def redis_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+        
 @api_bp.route('/db/redis/namespaces', methods=['GET'])
 @require_auth()
 def redis_namespaces():
-    """
-    آمار namespaceها
-    
-    ✅ از cache_manager استفاده می‌کنه تا active Redis رو دنبال کنه
-    """
+    """آمار namespaceها با خوندن از cache_manager"""
     try:
         from infrastructure.api.cache_manager import cache_manager
         
-        # ═══ لیست namespaceهای شناخته‌شده با تنظیمات ═══
         known_namespaces = {
             "cache:api":   {"max_mb": 80,  "ttl_default": 3600},
             "cache:chart": {"max_mb": 40,  "ttl_default": 3600},
@@ -1118,18 +1114,14 @@ def redis_namespaces():
             "session":     {"max_mb": 20,  "ttl_default": 86400},
         }
         
-        # ═══ همه کلیدها رو از active Redis بگیر ═══
         all_keys = cache_manager.scan_keys("*", count=1000)
         
-        # ═══ شمارش کلیدهای هر namespace ═══
         result: Dict[str, Dict[str, Any]] = {}
         counted_keys = set()
         
         for ns, config in known_namespaces.items():
-            # کلیدهایی که با `ns:` شروع می‌شن
             prefix = ns + ":"
             matched = [k for k in all_keys if k.startswith(prefix)]
-            
             for k in matched:
                 counted_keys.add(k)
             
@@ -1140,9 +1132,7 @@ def redis_namespaces():
                 "ttl_default": config["ttl_default"],
             }
         
-        # ═══ کلیدهایی که تو هیچ namespace نبودن ═══
         other_keys = [k for k in all_keys if k not in counted_keys]
-        
         if other_keys:
             result["(بدون namespace)"] = {
                 "keys_count": len(other_keys),
@@ -1151,7 +1141,6 @@ def redis_namespaces():
                 "ttl_default": 0,
             }
         
-        # ═══ اطلاعات active Redis ═══
         stats = cache_manager.get_stats()
         
         return jsonify({
@@ -1160,10 +1149,10 @@ def redis_namespaces():
             'active_redis': stats.get('active_redis', 'unknown'),
             'total_keys': len(all_keys),
         })
-        
     except Exception as e:
         logger.error(f"Redis namespaces error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @api_bp.route('/db/redis/namespace/<namespace>', methods=['DELETE'])
 @require_auth('admin')
