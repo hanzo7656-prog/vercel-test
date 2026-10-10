@@ -4300,32 +4300,59 @@ async function loadDualRedis() {
 function normalizeRedisStats(raw) {
     if (!raw) return null;
 
+    // ═══ فرمت جدید Backend (v3.4 با Management API) ═══
+    if (raw.commands_processed !== undefined || raw.max_memory_mb !== undefined) {
+        return {
+            connected: raw.connected !== false,
+            commandsUsed: raw.commands_processed || 0,
+            commandsLimit: raw.commands_limit || 500000,
+            memoryUsedBytes: (raw.used_memory_mb || 0) * 1024 * 1024,
+            memoryLimitBytes: (raw.max_memory_mb || 256) * 1024 * 1024,
+            bandwidthUsedBytes: raw.bandwidth_bytes || 0,
+            bandwidthLimitBytes: (raw.bandwidth_limit_gb || 10) * (1024 ** 3),
+            bandwidthHuman: raw.bandwidth_human || null,
+            uptime: raw.uptime_seconds ? formatUptime(raw.uptime_seconds) : '—',
+            keysCount: raw.keys_count || 0,
+            connectedClients: raw.connected_clients || 0,
+            source: raw.source || 'unknown',
+            monthlyRead: raw.monthly_read_requests || 0,
+            monthlyWrite: raw.monthly_write_requests || 0,
+            dailyNetCommands: raw.daily_net_commands || 0,
+        };
+    }
+
+    // ═══ فرمت قدیمی (fallback) ═══
     if (raw.commands_used !== undefined || raw.commands !== undefined) {
         return {
             connected: raw.connected !== false,
             commandsUsed: raw.commands_used || raw.commands || 0,
-            commandsLimit: raw.commands_limit || CONSTANTS.COMMANDS_LIMIT,
+            commandsLimit: raw.commands_limit || 500000,
             memoryUsedBytes: raw.memory_used_bytes || raw.memory_bytes || 0,
-            memoryLimitBytes: (raw.memory_limit_mb || CONSTANTS.MEMORY_LIMIT_MB) * 1024 * 1024,
+            memoryLimitBytes: (raw.memory_limit_mb || 256) * 1024 * 1024,
             bandwidthUsedBytes: raw.bandwidth_used_bytes || 0,
-            bandwidthLimitBytes: (raw.bandwidth_limit_gb || CONSTANTS.BANDWIDTH_LIMIT_GB) * 1024 ** 3,
+            bandwidthLimitBytes: (raw.bandwidth_limit_gb || 10) * (1024 ** 3),
+            bandwidthHuman: null,
             uptime: raw.uptime || '—',
+            source: 'legacy',
         };
     }
 
+    // ═══ INFO مستقیم ═══
     const info = raw.info || raw;
     const memUsed = info.used_memory || info.memory_used || 0;
-    const memTotal = info.maxmemory || info.memory_limit || (CONSTANTS.MEMORY_LIMIT_MB * 1024 * 1024);
+    const memTotal = info.maxmemory || info.memory_limit || (256 * 1024 * 1024);
 
     return {
         connected: raw.connected !== false,
         commandsUsed: info.total_commands_processed || info.commands || 0,
-        commandsLimit: CONSTANTS.COMMANDS_LIMIT,
+        commandsLimit: 500000,
         memoryUsedBytes: memUsed,
         memoryLimitBytes: memTotal,
         bandwidthUsedBytes: 0,
-        bandwidthLimitBytes: CONSTANTS.BANDWIDTH_LIMIT_GB * (1024 ** 3),
-        uptime: info.uptime_in_seconds ? formatUptime(info.uptime_in_seconds) : (raw.uptime || '—'),
+        bandwidthLimitBytes: 10 * (1024 ** 3),
+        bandwidthHuman: null,
+        uptime: info.uptime_in_seconds ? formatUptime(info.uptime_in_seconds) : '—',
+        source: 'info',
     };
 }
 
