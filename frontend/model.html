@@ -1,138 +1,1247 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-theme="dark" data-color="violet">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <meta name="theme-color" content="#0a0e1a">
-    <title>مدیریت مدل | سیستم تحلیلگر</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>مدل | سیستم تحلیلگر</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<!-- ⚡ FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'violet';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#a855f7';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Base CSS -->
-    <link rel="stylesheet" href="/css/tokens.css">
-    <link rel="stylesheet" href="/css/base.css">
-    <link rel="stylesheet" href="/css/animations.css">
-    <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/layout.css">
-    <link rel="stylesheet" href="/css/themes.css">
+<style>
+/* ============================================================
+   MODEL SHELL — CSS
+   Violet theme · 4 Tabs · iframe lazy load
+   ============================================================ */
+:root {
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 76px;
+    --primary: #a855f7;
+    --primary-dark: #9333ea;
+    --primary-light: #c084fc;
+    --primary-rgb: 168, 85, 247;
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(168, 85, 247, 0.15);
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #06b6d4;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(168, 85, 247, 0.1);
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-    <!-- Shared -->
-    <link rel="stylesheet" href="/css/nav.css">
-    <link rel="stylesheet" href="/css/pages/shared-page.css">
+html[data-color="indigo"] { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15); --primary-bg: rgba(99, 102, 241, 0.1); }
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; --shadow-focus: 0 0 0 3px rgba(16, 185, 129, 0.15); --primary-bg: rgba(16, 185, 129, 0.1); }
+html[data-color="rose"]   { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; --shadow-focus: 0 0 0 3px rgba(244, 63, 94, 0.15); --primary-bg: rgba(244, 63, 94, 0.1); }
+html[data-color="amber"]  { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; --shadow-focus: 0 0 0 3px rgba(245, 158, 11, 0.15); --primary-bg: rgba(245, 158, 11, 0.1); }
+html[data-color="cyan"]   { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.15); --primary-bg: rgba(6, 182, 212, 0.1); }
 
-    <!-- Page-specific -->
-    <link rel="stylesheet" href="/css/pages/model.css">
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; height: 100vh; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ============================================================
+   NEON LOADER — فقط برای رفرش صفحه
+   ============================================================ */
+.neon-loader-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 12, 22, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 28px;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.neon-loader-overlay.active {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+.neon-loader-icon {
+    width: 68px; height: 68px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5);
+    animation: loaderPulse 1.8s ease-in-out infinite;
+}
+
+.neon-loader-icon svg { width: 34px; height: 34px; }
+
+@keyframes loaderPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
+    50% { transform: scale(1.08) rotate(-3deg); box-shadow: 0 12px 48px rgba(var(--primary-rgb), 0.8); }
+}
+
+.neon-loader-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-height: 22px;
+    text-align: center;
+}
+
+.neon-loader-sub {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    margin-top: -18px;
+    text-align: center;
+}
+
+/* ============================================================
+   SHELL LAYOUT
+   ============================================================ */
+.model-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-right: var(--sidebar-width);
+    transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    opacity: 0;
+}
+
+.model-shell.ready {
+    opacity: 1;
+    transition: opacity 0.3s ease, margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.model-shell.expanded { margin-right: var(--sidebar-collapsed); }
+
+@media (max-width: 768px) {
+    .model-shell { margin-right: 0; padding-top: 60px; opacity: 1; }
+}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+    min-height: 52px;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--primary-bg);
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+    border-radius: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--primary-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--mono-font);
+    flex-shrink: 0;
+}
+
+.live-dot {
+    width: 6px; height: 6px;
+    background: var(--primary-light);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 8px var(--primary-light);
+}
+
+.live-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid var(--primary-light);
+    opacity: 0;
+    animation: livePulse 1.8s ease-out infinite;
+}
+
+@keyframes livePulse {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+}
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.icon-btn {
+    width: 32px; height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.icon-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+}
+
+.icon-btn svg { width: 14px; height: 14px; }
+
+.cmd-hint {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cmd-hint:hover {
+    border-color: var(--primary);
+    color: var(--primary-light);
+}
+
+.cmd-hint kbd {
+    background: var(--bg-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   NAV TABS
+   ============================================================ */
+.nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-height: 52px;
+}
+
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tab {
+    flex: 1;
+    min-width: 140px;
+    max-width: 260px;
+    padding: 11px 18px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    position: relative;
+}
+
+.nav-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.nav-tab:hover { background: var(--bg-hover); color: var(--text-light); }
+
+.nav-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
+}
+
+.nav-tab .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 9px;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.nav-tab:not(.active) .tab-badge {
+    background: var(--bg-hover-strong);
+    color: var(--text-dim);
+}
+
+/* ============================================================
+   CONTENT AREA
+   ============================================================ */
+.content-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-page);
+}
+
+.tab-panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+    overflow: hidden;
+}
+
+.tab-panel.active { display: block; }
+
+.tab-panel iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: var(--bg-page);
+}
+
+/* ============================================================
+   IFRAME LOADER — اسپینر نئونی
+   ============================================================ */
+.iframe-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 18px;
+    background: var(--bg-page);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.iframe-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.iframe-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+/* اسپینر ۸ نقطه‌ای نئونی */
+.neon-spinner {
+    --size: 1px;
+    --speed: 1.3s;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    font-size: calc(10 * var(--size));
+    color: var(--primary-light);
+    text-indent: -9999em;
+    transform: translateZ(0);
+    animation: neonMulShdSpin var(--speed) infinite linear;
+    will-change: box-shadow;
+}
+
+@keyframes neonMulShdSpin {
+    0%, 100% {
+        box-shadow:
+            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 0;
+    }
+    12.5% {
+        box-shadow:
+            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    25% {
+        box-shadow:
+            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
+            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
+            -3em 0 0 -1em, -2em -2em 0 -1em;
+    }
+    37.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
+            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    50% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
+            -3em 0em 0 -1em, -2em -2em 0 -1em;
+    }
+    62.5% {
+        box-shadow:
+            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
+            -3em 0 0 0, -2em -2em 0 -1em;
+    }
+    75% {
+        box-shadow:
+            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0.2em, -2em -2em 0 0;
+    }
+    87.5% {
+        box-shadow:
+            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
+            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
+            -3em 0em 0 0, -2em -2em 0 0.2em;
+    }
+}
+
+.iframe-loader-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+    text-align: center;
+}
+
+.iframe-loader-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    text-align: center;
+    margin-top: -10px;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 999998;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: calc(100vw - 48px);
+}
+
+@media (max-width: 768px) {
+    .toast-container { bottom: auto; top: 100px; left: 12px; right: 12px; max-width: none; }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    .page-title { font-size: 14px; }
+    .cmd-hint { display: none; }
+    .nav-tab { padding: 9px 12px; font-size: 11.5px; min-width: 100px; }
+    .top-bar { padding: 8px 12px; }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
 </head>
 <body>
 
-    <!-- Navigation -->
-    <div id="navContainer"></div>
+<!-- ============================================================
+     NEON LOADER (فقط رفرش صفحه)
+     ============================================================ -->
+<div class="neon-loader-overlay" id="neonLoader" role="dialog" aria-modal="true">
+    <div class="neon-loader-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 0 0-10 10c0 5 4 8 10 10 6-2 10-5 10-10A10 10 0 0 0 12 2z"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 5v2M12 17v2M5 12h2M17 12h2"/>
+        </svg>
+    </div>
+    <div class="neon-loader-text">در حال بارگذاری مدل...</div>
+    <div class="neon-loader-sub">لطفاً کمی صبر کنید</div>
+</div>
 
-    <!-- Main -->
-    <div class="tabbed-page model-page">
+<!-- ============================================================
+     NAV CONTAINER (sidebar)
+     ============================================================ -->
+<div id="navContainer"></div>
 
-        <div class="container">
+<!-- ============================================================
+     MODEL SHELL
+     ============================================================ -->
+<div class="model-shell" id="modelShell">
 
-            <!-- ====================================================
-                 Header
-                 ==================================================== -->
-            <div class="page-header">
-                <div>
-                    <h1>
-                        <span class="page-icon">
-                            <i class="fas fa-brain"></i>
-                        </span>
-                        <span>مدیریت مدل</span>
-                    </h1>
-                    <span class="subtitle">مدیریت، آموزش و تحلیل مدل XGBoost</span>
-                </div>
-                <div class="header-actions">
-                    <span class="status-badge" id="modelStatusBadge">
-                        <span class="status-indicator" style="background: var(--text-muted);"></span>
-                        <span class="status-text">در حال بررسی...</span>
-                    </span>
-                    <span class="timestamp" id="pageTimestamp">—</span>
-                    <button class="btn btn-xs btn-outline" onclick="refreshCurrentTab()" title="بروزرسانی">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- ====================================================
-                 Tabs
-                 ==================================================== -->
-            <div class="tabs" id="modelTabs">
-                <button class="tab-btn active" data-tab="dashboard">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>داشبورد</span>
-                </button>
-                <button class="tab-btn" data-tab="info">
-                    <i class="fas fa-microchip"></i>
-                    <span>اطلاعات مدل</span>
-                </button>
-                <button class="tab-btn" data-tab="training">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>آموزش</span>
-                </button>
-                <button class="tab-btn" data-tab="schedule">
-                    <i class="fas fa-clock"></i>
-                    <span>زمان‌بندی</span>
-                </button>
-                <button class="tab-btn" data-tab="history">
-                    <i class="fas fa-history"></i>
-                    <span>تاریخچه</span>
-                </button>
-                <button class="tab-btn" data-tab="features">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>اهمیت ویژگی‌ها</span>
-                </button>
-                <button class="tab-btn" data-tab="tools">
-                    <i class="fas fa-tools"></i>
-                    <span>ابزارها</span>
-                </button>
-            </div>
-
-            <!-- ====================================================
-                 Tab Content
-                 ==================================================== -->
-            <div class="tab-wrapper" id="modelTabContent">
-                <div class="loading-container">
-                    <div class="loading-spinner"></div>
-                    <p class="loading-text">در حال بارگذاری...</p>
-                </div>
-            </div>
-
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <span class="live-badge">
+                <span class="live-dot"></span>
+                <span>MODEL</span>
+            </span>
+            <span class="page-title" id="pageTitle">وضعیت کلی</span>
+        </div>
+        <div class="top-bar-right">
+            <button class="cmd-hint" id="cmdBtn" title="پالت فرمان">
+                <kbd>Ctrl</kbd>+<kbd>K</kbd>
+            </button>
+            <button class="icon-btn" id="refreshBtn" title="بروزرسانی">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+            </button>
         </div>
     </div>
 
-    <!-- ============================================================
-         SCRIPTS
-         ============================================================ -->
+    <!-- NAV TABS -->
+    <nav class="nav-tabs" id="navTabs">
+        <button class="nav-tab active" data-tab="overview" data-url="/model/overview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9"/>
+                <rect x="14" y="3" width="7" height="5"/>
+                <rect x="14" y="12" width="7" height="9"/>
+                <rect x="3" y="16" width="7" height="5"/>
+            </svg>
+            <span>وضعیت کلی</span>
+        </button>
+        <button class="nav-tab" data-tab="screener" data-url="/model/screener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <span>اسکنر و کالیبراسیون</span>
+        </button>
+        <button class="nav-tab" data-tab="state" data-url="/model/state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
+            </svg>
+            <span>State Machine</span>
+        </button>
+        <button class="nav-tab" data-tab="schedule" data-url="/model/schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>زمان‌بندی</span>
+        </button>
+    </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jalaliday@1/dist/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mitt@3/dist/mitt.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/radash@12/dist/radash.umd.js"></script>
+    <!-- CONTENT AREA -->
+    <div class="content-area" id="contentArea">
 
-    <script src="/js/utils.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/app.js"></script>
+        <!-- TAB 1: OVERVIEW -->
+        <div class="tab-panel active" id="panel-overview" data-src="/model_tabs/overview.html">
+            <iframe id="iframe-overview" src="about:blank" title="وضعیت کلی" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-overview">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری وضعیت کلی...</div>
+                    <div class="iframe-loader-sub">Loading model overview</div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Core -->
-    <script src="/js/core/theme.js"></script>
-    <script src="/js/core/tabs.js"></script>
-    <script src="/js/core/nav.js"></script>
-    <script src="/js/core/index.js"></script>
+        <!-- TAB 2: SCREENER -->
+        <div class="tab-panel" id="panel-screener" data-src="/model_tabs/screener.html">
+            <iframe id="iframe-screener" src="about:blank" title="اسکنر و کالیبراسیون" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-screener">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری اسکنر...</div>
+                    <div class="iframe-loader-sub">Loading screener</div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Loader -->
-    <script src="/js/loaders/model-loader.js"></script>
+        <!-- TAB 3: STATE -->
+        <div class="tab-panel" id="panel-state" data-src="/model_tabs/state.html">
+            <iframe id="iframe-state" src="about:blank" title="State Machine" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-state">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری State Machine...</div>
+                    <div class="iframe-loader-sub">Loading state machine</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SCHEDULE -->
+        <div class="tab-panel" id="panel-schedule" data-src="/model_tabs/schedule.html">
+            <iframe id="iframe-schedule" src="about:blank" title="زمان‌بندی" frameborder="0"></iframe>
+            <div class="iframe-loader" id="loader-schedule">
+                <div class="iframe-loader-content">
+                    <span class="neon-spinner"></span>
+                    <div class="iframe-loader-text">در حال بارگذاری زمان‌بندی...</div>
+                    <div class="iframe-loader-sub">Loading schedule</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script>
+(function() {
+'use strict';
+
+// جلوگیری از اجرای دوباره
+if (window.__modelShellLoaded) return;
+window.__modelShellLoaded = true;
+
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    TABS: {
+        overview: {
+            url: '/model/overview',
+            src: '/model_tabs/overview.html',
+            title: 'وضعیت کلی',
+            loader: 'loader-overview',
+            iframe: 'iframe-overview',
+            panel: 'panel-overview'
+        },
+        screener: {
+            url: '/model/screener',
+            src: '/model_tabs/screener.html',
+            title: 'اسکنر و کالیبراسیون',
+            loader: 'loader-screener',
+            iframe: 'iframe-screener',
+            panel: 'panel-screener'
+        },
+        state: {
+            url: '/model/state',
+            src: '/model_tabs/state.html',
+            title: 'State Machine',
+            loader: 'loader-state',
+            iframe: 'iframe-state',
+            panel: 'panel-state'
+        },
+        schedule: {
+            url: '/model/schedule',
+            src: '/model_tabs/schedule.html',
+            title: 'زمان‌بندی',
+            loader: 'loader-schedule',
+            iframe: 'iframe-schedule',
+            panel: 'panel-schedule'
+        }
+    },
+    LOADER_TIMEOUT: 10000,
+    STORAGE_KEY: 'model_last_tab'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    currentTab: 'overview',
+    loadedTabs: new Set(),
+    isRefresh: false
+};
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(message, type = 'info', duration = 2500) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#a855f7'
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 220px;
+        max-width: 380px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="
+            display:inline-flex;align-items:center;justify-content:center;
+            width:22px;height:22px;min-width:22px;
+            border-radius:7px;
+            background:${colors[type]}20;
+            color:${colors[type]};
+            flex-shrink:0;
+        ">${icons[type]}</span>
+        <span style="flex:1;">${message}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ============================================================
+// NEON LOADER (فقط رفرش)
+// ============================================================
+function isReload() {
+    try {
+        const navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0) {
+            return navEntries[0].type === 'reload';
+        }
+        if (performance.navigation) {
+            return performance.navigation.type === 1;
+        }
+    } catch (e) {}
+    return false;
+}
+
+function showNeonLoader() {
+    const el = $('#neonLoader');
+    if (el) el.classList.add('active');
+}
+
+function hideNeonLoader() {
+    const el = $('#neonLoader');
+    if (el) el.classList.remove('active');
+}
+
+// ============================================================
+// IFRAME LOADER
+// ============================================================
+function showIframeLoader(tabKey) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+    const loader = document.getElementById(cfg.loader);
+    if (loader) loader.classList.remove('hidden');
+}
+
+function hideIframeLoader(tabKey) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+    const loader = document.getElementById(cfg.loader);
+    if (loader) loader.classList.add('hidden');
+}
+
+// ============================================================
+// LOAD TAB IFRAME
+// ============================================================
+function loadTabIframe(tabKey, force = false) {
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+
+    const iframe = document.getElementById(cfg.iframe);
+    if (!iframe) return;
+
+    if (force) {
+        state.loadedTabs.delete(tabKey);
+    }
+
+    // اگه قبلاً لود شده، دوباره لود نکن
+    if (state.loadedTabs.has(tabKey) && iframe.src !== 'about:blank') {
+        hideIframeLoader(tabKey);
+        return;
+    }
+
+    // اگه iframe منبع داره ولی هنوز لود نشده، فقط لودر رو نگهدار
+    if (iframe.src !== 'about:blank' && !force) {
+        return;
+    }
+
+    showIframeLoader(tabKey);
+
+    iframe.onload = () => {
+        setTimeout(() => {
+            hideIframeLoader(tabKey);
+            state.loadedTabs.add(tabKey);
+        }, 300);
+    };
+
+    iframe.src = cfg.src;
+
+    setTimeout(() => {
+        if (!state.loadedTabs.has(tabKey)) {
+            hideIframeLoader(tabKey);
+            state.loadedTabs.add(tabKey);
+            console.warn(`[Model Shell] Loader timeout for ${tabKey}`);
+        }
+    }, CONFIG.LOADER_TIMEOUT);
+}
+
+// ============================================================
+// SWITCH TAB
+// ============================================================
+function switchTab(tabKey, options = {}) {
+    const { updateUrl = true, force = false } = options;
+    const cfg = CONFIG.TABS[tabKey];
+    if (!cfg) return;
+
+    if (state.currentTab === tabKey && state.loadedTabs.has(tabKey) && !force) {
+        return;
+    }
+
+    state.currentTab = tabKey;
+
+    $$('.nav-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabKey);
+    });
+
+    $$('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    const activePanel = document.getElementById(cfg.panel);
+    if (activePanel) activePanel.classList.add('active');
+
+    const titleEl = $('#pageTitle');
+    if (titleEl) titleEl.textContent = cfg.title;
+
+    if (updateUrl) {
+        try {
+            history.pushState({ tab: tabKey }, '', cfg.url);
+        } catch (e) {}
+    }
+
+    loadTabIframe(tabKey, force);
+
+    try {
+        localStorage.setItem(CONFIG.STORAGE_KEY, tabKey);
+    } catch (e) {}
+}
+
+// ============================================================
+// HANDLE POPSTATE
+// ============================================================
+function handlePopState() {
+    const path = window.location.pathname;
+    let tabKey = 'overview';
+
+    if (path === '/model/screener') tabKey = 'screener';
+    else if (path === '/model/state') tabKey = 'state';
+    else if (path === '/model/schedule') tabKey = 'schedule';
+    else tabKey = 'overview';
+
+    switchTab(tabKey, { updateUrl: false });
+}
+
+// ============================================================
+// NAV LOADER (sidebar)
+// ============================================================
+async function loadNav() {
+    const container = $('#navContainer');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/components/nav.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+        container.innerHTML = html;
+
+        // اجرای script ها
+        container.querySelectorAll('script').forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        console.log('✅ Nav loaded');
+    } catch (err) {
+        console.error('Failed to load nav:', err);
+    }
+}
+
+// ============================================================
+// NAV LISTENERS
+// ============================================================
+function setupNavListeners() {
+    window.addEventListener('nav:toggle-sidebar', (e) => {
+        const collapsed = e.detail?.collapsed;
+        const shell = $('#modelShell');
+        if (shell) shell.classList.toggle('expanded', !!collapsed);
+    });
+
+    window.addEventListener('nav:theme-changed', () => {
+        broadcastToIframes('theme-changed', {
+            theme: document.documentElement.getAttribute('data-theme'),
+            color: document.documentElement.getAttribute('data-color')
+        });
+    });
+
+    window.addEventListener('nav:lang-changed', (e) => {
+        broadcastToIframes('lang-changed', { lang: e.detail?.lang });
+    });
+}
+
+// ============================================================
+// BROADCAST TO IFRAMES
+// ============================================================
+function broadcastToIframes(type, detail = {}) {
+    $$('.tab-panel iframe').forEach(iframe => {
+        try {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type, ...detail }, '*');
+            }
+        } catch (e) {}
+    });
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+function refreshCurrentTab() {
+    const btn = $('#refreshBtn');
+    if (btn) {
+        btn.style.transform = 'rotate(360deg)';
+        btn.style.transition = 'transform 0.6s';
+    }
+
+    const tabKey = state.currentTab;
+    const cfg = CONFIG.TABS[tabKey];
+
+    state.loadedTabs.delete(tabKey);
+
+    const iframe = document.getElementById(cfg.iframe);
+    if (iframe) {
+        showIframeLoader(tabKey);
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+            iframe.src = cfg.src;
+        }, 100);
+    }
+
+    setTimeout(() => {
+        if (btn) {
+            btn.style.transform = '';
+            btn.style.transition = '';
+        }
+    }, 600);
+
+    showToast('در حال بروزرسانی...', 'info', 1500);
+}
+
+// ============================================================
+// COMMAND PALETTE (light version)
+// ============================================================
+function openCommandPalette() {
+    // Placeholder: در آینده می‌تونیم کامل اضافه کنیم
+    showToast('پالت فرمان در دست توسعه...', 'info', 2000);
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+function setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+        const isInput = e.target.matches('input, textarea, select');
+        const mod = e.ctrlKey || e.metaKey;
+
+        // Ctrl+1 → Overview
+        if (mod && e.key === '1') {
+            e.preventDefault();
+            switchTab('overview');
+            return;
+        }
+        // Ctrl+2 → Screener
+        if (mod && e.key === '2') {
+            e.preventDefault();
+            switchTab('screener');
+            return;
+        }
+        // Ctrl+3 → State
+        if (mod && e.key === '3') {
+            e.preventDefault();
+            switchTab('state');
+            return;
+        }
+        // Ctrl+4 → Schedule
+        if (mod && e.key === '4') {
+            e.preventDefault();
+            switchTab('schedule');
+            return;
+        }
+        // Ctrl+R → Refresh
+        if (mod && e.key.toLowerCase() === 'r' && !isInput) {
+            e.preventDefault();
+            refreshCurrentTab();
+            return;
+        }
+        // Ctrl+K → Command Palette
+        if (mod && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            openCommandPalette();
+            return;
+        }
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    console.log('%c 🧠 Model Shell v1.0 ', 'background: linear-gradient(135deg, #a855f7, #c084fc); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;');
+
+    const isRefresh = isReload();
+    state.isRefresh = isRefresh;
+
+    if (isRefresh) {
+        showNeonLoader();
+    }
+
+    setupNavListeners();
+    await loadNav();
+
+    // Nav tabs event
+    $$('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTab(btn.dataset.tab);
+        });
+    });
+
+    // Refresh button
+    $('#refreshBtn')?.addEventListener('click', refreshCurrentTab);
+
+    // Command palette button
+    $('#cmdBtn')?.addEventListener('click', openCommandPalette);
+
+    // Popstate
+    window.addEventListener('popstate', handlePopState);
+
+    // Keyboard
+    setupKeyboard();
+
+    // ====== تعیین تب اولیه ======
+    let initialTab = 'overview';
+
+    const path = window.location.pathname;
+    if (path === '/model/screener') initialTab = 'screener';
+    else if (path === '/model/state') initialTab = 'state';
+    else if (path === '/model/schedule') initialTab = 'schedule';
+
+    if (path === '/model' || path === '/model/' || path === '/model/overview') {
+        try {
+            const savedTab = localStorage.getItem(CONFIG.STORAGE_KEY);
+            if (savedTab && CONFIG.TABS[savedTab]) {
+                initialTab = savedTab;
+            }
+        } catch (e) {}
+    }
+
+    switchTab(initialTab, { updateUrl: false });
+
+    // نمایش shell
+    const shell = $('#modelShell');
+    if (shell) {
+        shell.style.opacity = '';
+        shell.classList.add('ready');
+    }
+
+    if (isRefresh) {
+        setTimeout(() => {
+            hideNeonLoader();
+        }, 800);
+    }
+
+    console.log('✅ Model Shell ready | tab:', initialTab, '| refresh:', isRefresh);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+window.__modelShellCleanup = function() {
+    window.__modelShellLoaded = false;
+};
+
+})();
+</script>
 
 </body>
 </html>
