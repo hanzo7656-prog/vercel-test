@@ -1,0 +1,3156 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="violet">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>State Machine | سیستم تحلیلگر</title>
+
+<!-- ⚡ FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'violet';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#a855f7';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   MODEL STATE TAB — CSS
+   State Distribution + Symbols + Transitions
+   ============================================================ */
+
+/* ---------- Base Variables ---------- */
+:root {
+    --primary: #a855f7;
+    --primary-dark: #9333ea;
+    --primary-light: #c084fc;
+    --primary-rgb: 168, 85, 247;
+
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(168, 85, 247, 0.15);
+
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --purple: #a855f7;
+
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(168, 85, 247, 0.1);
+
+    /* State Colors */
+    --state-idle: #8b9bb4;
+    --state-watching: #06b6d4;
+    --state-setup: #f59e0b;
+    --state-active: #22c55e;
+    --state-cooling: #a855f7;
+
+    --state-idle-bg: rgba(139, 155, 180, 0.1);
+    --state-watching-bg: rgba(6, 182, 212, 0.1);
+    --state-setup-bg: rgba(245, 158, 11, 0.1);
+    --state-active-bg: rgba(34, 197, 94, 0.1);
+    --state-cooling-bg: rgba(168, 85, 247, 0.1);
+
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- Color Themes ---------- */
+html[data-color="indigo"]  { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15); --primary-bg: rgba(99, 102, 241, 0.1); }
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; --shadow-focus: 0 0 0 3px rgba(16, 185, 129, 0.15); --primary-bg: rgba(16, 185, 129, 0.1); }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; --shadow-focus: 0 0 0 3px rgba(244, 63, 94, 0.15); --primary-bg: rgba(244, 63, 94, 0.1); }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; --shadow-focus: 0 0 0 3px rgba(245, 158, 11, 0.15); --primary-bg: rgba(245, 158, 11, 0.1); }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.15); --primary-bg: rgba(6, 182, 212, 0.1); }
+
+/* ---------- Light Theme ---------- */
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- Reset ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 12px 16px 40px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+::selection { background: var(--primary); color: white; }
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   INITIAL LOADER
+   ============================================================ */
+.initial-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-page);
+    transition: opacity 0.4s, visibility 0.4s;
+}
+
+.initial-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.initial-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+}
+
+.loader-spinner {
+    width: 52px;
+    height: 52px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    position: relative;
+}
+
+.loader-spinner::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--primary-light);
+    opacity: 0.5;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   HERO CARD (State)
+   ============================================================ */
+.hero-card {
+    background: linear-gradient(135deg,
+        rgba(168, 85, 247, 0.06) 0%,
+        var(--bg-card) 50%,
+        rgba(6, 182, 212, 0.04) 100%
+    );
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 22px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.6s var(--ease-spring);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.hero-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle at 70% 30%,
+        rgba(168, 85, 247, 0.08),
+        transparent 60%
+    );
+    animation: heroBreath 12s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes heroBreath {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.7; }
+    50% { transform: rotate(180deg) scale(1.1); opacity: 1; }
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hero-icon {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.4);
+    flex-shrink: 0;
+}
+
+.hero-icon svg { width: 26px; height: 26px; }
+
+.hero-title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.hero-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hero-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: 1px solid;
+}
+
+.hero-status-pill.live {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.hero-status-pill.idle {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+.hero-status-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: dotPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+/* ============================================================
+   STATE COUNTERS (5 cards)
+   ============================================================ */
+.state-counters {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 900px) { .state-counters { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .state-counters { grid-template-columns: repeat(2, 1fr); } }
+
+.state-counter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.25s var(--ease-spring);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.state-counter:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.state-counter.active {
+    border-color: var(--state-color, var(--primary));
+    background: var(--state-bg, var(--primary-bg));
+    box-shadow: 0 0 20px var(--state-shadow, rgba(var(--primary-rgb), 0.2));
+}
+
+.state-counter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--state-color, var(--primary));
+    opacity: 0.7;
+}
+
+.state-counter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.state-counter-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.state-counter-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    background: var(--state-color, var(--primary));
+    box-shadow: 0 0 8px var(--state-color, var(--primary));
+    flex-shrink: 0;
+}
+
+.state-counter.active .state-counter-dot {
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.state-counter-value {
+    font-family: var(--mono-font);
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--state-color, var(--text-light));
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+.state-counter-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* State-specific colors */
+.state-counter[data-state="IDLE"] {
+    --state-color: var(--state-idle);
+    --state-bg: var(--state-idle-bg);
+    --state-shadow: rgba(139, 155, 180, 0.2);
+}
+.state-counter[data-state="WATCHING"] {
+    --state-color: var(--state-watching);
+    --state-bg: var(--state-watching-bg);
+    --state-shadow: rgba(6, 182, 212, 0.2);
+}
+.state-counter[data-state="SETUP"] {
+    --state-color: var(--state-setup);
+    --state-bg: var(--state-setup-bg);
+    --state-shadow: rgba(245, 158, 11, 0.2);
+}
+.state-counter[data-state="ACTIVE"] {
+    --state-color: var(--state-active);
+    --state-bg: var(--state-active-bg);
+    --state-shadow: rgba(34, 197, 94, 0.2);
+}
+.state-counter[data-state="COOLING"] {
+    --state-color: var(--state-cooling);
+    --state-bg: var(--state-cooling-bg);
+    --state-shadow: rgba(168, 85, 247, 0.2);
+}
+
+/* ============================================================
+   CONTENT GRID (2 columns)
+   ============================================================ */
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 1024px) {
+    .content-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   PANEL (Generic)
+   ============================================================ */
+.panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    animation: cardIn 0.5s var(--ease-spring) backwards;
+    animation-delay: 0.15s;
+}
+
+.panel-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.panel-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.panel-title-bar svg {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.panel-count {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+}
+
+.panel-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.panel-body-bar {
+    padding: 14px 16px;
+}
+
+.panel-body-bar.no-padding { padding: 0; }
+
+/* ============================================================
+   CHART (Donut)
+   ============================================================ */
+.chart-wrapper {
+    position: relative;
+    height: 260px;
+    padding: 10px;
+}
+
+.chart-wrapper canvas { display: block; }
+
+.chart-center-stats {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chart-center-value {
+    font-family: var(--mono-font);
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+.chart-center-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+/* ============================================================
+   STATE FILTER (Chips)
+   ============================================================ */
+.state-filter {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.state-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    padding: 5px 11px;
+}
+
+.state-filter-chip:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    color: var(--text-light);
+}
+
+.state-filter-chip.active {
+    color: white;
+}
+
+.state-filter-chip[data-filter="all"].active {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.35);
+}
+
+.state-filter-chip[data-filter="IDLE"].active {
+    background: var(--state-idle);
+    border-color: var(--state-idle);
+}
+
+.state-filter-chip[data-filter="WATCHING"].active {
+    background: var(--state-watching);
+    border-color: var(--state-watching);
+}
+
+.state-filter-chip[data-filter="SETUP"].active {
+    background: var(--state-setup);
+    border-color: var(--state-setup);
+}
+
+.state-filter-chip[data-filter="ACTIVE"].active {
+    background: var(--state-active);
+    border-color: var(--state-active);
+}
+
+.state-filter-chip[data-filter="COOLING"].active {
+    background: var(--state-cooling);
+    border-color: var(--state-cooling);
+}
+
+.state-filter-chip .chip-count {
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
+    font-weight: 800;
+    min-width: 18px;
+    text-align: center;
+}
+
+.state-filter-chip:not(.active) .chip-count {
+    background: var(--bg-hover-strong);
+    color: var(--text-dim);
+}
+
+/* ============================================================
+   SYMBOLS GRID (chips)
+   ============================================================ */
+.symbols-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px;
+    min-height: 120px;
+}
+
+.symbol-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.25s var(--ease-spring);
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    animation: chipIn 0.4s var(--ease-spring) backwards;
+    position: relative;
+}
+
+@keyframes chipIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.symbol-chip:hover {
+    transform: translateY(-2px);
+    border-color: var(--state-color, var(--primary));
+    box-shadow: 0 6px 18px var(--state-shadow, rgba(var(--primary-rgb), 0.2));
+}
+
+.symbol-chip[data-state="IDLE"] {
+    --state-color: var(--state-idle);
+    --state-bg: var(--state-idle-bg);
+    --state-shadow: rgba(139, 155, 180, 0.2);
+}
+
+.symbol-chip[data-state="WATCHING"] {
+    --state-color: var(--state-watching);
+    --state-bg: var(--state-watching-bg);
+    --state-shadow: rgba(6, 182, 212, 0.25);
+    border-color: var(--state-watching);
+    background: var(--state-watching-bg);
+}
+
+.symbol-chip[data-state="SETUP"] {
+    --state-color: var(--state-setup);
+    --state-bg: var(--state-setup-bg);
+    --state-shadow: rgba(245, 158, 11, 0.25);
+    border-color: var(--state-setup);
+    background: var(--state-setup-bg);
+}
+
+.symbol-chip[data-state="ACTIVE"] {
+    --state-color: var(--state-active);
+    --state-bg: var(--state-active-bg);
+    --state-shadow: rgba(34, 197, 94, 0.25);
+    border-color: var(--state-active);
+    background: var(--state-active-bg);
+}
+
+.symbol-chip[data-state="COOLING"] {
+    --state-color: var(--state-cooling);
+    --state-bg: var(--state-cooling-bg);
+    --state-shadow: rgba(168, 85, 247, 0.25);
+    border-color: var(--state-cooling);
+    background: var(--state-cooling-bg);
+}
+
+.symbol-chip-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    background: var(--state-color, var(--primary));
+    box-shadow: 0 0 6px var(--state-color, var(--primary));
+    flex-shrink: 0;
+}
+
+.symbol-chip[data-state="ACTIVE"] .symbol-chip-dot,
+.symbol-chip[data-state="SETUP"] .symbol-chip-dot {
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.symbol-chip-name {
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+}
+
+/* ============================================================
+   TRANSITIONS TIMELINE (Table)
+   ============================================================ */
+.data-table-wrap {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+.data-table-wrap::-webkit-scrollbar { height: 6px; }
+.data-table-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+.data-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.data-table thead {
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+    padding: 11px 12px;
+    text-align: right;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.data-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+.data-table tbody tr {
+    transition: background 0.15s;
+}
+
+.data-table tbody tr:hover { background: var(--bg-hover); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* Transition arrow */
+.transition-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+}
+
+.state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.state-badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.state-badge.idle     { background: var(--state-idle-bg); color: var(--state-idle); }
+.state-badge.watching { background: var(--state-watching-bg); color: var(--state-watching); }
+.state-badge.setup    { background: var(--state-setup-bg); color: var(--state-setup); }
+.state-badge.active   { background: var(--state-active-bg); color: var(--state-active); }
+.state-badge.cooling  { background: var(--state-cooling-bg); color: var(--state-cooling); }
+
+.transition-arrow-svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.badge.success { background: var(--success-bg); color: var(--success); }
+.badge.warning { background: var(--warning-bg); color: var(--warning); }
+.badge.danger  { background: var(--danger-bg); color: var(--danger); }
+.badge.info    { background: var(--info-bg); color: var(--info); }
+.badge.primary { background: var(--primary-bg); color: var(--primary-light); }
+.badge.muted   { background: var(--bg-hover); color: var(--text-muted); }
+
+.badge.no-dot::before { display: none; }
+
+.mono {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.mono.muted { color: var(--text-muted); font-weight: 500; }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.empty-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-faint);
+    opacity: 0.5;
+}
+
+.empty-icon svg { width: 100%; height: 100%; }
+
+.empty-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.empty-message {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   SKELETON
+   ============================================================ */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(148, 163, 184, 0.05) 0%,
+        rgba(148, 163, 184, 0.12) 50%,
+        rgba(148, 163, 184, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    border-radius: 6px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-line {
+    height: 12px;
+    margin-bottom: 8px;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 100%; }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 92vh;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.92);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal.modal-lg { max-width: 720px; }
+.modal.modal-sm { max-width: 420px; }
+
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08), transparent);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 0;
+}
+
+.modal-title svg {
+    width: 16px;
+    height: 16px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.modal-close {
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.modal-close:hover { background: var(--danger); color: white; }
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--bg-card);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 90px;
+}
+
+.modal-btn svg { width: 13px; height: 13px; }
+
+.modal-btn.cancel { background: var(--bg-hover); color: var(--text-light); }
+.modal-btn.cancel:hover { background: var(--bg-hover-strong); }
+
+.modal-btn.primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+}
+
+.modal-btn.primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.danger {
+    background: var(--danger);
+    color: white;
+}
+
+.modal-btn.danger:hover {
+    background: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.success {
+    background: var(--success);
+    color: white;
+}
+
+.modal-btn.success:hover {
+    background: var(--success-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.warning {
+    background: var(--warning);
+    color: white;
+}
+
+.modal-btn.warning:hover {
+    background: var(--warning-dark);
+    transform: translateY(-1px);
+}
+
+/* Confirm dialog */
+.confirm-body {
+    padding: 24px 20px 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.confirm-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon.danger { background: var(--danger-bg); color: var(--danger); }
+.confirm-icon.success { background: var(--success-bg); color: var(--success); }
+.confirm-icon svg { width: 24px; height: 24px; }
+
+.confirm-title { font-size: 15px; font-weight: 700; color: var(--text-light); }
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    text-align: center;
+}
+
+.confirm-desc code {
+    font-family: var(--mono-font);
+    background: var(--bg-hover);
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--primary-light);
+    font-size: 11.5px;
+}
+
+/* ============================================================
+   SYMBOL DETAIL MODAL
+   ============================================================ */
+.symbol-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg,
+        var(--state-bg, rgba(var(--primary-rgb), 0.08)),
+        var(--bg-hover)
+    );
+    border: 1px solid var(--state-color, rgba(var(--primary-rgb), 0.2));
+    border-radius: 12px;
+    transition: all 0.3s;
+}
+
+.symbol-detail-icon {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, var(--state-color, var(--primary)), var(--state-color-light, var(--primary-light)));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px var(--state-shadow, rgba(var(--primary-rgb), 0.4));
+}
+
+.symbol-detail-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.symbol-detail-name {
+    font-family: var(--mono-font);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+}
+
+.symbol-detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Detail Grid */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.detail-item {
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+}
+
+.detail-value {
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+    word-break: break-word;
+}
+
+.detail-value.success { color: var(--success); }
+.detail-value.warning { color: var(--warning); }
+.detail-value.danger { color: var(--danger); }
+.detail-value.info { color: var(--info); }
+.detail-value.primary { color: var(--primary-light); }
+
+/* Context JSON */
+.context-json {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: var(--mono-font);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    overflow-x: auto;
+    max-height: 200px;
+    white-space: pre;
+    direction: ltr;
+    text-align: left;
+}
+
+/* Actions in modal */
+.symbol-detail-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 70px;
+}
+
+.action-btn svg { width: 16px; height: 16px; }
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.action-btn.reset {
+    background: var(--bg-hover);
+    color: var(--text-light);
+}
+
+.action-btn.reset:hover {
+    background: var(--info);
+    color: white;
+    border-color: var(--info);
+}
+
+.action-btn.activate {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.action-btn.activate:hover {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.action-btn.cooling {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.action-btn.cooling:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: calc(100vw - 48px);
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    body { padding: 10px 10px 30px; }
+    .hero-title { font-size: 17px; }
+    .state-counter-value { font-size: 20px; }
+    .panel-header-bar { padding: 10px 12px; }
+    .panel-body-bar { padding: 12px; }
+    .symbols-grid { padding: 12px; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .symbol-detail-actions { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     INITIAL LOADER
+     ============================================================ -->
+<div class="initial-loader" id="initialLoader">
+    <div class="initial-loader-content">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">در حال بارگذاری State Machine...</div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     HERO CARD (State Machine)
+     ============================================================ -->
+<section class="hero-card" id="heroCard">
+    <div class="hero-content">
+
+        <div class="hero-title-block">
+            <div class="hero-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
+                </svg>
+            </div>
+            <div class="hero-title-text">
+                <h2 class="hero-title">State Machine</h2>
+                <div class="hero-subtitle">
+                    <span class="hero-status-pill live" id="heroStatusPill">
+                        <span class="dot"></span>
+                        <span id="heroStatusText">پایش زنده</span>
+                    </span>
+                    <span id="heroLastUpdate">آخرین بروزرسانی: —</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- State Counters (5) -->
+        <div class="state-counters" id="stateCounters">
+
+            <div class="state-counter" data-state="IDLE" data-filter="IDLE">
+                <div class="state-counter-header">
+                    <span class="state-counter-label">IDLE</span>
+                    <span class="state-counter-dot"></span>
+                </div>
+                <span class="state-counter-value" id="counterIdle">—</span>
+                <span class="state-counter-hint">غیرفعال</span>
+            </div>
+
+            <div class="state-counter" data-state="WATCHING" data-filter="WATCHING">
+                <div class="state-counter-header">
+                    <span class="state-counter-label">WATCHING</span>
+                    <span class="state-counter-dot"></span>
+                </div>
+                <span class="state-counter-value" id="counterWatching">—</span>
+                <span class="state-counter-hint">در حال پایش</span>
+            </div>
+
+            <div class="state-counter" data-state="SETUP" data-filter="SETUP">
+                <div class="state-counter-header">
+                    <span class="state-counter-label">SETUP</span>
+                    <span class="state-counter-dot"></span>
+                </div>
+                <span class="state-counter-value" id="counterSetup">—</span>
+                <span class="state-counter-hint">آماده ورود</span>
+            </div>
+
+            <div class="state-counter" data-state="ACTIVE" data-filter="ACTIVE">
+                <div class="state-counter-header">
+                    <span class="state-counter-label">ACTIVE</span>
+                    <span class="state-counter-dot"></span>
+                </div>
+                <span class="state-counter-value" id="counterActive">—</span>
+                <span class="state-counter-hint">پوزیشن باز</span>
+            </div>
+
+            <div class="state-counter" data-state="COOLING" data-filter="COOLING">
+                <div class="state-counter-header">
+                    <span class="state-counter-label">COOLING</span>
+                    <span class="state-counter-dot"></span>
+                </div>
+                <span class="state-counter-value" id="counterCooling">—</span>
+                <span class="state-counter-hint">سرد شدن</span>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     CONTENT GRID: Donut Chart + Symbols Grid
+     ============================================================ -->
+<section class="content-grid">
+
+    <!-- Donut Chart Panel -->
+    <div class="panel">
+        <div class="panel-header-bar">
+            <div class="panel-title-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                </svg>
+                <span>State Distribution</span>
+            </div>
+            <span class="panel-count" id="distributionTotal">—</span>
+        </div>
+
+        <div class="panel-body-bar no-padding">
+            <div class="chart-wrapper">
+                <canvas id="stateChart"></canvas>
+                <div class="chart-center-stats">
+                    <span class="chart-center-value" id="chartCenterValue">—</span>
+                    <span class="chart-center-label">Total</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symbols Grid Panel -->
+    <div class="panel">
+        <div class="panel-header-bar">
+            <div class="panel-title-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="8" cy="8" r="6"/>
+                    <path d="M18.09 10.37A6 6 0 1 1 10.34 18"/>
+                </svg>
+                <span>نمادها به تفکیک State</span>
+                <span class="panel-count" id="symbolsCount">—</span>
+            </div>
+
+            <div class="panel-actions-bar">
+                <button class="toolbar-btn" id="symbolsRefreshBtn" type="button" title="بروزرسانی">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="panel-body-bar" style="padding-bottom: 8px;">
+            <div class="state-filter" id="stateFilter">
+                <button class="state-filter-chip active" data-filter="all" type="button">
+                    <span>همه</span>
+                    <span class="chip-count" id="filterCountAll">۰</span>
+                </button>
+                <button class="state-filter-chip" data-filter="IDLE" type="button">
+                    <span>IDLE</span>
+                    <span class="chip-count" id="filterCountIdle">۰</span>
+                </button>
+                <button class="state-filter-chip" data-filter="WATCHING" type="button">
+                    <span>WATCHING</span>
+                    <span class="chip-count" id="filterCountWatching">۰</span>
+                </button>
+                <button class="state-filter-chip" data-filter="SETUP" type="button">
+                    <span>SETUP</span>
+                    <span class="chip-count" id="filterCountSetup">۰</span>
+                </button>
+                <button class="state-filter-chip" data-filter="ACTIVE" type="button">
+                    <span>ACTIVE</span>
+                    <span class="chip-count" id="filterCountActive">۰</span>
+                </button>
+                <button class="state-filter-chip" data-filter="COOLING" type="button">
+                    <span>COOLING</span>
+                    <span class="chip-count" id="filterCountCooling">۰</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="symbols-grid" id="symbolsGrid">
+            <div class="skeleton skeleton-line long" style="height: 36px; border-radius: 999px; width: 120px;"></div>
+            <div class="skeleton skeleton-line long" style="height: 36px; border-radius: 999px; width: 100px;"></div>
+            <div class="skeleton skeleton-line long" style="height: 36px; border-radius: 999px; width: 140px;"></div>
+            <div class="skeleton skeleton-line long" style="height: 36px; border-radius: 999px; width: 110px;"></div>
+            <div class="skeleton skeleton-line long" style="height: 36px; border-radius: 999px; width: 130px;"></div>
+        </div>
+    </div>
+
+</section>
+
+
+<!-- ============================================================
+     PANEL: Transitions Timeline
+     ============================================================ -->
+<section class="panel">
+    <div class="panel-header-bar">
+        <div class="panel-title-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <span>تاریخچه Transition‌ها</span>
+            <span class="panel-count" id="transitionsCount">—</span>
+        </div>
+
+        <div class="panel-actions-bar">
+            <button class="toolbar-btn" id="transitionsRefreshBtn" type="button" title="بروزرسانی">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="panel-body-bar no-padding">
+        <div class="data-table-wrap">
+            <table class="data-table" id="transitionsTable">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>Symbol</th>
+                        <th>Transition</th>
+                        <th>Score</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="transitionsTableBody">
+                    <tr><td colspan="5"><div class="skeleton skeleton-line long"></div></td></tr>
+                    <tr><td colspan="5"><div class="skeleton skeleton-line long"></div></td></tr>
+                    <tr><td colspan="5"><div class="skeleton skeleton-line long"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     MODAL: Symbol Detail
+     ============================================================ -->
+<div class="modal-overlay" id="symbolDetailModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
+                </svg>
+                <span id="symbolDetailTitle">جزئیات نماد</span>
+            </div>
+            <button class="modal-close" data-close-modal="symbolDetailModal" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body" id="symbolDetailBody">
+            <!-- JS پر می‌کند -->
+        </div>
+
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="symbolDetailModal" type="button">بستن</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     MODAL: Confirm
+     ============================================================ -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-sm">
+        <div class="confirm-body">
+            <div class="confirm-icon" id="confirmIcon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="confirm-title" id="confirmTitle">تأیید عملیات</div>
+            <div class="confirm-desc" id="confirmDesc">—</div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="confirmModal" type="button">انصراف</button>
+            <button class="modal-btn primary" id="confirmOkBtn" type="button">تأیید</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+
+<!-- ============================================================
+     SCRIPT PLACEHOLDER (پیام ۳ و ۴)
+     ============================================================ -->
+<script>
+// ============================================================
+// MODEL STATE MACHINE — PART 1: CORE + API + RENDER
+// Config + State + Utils + API + Toast + Render functions
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__modelStatePart1Loaded) return;
+window.__modelStatePart1Loaded = true;
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    API: {
+        HOME: '/api/model/state/',
+        SUMMARY: '/api/model/state/summary',
+        TRANSITIONS: '/api/model/state/transitions',
+        SNAPSHOTS: '/api/model/state/snapshots',
+        SYMBOL: (s) => `/api/model/state/${encodeURIComponent(s)}`,
+        SYMBOL_TRANSITIONS: (s) => `/api/model/state/${encodeURIComponent(s)}/transitions`,
+        SYMBOL_RESET: (s) => `/api/model/state/${encodeURIComponent(s)}/reset`,
+        SYMBOL_ACTIVATE: (s) => `/api/model/state/${encodeURIComponent(s)}/activate`,
+        SYMBOL_COOLING: (s) => `/api/model/state/${encodeURIComponent(s)}/cooling`,
+    },
+    AUTO_REFRESH: 15000,
+    STORAGE: {
+        ACTIVE_FILTER: 'model_state_filter',
+    },
+    STATES: ['IDLE', 'WATCHING', 'SETUP', 'ACTIVE', 'COOLING'],
+    STATE_COLORS: {
+        IDLE: '#8b9bb4',
+        WATCHING: '#06b6d4',
+        SETUP: '#f59e0b',
+        ACTIVE: '#22c55e',
+        COOLING: '#a855f7',
+    },
+};
+
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    summary: null,
+    snapshots: [],
+    transitions: [],
+    symbols: [],             // همه symbolها
+    filteredSymbols: [],     // بعد از فیلتر
+
+    activeFilter: 'all',     // all | IDLE | WATCHING | SETUP | ACTIVE | COOLING
+
+    currentSymbol: null,     // symbol در modal
+    currentSnapshot: null,   // snapshot جزئیات
+
+    stateChart: null,
+
+    isLoading: false,
+    isActionRunning: false,
+
+    timers: {
+        autoRefresh: null,
+    },
+};
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function escapeAttr(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function formatNumber(n) {
+    if (n === undefined || n === null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('fa-IR');
+}
+
+function formatScore(v, decimals = 3) {
+    if (v === undefined || v === null || isNaN(v)) return '—';
+    return Number(v).toFixed(decimals);
+}
+
+function formatTimeAgo(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '—';
+        const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diff < 5) return 'همین حالا';
+        if (diff < 60) return diff + ' ثانیه پیش';
+        if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
+        if (diff < 604800) return Math.floor(diff / 86400) + ' روز پیش';
+        return Math.floor(diff / 604800) + ' هفته پیش';
+    } catch {
+        return '—';
+    }
+}
+
+function formatDate(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '—';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${day} ${hour}:${min}`;
+    } catch {
+        return '—';
+    }
+}
+
+function getStateClass(stateName) {
+    if (!stateName) return 'idle';
+    return String(stateName).toLowerCase();
+}
+
+function normalizeSymbol(symbol) {
+    if (!symbol) return '—';
+    return String(symbol).trim();
+}
+
+function getSymbolShort(symbol) {
+    if (!symbol) return '—';
+    if (symbol.includes('/')) return symbol.split('/')[0];
+    return symbol.slice(0, 6);
+}
+
+function getStateColor(stateName) {
+    if (!stateName) return CONFIG.STATE_COLORS.IDLE;
+    return CONFIG.STATE_COLORS[String(stateName).toUpperCase()] || CONFIG.STATE_COLORS.IDLE;
+}
+
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type = 'info', duration = 2800) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#a855f7',
+    };
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 240px;
+        max-width: 400px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="
+            display:inline-flex;align-items:center;justify-content:center;
+            width:24px;height:24px;min-width:24px;border-radius:7px;
+            background:${colors[type]}20;color:${colors[type]};
+            flex-shrink:0;
+        ">${icons[type]}</span>
+        <span style="flex:1;line-height:1.5;">${escapeHtml(msg)}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+
+// ============================================================
+// API LAYER
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        try {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                ...options,
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `HTTP ${res.status}`);
+            }
+            return await res.json();
+        } catch (err) {
+            console.warn(`[API] ${url}:`, err.message);
+            return { success: false, error: err.message };
+        }
+    },
+
+    getSummary(symbols = null) {
+        const qs = symbols ? `?symbols=${encodeURIComponent(symbols.join(','))}` : '';
+        return this.request(CONFIG.API.SUMMARY + qs);
+    },
+
+    getSnapshots(limit = 100) {
+        return this.request(`${CONFIG.API.SNAPSHOTS}?limit=${limit}`);
+    },
+
+    getTransitions(params = {}) {
+        const qs = new URLSearchParams({
+            limit: params.limit || 50,
+        });
+        if (params.from_state) qs.append('from_state', params.from_state);
+        if (params.to_state) qs.append('to_state', params.to_state);
+        return this.request(`${CONFIG.API.TRANSITIONS}?${qs}`);
+    },
+
+    getSymbol(symbol) {
+        return this.request(CONFIG.API.SYMBOL(symbol));
+    },
+
+    getSymbolTransitions(symbol, limit = 50) {
+        return this.request(`${CONFIG.API.SYMBOL_TRANSITIONS(symbol)}?limit=${limit}`);
+    },
+
+    resetSymbol(symbol) {
+        return this.request(CONFIG.API.SYMBOL_RESET(symbol), { method: 'POST' });
+    },
+
+    activateSymbol(symbol, context = {}) {
+        return this.request(CONFIG.API.SYMBOL_ACTIVATE(symbol), {
+            method: 'POST',
+            body: JSON.stringify(context),
+        });
+    },
+
+    coolingSymbol(symbol, context = {}) {
+        return this.request(CONFIG.API.SYMBOL_COOLING(symbol), {
+            method: 'POST',
+            body: JSON.stringify(context),
+        });
+    },
+};
+
+
+// ============================================================
+// LOADING HELPERS
+// ============================================================
+function showInitialLoader() {
+    $('#initialLoader')?.classList.remove('hidden');
+}
+
+function hideInitialLoader() {
+    setTimeout(() => {
+        $('#initialLoader')?.classList.add('hidden');
+    }, 300);
+}
+
+
+// ============================================================
+// RENDER: HERO + STATE COUNTERS
+// ============================================================
+function renderStateCounters() {
+    const summary = state.summary || {};
+    const counts = summary.counts || {};
+    const total = summary.total ?? 0;
+
+    // ۵ شمارنده
+    const counters = {
+        IDLE: counts.IDLE ?? 0,
+        WATCHING: counts.WATCHING ?? 0,
+        SETUP: counts.SETUP ?? 0,
+        ACTIVE: counts.ACTIVE ?? 0,
+        COOLING: counts.COOLING ?? 0,
+    };
+
+    setText('#counterIdle', formatNumber(counters.IDLE));
+    setText('#counterWatching', formatNumber(counters.WATCHING));
+    setText('#counterSetup', formatNumber(counters.SETUP));
+    setText('#counterActive', formatNumber(counters.ACTIVE));
+    setText('#counterCooling', formatNumber(counters.COOLING));
+
+    // Filter chips counts
+    setText('#filterCountAll', formatNumber(total));
+    setText('#filterCountIdle', formatNumber(counters.IDLE));
+    setText('#filterCountWatching', formatNumber(counters.WATCHING));
+    setText('#filterCountSetup', formatNumber(counters.SETUP));
+    setText('#filterCountActive', formatNumber(counters.ACTIVE));
+    setText('#filterCountCooling', formatNumber(counters.COOLING));
+
+    // Distribution total
+    setText('#distributionTotal', formatNumber(total));
+
+    // Chart center value
+    setText('#chartCenterValue', formatNumber(total));
+
+    // Update active state on counters
+    $$('.state-counter').forEach(el => {
+        const stateName = el.dataset.state;
+        const count = counters[stateName] ?? 0;
+        el.classList.toggle('active', count > 0 && stateName !== 'IDLE');
+    });
+
+    // Hero last update
+    const lastUpdate = $('#heroLastUpdate');
+    if (lastUpdate) {
+        lastUpdate.textContent = `آخرین بروزرسانی: ${formatTimeAgo(Date.now())}`;
+    }
+
+    // Hero status
+    const pill = $('#heroStatusPill');
+    const text = $('#heroStatusText');
+    if (pill && text) {
+        pill.className = 'hero-status-pill live';
+        if (total > 0) {
+            text.textContent = `پایش ${formatNumber(total)} نماد`;
+        } else {
+            text.textContent = 'پایش زنده';
+        }
+    }
+}
+
+
+// ============================================================
+// RENDER: DONUT CHART
+// ============================================================
+function renderStateChart() {
+    const canvas = $('#stateChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const summary = state.summary || {};
+    const counts = summary.counts || {};
+
+    const labels = ['IDLE', 'WATCHING', 'SETUP', 'ACTIVE', 'COOLING'];
+    const data = labels.map(s => counts[s] ?? 0);
+    const colors = labels.map(s => CONFIG.STATE_COLORS[s]);
+    const total = data.reduce((a, b) => a + b, 0);
+
+    // اگه هیچ داده‌ای نیست، پیام placeholder
+    if (total === 0) {
+        if (state.stateChart) state.stateChart.destroy();
+        state.stateChart = null;
+        return;
+    }
+
+    // اگه chart وجود داره، فقط data رو آپدیت کن
+    if (state.stateChart) {
+        state.stateChart.data.datasets[0].data = data;
+        state.stateChart.update('active');
+        return;
+    }
+
+    state.stateChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.map(c => c + 'cc'),
+                borderColor: colors,
+                borderWidth: 2,
+                hoverOffset: 8,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: '#8b9bb4',
+                        font: { size: 11, family: 'Vazirmatn, sans-serif', weight: '600' },
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 10,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    },
+                },
+                tooltip: {
+                    rtl: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: { family: 'Vazirmatn, sans-serif', size: 12, weight: '700' },
+                    bodyFont: { family: 'JetBrains Mono, monospace', size: 12, weight: '700' },
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const val = ctx.parsed;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${val} (${pct}٪)`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+
+// ============================================================
+// RENDER: SYMBOLS GRID
+// ============================================================
+function renderSymbols() {
+    const container = $('#symbolsGrid');
+    const countBadge = $('#symbolsCount');
+    if (!container) return;
+
+    // استخراج symbols از summary.by_state
+    const summary = state.summary || {};
+    const byState = summary.by_state || {};
+
+    // ساخت لیست همه symbolها
+    const symbols = [];
+    CONFIG.STATES.forEach(stateName => {
+        const list = byState[stateName] || [];
+        list.forEach(sym => {
+            symbols.push({
+                symbol: sym,
+                state: stateName,
+            });
+        });
+    });
+
+    state.symbols = symbols;
+
+    // اعمال فیلتر
+    const filtered = state.activeFilter === 'all'
+        ? symbols
+        : symbols.filter(s => s.state === state.activeFilter);
+
+    state.filteredSymbols = filtered;
+
+    if (countBadge) {
+        countBadge.textContent = formatNumber(filtered.length);
+    }
+
+    if (filtered.length === 0) {
+        const filterText = state.activeFilter === 'all'
+            ? 'هیچ نمادی در state machine نیست'
+            : `هیچ نمادی در وضعیت ${state.activeFilter} نیست`;
+
+        container.innerHTML = `
+            <div class="empty-state" style="width: 100%;">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="8" cy="8" r="6"/>
+                        <path d="M18.09 10.37A6 6 0 1 1 10.34 18"/>
+                    </svg>
+                </div>
+                <div class="empty-title">نمادی یافت نشد</div>
+                <div class="empty-message">${escapeHtml(filterText)}</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map((item, idx) => {
+        const short = getSymbolShort(item.symbol);
+        const stateLower = item.state.toLowerCase();
+        const delay = Math.min(idx * 0.02, 0.5);
+
+        return `
+            <div class="symbol-chip" data-symbol="${escapeAttr(item.symbol)}" data-state="${escapeAttr(item.state)}" style="animation-delay: ${delay}s;">
+                <span class="symbol-chip-dot"></span>
+                <span class="symbol-chip-name">${escapeHtml(short)}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Bind clicks
+    container.querySelectorAll('.symbol-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            openSymbolDetail(chip.dataset.symbol);
+        });
+    });
+}
+
+
+// ============================================================
+// RENDER: TRANSITIONS TABLE
+// ============================================================
+function renderTransitions() {
+    const tbody = $('#transitionsTableBody');
+    const countBadge = $('#transitionsCount');
+    if (!tbody) return;
+
+    const transitions = state.transitions || [];
+
+    if (countBadge) {
+        countBadge.textContent = formatNumber(transitions.length);
+    }
+
+    if (transitions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <div class="empty-title">تاریخچه‌ای موجود نیست</div>
+                        <div class="empty-message">هیچ transition‌ای ثبت نشده</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = transitions.map((t, idx) => {
+        const symbol = t.symbol || '—';
+        const short = getSymbolShort(symbol);
+        const fromState = t.from_state || 'IDLE';
+        const toState = t.to_state || 'IDLE';
+        const score = t.score ?? t.last_score ?? null;
+        const time = t.changed_at || t.timestamp || t.created_at;
+
+        const fromClass = getStateClass(fromState);
+        const toClass = getStateClass(toState);
+
+        return `
+            <tr data-symbol="${escapeAttr(symbol)}">
+                <td><span class="mono muted">${formatNumber(idx + 1)}</span></td>
+                <td>
+                    <span class="mono">${escapeHtml(short)}</span>
+                    <span class="mono muted" style="font-size:10.5px; margin-inline-start:4px;">${escapeHtml(String(symbol).replace(short, '').replace('/', ''))}</span>
+                </td>
+                <td>
+                    <div class="transition-arrow">
+                        <span class="state-badge ${fromClass}">${escapeHtml(fromState)}</span>
+                        <svg class="transition-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                        <span class="state-badge ${toClass}">${escapeHtml(toState)}</span>
+                    </div>
+                </td>
+                <td>
+                    ${score !== null
+                        ? `<span class="badge primary no-dot">${formatScore(score)}</span>`
+                        : '<span class="badge muted no-dot">—</span>'}
+                </td>
+                <td>
+                    <span class="mono muted">${escapeHtml(formatTimeAgo(time))}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Row click → Symbol detail
+    tbody.querySelectorAll('tr[data-symbol]').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            openSymbolDetail(row.dataset.symbol);
+        });
+    });
+}
+
+
+// ============================================================
+// RENDER: SYMBOL DETAIL MODAL
+// ============================================================
+async function openSymbolDetail(symbol) {
+    if (!symbol) return;
+
+    state.currentSymbol = symbol;
+
+    const titleEl = $('#symbolDetailTitle');
+    if (titleEl) titleEl.textContent = `جزئیات ${getSymbolShort(symbol)}`;
+
+    const bodyEl = $('#symbolDetailBody');
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div class="skeleton skeleton-line long"></div>
+            <div class="skeleton skeleton-line long"></div>
+            <div class="skeleton skeleton-line medium"></div>
+        `;
+    }
+
+    openModal('symbolDetailModal');
+
+    // Load symbol detail
+    const res = await API.getSymbol(symbol);
+
+    if (!res.success) {
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                    </div>
+                    <div class="empty-title">خطا در بارگذاری</div>
+                    <div class="empty-message">${escapeHtml(res.error || 'نماد یافت نشد')}</div>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    const snapshot = res.data || res;
+    state.currentSnapshot = snapshot;
+
+    renderSymbolDetail(symbol, snapshot);
+}
+
+
+function renderSymbolDetail(symbol, snapshot) {
+    const bodyEl = $('#symbolDetailBody');
+    if (!bodyEl) return;
+
+    const short = getSymbolShort(symbol);
+    const stateName = snapshot.state || snapshot.current_state || 'IDLE';
+    const stateLower = getStateClass(stateName);
+    const stateColor = getStateColor(stateName);
+    const stateLight = stateColor + 'dd';
+    const stateBg = stateColor + '1a';
+    const stateShadow = stateColor + '66';
+
+    const enteredAt = snapshot.entered_at || snapshot.since;
+    const lastChange = snapshot.last_change_at || snapshot.last_change;
+    const signalCount = snapshot.signal_count ?? snapshot.transitions_count ?? 0;
+    const context = snapshot.context || {};
+
+    // بررسی اینکه آیا این symbol در هر state هست یا نه (برای disable کردن دکمه‌ها)
+    const currentStateUpper = String(stateName).toUpperCase();
+    const isIdle = currentStateUpper === 'IDLE';
+    const isActive = currentStateUpper === 'ACTIVE';
+    const isCooling = currentStateUpper === 'COOLING';
+
+    bodyEl.innerHTML = `
+        <div class="symbol-detail-header" style="
+            --state-color: ${stateColor};
+            --state-color-light: ${stateLight};
+            --state-bg: ${stateBg};
+            --state-shadow: ${stateShadow};
+        ">
+            <div class="symbol-detail-icon">${escapeHtml(short.slice(0, 5))}</div>
+            <div class="symbol-detail-info">
+                <div class="symbol-detail-name">${escapeHtml(symbol)}</div>
+                <div class="symbol-detail-meta">
+                    <span class="state-badge ${stateLower}">${escapeHtml(stateName)}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Current State</span>
+                <span class="detail-value primary">${escapeHtml(stateName)}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Transitions Count</span>
+                <span class="detail-value">${formatNumber(signalCount)}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Entered At</span>
+                <span class="detail-value">${escapeHtml(enteredAt ? formatDate(enteredAt) : '—')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Since</span>
+                <span class="detail-value">${escapeHtml(enteredAt ? formatTimeAgo(enteredAt) : '—')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Last Change</span>
+                <span class="detail-value">${escapeHtml(lastChange ? formatTimeAgo(lastChange) : '—')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Last Score</span>
+                <span class="detail-value ${snapshot.last_score >= 0.7 ? 'success' : snapshot.last_score >= 0.5 ? 'warning' : ''}">
+                    ${snapshot.last_score !== undefined && snapshot.last_score !== null ? formatScore(snapshot.last_score) : '—'}
+                </span>
+            </div>
+        </div>
+
+        ${Object.keys(context).length > 0 ? `
+            <div>
+                <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono-font);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">
+                    Context
+                </div>
+                <div class="context-json">${escapeHtml(JSON.stringify(context, null, 2))}</div>
+            </div>
+        ` : ''}
+
+        <div>
+            <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono-font);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">
+                Actions
+            </div>
+            <div class="symbol-detail-actions">
+                <button class="action-btn reset" data-action="reset" ${isIdle ? 'disabled' : ''} type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    <span>Reset → IDLE</span>
+                </button>
+
+                <button class="action-btn activate" data-action="activate" ${isActive ? 'disabled' : ''} type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>Activate</span>
+                </button>
+
+                <button class="action-btn cooling" data-action="cooling" ${isCooling ? 'disabled' : ''} type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M2 12h20"/>
+                        <path d="m4.93 4.93 14.14 14.14M19.07 4.93 4.93 19.07"/>
+                    </svg>
+                    <span>Cooling</span>
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Bind action buttons
+    bodyEl.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            handleSymbolAction(action, symbol);
+        });
+    });
+}
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+function setText(selector, value) {
+    const el = typeof selector === 'string' ? $(selector) : selector;
+    if (el) el.textContent = value ?? '—';
+}
+
+
+// ============================================================
+// EXPOSE TO PART 2
+// ============================================================
+window.__modelState = {
+    CONFIG,
+    state,
+    $, $$,
+    escapeHtml,
+    escapeAttr,
+    formatNumber,
+    formatScore,
+    formatTimeAgo,
+    formatDate,
+    getStateClass,
+    normalizeSymbol,
+    getSymbolShort,
+    getStateColor,
+    showToast,
+    API,
+    showInitialLoader,
+    hideInitialLoader,
+    renderStateCounters,
+    renderStateChart,
+    renderSymbols,
+    renderTransitions,
+    openSymbolDetail,
+    renderSymbolDetail,
+    setText,
+};
+
+console.log('✅ Model State — Part 1 (Core + API + Render) loaded');
+
+})();
+</script>
+<script>
+// ============================================================
+// MODEL STATE MACHINE — PART 2: ACTIONS + EVENTS + INIT
+// Symbol Actions + Event Listeners + Auto-refresh + Init
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__modelStatePart2Loaded) return;
+window.__modelStatePart2Loaded = true;
+
+// ============================================================
+// WAIT FOR PART 1
+// ============================================================
+function waitForPart1(callback) {
+    if (window.__modelState) {
+        callback(window.__modelState);
+    } else {
+        setTimeout(() => waitForPart1(callback), 50);
+    }
+}
+
+waitForPart1(function(core) {
+
+    // ═══════════════════════════════════════════════════
+    // DESTRUCTURE
+    // ═══════════════════════════════════════════════════
+    const {
+        CONFIG,
+        state,
+        $, $$,
+        escapeHtml,
+        escapeAttr,
+        formatNumber,
+        formatScore,
+        formatTimeAgo,
+        formatDate,
+        getStateClass,
+        normalizeSymbol,
+        getSymbolShort,
+        getStateColor,
+        showToast,
+        API,
+        showInitialLoader,
+        hideInitialLoader,
+        renderStateCounters,
+        renderStateChart,
+        renderSymbols,
+        renderTransitions,
+        openSymbolDetail,
+        renderSymbolDetail,
+        setText,
+    } = core;
+
+
+    // ============================================================
+    // MODAL HELPERS
+    // ============================================================
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('open');
+        if (!document.querySelector('.modal-overlay.open')) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    let _confirmCallback = null;
+
+    function showConfirm(title, desc, iconType = 'warning', iconEmoji = '⚠️', onConfirm = null, okBtnClass = 'primary') {
+        const titleEl = $('#confirmTitle');
+        const descEl = $('#confirmDesc');
+        const iconEl = $('#confirmIcon');
+        const okBtn = $('#confirmOkBtn');
+
+        if (titleEl) titleEl.textContent = title;
+        if (descEl) descEl.innerHTML = desc;
+        if (okBtn) {
+            okBtn.textContent = 'تأیید';
+            okBtn.className = 'modal-btn ' + okBtnClass;
+        }
+
+        if (iconEl) {
+            // Reset classes
+            iconEl.classList.remove('danger', 'success', 'warning');
+            if (iconType === 'danger') iconEl.classList.add('danger');
+            else if (iconType === 'success') iconEl.classList.add('success');
+            else if (iconType === 'warning') iconEl.classList.add('warning');
+
+            // Update icon SVG
+            const iconSvg = {
+                danger: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+                success: '<polyline points="20 6 9 17 4 12"/>',
+                warning: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            };
+            iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg[iconType] || iconSvg.warning}</svg>`;
+        }
+
+        _confirmCallback = onConfirm;
+        openModal('confirmModal');
+    }
+
+
+    // ============================================================
+    // SYMBOL ACTIONS
+    // ============================================================
+    function handleSymbolAction(action, symbol) {
+        if (!symbol) return;
+        if (state.isActionRunning) {
+            showToast('یک عملیات در حال اجراست', 'warning', 2000);
+            return;
+        }
+
+        const short = getSymbolShort(symbol);
+
+        switch (action) {
+            case 'reset':
+                showConfirm(
+                    'ریست نماد',
+                    `آیا می‌خواهید <code>${escapeHtml(short)}</code> را به وضعیت <code>IDLE</code> برگردانید؟`,
+                    'warning',
+                    '⚠️',
+                    () => executeReset(symbol),
+                    'primary'
+                );
+                break;
+
+            case 'activate':
+                showActivateDialog(symbol);
+                break;
+
+            case 'cooling':
+                showCoolingDialog(symbol);
+                break;
+        }
+    }
+
+
+    async function executeReset(symbol) {
+        if (state.isActionRunning) return;
+        state.isActionRunning = true;
+
+        closeModal('symbolDetailModal');
+
+        try {
+            const res = await API.resetSymbol(symbol);
+
+            if (res.success) {
+                showToast(`🔄 ${getSymbolShort(symbol)} → IDLE`, 'success', 3000);
+                await loadAll();
+            } else {
+                showToast(res.error || 'خطا در ریست', 'error', 3000);
+            }
+        } catch (err) {
+            showToast('خطای غیرمنتظره: ' + err.message, 'error', 3000);
+        } finally {
+            state.isActionRunning = false;
+        }
+    }
+
+
+    function showActivateDialog(symbol) {
+        closeModal('symbolDetailModal');
+
+        const short = getSymbolShort(symbol);
+
+        // استفاده از prompt برای گرفتن entry_price (ساده‌تر)
+        setTimeout(() => {
+            const entryPriceStr = prompt(`قیمت ورود برای ${short} (اختیاری):`);
+            const sideStr = prompt(`سمت (long/short) [پیش‌فرض: long]:`) || 'long';
+
+            executeActivate(symbol, {
+                entry_price: entryPriceStr ? parseFloat(entryPriceStr) : null,
+                side: sideStr.toLowerCase() === 'short' ? 'short' : 'long',
+                source: 'manual',
+            });
+        }, 200);
+    }
+
+
+    function showCoolingDialog(symbol) {
+        closeModal('symbolDetailModal');
+
+        const short = getSymbolShort(symbol);
+
+        setTimeout(() => {
+            const exitPriceStr = prompt(`قیمت خروج برای ${short} (اختیاری):`);
+            const reasonStr = prompt(`دلیل (Take Profit / Stop Loss / Manual) [پیش‌فرض: Manual]:`) || 'Manual';
+
+            executeCooling(symbol, {
+                exit_price: exitPriceStr ? parseFloat(exitPriceStr) : null,
+                reason: reasonStr,
+                source: 'manual',
+            });
+        }, 200);
+    }
+
+
+    async function executeActivate(symbol, context) {
+        if (state.isActionRunning) return;
+        state.isActionRunning = true;
+
+        try {
+            const res = await API.activateSymbol(symbol, context);
+
+            if (res.success) {
+                showToast(`🔥 ${getSymbolShort(symbol)} → ACTIVE`, 'success', 3000);
+                await loadAll();
+            } else {
+                showToast(res.error || 'خطا در فعال‌سازی', 'error', 3000);
+            }
+        } catch (err) {
+            showToast('خطای غیرمنتظره: ' + err.message, 'error', 3000);
+        } finally {
+            state.isActionRunning = false;
+        }
+    }
+
+
+    async function executeCooling(symbol, context) {
+        if (state.isActionRunning) return;
+        state.isActionRunning = true;
+
+        try {
+            const res = await API.coolingSymbol(symbol, context);
+
+            if (res.success) {
+                showToast(`❄️ ${getSymbolShort(symbol)} → COOLING`, 'info', 3000);
+                await loadAll();
+            } else {
+                showToast(res.error || 'خطا در Cooling', 'error', 3000);
+            }
+        } catch (err) {
+            showToast('خطای غیرمنتظره: ' + err.message, 'error', 3000);
+        } finally {
+            state.isActionRunning = false;
+        }
+    }
+
+
+    // ============================================================
+    // LOAD FUNCTIONS
+    // ============================================================
+    async function loadSummary() {
+        const res = await API.getSummary();
+
+        if (res.success) {
+            state.summary = res.data || res;
+
+            // اگه by_state نداره ولی symbols داره، خودمون بسازیم
+            if (!state.summary.by_state && Array.isArray(state.summary.symbols)) {
+                const byState = {
+                    IDLE: [],
+                    WATCHING: [],
+                    SETUP: [],
+                    ACTIVE: [],
+                    COOLING: [],
+                };
+
+                state.summary.symbols.forEach(s => {
+                    const stateName = s.state || s.current_state || 'IDLE';
+                    if (byState[stateName]) {
+                        byState[stateName].push(s.symbol || s.symbol_name || s.id);
+                    }
+                });
+
+                state.summary.by_state = byState;
+            }
+
+            renderStateCounters();
+            renderStateChart();
+            renderSymbols();
+            return true;
+        }
+        return false;
+    }
+
+    async function loadSnapshots() {
+        const res = await API.getSnapshots(100);
+        if (res.success) {
+            state.snapshots = Array.isArray(res.data) ? res.data : [];
+
+            // اگه by_state نداشتیم، از snapshots استفاده کن
+            if (!state.summary?.by_state && state.snapshots.length > 0) {
+                const byState = {
+                    IDLE: [],
+                    WATCHING: [],
+                    SETUP: [],
+                    ACTIVE: [],
+                    COOLING: [],
+                };
+
+                state.snapshots.forEach(s => {
+                    const stateName = s.state || s.current_state || 'IDLE';
+                    if (byState[stateName]) {
+                        byState[stateName].push(s.symbol || s.symbol_name);
+                    }
+                });
+
+                if (!state.summary) state.summary = { counts: {}, by_state: {}, total: 0 };
+                state.summary.by_state = byState;
+
+                // شمارش
+                const counts = {
+                    IDLE: byState.IDLE.length,
+                    WATCHING: byState.WATCHING.length,
+                    SETUP: byState.SETUP.length,
+                    ACTIVE: byState.ACTIVE.length,
+                    COOLING: byState.COOLING.length,
+                };
+                state.summary.counts = counts;
+                state.summary.total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+                renderStateCounters();
+                renderStateChart();
+                renderSymbols();
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    async function loadTransitions() {
+        const res = await API.getTransitions({ limit: 50 });
+        if (res.success) {
+            state.transitions = Array.isArray(res.data) ? res.data : [];
+            renderTransitions();
+            return true;
+        }
+        return false;
+    }
+
+
+    // ============================================================
+    // LOAD ALL
+    // ============================================================
+    async function loadAll() {
+        if (state.isLoading) return;
+        state.isLoading = true;
+
+        try {
+            await Promise.allSettled([
+                loadSummary(),
+                loadSnapshots(),
+                loadTransitions(),
+            ]);
+        } catch (e) {
+            console.error('Load all error:', e);
+        } finally {
+            state.isLoading = false;
+        }
+    }
+
+
+    // ============================================================
+    // FILTER HANDLING
+    // ============================================================
+    function setFilter(filter) {
+        state.activeFilter = filter || 'all';
+
+        try {
+            localStorage.setItem(CONFIG.STORAGE.ACTIVE_FILTER, state.activeFilter);
+        } catch (e) {}
+
+        // Update chips
+        $$('.state-filter-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.filter === state.activeFilter);
+        });
+
+        // Update counters
+        $$('.state-counter').forEach(counter => {
+            counter.classList.toggle('active', counter.dataset.filter === state.activeFilter);
+        });
+
+        renderSymbols();
+    }
+
+
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    function bindEvents() {
+
+        // ===== State Counter Clicks → Filter =====
+        $$('.state-counter').forEach(counter => {
+            counter.addEventListener('click', () => {
+                const filter = counter.dataset.filter;
+                if (!filter) return;
+
+                // Toggle اگه همون فیلتر فعال بود → all
+                if (state.activeFilter === filter) {
+                    setFilter('all');
+                } else {
+                    setFilter(filter);
+                }
+            });
+        });
+
+        // ===== Filter Chips =====
+        $$('.state-filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                setFilter(chip.dataset.filter);
+            });
+        });
+
+        // ===== Refresh Buttons =====
+        $('#symbolsRefreshBtn')?.addEventListener('click', async () => {
+            const btn = $('#symbolsRefreshBtn');
+            btn?.classList.add('loading');
+            await loadSummary();
+            await loadSnapshots();
+            setTimeout(() => btn?.classList.remove('loading'), 400);
+            showToast('نمادها بروزرسانی شد', 'success', 1500);
+        });
+
+        $('#transitionsRefreshBtn')?.addEventListener('click', async () => {
+            const btn = $('#transitionsRefreshBtn');
+            btn?.classList.add('loading');
+            await loadTransitions();
+            setTimeout(() => btn?.classList.remove('loading'), 400);
+            showToast('Transition‌ها بروزرسانی شد', 'success', 1500);
+        });
+
+        // ===== Confirm Modal =====
+        $('#confirmOkBtn')?.addEventListener('click', () => {
+            const cb = _confirmCallback;
+            closeModal('confirmModal');
+            _confirmCallback = null;
+            if (cb) setTimeout(cb, 100);
+        });
+
+        // ===== Modal Close =====
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('open');
+                if (!document.querySelector('.modal-overlay.open')) {
+                    document.body.style.overflow = '';
+                }
+            }
+        });
+
+        $$('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
+        });
+
+        // ===== Escape Key =====
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal('confirmModal');
+                closeModal('symbolDetailModal');
+            }
+        });
+    }
+
+
+    // ============================================================
+    // AUTO REFRESH
+    // ============================================================
+    function startAutoRefresh() {
+        if (state.timers.autoRefresh) {
+            clearInterval(state.timers.autoRefresh);
+        }
+
+        state.timers.autoRefresh = setInterval(async () => {
+            if (document.visibilityState !== 'visible') return;
+            if (state.isActionRunning) return;
+
+            // اگه یه modal بازه، رفرش نکن
+            if (document.querySelector('.modal-overlay.open')) return;
+
+            await loadSummary();
+            await loadTransitions();
+        }, CONFIG.AUTO_REFRESH);
+    }
+
+    function stopAutoRefresh() {
+        if (state.timers.autoRefresh) {
+            clearInterval(state.timers.autoRefresh);
+            state.timers.autoRefresh = null;
+        }
+    }
+
+
+    // ============================================================
+    // MESSAGES FROM PARENT SHELL
+    // ============================================================
+    function setupMessages() {
+        window.addEventListener('message', (e) => {
+            if (!e.data || typeof e.data !== 'object') return;
+
+            const { type } = e.data;
+
+            if (type === 'theme-changed') {
+                if (e.data.theme) {
+                    document.documentElement.setAttribute('data-theme', e.data.theme);
+                }
+                if (e.data.color) {
+                    document.documentElement.setAttribute('data-color', e.data.color);
+                }
+            }
+
+            if (type === 'lang-changed') {
+                if (e.data.lang) {
+                    document.documentElement.setAttribute('lang', e.data.lang);
+                    document.documentElement.setAttribute('dir', e.data.lang === 'fa' ? 'rtl' : 'ltr');
+                }
+            }
+
+            if (type === 'refresh') {
+                loadAll();
+            }
+        });
+    }
+
+
+    // ============================================================
+    // LOCAL STORAGE — Restore filter
+    // ============================================================
+    function restoreState() {
+        try {
+            const saved = localStorage.getItem(CONFIG.STORAGE.ACTIVE_FILTER);
+            if (saved && ['all', ...CONFIG.STATES].includes(saved)) {
+                state.activeFilter = saved;
+            }
+        } catch (e) {}
+    }
+
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        console.log(
+            '%c 🔄 Model State Machine v1.0 ',
+            'background: linear-gradient(135deg, #a855f7, #c084fc); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
+        );
+
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.font.family = "'Vazirmatn', 'JetBrains Mono', system-ui, sans-serif";
+            Chart.defaults.font.size = 11;
+            Chart.defaults.color = '#8b9bb4';
+        }
+
+        showInitialLoader();
+
+        // Restore filter
+        restoreState();
+
+        // Apply initial filter UI
+        $$('.state-filter-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.filter === state.activeFilter);
+        });
+
+        // Load data
+        await loadAll();
+
+        // Bind events
+        bindEvents();
+        setupMessages();
+
+        // Auto refresh
+        startAutoRefresh();
+
+        // Hide loader
+        hideInitialLoader();
+
+        // Welcome toast
+        setTimeout(() => {
+            const total = state.summary?.total ?? 0;
+            if (total > 0) {
+                showToast(`👋 پایش ${formatNumber(total)} نماد در جریان است`, 'success', 2500);
+            } else {
+                showToast('👋 State Machine آماده — هیچ نمادی در پایش نیست', 'info', 2500);
+            }
+        }, 600);
+
+        console.log('✅ Model State Machine ready');
+    }
+
+
+    // ============================================================
+    // BOOT
+    // ============================================================
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+
+    // ============================================================
+    // CLEANUP
+    // ============================================================
+    window.__modelStateCleanup = function() {
+        stopAutoRefresh();
+        window.__modelStatePart1Loaded = false;
+        window.__modelStatePart2Loaded = false;
+    };
+
+    console.log('✅ Model State Machine — Part 2 (Actions + Events + Init) loaded');
+
+});
+
+})();
+</script>
+</body>
+</html>
