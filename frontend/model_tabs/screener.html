@@ -1,0 +1,3845 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-color="violet">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#070c16">
+<title>اسکنر و کالیبراسیون | سیستم تحلیلگر</title>
+
+<!-- ⚡ FOUC Prevention -->
+<script>
+(function() {
+    try {
+        var html = document.documentElement;
+        var theme = localStorage.getItem('app_theme') || 'dark';
+        html.setAttribute('data-theme', theme);
+        var color = localStorage.getItem('app_color') || 'violet';
+        html.setAttribute('data-color', color);
+        var preset = localStorage.getItem('app_preset');
+        if (preset && preset !== 'default') {
+            html.setAttribute('data-preset', preset);
+        }
+        if (color === 'custom') {
+            var customHex = localStorage.getItem('app_customColor') || '#a855f7';
+            html.style.setProperty('--primary', customHex);
+        }
+        var lang = localStorage.getItem('app_lang') || 'fa';
+        html.setAttribute('lang', lang);
+        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MODEL SCREENER TAB — CSS
+   Scanner + Calibration + History
+   ============================================================ */
+
+/* ---------- Base Variables ---------- */
+:root {
+    --primary: #a855f7;
+    --primary-dark: #9333ea;
+    --primary-light: #c084fc;
+    --primary-rgb: 168, 85, 247;
+
+    --bg-page: #070c16;
+    --bg-card: rgba(20, 28, 45, 0.6);
+    --bg-card-solid: #131c2d;
+    --bg-glass: rgba(19, 28, 45, 0.85);
+    --bg-input: rgba(10, 16, 28, 0.8);
+    --bg-hover: rgba(148, 163, 184, 0.06);
+    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+
+    --text-light: #e6edf7;
+    --text-muted: #8b9bb4;
+    --text-dim: #5c6b82;
+    --text-faint: #3d4959;
+
+    --border: rgba(148, 163, 184, 0.07);
+    --border-strong: rgba(148, 163, 184, 0.15);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(168, 85, 247, 0.15);
+
+    --success: #22c55e;
+    --success-dark: #16a34a;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --info: #06b6d4;
+    --purple: #a855f7;
+
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --primary-bg: rgba(168, 85, 247, 0.1);
+
+    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+    --ui-font: 'Vazirmatn', system-ui, sans-serif;
+
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- Color Themes ---------- */
+html[data-color="indigo"]  { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15); --primary-bg: rgba(99, 102, 241, 0.1); }
+html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; --shadow-focus: 0 0 0 3px rgba(16, 185, 129, 0.15); --primary-bg: rgba(16, 185, 129, 0.1); }
+html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; --shadow-focus: 0 0 0 3px rgba(244, 63, 94, 0.15); --primary-bg: rgba(244, 63, 94, 0.1); }
+html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; --shadow-focus: 0 0 0 3px rgba(245, 158, 11, 0.15); --primary-bg: rgba(245, 158, 11, 0.1); }
+html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.15); --primary-bg: rgba(6, 182, 212, 0.1); }
+
+/* ---------- Light Theme ---------- */
+html[data-theme="light"] {
+    --bg-page: #f6f8fc;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-card-solid: #ffffff;
+    --bg-glass: rgba(255, 255, 255, 0.9);
+    --bg-input: rgba(248, 250, 252, 0.95);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-hover-strong: rgba(15, 23, 42, 0.07);
+    --text-light: #0d1421;
+    --text-muted: #5c6b82;
+    --text-dim: #8b9bb4;
+    --text-faint: #a8b4c4;
+    --border: rgba(15, 23, 42, 0.06);
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- Reset ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+
+body {
+    font-family: var(--ui-font);
+    background: var(--bg-page);
+    min-height: 100vh;
+    color: var(--text-light);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 12px 16px 40px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+::selection { background: var(--primary); color: white; }
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   INITIAL LOADER
+   ============================================================ */
+.initial-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-page);
+    transition: opacity 0.4s, visibility 0.4s;
+}
+
+.initial-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.initial-loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+}
+
+.loader-spinner {
+    width: 52px;
+    height: 52px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    position: relative;
+}
+
+.loader-spinner::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--primary-light);
+    opacity: 0.5;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   HERO CARD (Screener)
+   ============================================================ */
+.hero-card {
+    background: linear-gradient(135deg,
+        rgba(168, 85, 247, 0.06) 0%,
+        var(--bg-card) 50%,
+        rgba(6, 182, 212, 0.04) 100%
+    );
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 22px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.6s var(--ease-spring);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.hero-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle at 70% 30%,
+        rgba(168, 85, 247, 0.08),
+        transparent 60%
+    );
+    animation: heroBreath 12s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes heroBreath {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.7; }
+    50% { transform: rotate(180deg) scale(1.1); opacity: 1; }
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hero-icon {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.4);
+    flex-shrink: 0;
+}
+
+.hero-icon svg { width: 26px; height: 26px; }
+
+.hero-title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.hero-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hero-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: 1px solid;
+}
+
+.hero-status-pill.idle {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+.hero-status-pill.running {
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.hero-status-pill.success {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.hero-status-pill.error {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.hero-status-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: dotPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+/* Hero Stats */
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 900px) { .hero-stats { grid-template-columns: repeat(2, 1fr); } }
+
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    transition: all 0.2s ease;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-stat:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.hero-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0.4;
+}
+
+.hero-stat.scanned::before { background: var(--info); opacity: 1; }
+.hero-stat.passed::before  { background: var(--success); opacity: 1; }
+.hero-stat.score::before   { background: var(--warning); opacity: 1; }
+.hero-stat.duration::before { background: var(--purple); opacity: 1; }
+
+.hero-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hero-stat-value {
+    font-family: var(--mono-font);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hero-stat.scanned .hero-stat-value { color: var(--info); }
+.hero-stat.passed .hero-stat-value  { color: var(--success); }
+.hero-stat.score .hero-stat-value   { color: var(--warning); }
+.hero-stat.duration .hero-stat-value { color: var(--purple); }
+
+.hero-stat-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================================
+   CONTROL PANEL (Scan Controls)
+   ============================================================ */
+.control-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    animation: cardIn 0.5s var(--ease-spring) backwards;
+    animation-delay: 0.1s;
+}
+
+.control-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06), transparent);
+    flex-wrap: wrap;
+}
+
+.control-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.control-title svg {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.control-badge {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+}
+
+.control-body {
+    padding: 16px 18px;
+}
+
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 900px) { .control-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .control-grid { grid-template-columns: 1fr; } }
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.form-label .hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.form-input,
+.form-select {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.18s;
+}
+
+.form-select { cursor: pointer; }
+
+.form-input:focus,
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-focus);
+    background: var(--bg-card-solid);
+}
+
+.form-input::placeholder {
+    color: var(--text-faint);
+    font-weight: 400;
+}
+
+/* Control Actions */
+.control-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.control-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    flex-wrap: wrap;
+}
+
+.control-actions-left svg {
+    width: 12px;
+    height: 12px;
+    color: var(--info);
+}
+
+.control-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    position: relative;
+}
+
+.toolbar-btn svg { width: 13px; height: 13px; }
+
+.toolbar-btn:hover {
+    background: var(--bg-hover-strong);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.toolbar-btn.primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.toolbar-btn.primary:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
+}
+
+.toolbar-btn.danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.toolbar-btn.danger:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.toolbar-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.toolbar-btn.loading svg {
+    animation: spin 0.7s linear infinite;
+}
+
+/* ============================================================
+   PANEL (Generic)
+   ============================================================ */
+.panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    animation: cardIn 0.5s var(--ease-spring) backwards;
+    animation-delay: 0.15s;
+}
+
+.panel-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.panel-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.panel-title-bar svg {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.panel-count {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+}
+
+.panel-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.panel-body-bar {
+    padding: 14px 16px;
+}
+
+.panel-body-bar.no-padding { padding: 0; }
+
+/* ============================================================
+   RESULTS TABLE
+   ============================================================ */
+.data-table-wrap {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+.data-table-wrap::-webkit-scrollbar { height: 6px; }
+.data-table-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+.data-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.data-table thead {
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+    padding: 11px 12px;
+    text-align: right;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.data-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+.data-table tbody tr {
+    transition: background 0.15s;
+}
+
+.data-table tbody tr:hover { background: var(--bg-hover); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.badge.success { background: var(--success-bg); color: var(--success); }
+.badge.warning { background: var(--warning-bg); color: var(--warning); }
+.badge.danger  { background: var(--danger-bg); color: var(--danger); }
+.badge.info    { background: var(--info-bg); color: var(--info); }
+.badge.primary { background: var(--primary-bg); color: var(--primary-light); }
+.badge.muted   { background: var(--bg-hover); color: var(--text-muted); }
+
+.badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.badge.no-dot::before { display: none; }
+
+.mono {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.mono.muted { color: var(--text-muted); font-weight: 500; }
+
+/* Symbol Cell */
+.symbol-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.symbol-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+}
+
+.symbol-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.symbol-name {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    letter-spacing: -0.2px;
+}
+
+.symbol-detail {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+}
+
+/* Score Cell */
+.score-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.score-value {
+    font-family: var(--mono-font);
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.3px;
+    min-width: 45px;
+}
+
+.score-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-hover-strong);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 60px;
+}
+
+.score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.score-bar-fill.high {
+    background: linear-gradient(90deg, var(--success-dark), var(--success));
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.score-bar-fill.medium {
+    background: linear-gradient(90deg, var(--warning-dark), var(--warning));
+}
+
+.score-bar-fill.low {
+    background: linear-gradient(90deg, var(--danger-dark), var(--danger));
+}
+
+/* State Badge */
+.state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    font-family: var(--mono-font);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.state-badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.state-badge.idle     { background: var(--bg-hover); color: var(--text-muted); }
+.state-badge.watching { background: var(--info-bg); color: var(--info); }
+.state-badge.setup    { background: var(--warning-bg); color: var(--warning); }
+.state-badge.active   { background: var(--success-bg); color: var(--success); }
+.state-badge.cooling  { background: var(--primary-bg); color: var(--primary-light); }
+
+/* Reasons Cell */
+.reasons-cell {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    max-width: 220px;
+}
+
+.reason-chip {
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    padding: 2px 7px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   CALIBRATION SECTION
+   ============================================================ */
+.calibration-section {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 1024px) {
+    .calibration-section { grid-template-columns: 1fr; }
+}
+
+/* Profiles Grid */
+.profiles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 14px 16px;
+}
+
+@media (max-width: 480px) {
+    .profiles-grid { grid-template-columns: 1fr; }
+}
+
+.profile-card {
+    padding: 14px;
+    background: var(--bg-hover);
+    border: 2px solid var(--border);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: all 0.25s var(--ease-spring);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.profile-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.profile-card:hover::before { opacity: 1; }
+
+.profile-card.selected {
+    background: linear-gradient(135deg,
+        rgba(var(--primary-rgb), 0.08),
+        var(--bg-hover)
+    );
+    border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.15);
+}
+
+.profile-card.selected::before { opacity: 1; }
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.profile-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.profile-name svg {
+    width: 13px;
+    height: 13px;
+    color: var(--primary-light);
+}
+
+.profile-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.25s var(--ease-spring);
+}
+
+.profile-check svg { width: 10px; height: 10px; }
+
+.profile-card.selected .profile-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.profile-desc {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    line-height: 1.4;
+}
+
+.profile-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.profile-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.profile-tag .tag-value {
+    color: var(--primary-light);
+}
+
+/* Calibration Form */
+.calibration-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.calibration-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .calibration-form-row { grid-template-columns: 1fr; }
+}
+
+/* Switch Row */
+.switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.switch-row:hover { background: var(--bg-hover); }
+
+.switch-row-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.switch-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.switch-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+}
+
+.switch-toggle {
+    width: 34px;
+    height: 18px;
+    background: var(--border-strong);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.switch-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switch-row.active .switch-toggle { background: var(--primary); }
+.switch-row.active .switch-toggle::after { transform: translateX(-16px); }
+
+/* ============================================================
+   HISTORY TABLE
+   ============================================================ */
+.history-table td {
+    font-size: 11.5px;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.empty-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-faint);
+    opacity: 0.5;
+}
+
+.empty-icon svg { width: 100%; height: 100%; }
+
+.empty-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.empty-message {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+.empty-action {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    border: 1px solid rgba(var(--primary-rgb), 0.25);
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.empty-action svg { width: 13px; height: 13px; }
+
+.empty-action:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   SKELETON
+   ============================================================ */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(148, 163, 184, 0.05) 0%,
+        rgba(148, 163, 184, 0.12) 50%,
+        rgba(148, 163, 184, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    border-radius: 6px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-line {
+    height: 12px;
+    margin-bottom: 8px;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 100%; }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 92vh;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.92);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal.modal-lg { max-width: 800px; }
+.modal.modal-sm { max-width: 420px; }
+
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08), transparent);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 0;
+}
+
+.modal-title svg {
+    width: 16px;
+    height: 16px;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.modal-close {
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.modal-close:hover { background: var(--danger); color: white; }
+.modal-close svg { width: 14px; height: 14px; }
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--bg-card);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 90px;
+}
+
+.modal-btn svg { width: 13px; height: 13px; }
+
+.modal-btn.cancel { background: var(--bg-hover); color: var(--text-light); }
+.modal-btn.cancel:hover { background: var(--bg-hover-strong); }
+
+.modal-btn.primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+}
+.modal-btn.primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.danger {
+    background: var(--danger);
+    color: white;
+}
+.modal-btn.danger:hover {
+    background: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+.modal-btn.success {
+    background: var(--success);
+    color: white;
+}
+.modal-btn.success:hover {
+    background: var(--success-dark);
+    transform: translateY(-1px);
+}
+
+/* Confirm dialog */
+.confirm-body {
+    padding: 24px 20px 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.confirm-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon.danger { background: var(--danger-bg); color: var(--danger); }
+.confirm-icon svg { width: 24px; height: 24px; }
+
+.confirm-title { font-size: 15px; font-weight: 700; color: var(--text-light); }
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    text-align: center;
+}
+
+.confirm-desc code {
+    font-family: var(--mono-font);
+    background: var(--bg-hover);
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--primary-light);
+    font-size: 11.5px;
+}
+
+/* Coin Detail Modal (Single Scan) */
+.single-scan-result {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.single-scan-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg,
+        rgba(var(--primary-rgb), 0.08),
+        var(--bg-hover)
+    );
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 12px;
+}
+
+.single-scan-icon {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-size: 14px;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
+}
+
+.single-scan-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.single-scan-symbol {
+    font-family: var(--mono-font);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+}
+
+.single-scan-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.single-scan-meta .score-big {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary-light);
+    letter-spacing: -0.5px;
+}
+
+/* Rule Results */
+.rule-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rule-result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    transition: all 0.15s;
+    border-right: 3px solid transparent;
+}
+
+.rule-result-item.passed { border-right-color: var(--success); }
+.rule-result-item.failed { border-right-color: var(--danger); }
+.rule-result-item.skipped { border-right-color: var(--text-dim); }
+
+.rule-result-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rule-result-item.passed .rule-result-icon {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.rule-result-item.failed .rule-result-icon {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.rule-result-item.skipped .rule-result-icon {
+    background: var(--bg-hover-strong);
+    color: var(--text-dim);
+}
+
+.rule-result-icon svg { width: 12px; height: 12px; }
+
+.rule-result-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rule-result-name {
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: lowercase;
+}
+
+.rule-result-msg {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+}
+
+.rule-result-score {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   PROGRESS BAR (برای Scan)
+   ============================================================ */
+.scan-progress {
+    position: relative;
+    margin-top: 12px;
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+    display: none;
+}
+
+.scan-progress.active { display: block; }
+
+.scan-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    border-radius: 3px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.5);
+}
+
+.scan-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: progressShimmer 1.6s linear infinite;
+}
+
+@keyframes progressShimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+}
+
+.scan-progress-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    margin-top: 6px;
+}
+
+.scan-progress-label strong {
+    color: var(--text-light);
+    font-weight: 800;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: var(--ui-font);
+    max-width: calc(100vw - 48px);
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        bottom: auto;
+        top: 80px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 640px) {
+    body { padding: 10px 10px 30px; }
+    .hero-title { font-size: 17px; }
+    .hero-stat-value { font-size: 17px; }
+    .toolbar-btn { padding: 8px 11px; font-size: 11.5px; }
+    .panel-header-bar { padding: 10px 12px; }
+    .panel-body-bar { padding: 12px; }
+    .control-body { padding: 14px; }
+    .control-header { padding: 12px 14px; }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+</head>
+</body>
+<!-- ============================================================
+     INITIAL LOADER
+     ============================================================ -->
+<div class="initial-loader" id="initialLoader">
+    <div class="initial-loader-content">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">در حال بارگذاری اسکنر...</div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     HERO CARD (Screener)
+     ============================================================ -->
+<section class="hero-card" id="heroCard">
+    <div class="hero-content">
+
+        <div class="hero-title-block">
+            <div class="hero-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <div class="hero-title-text">
+                <h2 class="hero-title">اسکنر بازار</h2>
+                <div class="hero-subtitle">
+                    <span class="hero-status-pill idle" id="heroStatusPill">
+                        <span class="dot"></span>
+                        <span id="heroStatusText">آماده اسکن</span>
+                    </span>
+                    <span id="heroLastScan">آخرین اسکن: —</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero Stats (4) -->
+        <div class="hero-stats">
+            <div class="hero-stat scanned">
+                <span class="hero-stat-label">Total Scanned</span>
+                <span class="hero-stat-value" id="heroScanned">—</span>
+                <span class="hero-stat-hint" id="heroScannedHint">ارز بررسی‌شده</span>
+            </div>
+
+            <div class="hero-stat passed">
+                <span class="hero-stat-label">Passed</span>
+                <span class="hero-stat-value" id="heroPassed">—</span>
+                <span class="hero-stat-hint" id="heroPassedHint">از کل</span>
+            </div>
+
+            <div class="hero-stat score">
+                <span class="hero-stat-label">Avg Score</span>
+                <span class="hero-stat-value" id="heroAvgScore">—</span>
+                <span class="hero-stat-hint">میانگین امتیاز</span>
+            </div>
+
+            <div class="hero-stat duration">
+                <span class="hero-stat-label">Duration</span>
+                <span class="hero-stat-value" id="heroDuration">—</span>
+                <span class="hero-stat-hint">زمان اسکن</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     CONTROL PANEL (Scan Controls)
+     ============================================================ -->
+<section class="control-panel">
+    <div class="control-header">
+        <div class="control-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <span>تنظیمات اسکن</span>
+            <span class="control-badge" id="controlBadge">پیش‌فرض</span>
+        </div>
+    </div>
+
+    <div class="control-body">
+        <div class="control-grid">
+
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Top N Symbols</span>
+                    <span class="hint">تعداد ارز</span>
+                </label>
+                <input type="number" class="form-input" id="scanTopN" min="1" max="200" value="30" placeholder="30">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Timeframe</span>
+                    <span class="hint">تایم‌فریم</span>
+                </label>
+                <select class="form-select" id="scanTimeframe">
+                    <option value="15m">15m</option>
+                    <option value="1h">1h</option>
+                    <option value="4h" selected>4h</option>
+                    <option value="1d">1d</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Max Results</span>
+                    <span class="hint">حداکثر نتایج</span>
+                </label>
+                <input type="number" class="form-input" id="scanMaxResults" min="1" max="100" value="10" placeholder="10">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Candle Limit</span>
+                    <span class="hint">تعداد کندل</span>
+                </label>
+                <input type="number" class="form-input" id="scanCandleLimit" min="20" max="500" value="100" placeholder="100">
+            </div>
+        </div>
+
+        <!-- Scan Progress -->
+        <div class="scan-progress" id="scanProgress">
+            <div class="scan-progress-fill" id="scanProgressFill" style="width: 0%;"></div>
+        </div>
+        <div class="scan-progress-label" id="scanProgressLabel" style="display: none;">
+            <span>در حال اسکن: <strong id="scanProgressText">—</strong></span>
+            <span><strong id="scanProgressPercent">0%</strong></span>
+        </div>
+
+        <!-- Actions -->
+        <div class="control-actions">
+            <div class="control-actions-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span id="scanHint">آماده اجرا</span>
+            </div>
+
+            <div class="control-actions-right">
+                <button class="toolbar-btn" id="scanSingleBtn" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <span>اسکن تک ارز</span>
+                </button>
+
+                <button class="toolbar-btn primary" id="scanRunBtn" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    <span>شروع اسکن کامل</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     LATEST SCAN RESULTS
+     ============================================================ -->
+<section class="panel">
+    <div class="panel-header-bar">
+        <div class="panel-title-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+            <span>نتایج آخرین اسکن</span>
+            <span class="panel-count" id="resultsCount">—</span>
+        </div>
+
+        <div class="panel-actions-bar">
+            <span class="badge muted no-dot" id="resultsScanId">—</span>
+            <button class="toolbar-btn" id="resultsRefreshBtn" type="button" title="بروزرسانی">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="panel-body-bar no-padding">
+        <div class="data-table-wrap">
+            <table class="data-table" id="resultsTable">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>Symbol</th>
+                        <th style="width:140px;">Score</th>
+                        <th style="width:110px;">State</th>
+                        <th>Reasons</th>
+                        <th style="width:100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTableBody">
+                    <tr><td colspan="6"><div class="skeleton skeleton-line long"></div></td></tr>
+                    <tr><td colspan="6"><div class="skeleton skeleton-line long"></div></td></tr>
+                    <tr><td colspan="6"><div class="skeleton skeleton-line long"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     CALIBRATION SECTION
+     ============================================================ -->
+<section class="calibration-section">
+
+    <!-- Profiles Panel -->
+    <div class="panel">
+        <div class="panel-header-bar">
+            <div class="panel-title-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                <span>پروفایل‌های کالیبراسیون</span>
+            </div>
+            <span class="panel-count" id="profilesCount">—</span>
+        </div>
+
+        <div class="panel-body-bar no-padding">
+            <div class="profiles-grid" id="profilesGrid">
+                <div class="skeleton skeleton-line long" style="height: 80px;"></div>
+                <div class="skeleton skeleton-line long" style="height: 80px;"></div>
+                <div class="skeleton skeleton-line long" style="height: 80px;"></div>
+                <div class="skeleton skeleton-line long" style="height: 80px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration Form -->
+    <div class="panel">
+        <div class="panel-header-bar">
+            <div class="panel-title-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>اجرای کالیبراسیون</span>
+            </div>
+        </div>
+
+        <div class="panel-body-bar">
+            <div class="calibration-form">
+
+                <div class="calibration-form-row">
+                    <div class="form-group">
+                        <label class="form-label">Period</label>
+                        <select class="form-select" id="calibratePeriod">
+                            <option value="24h">24h</option>
+                            <option value="1w">1w</option>
+                            <option value="1m" selected>1m</option>
+                            <option value="3m">3m</option>
+                            <option value="6m">6m</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Strategy</label>
+                        <select class="form-select" id="calibrateStrategy">
+                            <option value="">default</option>
+                            <option value="grid">grid</option>
+                            <option value="random">random</option>
+                            <option value="bayesian">bayesian</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="switch-row active" id="calibrateSaveSwitch" data-value="true">
+                    <div class="switch-row-label">
+                        <span class="switch-title">ذخیره خودکار</span>
+                        <span class="switch-desc">ذخیره نتیجه در DB</span>
+                    </div>
+                    <span class="switch-toggle"></span>
+                </div>
+
+                <div class="control-actions" style="padding-top: 0; border-top: none; margin-top: 4px;">
+                    <div class="control-actions-left">
+                        <span id="calibrateHint">آماده اجرا</span>
+                    </div>
+                    <div class="control-actions-right">
+                        <button class="toolbar-btn" id="calibrateForceBtn" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                            <span>اجبار سریع</span>
+                        </button>
+                        <button class="toolbar-btn primary" id="calibrateRunBtn" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                            <span>اجرای کالیبراسیون</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     CALIBRATION HISTORY
+     ============================================================ -->
+<section class="panel">
+    <div class="panel-header-bar">
+        <div class="panel-title-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>تاریخچه کالیبراسیون</span>
+            <span class="panel-count" id="historyCount">—</span>
+        </div>
+
+        <div class="panel-actions-bar">
+            <button class="toolbar-btn" id="historyRefreshBtn" type="button" title="بروزرسانی">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="panel-body-bar no-padding">
+        <div class="data-table-wrap">
+            <table class="data-table history-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>Date</th>
+                        <th>Profile</th>
+                        <th>Period</th>
+                        <th>Score</th>
+                        <th>Improvement</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="7"><div class="skeleton skeleton-line long"></div></td></tr>
+                    <tr><td colspan="7"><div class="skeleton skeleton-line long"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     MODAL: Confirm
+     ============================================================ -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-sm">
+        <div class="confirm-body">
+            <div class="confirm-icon" id="confirmIcon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="confirm-title" id="confirmTitle">تأیید عملیات</div>
+            <div class="confirm-desc" id="confirmDesc">—</div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="confirmModal" type="button">انصراف</button>
+            <button class="modal-btn danger" id="confirmOkBtn" type="button">تأیید</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     MODAL: Single Scan Result
+     ============================================================ -->
+<div class="modal-overlay" id="singleScanModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <span id="singleScanModalTitle">اسکن تک ارز</span>
+            </div>
+            <button class="modal-close" data-close-modal="singleScanModal" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" id="singleScanModalBody">
+            <!-- JS پر می‌کند -->
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="singleScanModal" type="button">بستن</button>
+            <button class="modal-btn primary" id="singleScanAgainBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                </svg>
+                <span>اسکن مجدد</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     MODAL: Single Scan Input (Coin ID)
+     ============================================================ -->
+<div class="modal-overlay" id="singleScanInputModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <span>اسکن تک ارز</span>
+            </div>
+            <button class="modal-close" data-close-modal="singleScanInputModal" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Coin ID</span>
+                    <span class="hint">مثل bitcoin</span>
+                </label>
+                <input type="text" class="form-input" id="singleScanCoinInput" placeholder="bitcoin" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <span>Period</span>
+                </label>
+                <select class="form-select" id="singleScanPeriodInput">
+                    <option value="24h">24h</option>
+                    <option value="1w">1w</option>
+                    <option value="1m" selected>1m</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" data-close-modal="singleScanInputModal" type="button">انصراف</button>
+            <button class="modal-btn primary" id="singleScanRunBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <span>اسکن کن</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+
+<!-- ============================================================
+     SCRIPT PLACEHOLDER (پیام ۳ و ۴)
+     ============================================================ -->
+<script>
+// ============================================================
+// MODEL SCREENER — PART 1: CORE + API + RENDER
+// Config + State + Utils + API + Toast + Render functions
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__modelScreenerPart1Loaded) return;
+window.__modelScreenerPart1Loaded = true;
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CONFIG = {
+    API: {
+        // ===== Screener =====
+        SCAN: '/api/model/screener/scan',
+        SCAN_LATEST: '/api/model/screener/scan/latest',
+        SCAN_RESULT: (id) => `/api/model/screener/scan/${encodeURIComponent(id)}`,
+        SCAN_SINGLE: '/api/model/screener/scan/single',
+        HISTORY: '/api/model/screener/history',
+        HISTORY_STATS: '/api/model/screener/history/stats',
+        CONFIG: '/api/model/screener/config',
+        VALIDATE_CONFIG: '/api/model/screener/config/validate',
+
+        // ===== Calibration =====
+        CALIBRATE_PROFILES: '/api/model/calibrate/profiles',
+        CALIBRATE: '/api/model/calibrate',
+        CALIBRATE_FORCE: '/api/model/calibrate/force',
+        CALIBRATE_HISTORY: '/api/model/calibrate/history',
+    },
+    AUTO_REFRESH: 30000,
+    STORAGE: {
+        LAST_SCAN: 'model_screener_last_scan',
+        SELECTED_PROFILE: 'model_screener_profile',
+    },
+};
+
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+    latestScan: null,
+    scanHistory: [],
+    scanHistoryStats: null,
+    screenerConfig: null,
+    profiles: [],
+    calibrationHistory: [],
+    selectedProfileId: 'balanced',
+
+    // Scan form values
+    scanForm: {
+        topN: 30,
+        timeframe: '4h',
+        maxResults: 10,
+        candleLimit: 100,
+    },
+
+    // Calibration form
+    calibrateForm: {
+        period: '1m',
+        strategy: '',
+        save: true,
+    },
+
+    // UI State
+    isScanning: false,
+    isCalibrating: false,
+    currentScanProgress: 0,
+    currentSingleScanCoin: null,
+
+    // Timers
+    timers: {
+        autoRefresh: null,
+        progressSim: null,
+    },
+
+    isLoading: false,
+};
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+const $  = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function formatNumber(n) {
+    if (n === undefined || n === null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('fa-IR');
+}
+
+function formatScore(v, decimals = 3) {
+    if (v === undefined || v === null || isNaN(v)) return '—';
+    return Number(v).toFixed(decimals);
+}
+
+function formatPercent(v, decimals = 1) {
+    if (v === undefined || v === null || isNaN(v)) return '—';
+    const n = Number(v);
+    const sign = n > 0 ? '+' : '';
+    return sign + n.toFixed(decimals) + '٪';
+}
+
+function formatDuration(seconds) {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) return '—';
+    const s = Number(seconds);
+    if (s < 1) return Math.round(s * 1000) + 'ms';
+    if (s < 60) return s.toFixed(1) + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm ' + Math.floor(s % 60) + 's';
+    return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+}
+
+function formatTimeAgo(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '—';
+        const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diff < 60) return diff + ' ثانیه پیش';
+        if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
+        if (diff < 604800) return Math.floor(diff / 86400) + ' روز پیش';
+        return Math.floor(diff / 604800) + ' هفته پیش';
+    } catch {
+        return '—';
+    }
+}
+
+function formatDate(date) {
+    if (!date) return '—';
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '—';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${year}/${month}/${day} ${hour}:${min}`;
+    } catch {
+        return '—';
+    }
+}
+
+function getSymbolFromPair(pair) {
+    if (!pair) return '—';
+    if (pair.includes('/')) return pair.split('/')[0];
+    return pair;
+}
+
+function getStateClass(stateName) {
+    if (!stateName) return 'idle';
+    const s = String(stateName).toLowerCase();
+    if (s === 'watching') return 'watching';
+    if (s === 'setup') return 'setup';
+    if (s === 'active') return 'active';
+    if (s === 'cooling') return 'cooling';
+    return 'idle';
+}
+
+function getScoreClass(score) {
+    const s = Number(score) || 0;
+    if (s >= 0.7) return 'high';
+    if (s >= 0.5) return 'medium';
+    return 'low';
+}
+
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type = 'info', duration = 2800) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#a855f7',
+    };
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: var(--bg-card-solid);
+        border: 1px solid var(--border-strong);
+        border-inline-start: 3px solid ${colors[type]};
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text-light);
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 240px;
+        max-width: 400px;
+        pointer-events: auto;
+        direction: rtl;
+        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    `;
+    toast.innerHTML = `
+        <span style="
+            display:inline-flex;align-items:center;justify-content:center;
+            width:24px;height:24px;min-width:24px;border-radius:7px;
+            background:${colors[type]}20;color:${colors[type]};
+            flex-shrink:0;
+        ">${icons[type]}</span>
+        <span style="flex:1;line-height:1.5;">${escapeHtml(msg)}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+
+// ============================================================
+// API LAYER
+// ============================================================
+const API = {
+    async request(url, options = {}) {
+        try {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                ...options,
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `HTTP ${res.status}`);
+            }
+            return await res.json();
+        } catch (err) {
+            console.warn(`[API] ${url}:`, err.message);
+            return { success: false, error: err.message };
+        }
+    },
+
+    // ===== Screener =====
+    runScan(payload) {
+        return this.request(CONFIG.API.SCAN, {
+            method: 'POST',
+            body: JSON.stringify(payload || {}),
+        });
+    },
+
+    getLatestScan() {
+        return this.request(CONFIG.API.SCAN_LATEST);
+    },
+
+    getScanResult(scanId) {
+        return this.request(CONFIG.API.SCAN_RESULT(scanId));
+    },
+
+    runSingleScan(payload) {
+        return this.request(CONFIG.API.SCAN_SINGLE, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    },
+
+    getHistory(params = {}) {
+        const qs = new URLSearchParams({ limit: params.limit || 20 });
+        return this.request(`${CONFIG.API.HISTORY}?${qs}`);
+    },
+
+    getHistoryStats() {
+        return this.request(CONFIG.API.HISTORY_STATS);
+    },
+
+    getConfig() {
+        return this.request(CONFIG.API.CONFIG);
+    },
+
+    // ===== Calibration =====
+    getProfiles() {
+        return this.request(CONFIG.API.CALIBRATE_PROFILES);
+    },
+
+    calibrate(payload) {
+        return this.request(CONFIG.API.CALIBRATE, {
+            method: 'POST',
+            body: JSON.stringify(payload || {}),
+        });
+    },
+
+    forceCalibrate(payload) {
+        return this.request(CONFIG.API.CALIBRATE_FORCE, {
+            method: 'POST',
+            body: JSON.stringify(payload || {}),
+        });
+    },
+
+    getCalibrationHistory(params = {}) {
+        const qs = new URLSearchParams({ limit: params.limit || 20 });
+        if (params.period) qs.append('period', params.period);
+        return this.request(`${CONFIG.API.CALIBRATE_HISTORY}?${qs}`);
+    },
+};
+
+
+// ============================================================
+// LOADING HELPERS
+// ============================================================
+function showInitialLoader() {
+    $('#initialLoader')?.classList.remove('hidden');
+}
+
+function hideInitialLoader() {
+    setTimeout(() => {
+        $('#initialLoader')?.classList.add('hidden');
+    }, 300);
+}
+
+
+// ============================================================
+// RENDER: HERO
+// ============================================================
+function renderHero() {
+    const scan = state.latestScan;
+
+    // Status pill
+    const pill = $('#heroStatusPill');
+    const pillText = $('#heroStatusText');
+
+    if (pill && pillText) {
+        pill.className = 'hero-status-pill';
+        if (state.isScanning) {
+            pill.classList.add('running');
+            pillText.textContent = 'در حال اسکن';
+        } else if (scan) {
+            pill.classList.add('success');
+            pillText.textContent = 'آخرین اسکن موفق';
+        } else {
+            pill.classList.add('idle');
+            pillText.textContent = 'آماده اسکن';
+        }
+    }
+
+    // Last scan time
+    const lastScanEl = $('#heroLastScan');
+    if (lastScanEl) {
+        const time = scan?.created_at || scan?.timestamp || scan?.scanned_at;
+        lastScanEl.textContent = time
+            ? `آخرین اسکن: ${formatTimeAgo(time)}`
+            : 'آخرین اسکن: —';
+    }
+
+    // Stats
+    const totalScanned = scan?.total_scanned ?? scan?.scanned ?? 0;
+    const passedCount = scan?.passed_count ?? scan?.passed ?? 0;
+    const avgScore = scan?.avg_score ?? null;
+    const duration = scan?.duration_seconds ?? scan?.duration ?? null;
+
+    setText('#heroScanned', formatNumber(totalScanned));
+
+    const passedEl = $('#heroPassed');
+    if (passedEl) {
+        passedEl.textContent = formatNumber(passedCount);
+    }
+
+    const passedHintEl = $('#heroPassedHint');
+    if (passedHintEl) {
+        if (totalScanned > 0) {
+            const pct = ((passedCount / totalScanned) * 100).toFixed(1);
+            passedHintEl.textContent = `${pct}٪ از کل`;
+        } else {
+            passedHintEl.textContent = 'از کل';
+        }
+    }
+
+    setText('#heroAvgScore', avgScore !== null ? formatScore(avgScore) : '—');
+    setText('#heroDuration', duration !== null ? formatDuration(duration) : '—');
+}
+
+
+// ============================================================
+// RENDER: LATEST SCAN RESULTS TABLE
+// ============================================================
+function renderResults() {
+    const tbody = $('#resultsTableBody');
+    const countBadge = $('#resultsCount');
+    const scanIdBadge = $('#resultsScanId');
+    if (!tbody) return;
+
+    const scan = state.latestScan;
+    const results = scan?.results || [];
+
+    if (countBadge) countBadge.textContent = formatNumber(results.length);
+
+    if (scanIdBadge) {
+        const id = scan?.scan_id || scan?.id;
+        scanIdBadge.textContent = id ? String(id).slice(0, 20) : '—';
+    }
+
+    if (!scan || results.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.35-4.35"/>
+                            </svg>
+                        </div>
+                        <div class="empty-title">هنوز اسکنی انجام نشده</div>
+                        <div class="empty-message">برای شروع، روی دکمه «شروع اسکن کامل» بزنید</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = results.map((r, idx) => {
+        const symbol = r.symbol || r.pair || '—';
+        const shortSymbol = getSymbolFromPair(symbol);
+        const score = Number(r.score) || 0;
+        const scorePct = Math.min(score * 100, 100);
+        const scoreClass = getScoreClass(score);
+        const stateName = r.state || r.current_state || 'IDLE';
+        const stateClass = getStateClass(stateName);
+        const reasons = Array.isArray(r.reasons) ? r.reasons : [];
+        const coinId = r.coin_id || r.id || '';
+
+        return `
+            <tr data-coin-id="${escapeHtml(coinId)}" data-symbol="${escapeHtml(symbol)}">
+                <td><span class="mono muted">${formatNumber(idx + 1)}</span></td>
+                <td>
+                    <div class="symbol-cell">
+                        <div class="symbol-icon">${escapeHtml(shortSymbol.slice(0, 4))}</div>
+                        <div class="symbol-text">
+                            <span class="symbol-name">${escapeHtml(shortSymbol)}</span>
+                            <span class="symbol-detail">${escapeHtml(String(symbol).replace(shortSymbol, '').replace('/', '')) || 'USDT'}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="score-cell">
+                        <span class="score-value">${formatScore(score)}</span>
+                        <div class="score-bar">
+                            <div class="score-bar-fill ${scoreClass}" style="width: ${scorePct}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="state-badge ${stateClass}">${escapeHtml(stateName)}</span>
+                </td>
+                <td>
+                    <div class="reasons-cell">
+                        ${reasons.length > 0
+                            ? reasons.slice(0, 3).map(r => {
+                                const reasonText = typeof r === 'string' ? r : (r.reason || r.name || '—');
+                                return `<span class="reason-chip">${escapeHtml(String(reasonText).slice(0, 20))}</span>`;
+                            }).join('')
+                            : '<span class="mono muted" style="font-size:10px;">—</span>'}
+                    </div>
+                </td>
+                <td>
+                    <button class="toolbar-btn" style="padding: 5px 10px; font-size: 10.5px;" data-action="view-single" data-coin-id="${escapeHtml(coinId)}" data-symbol="${escapeHtml(symbol)}" type="button">
+                        جزئیات
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Bind row click → Single Scan detail
+    tbody.querySelectorAll('[data-action="view-single"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coinId = btn.dataset.coinId;
+            if (coinId) {
+                openSingleScanResultByCoin(coinId);
+            }
+        });
+    });
+}
+
+function openSingleScanResultByCoin(coinId) {
+    const scan = state.latestScan;
+    const result = scan?.results?.find(r => (r.coin_id || r.id) === coinId);
+
+    if (!result) {
+        showToast('نتیجه‌ای برای این ارز یافت نشد', 'warning', 2000);
+        return;
+    }
+
+    renderSingleScanResult(result);
+    openModal('singleScanModal');
+}
+
+
+// ============================================================
+// RENDER: PROFILES
+// ============================================================
+function renderProfiles() {
+    const container = $('#profilesGrid');
+    const countBadge = $('#profilesCount');
+    if (!container) return;
+
+    const profiles = state.profiles || [];
+
+    if (countBadge) countBadge.textContent = formatNumber(profiles.length);
+
+    if (profiles.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 20px;">
+                <div class="empty-title" style="font-size:12.5px;">پروفایلی یافت نشد</div>
+                <div class="empty-message" style="font-size:11px;">لیست پروفایل‌ها خالی است</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = profiles.map(profile => {
+        const id = profile.id || profile.name || 'unknown';
+        const isSelected = id === state.selectedProfileId;
+        const name = profile.name || profile.label || id;
+        const desc = profile.description || profile.desc || '—';
+        const params = profile.params || {};
+
+        const tagList = [
+            params.max_depth !== undefined ? `depth: ${params.max_depth}` : null,
+            params.learning_rate !== undefined ? `lr: ${params.learning_rate}` : null,
+            params.n_estimators !== undefined ? `n: ${params.n_estimators}` : null,
+        ].filter(Boolean);
+
+        return `
+            <div class="profile-card ${isSelected ? 'selected' : ''}" data-profile="${escapeHtml(id)}">
+                <div class="profile-header">
+                    <span class="profile-name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        ${escapeHtml(name)}
+                    </span>
+                    <span class="profile-check">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </span>
+                </div>
+                <span class="profile-desc">${escapeHtml(String(desc).slice(0, 80))}</span>
+                ${tagList.length > 0 ? `
+                    <div class="profile-tags">
+                        ${tagList.map(t => `<span class="profile-tag">${escapeHtml(t)}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    // Bind click
+    container.querySelectorAll('[data-profile]').forEach(card => {
+        card.addEventListener('click', () => {
+            state.selectedProfileId = card.dataset.profile;
+            try {
+                localStorage.setItem(CONFIG.STORAGE.SELECTED_PROFILE, state.selectedProfileId);
+            } catch (e) {}
+            renderProfiles();
+        });
+    });
+}
+
+
+// ============================================================
+// RENDER: HISTORY TABLE
+// ============================================================
+function renderHistory() {
+    const tbody = $('#historyTableBody');
+    const countBadge = $('#historyCount');
+    if (!tbody) return;
+
+    const history = state.calibrationHistory || [];
+
+    if (countBadge) countBadge.textContent = formatNumber(history.length);
+
+    if (history.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="empty-title">تاریخچه‌ای موجود نیست</div>
+                        <div class="empty-message">هنوز کالیبراسیونی انجام نشده</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = history.map((h, idx) => {
+        const date = h.created_at || h.timestamp || h.calibrated_at;
+        const profile = h.profile_name || h.profile || '—';
+        const period = h.period || '—';
+        const score = h.score ?? h.avg_score ?? null;
+        const improvement = h.improvement ?? null;
+        const duration = h.duration_seconds ?? h.duration ?? null;
+
+        const improvementClass = improvement === null
+            ? ''
+            : (improvement > 0 ? 'success' : improvement < 0 ? 'danger' : 'muted');
+
+        const improvementText = improvement === null
+            ? '—'
+            : formatPercent(improvement * 100, 2);
+
+        return `
+            <tr>
+                <td><span class="mono muted">${formatNumber(idx + 1)}</span></td>
+                <td><span class="mono muted">${escapeHtml(formatDate(date))}</span></td>
+                <td><span class="mono">${escapeHtml(profile)}</span></td>
+                <td><span class="mono muted">${escapeHtml(period)}</span></td>
+                <td>
+                    ${score !== null
+                        ? `<span class="badge primary no-dot">${formatScore(score)}</span>`
+                        : '<span class="badge muted no-dot">—</span>'}
+                </td>
+                <td>
+                    ${improvement !== null
+                        ? `<span class="badge ${improvementClass} no-dot">${improvementText}</span>`
+                        : '<span class="badge muted no-dot">—</span>'}
+                </td>
+                <td><span class="mono muted">${escapeHtml(duration !== null ? formatDuration(duration) : '—')}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+
+// ============================================================
+// RENDER: SINGLE SCAN RESULT (Modal)
+// ============================================================
+function renderSingleScanResult(result) {
+    const titleEl = $('#singleScanModalTitle');
+    const bodyEl = $('#singleScanModalBody');
+    if (!bodyEl) return;
+
+    const symbol = result.symbol || result.pair || '—';
+    const shortSymbol = getSymbolFromPair(symbol);
+    const score = Number(result.score) || 0;
+    const stateName = result.state || result.current_state || 'IDLE';
+    const stateClass = getStateClass(stateName);
+    const reasons = Array.isArray(result.reasons) ? result.reasons : [];
+    const ruleResults = Array.isArray(result.rule_results) ? result.rule_results : [];
+
+    if (titleEl) {
+        titleEl.textContent = `نتیجه اسکن — ${shortSymbol}`;
+    }
+
+    bodyEl.innerHTML = `
+        <div class="single-scan-result">
+
+            <!-- Header -->
+            <div class="single-scan-header">
+                <div class="single-scan-icon">${escapeHtml(shortSymbol.slice(0, 4))}</div>
+                <div class="single-scan-info">
+                    <div class="single-scan-symbol">${escapeHtml(symbol)}</div>
+                    <div class="single-scan-meta">
+                        <span class="score-big">${formatScore(score)}</span>
+                        <span class="state-badge ${stateClass}">${escapeHtml(stateName)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reasons -->
+            ${reasons.length > 0 ? `
+                <div>
+                    <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono-font);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">
+                        دلایل
+                    </div>
+                    <div class="reasons-cell" style="max-width:100%;">
+                        ${reasons.map(r => {
+                            const text = typeof r === 'string' ? r : (r.reason || r.message || '—');
+                            return `<span class="reason-chip">${escapeHtml(String(text))}</span>`;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Rule Results -->
+            ${ruleResults.length > 0 ? `
+                <div>
+                    <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono-font);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">
+                        نتایج Rule‌ها (${formatNumber(ruleResults.length)})
+                    </div>
+                    <div class="rule-results-list">
+                        ${ruleResults.map(r => {
+                            const ruleName = r.name || r.rule || '—';
+                            const passed = r.passed === true || r.status === 'passed';
+                            const skipped = r.skipped === true || r.status === 'skipped';
+                            const cls = skipped ? 'skipped' : (passed ? 'passed' : 'failed');
+                            const msg = r.message || r.reason || (passed ? 'تأیید شد' : 'رد شد');
+                            const ruleScore = r.score !== undefined ? formatScore(r.score) : '—';
+
+                            const iconSvg = passed
+                                ? '<polyline points="20 6 9 17 4 12"/>'
+                                : (skipped ? '<line x1="5" y1="12" x2="19" y2="12"/>' : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>');
+
+                            return `
+                                <div class="rule-result-item ${cls}">
+                                    <div class="rule-result-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            ${iconSvg}
+                                        </svg>
+                                    </div>
+                                    <div class="rule-result-content">
+                                        <span class="rule-result-name">${escapeHtml(ruleName)}</span>
+                                        <span class="rule-result-msg">${escapeHtml(String(msg).slice(0, 60))}</span>
+                                    </div>
+                                    <span class="rule-result-score">${ruleScore}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : `
+                <div class="empty-state" style="padding: 20px;">
+                    <div class="empty-title" style="font-size:12.5px;">جزئیات Rule موجود نیست</div>
+                    <div class="empty-message" style="font-size:11px;">فقط امتیاز و state نمایش داده می‌شود</div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+function setText(selector, value) {
+    const el = typeof selector === 'string' ? $(selector) : selector;
+    if (el) el.textContent = value ?? '—';
+}
+
+
+// ============================================================
+// EXPOSE TO PART 2
+// ============================================================
+window.__modelScreener = {
+    CONFIG,
+    state,
+    $, $$,
+    escapeHtml,
+    formatNumber,
+    formatScore,
+    formatPercent,
+    formatDuration,
+    formatTimeAgo,
+    formatDate,
+    getSymbolFromPair,
+    getStateClass,
+    getScoreClass,
+    showToast,
+    API,
+    showInitialLoader,
+    hideInitialLoader,
+    renderHero,
+    renderResults,
+    renderProfiles,
+    renderHistory,
+    renderSingleScanResult,
+    openSingleScanResultByCoin,
+    setText,
+};
+
+console.log('✅ Model Screener — Part 1 (Core + API + Render) loaded');
+
+})();
+</script>
+<script>
+// ============================================================
+// MODEL SCREENER — PART 2: ACTIONS + EVENTS + INIT
+// Scan Actions + Calibration + Event Listeners + Auto-refresh
+// ============================================================
+(function() {
+'use strict';
+
+if (window.__modelScreenerPart2Loaded) return;
+window.__modelScreenerPart2Loaded = true;
+
+// ============================================================
+// WAIT FOR PART 1
+// ============================================================
+function waitForPart1(callback) {
+    if (window.__modelScreener) {
+        callback(window.__modelScreener);
+    } else {
+        setTimeout(() => waitForPart1(callback), 50);
+    }
+}
+
+waitForPart1(function(core) {
+
+    // ═══════════════════════════════════════════════════
+    // DESTRUCTURE
+    // ═══════════════════════════════════════════════════
+    const {
+        CONFIG,
+        state,
+        $, $$,
+        escapeHtml,
+        formatNumber,
+        formatScore,
+        formatPercent,
+        formatDuration,
+        formatTimeAgo,
+        formatDate,
+        getSymbolFromPair,
+        getStateClass,
+        getScoreClass,
+        showToast,
+        API,
+        showInitialLoader,
+        hideInitialLoader,
+        renderHero,
+        renderResults,
+        renderProfiles,
+        renderHistory,
+        renderSingleScanResult,
+        openSingleScanResultByCoin,
+        setText,
+    } = core;
+
+
+    // ============================================================
+    // MODAL HELPERS
+    // ============================================================
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('open');
+        if (!document.querySelector('.modal-overlay.open')) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    let _confirmCallback = null;
+
+    function showConfirm(title, desc, isDanger = true, onConfirm = null) {
+        const titleEl = $('#confirmTitle');
+        const descEl = $('#confirmDesc');
+        const iconEl = $('#confirmIcon');
+        const okBtn = $('#confirmOkBtn');
+
+        if (titleEl) titleEl.textContent = title;
+        if (descEl) descEl.innerHTML = desc;
+        if (okBtn) okBtn.textContent = 'تأیید';
+
+        if (iconEl) {
+            iconEl.classList.toggle('danger', isDanger);
+        }
+
+        _confirmCallback = onConfirm;
+        openModal('confirmModal');
+    }
+
+
+    // ============================================================
+    // SCAN FORM — READ
+    // ============================================================
+    function readScanForm() {
+        return {
+            top_n: parseInt($('#scanTopN')?.value, 10) || 30,
+            timeframe: $('#scanTimeframe')?.value || '4h',
+            max_results: parseInt($('#scanMaxResults')?.value, 10) || 10,
+            // candle_limit به عنوان بخشی از config اسکنر ارسال می‌شود
+            candle_limit: parseInt($('#scanCandleLimit')?.value, 10) || 100,
+        };
+    }
+
+    function readCalibrateForm() {
+        const saveSwitch = $('#calibrateSaveSwitch');
+        return {
+            period: $('#calibratePeriod')?.value || '1m',
+            strategy: $('#calibrateStrategy')?.value || undefined,
+            profile_name: state.selectedProfileId,
+            save: saveSwitch?.classList.contains('active') ?? true,
+        };
+    }
+
+
+    // ============================================================
+    // PROGRESS BAR (Simulated)
+    // ============================================================
+    function showScanProgress() {
+        const progress = $('#scanProgress');
+        const label = $('#scanProgressLabel');
+        if (progress) progress.classList.add('active');
+        if (label) label.style.display = 'flex';
+
+        setText('#scanProgressText', 'در حال آماده‌سازی...');
+        setText('#scanProgressPercent', '0%');
+
+        const fill = $('#scanProgressFill');
+        if (fill) fill.style.width = '0%';
+    }
+
+    function hideScanProgress() {
+        const progress = $('#scanProgress');
+        const label = $('#scanProgressLabel');
+        if (progress) progress.classList.remove('active');
+        if (label) label.style.display = 'none';
+
+        const fill = $('#scanProgressFill');
+        if (fill) fill.style.width = '0%';
+    }
+
+    function updateScanProgress(percent, text) {
+        const fill = $('#scanProgressFill');
+        if (fill) fill.style.width = percent + '%';
+        setText('#scanProgressPercent', Math.round(percent) + '%');
+        if (text) setText('#scanProgressText', text);
+    }
+
+    function startProgressSimulation() {
+        stopProgressSimulation();
+
+        state.currentScanProgress = 0;
+
+        const steps = [
+            { at: 5, text: 'دریافت symbolها...' },
+            { at: 15, text: 'بارگذاری داده‌های OHLCV...' },
+            { at: 35, text: 'محاسبه اندیکاتورها...' },
+            { at: 55, text: 'اجرای ruleها...' },
+            { at: 75, text: 'محاسبه امتیاز نهایی...' },
+            { at: 90, text: 'مرتب‌سازی نتایج...' },
+        ];
+
+        let currentStep = 0;
+
+        state.timers.progressSim = setInterval(() => {
+            if (!state.isScanning) {
+                stopProgressSimulation();
+                return;
+            }
+
+            // افزایش آرام تا 95%
+            if (state.currentScanProgress < 95) {
+                state.currentScanProgress += Math.random() * 3 + 0.5;
+
+                // Find next step text
+                while (currentStep < steps.length && state.currentScanProgress >= steps[currentStep].at) {
+                    currentStep++;
+                }
+
+                const text = currentStep > 0
+                    ? steps[Math.min(currentStep - 1, steps.length - 1)].text
+                    : 'شروع اسکن...';
+
+                updateScanProgress(
+                    Math.min(state.currentScanProgress, 95),
+                    text
+                );
+            }
+        }, 400);
+    }
+
+    function stopProgressSimulation() {
+        if (state.timers.progressSim) {
+            clearInterval(state.timers.progressSim);
+            state.timers.progressSim = null;
+        }
+    }
+
+
+    // ============================================================
+    // SCAN ACTIONS
+    // ============================================================
+    async function runScan() {
+        if (state.isScanning) {
+            showToast('یک اسکن در حال اجراست', 'warning', 2000);
+            return;
+        }
+
+        const form = readScanForm();
+
+        // Validation
+        if (form.top_n < 1 || form.top_n > 200) {
+            showToast('Top N باید بین ۱ تا ۲۰۰ باشد', 'warning', 2500);
+            return;
+        }
+        if (form.max_results < 1 || form.max_results > 100) {
+            showToast('Max Results باید بین ۱ تا ۱۰۰ باشد', 'warning', 2500);
+            return;
+        }
+
+        // UI State
+        state.isScanning = true;
+        updateScanButton(true);
+        showScanProgress();
+        startProgressSimulation();
+        renderHero();
+
+        // Hint
+        setText('#scanHint', 'در حال اسکن...');
+
+        try {
+            const res = await API.runScan({
+                top_n: form.top_n,
+                timeframe: form.timeframe,
+                max_results: form.max_results,
+            });
+
+            stopProgressSimulation();
+
+            if (res.success) {
+                // نمایش 100%
+                updateScanProgress(100, 'تکمیل شد');
+
+                // ذخیره نتیجه
+                state.latestScan = res.data || res;
+
+                // ذخیره در localStorage
+                try {
+                    localStorage.setItem(CONFIG.STORAGE.LAST_SCAN, JSON.stringify(state.latestScan));
+                } catch (e) {}
+
+                // بازسازی
+                setTimeout(() => {
+                    hideScanProgress();
+                    renderHero();
+                    renderResults();
+
+                    const passed = state.latestScan?.passed_count ?? 0;
+                    const total = state.latestScan?.total_scanned ?? 0;
+
+                    showToast(
+                        `✅ اسکن کامل شد — ${formatNumber(passed)} از ${formatNumber(total)}`,
+                        'success',
+                        4000
+                    );
+                }, 500);
+
+                // Reload history
+                loadCalibrationHistory();
+            } else {
+                hideScanProgress();
+                showToast(res.error || 'خطا در اسکن', 'error', 4000);
+            }
+        } catch (err) {
+            stopProgressSimulation();
+            hideScanProgress();
+            showToast('خطای غیرمنتظره: ' + err.message, 'error', 4000);
+        } finally {
+            state.isScanning = false;
+            updateScanButton(false);
+            setText('#scanHint', 'آماده اجرا');
+            renderHero();
+        }
+    }
+
+    function updateScanButton(isLoading) {
+        const btn = $('#scanRunBtn');
+        if (!btn) return;
+
+        btn.disabled = isLoading;
+        btn.classList.toggle('loading', isLoading);
+
+        const span = btn.querySelector('span');
+        if (span) {
+            span.textContent = isLoading ? 'در حال اسکن...' : 'شروع اسکن کامل';
+        }
+    }
+
+
+    // ============================================================
+    // SINGLE SCAN ACTIONS
+    // ============================================================
+    function openSingleScanInput() {
+        const coinInput = $('#singleScanCoinInput');
+        if (coinInput) coinInput.value = '';
+        openModal('singleScanInputModal');
+
+        setTimeout(() => {
+            coinInput?.focus();
+        }, 100);
+    }
+
+    async function runSingleScan() {
+        const coinId = $('#singleScanCoinInput')?.value.trim();
+        const period = $('#singleScanPeriodInput')?.value || '1m';
+
+        if (!coinId) {
+            showToast('شناسه ارز را وارد کنید', 'warning', 2000);
+            return;
+        }
+
+        const btn = $('#singleScanRunBtn');
+        if (btn) {
+            btn.disabled = true;
+            const span = btn.querySelector('span');
+            if (span) span.textContent = 'در حال اسکن...';
+        }
+
+        try {
+            const res = await API.runSingleScan({
+                coin_id: coinId,
+                period,
+            });
+
+            if (res.success) {
+                closeModal('singleScanInputModal');
+
+                state.currentSingleScanCoin = coinId;
+
+                // نمایش modal نتیجه
+                setTimeout(() => {
+                    renderSingleScanResult(res.data || res);
+                    openModal('singleScanModal');
+                }, 200);
+
+                showToast(`✅ اسکن ${coinId} تکمیل شد`, 'success', 2500);
+            } else {
+                showToast(res.error || 'خطا در اسکن', 'error', 3000);
+            }
+        } catch (err) {
+            showToast('خطای غیرمنتظره: ' + err.message, 'error', 3000);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                const span = btn.querySelector('span');
+                if (span) span.textContent = 'اسکن کن';
+            }
+        }
+    }
+
+    async function rerunSingleScan() {
+        if (!state.currentSingleScanCoin) return;
+        closeModal('singleScanModal');
+
+        const period = $('#singleScanPeriodInput')?.value || '1m';
+
+        setTimeout(async () => {
+            const res = await API.runSingleScan({
+                coin_id: state.currentSingleScanCoin,
+                period,
+            });
+
+            if (res.success) {
+                renderSingleScanResult(res.data || res);
+                openModal('singleScanModal');
+                showToast(`✅ اسکن مجدد انجام شد`, 'success', 2000);
+            } else {
+                showToast(res.error || 'خطا در اسکن مجدد', 'error', 3000);
+            }
+        }, 300);
+    }
+
+
+    // ============================================================
+    // CALIBRATION ACTIONS
+    // ============================================================
+    async function runCalibration(force = false) {
+        if (state.isCalibrating) {
+            showToast('یک کالیبراسیون در حال اجراست', 'warning', 2000);
+            return;
+        }
+
+        const form = readCalibrateForm();
+
+        const title = force ? 'کالیبراسیون اجباری' : 'کالیبراسیون';
+        const desc = `پروفایل: <code>${escapeHtml(form.profile_name)}</code><br>دوره: <code>${escapeHtml(form.period)}</code>${force ? '<br><br><strong style="color:var(--warning);">حالت اجباری — سریع‌تر ولی کم‌دقت‌تر</strong>' : ''}`;
+
+        showConfirm(
+            title,
+            desc,
+            false,
+            async () => {
+                state.isCalibrating = true;
+                updateCalibrateButtons(true);
+
+                setText('#calibrateHint', 'در حال اجرا...');
+
+                // Progress simulation
+                startProgressSimulation();
+
+                try {
+                    const res = force
+                        ? await API.forceCalibrate(form)
+                        : await API.calibrate(form);
+
+                    stopProgressSimulation();
+
+                    if (res.success) {
+                        const result = res.data || res;
+                        const score = result.score ?? result.avg_score;
+                        const improvement = result.improvement;
+
+                        let msg = `✅ کالیبراسیون موفق`;
+                        if (score !== undefined) msg += ` — Score: ${formatScore(score)}`;
+                        if (improvement !== undefined) {
+                            const impPct = (improvement * 100).toFixed(2);
+                            msg += ` — بهبود: ${impPct > 0 ? '+' : ''}${impPct}٪`;
+                        }
+
+                        showToast(msg, 'success', 5000);
+
+                        await loadCalibrationHistory();
+                    } else {
+                        showToast(res.error || 'کالیبراسیون ناموفق', 'error', 4000);
+                    }
+                } catch (err) {
+                    stopProgressSimulation();
+                    showToast('خطای غیرمنتظره: ' + err.message, 'error', 4000);
+                } finally {
+                    state.isCalibrating = false;
+                    updateCalibrateButtons(false);
+                    setText('#calibrateHint', 'آماده اجرا');
+                    hideScanProgress();
+                }
+            }
+        );
+    }
+
+    function updateCalibrateButtons(isLoading) {
+        const runBtn = $('#calibrateRunBtn');
+        const forceBtn = $('#calibrateForceBtn');
+
+        [runBtn, forceBtn].forEach(btn => {
+            if (!btn) return;
+            btn.disabled = isLoading;
+            btn.classList.toggle('loading', isLoading);
+        });
+
+        if (runBtn) {
+            const span = runBtn.querySelector('span');
+            if (span) span.textContent = isLoading ? 'در حال اجرا...' : 'اجرای کالیبراسیون';
+        }
+        if (forceBtn) {
+            const span = forceBtn.querySelector('span');
+            if (span) span.textContent = isLoading ? 'در حال اجرا...' : 'اجبار سریع';
+        }
+    }
+
+
+    // ============================================================
+    // LOAD FUNCTIONS
+    // ============================================================
+    async function loadLatestScan() {
+        const res = await API.getLatestScan();
+
+        if (res.success) {
+            state.latestScan = res.data || res;
+            renderHero();
+            renderResults();
+            return true;
+        }
+
+        // اگه خطای 404 بود → اسکنی وجود نداره
+        if (res.error && (res.error.includes('404') || res.error.includes('No recent scan'))) {
+            state.latestScan = null;
+            renderHero();
+            renderResults();
+            return true;
+        }
+
+        // fallback به localStorage
+        try {
+            const cached = localStorage.getItem(CONFIG.STORAGE.LAST_SCAN);
+            if (cached) {
+                state.latestScan = JSON.parse(cached);
+                renderHero();
+                renderResults();
+            }
+        } catch (e) {}
+
+        return false;
+    }
+
+    async function loadProfiles() {
+        const res = await API.getProfiles();
+        if (res.success) {
+            state.profiles = Array.isArray(res.data) ? res.data : [];
+            renderProfiles();
+            return true;
+        }
+        return false;
+    }
+
+    async function loadCalibrationHistory() {
+        const res = await API.getCalibrationHistory({ limit: 20 });
+        if (res.success) {
+            state.calibrationHistory = Array.isArray(res.data) ? res.data : [];
+            renderHistory();
+            return true;
+        }
+        return false;
+    }
+
+    async function loadScreenerConfig() {
+        const res = await API.getConfig();
+        if (res.success) {
+            state.screenerConfig = res.data || res;
+
+            // به‌روزرسانی فرم با config فعلی
+            const cfg = state.screenerConfig;
+            const batch = cfg.batch || {};
+            const symbols = cfg.symbols || {};
+
+            if (batch.timeframe) setInputValue('#scanTimeframe', batch.timeframe);
+            if (batch.candle_limit) setInputValue('#scanCandleLimit', batch.candle_limit);
+            if (symbols.count) setInputValue('#scanTopN', symbols.count);
+
+            return true;
+        }
+        return false;
+    }
+
+    function setInputValue(selector, value) {
+        const el = $(selector);
+        if (!el) return;
+        if (value !== undefined && value !== null) {
+            if (el.tagName === 'SELECT') {
+                const found = Array.from(el.options).some(o => o.value === value);
+                if (found) el.value = value;
+            } else {
+                el.value = value;
+            }
+        }
+    }
+
+
+    // ============================================================
+    // LOAD ALL
+    // ============================================================
+    async function loadAll() {
+        if (state.isLoading) return;
+        state.isLoading = true;
+
+        try {
+            await Promise.allSettled([
+                loadLatestScan(),
+                loadProfiles(),
+                loadScreenerConfig(),
+                loadCalibrationHistory(),
+            ]);
+        } catch (e) {
+            console.error('Load all error:', e);
+        } finally {
+            state.isLoading = false;
+        }
+    }
+
+
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    function bindEvents() {
+
+        // ===== Scan Actions =====
+        $('#scanRunBtn')?.addEventListener('click', runScan);
+        $('#scanSingleBtn')?.addEventListener('click', openSingleScanInput);
+
+        // ===== Scan Form Validation =====
+        $('#scanTopN')?.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value, 10);
+            if (isNaN(v)) return;
+            if (v < 1) e.target.value = 1;
+            if (v > 200) e.target.value = 200;
+        });
+
+        $('#scanMaxResults')?.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value, 10);
+            if (isNaN(v)) return;
+            if (v < 1) e.target.value = 1;
+            if (v > 100) e.target.value = 100;
+        });
+
+        // ===== Results Refresh =====
+        $('#resultsRefreshBtn')?.addEventListener('click', async () => {
+            const btn = $('#resultsRefreshBtn');
+            btn?.classList.add('loading');
+
+            await loadLatestScan();
+
+            setTimeout(() => btn?.classList.remove('loading'), 400);
+            showToast('نتایج بروزرسانی شد', 'success', 1500);
+        });
+
+        // ===== History Refresh =====
+        $('#historyRefreshBtn')?.addEventListener('click', async () => {
+            const btn = $('#historyRefreshBtn');
+            btn?.classList.add('loading');
+
+            await loadCalibrationHistory();
+
+            setTimeout(() => btn?.classList.remove('loading'), 400);
+            showToast('تاریخچه بروزرسانی شد', 'success', 1500);
+        });
+
+        // ===== Calibration Actions =====
+        $('#calibrateRunBtn')?.addEventListener('click', () => runCalibration(false));
+        $('#calibrateForceBtn')?.addEventListener('click', () => runCalibration(true));
+
+        // ===== Calibration Save Switch =====
+        $('#calibrateSaveSwitch')?.addEventListener('click', function() {
+            this.classList.toggle('active');
+            const value = this.classList.contains('active');
+            this.dataset.value = String(value);
+        });
+
+        // ===== Single Scan Modal Actions =====
+        $('#singleScanRunBtn')?.addEventListener('click', runSingleScan);
+        $('#singleScanAgainBtn')?.addEventListener('click', rerunSingleScan);
+
+        $('#singleScanCoinInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runSingleScan();
+            }
+        });
+
+        // ===== Confirm Modal =====
+        $('#confirmOkBtn')?.addEventListener('click', () => {
+            const cb = _confirmCallback;
+            closeModal('confirmModal');
+            _confirmCallback = null;
+            if (cb) setTimeout(cb, 100);
+        });
+
+        // ===== Modal Close =====
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('open');
+                if (!document.querySelector('.modal-overlay.open')) {
+                    document.body.style.overflow = '';
+                }
+            }
+        });
+
+        $$('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
+        });
+
+        // ===== Escape Key =====
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal('confirmModal');
+                closeModal('singleScanModal');
+                closeModal('singleScanInputModal');
+            }
+        });
+    }
+
+
+    // ============================================================
+    // AUTO REFRESH
+    // ============================================================
+    function startAutoRefresh() {
+        if (state.timers.autoRefresh) {
+            clearInterval(state.timers.autoRefresh);
+        }
+
+        state.timers.autoRefresh = setInterval(async () => {
+            if (document.visibilityState !== 'visible') return;
+            if (state.isScanning || state.isCalibrating) return;
+
+            // فقط وضعیت رو رفرش کن (سبک)
+            await loadLatestScan();
+        }, CONFIG.AUTO_REFRESH);
+    }
+
+    function stopAutoRefresh() {
+        if (state.timers.autoRefresh) {
+            clearInterval(state.timers.autoRefresh);
+            state.timers.autoRefresh = null;
+        }
+    }
+
+
+    // ============================================================
+    // MESSAGES FROM PARENT SHELL
+    // ============================================================
+    function setupMessages() {
+        window.addEventListener('message', (e) => {
+            if (!e.data || typeof e.data !== 'object') return;
+
+            const { type } = e.data;
+
+            if (type === 'theme-changed') {
+                if (e.data.theme) {
+                    document.documentElement.setAttribute('data-theme', e.data.theme);
+                }
+                if (e.data.color) {
+                    document.documentElement.setAttribute('data-color', e.data.color);
+                }
+            }
+
+            if (type === 'lang-changed') {
+                if (e.data.lang) {
+                    document.documentElement.setAttribute('lang', e.data.lang);
+                    document.documentElement.setAttribute('dir', e.data.lang === 'fa' ? 'rtl' : 'ltr');
+                }
+            }
+
+            if (type === 'refresh') {
+                loadAll();
+            }
+        });
+    }
+
+
+    // ============================================================
+    // LOCAL STORAGE — Restore state
+    // ============================================================
+    function restoreState() {
+        // Restore selected profile
+        try {
+            const saved = localStorage.getItem(CONFIG.STORAGE.SELECTED_PROFILE);
+            if (saved) state.selectedProfileId = saved;
+        } catch (e) {}
+
+        // Restore latest scan (fallback)
+        try {
+            const cached = localStorage.getItem(CONFIG.STORAGE.LAST_SCAN);
+            if (cached && !state.latestScan) {
+                const parsed = JSON.parse(cached);
+                // فقط اگه کمتر از ۱ ساعت پیش بوده
+                const ts = parsed.created_at || parsed.timestamp || parsed.scanned_at;
+                if (ts && (Date.now() - new Date(ts).getTime()) < 60 * 60 * 1000) {
+                    state.latestScan = parsed;
+                }
+            }
+        } catch (e) {}
+    }
+
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        console.log(
+            '%c 🔍 Model Screener v1.0 ',
+            'background: linear-gradient(135deg, #a855f7, #c084fc); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
+        );
+
+        showInitialLoader();
+
+        // Restore state از localStorage
+        restoreState();
+
+        // Load data
+        await loadAll();
+
+        // Bind events
+        bindEvents();
+        setupMessages();
+
+        // Auto refresh
+        startAutoRefresh();
+
+        // Hide loader
+        hideInitialLoader();
+
+        // Welcome toast
+        setTimeout(() => {
+            const total = state.latestScan?.total_scanned ?? 0;
+            if (total > 0) {
+                showToast(`👋 اسکنر آماده — آخرین اسکن ${formatNumber(total)} ارز`, 'success', 2500);
+            } else {
+                showToast('👋 اسکنر آماده — آماده شروع اسکن', 'info', 2500);
+            }
+        }, 600);
+
+        console.log('✅ Model Screener ready');
+    }
+
+
+    // ============================================================
+    // BOOT
+    // ============================================================
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+
+    // ============================================================
+    // CLEANUP
+    // ============================================================
+    window.__modelScreenerCleanup = function() {
+        stopAutoRefresh();
+        stopProgressSimulation();
+        window.__modelScreenerPart1Loaded = false;
+        window.__modelScreenerPart2Loaded = false;
+    };
+
+    console.log('✅ Model Screener — Part 2 (Actions + Events + Init) loaded');
+
+});
+
+})();
+</script>
+</body>
+</html>
