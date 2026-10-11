@@ -117,6 +117,17 @@ def analyzer_portfolio_route():
 def model():
     return send_from_directory('frontend', 'model.html')
 
+@web_bp.route('/model_tabs/<path:filename>')
+@require_auth()
+def model_tabs(filename):
+    if '..' in filename or filename.startswith('/'):
+        return redirect('/404')
+    return send_from_directory('frontend/model_tabs', filename)
+
+@web_bp.route('/model/<path:tab>')
+@require_auth()
+def model_tab_route(tab):
+    return send_from_directory('frontend', 'model.html')
 
 # ============================================================
 # ۳.۶. صفحه دیتابیس (Database Overview)
