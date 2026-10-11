@@ -665,6 +665,9 @@ body {
     font-weight: 700;
     color: var(--text-light);
     white-space: nowrap;
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: right;
 }
 
 .metric-bar {
@@ -4467,25 +4470,34 @@ function renderRedisCard(slot, data, isActive) {
     renderMetric(prefix, 'Bandwidth', data.bandwidthUsedBytes, data.bandwidthLimitBytes, bandwidthPct, 'bandwidth');
 }
 
-function renderMetric(prefix, metric, used, limit, percent, format) {
+function renderMetric(prefix, metric, used, limit, percent, format, data = null) {
     const valEl = $(`#${prefix}${metric}`);
     if (valEl) {
+        let displayText;
+        
         if (format === 'commands') {
-            valEl.textContent = `${formatCompact(used)} / ${formatCompact(limit)}`;
+            displayText = `${formatCompact(used)} / ${formatCompact(limit)}`;
         } else if (format === 'bandwidth') {
-            valEl.textContent = `${formatBytesToGB(used)} / ${formatBytesToGB(limit)}`;
+            if (data && data.bandwidthHuman) {
+                const limitText = formatBytesToGB(limit) + ' GB';
+                displayText = `${data.bandwidthHuman} / ${limitText}`;
+            } else {
+                displayText = `${formatBytesToGB(used)} / ${formatBytesToGB(limit)}`;
+            }
         } else {
-            valEl.textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
+            displayText = `${formatBytes(used)} / ${formatBytes(limit)}`;
         }
+        
+        valEl.innerHTML = `<span dir="ltr" style="unicode-bidi: isolate;">${displayText}</span>`;
     }
-
+    
     const barEl = $(`#${prefix}${metric}Bar`);
     if (barEl) {
         const level = getThresholdLevel(percent);
         barEl.className = 'metric-bar-fill ' + level;
         barEl.style.width = Math.min(percent, 100).toFixed(1) + '%';
     }
-
+    
     const pctEl = $(`#${prefix}${metric}Percent`);
     if (pctEl) {
         pctEl.textContent = toPersian(percent.toFixed(1)) + '٪';
