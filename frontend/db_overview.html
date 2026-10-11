@@ -3359,7 +3359,440 @@ body {
     line-height: 1.5;
 }
 
+/* ============================================================
+   READY INDICATOR (Header)
+   ============================================================ */
+.ready-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
 
+.ready-indicator .ready-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ready-indicator.ready {
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.3);
+    background: var(--success-bg);
+}
+
+.ready-indicator.ready .ready-dot {
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
+    animation: pulseDot 2s ease-in-out infinite;
+}
+
+.ready-indicator.not-ready {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+    background: var(--danger-bg);
+}
+
+.ready-indicator.not-ready .ready-dot {
+    background: var(--danger);
+    box-shadow: 0 0 6px var(--danger);
+    animation: pulseDot 1s ease-in-out infinite;
+}
+
+.ready-indicator .ready-label {
+    display: none;
+}
+
+@media (min-width: 900px) {
+    .ready-indicator .ready-label { display: inline; }
+}
+
+/* ============================================================
+   FACTORY STATUS CARD
+   ============================================================ */
+.factory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.factory-stat {
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.factory-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0.5;
+}
+
+.factory-stat.success::before { background: var(--success); opacity: 1; }
+.factory-stat.warning::before { background: var(--warning); opacity: 1; }
+.factory-stat.danger::before  { background: var(--danger);  opacity: 1; }
+
+.factory-stat:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.factory-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 700;
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.factory-stat-value {
+    font-family: var(--mono-font);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.4px;
+    line-height: 1.1;
+}
+
+.factory-stat.success .factory-stat-value { color: var(--success); }
+.factory-stat.warning .factory-stat-value { color: var(--warning); }
+.factory-stat.danger .factory-stat-value  { color: var(--danger); }
+
+.factory-stat-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--mono-font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================================
+   HEALTH FULL PANEL
+   ============================================================ */
+.health-full-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.health-full-panel::-webkit-scrollbar { width: 4px; }
+.health-full-panel::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.health-db-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    transition: all 0.15s;
+    border-right: 3px solid var(--border-strong);
+}
+
+.health-db-item.healthy { border-right-color: var(--success); }
+.health-db-item.warning { border-right-color: var(--warning); }
+.health-db-item.critical { border-right-color: var(--danger); }
+.health-db-item.offline { border-right-color: var(--text-dim); }
+
+.health-db-item:hover {
+    background: var(--bg-hover-strong);
+    transform: translateX(-2px);
+}
+
+.health-db-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+}
+
+.health-db-item.healthy .health-db-icon { background: var(--success-bg); color: var(--success); }
+.health-db-item.warning .health-db-icon { background: var(--warning-bg); color: var(--warning); }
+.health-db-item.critical .health-db-icon { background: var(--danger-bg); color: var(--danger); }
+.health-db-item.offline .health-db-icon { background: var(--bg-hover-strong); color: var(--text-dim); }
+
+.health-db-icon svg { width: 15px; height: 15px; }
+
+.health-db-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.health-db-name {
+    font-family: var(--mono-font);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.health-db-meta {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.health-db-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.health-db-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: var(--mono-font);
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border: 1px solid;
+    flex-shrink: 0;
+}
+
+.health-db-status.healthy {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.health-db-status.warning {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.health-db-status.critical {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.health-db-status.offline {
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    border-color: var(--border);
+}
+
+.health-db-status::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* ============================================================
+   BACKUPS TABLE
+   ============================================================ */
+.backup-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    font-size: 12px;
+}
+
+.backup-row:last-child { border-bottom: none; }
+.backup-row:hover { background: var(--bg-hover); }
+
+.backup-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.backup-icon.success { background: var(--success-bg); color: var(--success); }
+.backup-icon.warning { background: var(--warning-bg); color: var(--warning); }
+
+.backup-icon svg { width: 13px; height: 13px; }
+
+.backup-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.backup-name {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.backup-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+    display: flex;
+    gap: 8px;
+}
+
+.backup-size {
+    font-family: var(--mono-font);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--info);
+    flex-shrink: 0;
+}
+
+.backup-status-badge {
+    font-family: var(--mono-font);
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.backup-status-badge.completed { background: var(--success-bg); color: var(--success); }
+.backup-status-badge.pending   { background: var(--warning-bg); color: var(--warning); }
+.backup-status-badge.failed    { background: var(--danger-bg);  color: var(--danger); }
+
+.backups-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.backups-empty svg {
+    width: 32px;
+    height: 32px;
+    opacity: 0.4;
+}
+
+/* ============================================================
+   DB CARD RECONNECT BUTTON
+   ============================================================ */
+.db-card-reconnect {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 26px;
+    height: 26px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    padding: 0;
+    opacity: 0;
+    z-index: 3;
+    box-shadow: var(--shadow-sm);
+}
+
+.db-card:hover .db-card-reconnect { opacity: 1; }
+
+.db-card-reconnect:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: scale(1.08);
+}
+
+.db-card-reconnect svg { width: 12px; height: 12px; }
+
+.db-card-reconnect.spinning svg {
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   LOADING SKELETON در Panels
+   ============================================================ */
+.panel-loader {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.panel-loader .loader-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 8px;
+}
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -3420,8 +3853,13 @@ body {
                     </nav>
                     <h1 class="page-title">مدیریت دیتابیس</h1>
                 </div>
-
+                
                 <div class="header-actions">
+                    <!-- Ready Indicator -->
+                    <div class="ready-indicator" id="readyIndicator" title="وضعیت آمادگی سیستم">
+                        <span class="ready-dot"></span>
+                        <span class="ready-label" id="readyLabel">—</span>
+                    </div>
                     <!-- Live Clock -->
                     <div class="status-pill live-clock" id="liveClock">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3728,9 +4166,40 @@ body {
                 </span>
                 <span class="qa-label">OHLCV</span>
             </button>
+            <!-- 🆕 Reload Config -->
+            <button class="qa-btn" data-action="reload-config">
+                <span class="qa-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-9-9"/>
+                        <polyline points="21 3 21 9 15 9"/>
+                    </svg>
+                </span>
+                <span class="qa-label">Reload</span>
+            </button>
+
+            <!-- 🆕 Backup Create -->
+            <button class="qa-btn" data-action="backup-create">
+                <span class="qa-icon success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                </span>
+                <span class="qa-label">Backup</span>
+            </button>
+
+            <!-- 🆕 Migrate Existing -->
+            <button class="qa-btn" data-action="migrate-existing">
+                <span class="qa-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+                    </svg>
+                </span>
+                <span class="qa-label">Migrate</span>
+            </button>
         </section>
-
-
+        
         <!-- ═══════════ DATABASE CARDS GRID ═══════════ -->
         <section class="db-cards-grid" id="dbCardsGrid"></section>
 
@@ -3830,6 +4299,67 @@ body {
                             </svg>
                             <span>ریست</span>
                         </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- ═══════════ HEALTH FULL + FACTORY STATUS ═══════════ -->
+        <section class="grid-2col" style="margin-bottom: 10px;">
+            <!-- 🆕 Health Full -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span>Health Details</span>
+                    </div>
+                    <button class="panel-link" data-refresh="health-full" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="health-full-panel" id="healthFullPanel">
+                        <div class="panel-loader">
+                            <div class="loader-spinner"></div>
+                            <div>در حال بارگذاری...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🆕 Factory Status -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 20h20"/>
+                            <path d="M5 20V8l5 4V8l5 4V8l5 4v8"/>
+                            <path d="M9 20v-4"/>
+                        </svg>
+                        <span>Factory Status</span>
+                    </div>
+                    <button class="panel-link" data-refresh="factory" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="factory-grid" id="factoryGrid">
+                        <div class="panel-loader">
+                            <div class="loader-spinner"></div>
+                            <div>در حال بارگذاری...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3960,6 +4490,36 @@ body {
     </div>
 </main>
 
+        <!-- ═══════════ BACKUPS PANEL ═══════════ -->
+        <section class="panel" style="margin-bottom: 10px;">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 8v13H3V8"/>
+                        <path d="M1 3h22v5H1z"/>
+                        <path d="M10 12h4"/>
+                    </svg>
+                    <span>پشتیبان‌گیری‌ها</span>
+                    <span class="panel-count" id="backupsCount">۰</span>
+                </div>
+                <button class="panel-link" data-refresh="backups" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-body no-padding">
+                <div id="backupsPanel">
+                    <div class="panel-loader">
+                        <div class="loader-spinner"></div>
+                        <div>در حال بارگذاری...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
 <!-- ═══════════ MODAL: Alert Details ═══════════ -->
 <div class="modal-overlay" id="alertModal">
@@ -4481,6 +5041,10 @@ const state = {
         healing: true,
         alerts: true,
         ohlcv: true,
+        dbReady: false,
+        healthFull: null,
+        factoryStatus: null,
+        backups: [],
         operations: true,
     },
 
@@ -4949,8 +5513,22 @@ function renderDbCards() {
 
         return `
             <div class="db-card status-${connected ? level : 'offline'}"
-                 data-db="${escapeHtml(name)}"
-                 style="animation-delay: ${idx * 0.05}s;">
+                data-db="${escapeHtml(name)}"
+                style="animation-delay: ${idx * 0.05}s;">
+        
+                <!-- 🆕 Reconnect Button -->
+                <button class="db-card-reconnect" 
+                        data-reconnect="${escapeHtml(name)}" 
+                        title="Reconnect ${escapeHtml(name)}"
+                        type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+        
                 <div class="db-card-header">
                     <div class="db-card-name-block">
                         <div class="db-card-icon ${iconClass}">
@@ -4996,9 +5574,20 @@ function renderDbCards() {
         });
     }, 200);
 
-    $$('.db-card').forEach(card => {
-        card.addEventListener('click', () => {
+        $$('.db-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // اگه روی reconnect کلیک شد، بی‌خیال
+            if (e.target.closest('.db-card-reconnect')) return;
             openDbDetailsModal(card.dataset.db);
+        });
+    });
+
+    // 🆕 Bind reconnect buttons
+    $$('.db-card-reconnect').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dbName = btn.dataset.reconnect;
+            reconnectOne(dbName);
         });
     });
 }
@@ -5200,7 +5789,223 @@ function renderTopTables() {
     `).join('');
 }
 
+// ═══════════════════════════════════════════════════════════
+// 🆕 RENDERERS (v11.1)
+// ═══════════════════════════════════════════════════════════
 
+function renderReadyIndicator() {
+    const el = $('#readyIndicator');
+    const label = $('#readyLabel');
+    if (!el || !label) return;
+
+    const ready = state.dbReady;
+    el.classList.toggle('ready', !!ready);
+    el.classList.toggle('not-ready', !ready);
+    label.textContent = ready ? 'READY' : 'NOT READY';
+    el.title = ready ? 'سیستم آماده است' : 'سیستم آماده نیست';
+}
+
+function renderHealthFull() {
+    const panel = $('#healthFullPanel');
+    if (!panel) return;
+
+    const data = state.healthFull || {};
+    const details = data.details || data.databases || data || {};
+
+    const entries = Object.entries(details);
+
+    if (entries.length === 0) {
+        panel.innerHTML = `
+            <div class="backups-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <div>داده‌ای موجود نیست</div>
+            </div>
+        `;
+        return;
+    }
+
+    panel.innerHTML = entries.map(([name, info]) => {
+        const status = info.status || info.health || (info.connected ? 'healthy' : 'offline');
+        const level = status === 'healthy' || status === 'ok' ? 'healthy'
+                    : status === 'warning' || status === 'degraded' ? 'warning'
+                    : status === 'critical' || status === 'error' ? 'critical'
+                    : 'offline';
+
+        const ping = info.ping_ms || info.latency_ms;
+        const connTime = info.connected_at || info.last_check;
+
+        return `
+            <div class="health-db-item ${level}">
+                <div class="health-db-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                </div>
+                <div class="health-db-info">
+                    <div class="health-db-name">${escapeHtml(name)}</div>
+                    <div class="health-db-meta">
+                        ${ping !== undefined ? `<span>Ping: ${ping}ms</span>` : ''}
+                        ${connTime ? `<span>${formatTimeAgo(connTime)}</span>` : ''}
+                    </div>
+                </div>
+                <span class="health-db-status ${level}">
+                    ${level === 'healthy' ? 'Healthy'
+                      : level === 'warning' ? 'Warning'
+                      : level === 'critical' ? 'Critical'
+                      : 'Offline'}
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderHealthFullError(msg) {
+    const panel = $('#healthFullPanel');
+    if (!panel) return;
+    panel.innerHTML = `
+        <div class="backups-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div>خطا: ${escapeHtml(msg)}</div>
+        </div>
+    `;
+}
+
+function renderFactoryStatus() {
+    const grid = $('#factoryGrid');
+    if (!grid) return;
+
+    const data = state.factoryStatus || {};
+
+    const items = [
+        {
+            label: 'Status',
+            value: data.initialized || data.status === 'ready' ? 'READY' : 'INIT',
+            level: data.initialized || data.status === 'ready' ? 'success' : 'warning',
+            hint: data.status || 'unknown',
+        },
+        {
+            label: 'Databases',
+            value: data.total_databases ?? Object.keys(data.databases || {}).length ?? 0,
+            level: 'success',
+            hint: 'ثبت‌شده',
+        },
+        {
+            label: 'Connected',
+            value: data.connected_count ?? data.connected ?? 0,
+            level: (data.connected_count ?? 0) > 0 ? 'success' : 'danger',
+            hint: 'فعال',
+        },
+        {
+            label: 'Retries',
+            value: data.total_retries ?? 0,
+            level: (data.total_retries ?? 0) > 3 ? 'warning' : 'success',
+            hint: 'تلاش مجدد',
+        },
+        {
+            label: 'Failed',
+            value: (data.failed_connections || []).length,
+            level: (data.failed_connections || []).length > 0 ? 'danger' : 'success',
+            hint: 'اتصال ناموفق',
+        },
+        {
+            label: 'Health Check',
+            value: data.health_check_enabled ? 'ON' : 'OFF',
+            level: data.health_check_enabled ? 'success' : 'warning',
+            hint: 'بررسی خودکار',
+        },
+    ];
+
+    grid.innerHTML = items.map(item => `
+        <div class="factory-stat ${item.level}">
+            <span class="factory-stat-label">${escapeHtml(item.label)}</span>
+            <span class="factory-stat-value">${toPersian(item.value)}</span>
+            <span class="factory-stat-hint">${escapeHtml(String(item.hint))}</span>
+        </div>
+    `).join('');
+}
+
+function renderFactoryStatusError(msg) {
+    const grid = $('#factoryGrid');
+    if (!grid) return;
+    grid.innerHTML = `
+        <div style="grid-column: 1/-1;">
+            <div class="backups-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div>خطا: ${escapeHtml(msg)}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderBackups() {
+    const panel = $('#backupsPanel');
+    const countEl = $('#backupsCount');
+    if (!panel) return;
+
+    const backups = state.backups || [];
+
+    if (countEl) countEl.textContent = toPersian(backups.length);
+
+    if (backups.length === 0) {
+        panel.innerHTML = `
+            <div class="backups-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 8v13H3V8"/>
+                    <path d="M1 3h22v5H1z"/>
+                    <path d="M10 12h4"/>
+                </svg>
+                <div>هیچ پشتیبان‌گیری موجود نیست</div>
+            </div>
+        `;
+        return;
+    }
+
+    panel.innerHTML = backups.map(b => {
+        const status = b.status || 'completed';
+        const statusClass = status === 'completed' ? 'completed'
+                          : status === 'pending' || status === 'running' ? 'pending'
+                          : 'failed';
+
+        const sourceTable = b.source_table || b.table || '—';
+        const sourceDb = b.source_db || b.db || '—';
+        const size = b.size_mb ? formatBytes(b.size_mb) : '—';
+        const createdAt = b.created_at || b.created || Date.now();
+
+        return `
+            <div class="backup-row">
+                <div class="backup-icon ${statusClass === 'completed' ? 'success' : statusClass === 'pending' ? 'warning' : ''}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                    </svg>
+                </div>
+                <div class="backup-info">
+                    <div class="backup-name">${escapeHtml(sourceDb)} → ${escapeHtml(sourceTable)}</div>
+                    <div class="backup-meta">
+                        <span>${formatTimeAgo(createdAt)}</span>
+                        ${b.records ? `<span>${toPersian(b.records)} رکورد</span>` : ''}
+                    </div>
+                </div>
+                <span class="backup-size">${escapeHtml(size)}</span>
+                <span class="backup-status-badge ${statusClass}">${escapeHtml(status)}</span>
+            </div>
+        `;
+    }).join('');
+}
 // ============================================================
 // RENDER: OPERATIONS LOG
 // ============================================================
@@ -5854,7 +6659,48 @@ async function loadTableSizes() {
         renderTopTables();
     }
 }
+// ═══════════════════════════════════════════════════════════
+// 🆕 NEW LOADERS (v11.1)
+// ═══════════════════════════════════════════════════════════
 
+async function loadReady() {
+    const res = await API.request('/api/db/ready');
+    if (res.success !== undefined) {
+        state.dbReady = res.ready === true;
+    }
+    renderReadyIndicator();
+}
+
+async function loadHealthFull() {
+    const res = await API.request('/api/db/health/full');
+    if (res.success) {
+        state.healthFull = res.data || {};
+        renderHealthFull();
+    } else {
+        renderHealthFullError(res.error || 'خطا');
+    }
+}
+
+async function loadFactoryStatus() {
+    const res = await API.request('/api/db/factory/status');
+    if (res.success) {
+        state.factoryStatus = res.data || {};
+        renderFactoryStatus();
+    } else {
+        renderFactoryStatusError(res.error || 'خطا');
+    }
+}
+
+async function loadBackups() {
+    const res = await API.request('/api/db/backup/list?limit=10');
+    if (res.success) {
+        state.backups = Array.isArray(res.data) ? res.data : [];
+        renderBackups();
+    } else {
+        state.backups = [];
+        renderBackups();
+    }
+}
 
 // ============================================================
 // REFRESH ALL
@@ -5886,6 +6732,10 @@ async function refreshAll(showLoader = false) {
             loadAlerts(),
             loadOhlcvStats(),
             loadTableSizes(),
+            loadReady(),
+            loadHealthFull(),
+            loadFactoryStatus(),
+            loadBackups(),
         ]);
 
         renderStatusBar();
@@ -5899,6 +6749,7 @@ async function refreshAll(showLoader = false) {
         renderAlerts();
         updateStorageChart();
         updateHealthRadar();
+        renderReadyIndicator();
     } catch (e) {
         console.error('Refresh error:', e);
     }
@@ -5919,7 +6770,6 @@ function updateAfterActions() {
     renderAlerts();
     renderStatusBar();
 }
-
 
 // ============================================================
 // PLACEHOLDERS (Part 2)
@@ -6227,7 +7077,133 @@ waitForShared(function(shared) {
             }
         }, 600);
     }
+    // ═══════════════════════════════════════════════════════════
+    // 🆕 ACTIONS (v11.1)
+    // ═══════════════════════════════════════════════════════════
 
+    async function reloadConfig() {
+        const ok = await showConfirm(
+            'بارگذاری مجدد Config',
+            'تنظیمات دیتابیس مجدداً بارگذاری می‌شن. ادامه؟',
+            false
+        );
+        if (!ok) return;
+
+        Loading.showModal({
+            message: 'در حال بارگذاری...',
+            subMessage: 'reload config',
+            showProgress: true,
+            duration: 1500,
+        });
+
+        const res = await API.request('/api/db/reload-config', { method: 'POST' });
+
+        if (res.success) {
+            Loading.completeModal();
+            showToast('✅ تنظیمات مجدداً بارگذاری شد', 'success', 2000);
+            setTimeout(() => refreshAll(), 800);
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در بارگذاری', 'error', 2500);
+        }
+    }
+
+    async function createBackup() {
+        const sourceDb = await promptDialog(
+            'ساخت پشتیبان',
+            'نام دیتابیس (primary, backup, analytics, logs)',
+            'text',
+            'primary'
+        );
+        if (!sourceDb) return;
+
+        const sourceTable = await promptDialog(
+            'نام جدول',
+            'نام جدول برای پشتیبان',
+            'text',
+            'predictions'
+        );
+        if (!sourceTable) return;
+
+        Loading.showModal({
+            message: 'در حال ساخت پشتیبان...',
+            subMessage: `${sourceDb}.${sourceTable}`,
+            showProgress: true,
+            duration: 3000,
+        });
+
+        const res = await API.request('/api/db/backup/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                source_db: sourceDb,
+                source_table: sourceTable,
+            }),
+        });
+
+        if (res.success) {
+            Loading.completeModal();
+            showToast('✅ پشتیبان ساخته شد', 'success', 2500);
+            await loadBackups();
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در ساخت', 'error', 2500);
+        }
+    }
+
+    async function migrateExisting() {
+        const ok = await showConfirm(
+            'Migrate Existing',
+            'افزودن ستون‌های جدید به جداول موجود. ادامه؟',
+            false
+        );
+        if (!ok) return;
+
+        Loading.showModal({
+            message: 'در حال Migration...',
+            subMessage: 'افزودن ستون‌های جدید',
+            showProgress: true,
+            duration: 2500,
+        });
+
+        const res = await API.request('/api/db/migrate-existing', { method: 'POST' });
+
+        if (res.success) {
+            Loading.completeModal();
+            showToast('✅ Migration انجام شد', 'success', 2500);
+            if (res.output) {
+                console.log('[Migration]', res.output);
+            }
+            setTimeout(() => refreshAll(), 800);
+        } else {
+            Loading.hideModal();
+            showToast(res.error || 'خطا در Migration', 'error', 2500);
+        }
+    }
+
+    async function reconnectOne(dbName) {
+        const btn = $(`.db-card-reconnect[data-reconnect="${dbName}"]`);
+        if (btn) {
+            btn.classList.add('spinning');
+            btn.disabled = true;
+        }
+
+        showToast(`🔄 Reconnecting ${dbName}...`, 'info', 1500);
+
+        const res = await API.request(`/api/db/${dbName}/reconnect`, { method: 'POST' });
+
+        if (btn) {
+            btn.classList.remove('spinning');
+            btn.disabled = false;
+        }
+
+        if (res.success) {
+            showToast(`✅ ${dbName} reconnect شد`, 'success', 2000);
+            await loadDbList();
+            renderDbCards();
+        } else {
+            showToast(res.error || `خطا در reconnect ${dbName}`, 'error', 2500);
+        }
+    }
     async function triggerHealing() {
         const modal = $('#globalModalLoader');
         if (modal) {
@@ -6801,6 +7777,15 @@ waitForShared(function(shared) {
                 case 'ohlcv-cleanup':
                     openOhlcvCleanup();
                     break;
+                case 'reload-config':
+                    reloadConfig();
+                    break;
+                case 'backup-create':
+                    createBackup();
+                    break;
+                case 'migrate-existing':
+                    migrateExisting();
+                    break;
             }
         });
 
@@ -6839,6 +7824,24 @@ waitForShared(function(shared) {
                 renderRouter();
             }
             showToast('Router بروزرسانی شد', 'success', 1500);
+        });
+
+        // 🆕 Health Full Refresh
+        $('[data-refresh="health-full"]')?.addEventListener('click', async () => {
+            await loadHealthFull();
+            showToast('Health بروزرسانی شد', 'success', 1500);
+        });
+
+        // 🆕 Factory Refresh
+        $('[data-refresh="factory"]')?.addEventListener('click', async () => {
+            await loadFactoryStatus();
+            showToast('Factory بروزرسانی شد', 'success', 1500);
+        });
+
+        // 🆕 Backups Refresh
+        $('[data-refresh="backups"]')?.addEventListener('click', async () => {
+            await loadBackups();
+            showToast('پشتیبان‌گیری‌ها بروزرسانی شد', 'success', 1500);
         });
 
         // Tab Navigation
