@@ -5251,7 +5251,6 @@ function setupTabs() {
 }
 
 async function switchSource(sourceId, kind) {
-    // Reset state
     state.currentSource = sourceId;
     state.currentKind = kind;
     state.currentTable = null;
@@ -5260,19 +5259,27 @@ async function switchSource(sourceId, kind) {
     state.sortOrder = 'DESC';
     state.search = '';
     clearSelection();
-
+    
     const source = state.sources.find(s => s.id === sourceId);
     state.currentDBType = source?.type || (kind === 'archive' ? 'Archive' : 'PostgreSQL');
-
+    
     // Update UI
     applySourceUI();
     renderDbSelector();
     resetDataArea();
-
-    // Load new tables
+    
+    // 🆕 Load PG Stats / Archive Stats
+    if (kind === 'archive') {
+        $('#pgStatsBar').style.display = 'none';
+        await loadArchiveStats();
+    } else {
+        $('#archiveStatsCard').style.display = 'none';
+        await loadPgStats();
+    }
+    
+    // Load tables
     await loadTables(true);
-
-    // Instant feedback
+    
     showInstantFeedback(
         kind === 'archive' ? `آرشیو بارگذاری شد` : `دیتابیس ${sourceId} بارگذاری شد`,
         'check'
