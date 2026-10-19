@@ -3076,15 +3076,19 @@ def predict_single():
     try:
         coin = request.args.get('coin', 'bitcoin')
         period = request.args.get('period', '24h')
+        engine = request.args.get('engine', 'auto')  # 🆕
         
         container = current_app.container
-        prediction_service = container.get('prediction_service')  # ✅
-        dto = prediction_service.predict_single(coin, period)
+        prediction_service = container.get('prediction_service')
+        dto = prediction_service.predict_single(
+            coin, period, engine=engine
+        )
         
         return jsonify({
             'success': dto.success,
             'data': dto.data,
             'error': dto.error,
+            'engine': engine,  # 🆕
             'timestamp': datetime.now(timezone.utc).isoformat()
         }), 200 if dto.success else 400
     except Exception as e:
@@ -3102,19 +3106,23 @@ def predict_multiple():
         
         coins = data.get('coins', [])
         period = data.get('period', '24h')
+        engine = data.get('engine', 'auto')  # 🆕
         
         if not coins:
             return jsonify({'success': False, 'error': 'No coins provided'}), 400
         
         container = current_app.container
-        prediction_service: PredictionService = container.get('prediction_service')
-        dto = prediction_service.predict_multiple(coins, period)
+        prediction_service = container.get('prediction_service')
+        dto = prediction_service.predict_multiple(
+            coins, period, engine=engine
+        )
         
         return jsonify({
             'success': dto.success,
             'data': dto.data,
             'count': dto.count,
             'error': dto.error,
+            'engine': engine,  # 🆕
             'timestamp': datetime.now(timezone.utc).isoformat()
         }), 200 if dto.success else 400
     except Exception as e:
@@ -3148,6 +3156,27 @@ def predict_explain():
         })
     except Exception as e:
         logger.error(f"Predict explain error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/predict/engines', methods=['GET'])
+def predict_engines():
+    """لیست موتورهای موجود"""
+    try:
+        container = current_app.container
+        router = container.get('prediction_router')
+        stats = router.get_stats() if router else {}
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'engines': ['gemini', 'rule', 'auto'],
+                'gemini_available': stats.get('gemini_available', False),
+                'rule_available': stats.get('rule_available', False),
+                'default': 'auto',
+            },
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
