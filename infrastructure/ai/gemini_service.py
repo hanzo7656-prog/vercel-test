@@ -110,7 +110,9 @@ class GeminiService:
         system: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
         model: str = DEFAULT_MODEL,
-        temperature: float = 0.7,
+        temperature: float = 0.85,
+        top_p: float = 0.95,
+        top_k: int = 40,
     ) -> Dict[str, Any]:
         """
         چت با تاریخچه.
@@ -167,6 +169,8 @@ class GeminiService:
                 system=final_system,
                 model=model,
                 temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
             )
             
             self.stats["chats"] += 1
@@ -267,7 +271,9 @@ class GeminiService:
                 contents=contents,
                 system=final_system,
                 model=model,
-                temperature=0.4,
+                temperature=0.6,  # 🔄 از 0.4 به 0.6 (خلاق‌تر)
+                top_p=0.95,       # 🆕
+                top_k=40,         # 🆕
             )
             
             self.stats["images_analyzed"] += 1
@@ -366,6 +372,8 @@ class GeminiService:
                 system=SYSTEM_PROMPT_SIGNAL,
                 model=model,
                 temperature=0.5,
+                top_p=0.95,
+                top_k=40,
             )
             
             self.stats["signals_explained"] += 1
