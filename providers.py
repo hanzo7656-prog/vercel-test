@@ -125,7 +125,33 @@ def get_trainer():
     """Auto Trainer"""
     return get_service('trainer')
 
+# ============================================================
+# AI Providers 🆕
+# ============================================================
 
+def get_gemini_client():
+    """Gemini Client"""
+    return get_service('gemini_client')
+
+
+def get_gemini_service():
+    """Gemini Service"""
+    return get_service('gemini_service')
+
+
+def get_ai_chat_use_case():
+    """AI Chat Use Case"""
+    return get_service('ai_chat_use_case')
+
+
+def get_ai_analyze_image_use_case():
+    """AI Analyze Image Use Case"""
+    return get_service('ai_analyze_image_use_case')
+
+
+def get_ai_explain_use_case():
+    """AI Explain Use Case"""
+    return get_service('ai_explain_use_case')
 # ============================================================
 # Core Providers
 # ============================================================
