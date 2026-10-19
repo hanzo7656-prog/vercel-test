@@ -490,4 +490,25 @@ class GeminiService:
             if isinstance(value, (dict, list)):
                 lines.append(f"- {key}: {json.dumps(value, ensure_ascii=False)}")
             else:
-                lines.append(f
+                lines.append(f"- {key}: {value}")
+        
+        return "\n".join(lines)
+    
+    # ============================================================
+    # Stats
+    # ============================================================
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """آمار کامل."""
+        return {
+            **self.stats,
+            "available": self.is_available,
+            "client_stats": self.client.get_stats(),
+        }
+
+
+# ============================================================
+# Singleton
+# ============================================================
+
+gemini_service: GeminiService = GeminiService()
