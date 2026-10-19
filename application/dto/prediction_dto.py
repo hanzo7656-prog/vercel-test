@@ -1,14 +1,13 @@
 # application/dto/prediction_dto.py
 # ============================================================
-# DTO: Prediction - نسخه ۳.۰
-# Validation + RuleEngine Support
+# DTO: Prediction - نسخه ۴.۰
+# Validation + RuleEngine Support + Engine Selection
 # ============================================================
 # 
-# تغییرات نسخه ۳.۰:
-#   - حذف TrainRequestDTO (XGBoost-specific)
-#   - حذف BatchTrainRequestDTO (XGBoost-specific)
-#   - اضافه CalibrateRequestDTO (برای WeightCalibrator)
-#   - اضافه ScanRequestDTO (برای Screener)
+# تغییرات نسخه ۴.۰:
+#   - اضافه شدن engine به PredictionRequestDTO
+#   - پشتیبانی از gemini / rule / auto
+#   - بهبود validation
 # ============================================================
 
 from dataclasses import dataclass, field
@@ -30,6 +29,9 @@ VALID_CALIBRATION_PROFILES: List[str] = [
 ]
 VALID_TIMEFRAMES: List[str] = ["1m", "5m", "15m", "1h", "4h", "1d"]
 
+# 🆕 موتورهای پیش‌بینی
+VALID_ENGINES: List[str] = ["gemini", "rule", "auto"]
+
 
 # ============================================================
 # Prediction Request DTO
@@ -44,11 +46,13 @@ class PredictionRequestDTO:
         coin: شناسه ارز (پیش‌فرض: bitcoin)
         period: بازه زمانی (پیش‌فرض: 24h)
         coins: لیست ارزها (برای پیش‌بینی چندارز)
+        engine: موتور پیش‌بینی (gemini | rule | auto) 🆕
     """
     
     coin: str = "bitcoin"
     period: str = "24h"
     coins: Optional[List[str]] = None
+    engine: str = "auto"  # 🆕
     
     # ============================================================
     # Validation
@@ -74,6 +78,14 @@ class PredictionRequestDTO:
                 errors.append("coins باید لیست باشه")
             elif len(self.coins) == 0:
                 errors.append("coins نمی‌تونه خالی باشه")
+            elif len(self.coins) > 20:
+                errors.append("coins حداکثر ۲۰ تا می‌تونه باشه")
+        
+        # Engine 🆕
+        if self.engine not in VALID_ENGINES:
+            errors.append(
+                f"engine باید یکی از {VALID_ENGINES} باشه"
+            )
         
         return len(errors) == 0, errors
     
@@ -88,6 +100,7 @@ class PredictionRequestDTO:
             coin=data.get("coin", "bitcoin"),
             period=data.get("period", "24h"),
             coins=data.get("coins"),
+            engine=data.get("engine", "auto"),  # 🆕
         )
     
     @classmethod
@@ -103,6 +116,7 @@ class PredictionRequestDTO:
             coin=args.get("coin", "bitcoin"),
             period=args.get("period", "24h"),
             coins=coins,
+            engine=args.get("engine", "auto"),  # 🆕
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -111,6 +125,7 @@ class PredictionRequestDTO:
             "coin": self.coin,
             "period": self.period,
             "coins": self.coins,
+            "engine": self.engine,  # 🆕
         }
     
     def is_multiple(self) -> bool:
@@ -123,6 +138,7 @@ class PredictionRequestDTO:
             coin=self.coin.strip().lower() if self.coin else "bitcoin",
             period=self.period.strip().lower() if self.period else "24h",
             coins=[c.strip().lower() for c in self.coins] if self.coins else None,
+            engine=self.engine.strip().lower() if self.engine else "auto",  # 🆕
         )
 
 
@@ -185,7 +201,7 @@ class PredictionDTO:
 
 
 # ============================================================
-# Calibrate Request DTO (🆕 - جایگزین TrainRequestDTO)
+# Calibrate Request DTO (RuleEngine legacy)
 # ============================================================
 
 @dataclass
@@ -193,12 +209,8 @@ class CalibrateRequestDTO:
     """
     DTO درخواست کالیبراسیون وزن‌ها
     
-    ویژگی‌ها:
-        period: بازه داده تاریخی
-        profile_name: نام پروفایل (fast/balanced/accurate/hill_climb/random)
-        strategy: استراتژی (override)
-        coins: لیست ارزها
-        save: ذخیره در DB؟
+    ⚠️ توجه: این DTO فقط برای RuleEngine قدیمیه.
+    اگه RuleEngine حذف بشه، این هم می‌تونه حذف بشه.
     """
     
     period: str = "1m"
@@ -207,26 +219,18 @@ class CalibrateRequestDTO:
     coins: Optional[List[str]] = None
     save: bool = True
     
-    # ============================================================
-    # Validation
-    # ============================================================
-    
     def validate(self) -> tuple[bool, List[str]]:
-        """اعتبارسنجی"""
         errors = []
         
-        # Period
         if self.period not in VALID_TRAIN_PERIODS:
             errors.append(
                 f"period باید یکی از {VALID_TRAIN_PERIODS} باشه"
             )
         
-        # Profile name
         if self.profile_name:
             if not isinstance(self.profile_name, str):
                 errors.append("profile_name باید string باشه")
         
-        # Strategy
         if self.strategy is not None:
             valid_strategies = ["grid", "random", "hill_climb"]
             if self.strategy not in valid_strategies:
@@ -234,7 +238,6 @@ class CalibrateRequestDTO:
                     f"strategy باید یکی از {valid_strategies} باشه"
                 )
         
-        # Coins
         if self.coins is not None:
             if not isinstance(self.coins, list):
                 errors.append("coins باید لیست باشه")
@@ -245,7 +248,6 @@ class CalibrateRequestDTO:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CalibrateRequestDTO':
-        """ایجاد از دیکشنری"""
         return cls(
             period=data.get("period", "1m"),
             profile_name=data.get("profile_name", "balanced"),
@@ -255,7 +257,6 @@ class CalibrateRequestDTO:
         )
     
     def to_dict(self) -> Dict[str, Any]:
-        """تبدیل به دیکشنری"""
         return {
             "period": self.period,
             "profile_name": self.profile_name,
@@ -266,7 +267,7 @@ class CalibrateRequestDTO:
 
 
 # ============================================================
-# Scan Request DTO (🆕)
+# Scan Request DTO (RuleEngine legacy)
 # ============================================================
 
 @dataclass
@@ -274,13 +275,8 @@ class ScanRequestDTO:
     """
     DTO درخواست اسکن بازار
     
-    ویژگی‌ها:
-        symbols: لیست نمادها (اگه None، از config)
-        top_n: تعداد symbolها
-        timeframe: تایم‌فریم
-        max_results: حداکثر نتایج
-        update_state: آپدیت state؟
-        use_cache: استفاده از cache؟
+    ⚠️ توجه: این DTO فقط برای RuleEngine قدیمیه.
+    اگه RuleEngine حذف بشه، این هم می‌تونه حذف بشه.
     """
     
     symbols: Optional[List[str]] = None
@@ -290,30 +286,21 @@ class ScanRequestDTO:
     update_state: bool = True
     use_cache: bool = True
     
-    # ============================================================
-    # Validation
-    # ============================================================
-    
     def validate(self) -> tuple[bool, List[str]]:
-        """اعتبارسنجی"""
         errors = []
         
-        # Symbols
         if self.symbols is not None:
             if not isinstance(self.symbols, list):
                 errors.append("symbols باید لیست باشه")
             elif len(self.symbols) == 0:
                 errors.append("symbols نمی‌تونه خالی باشه")
         
-        # top_n
         if not (1 <= self.top_n <= 500):
             errors.append("top_n باید بین ۱ تا ۵۰۰ باشه")
         
-        # max_results
         if not (1 <= self.max_results <= 100):
             errors.append("max_results باید بین ۱ تا ۱۰۰ باشه")
         
-        # timeframe
         if self.timeframe is not None:
             if self.timeframe not in VALID_TIMEFRAMES:
                 errors.append(
@@ -324,7 +311,6 @@ class ScanRequestDTO:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ScanRequestDTO':
-        """ایجاد از دیکشنری"""
         return cls(
             symbols=data.get("symbols"),
             top_n=data.get("top_n", 30),
@@ -335,7 +321,6 @@ class ScanRequestDTO:
         )
     
     def to_dict(self) -> Dict[str, Any]:
-        """تبدیل به دیکشنری"""
         return {
             "symbols": self.symbols,
             "top_n": self.top_n,
