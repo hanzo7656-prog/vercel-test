@@ -1,183 +1,226 @@
-# application/services/prediction_service.py
+# application/services/prediction_router.py
 # ============================================================
-# Service: Prediction Service - نسخه ۲.۰
-# Cache + Validation + Error Handling
+# Prediction Router - انتخاب بین RuleEngine و Gemini
+# نسخه ۱.۰
+# ============================================================
+# 
+# مسئولیت:
+#   - انتخاب موتور بر اساس پارامتر (gemini | rule | auto)
+#   - fallback به RuleEngine اگه Gemini شکست خورد
+#   - آمار استفاده از هر موتور
 # ============================================================
 
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
 
-from domain.entities.prediction import Prediction
-from application.use_cases.predict_coin import PredictCoinUseCase
-from application.dto.prediction_dto import (
-    PredictionDTO,
-    PredictionRequestDTO,
-)
+from domain.entities.prediction import Prediction as PredictionEntity
 
 logger = logging.getLogger(__name__)
 
 
-class PredictionService:
+# ============================================================
+# Constants
+# ============================================================
+
+VALID_ENGINES = ["gemini", "rule", "auto"]
+
+
+# ============================================================
+# PredictionRouter
+# ============================================================
+
+class PredictionRouter:
     """
-    سرویس پیش‌بینی - Orchestrator Use Cases
+    Router بین دو موتور: Gemini و RuleEngine.
     
-    ارتقاها:
-        - DTO validation
-        - Better error handling
-        - Cache در سطح service (لایه بالای use case)
+    استفاده:
+        router = PredictionRouter(
+            gemini_use_case=...,
+            rule_use_case=...,  # می‌تونه None باشه (بعد از حذف RuleEngine)
+        )
+        entity = router.predict("bitcoin", "24h", engine="auto")
     """
     
-    def __init__(self, predict_use_case: PredictCoinUseCase):
-        self.predict_use_case = predict_use_case
+    def __init__(
+        self,
+        gemini_use_case: Any,
+        rule_use_case: Optional[Any] = None,
+    ) -> None:
+        self.gemini_use_case = gemini_use_case
+        self.rule_use_case = rule_use_case
         
         # آمار
-        self._stats = {
-            "total_requests": 0,
+        self._stats: Dict[str, Any] = {
+            "total_calls": 0,
+            "by_engine": {"gemini": 0, "rule": 0, "auto": 0},
+            "fallbacks_to_rule": 0,
             "successful": 0,
             "failed": 0,
         }
         
-        logger.info("✅ PredictionService v2.0 initialized")
+        logger.info(
+            f"✅ PredictionRouter initialized "
+            f"(gemini={'yes' if gemini_use_case else 'no'}, "
+            f"rule={'yes' if rule_use_case else 'no'})"
+        )
     
     # ============================================================
-    # Predict Single
+    # Predict
     # ============================================================
     
-    def predict_single(
+    def predict(
         self,
-        coin: str = "bitcoin",
+        coin_id: str,
         period: str = "24h",
+        engine: str = "auto",
         save: bool = True,
-    ) -> PredictionDTO:
+        use_cache: bool = True,
+    ) -> PredictionEntity:
         """
-        پیش‌بینی یک ارز
+        اجرای پیش‌بینی با موتور انتخاب‌شده.
         
-        پارامترها:
-            coin: شناسه ارز
-            period: بازه
-            save: ذخیره بشه؟
+        Args:
+            coin_id: "bitcoin"
+            period: "24h" | "1w" | "1m" | "3m" | "6m"
+            engine: "gemini" | "rule" | "auto"
+            save: ذخیره در DB
+            use_cache: استفاده از cache
         
-        خروجی:
-            PredictionDTO
+        Returns:
+            PredictionEntity
+        
+        Raises:
+            ValueError: پارامتر نامعتبر
+            RuntimeError: موتور در دسترس نیست یا خطا داد
         """
-        self._stats["total_requests"] += 1
+        engine = (engine or "auto").lower().strip()
+        
+        if engine not in VALID_ENGINES:
+            raise ValueError(
+                f"Invalid engine: {engine}. Must be one of {VALID_ENGINES}"
+            )
+        
+        self._stats["total_calls"] += 1
+        self._stats["by_engine"][engine] += 1
         
         try:
-            # اعتبارسنجی با DTO
-            request_dto = PredictionRequestDTO(coin=coin, period=period)
-            valid, errors = request_dto.validate()
-            
-            if not valid:
-                self._stats["failed"] += 1
-                return PredictionDTO.from_error(
-                    f"Invalid request: {', '.join(errors)}"
-                )
-            
-            # نرمال‌سازی
-            request_dto = request_dto.normalized()
-            
-            # اجرا
-            prediction = self.predict_use_case.execute(
-                request_dto.coin,
-                request_dto.period,
+            result = self._dispatch(
+                coin_id=coin_id,
+                period=period,
+                engine=engine,
                 save=save,
+                use_cache=use_cache,
             )
-            
             self._stats["successful"] += 1
-            return PredictionDTO.from_prediction(prediction)
-            
-        except ValueError as e:
-            logger.warning(f"Validation error: {e}")
-            self._stats["failed"] += 1
-            return PredictionDTO.from_error(str(e))
+            return result
         
-        except RuntimeError as e:
-            logger.warning(f"Runtime error: {e}")
+        except Exception:
             self._stats["failed"] += 1
-            return PredictionDTO.from_error(str(e))
-        
-        except Exception as e:
-            logger.error(f"Prediction error: {e}", exc_info=True)
-            self._stats["failed"] += 1
-            return PredictionDTO.from_error(f"Prediction failed: {str(e)}")
+            raise
     
     # ============================================================
-    # Predict Multiple
+    # Dispatch
     # ============================================================
     
-    def predict_multiple(
+    def _dispatch(
         self,
-        coins: List[str],
-        period: str = "24h",
-        save: bool = True,
-    ) -> PredictionDTO:
-        """
-        پیش‌بینی چند ارز
+        coin_id: str,
+        period: str,
+        engine: str,
+        save: bool,
+        use_cache: bool,
+    ) -> PredictionEntity:
+        """مسیریابی به موتور مناسب."""
         
-        پارامترها:
-            coins: لیست ارزها
-            period: بازه
-            save: ذخیره بشه؟
+        # ============================================================
+        # Auto: Gemini اول، بعد Rule (اگه Gemini خطا داد)
+        # ============================================================
         
-        خروجی:
-            PredictionDTO
-        """
-        self._stats["total_requests"] += 1
-        
-        try:
-            # اعتبارسنجی
-            if not coins:
-                self._stats["failed"] += 1
-                return PredictionDTO.from_error("Coin list cannot be empty")
+        if engine == "auto":
+            if self.gemini_use_case is not None:
+                try:
+                    logger.debug(f"🔄 auto → gemini ({coin_id})")
+                    return self.gemini_use_case.execute(
+                        coin_id=coin_id,
+                        period=period,
+                        save=save,
+                        use_cache=use_cache,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"⚠️ Gemini failed in auto mode: {e}"
+                    )
+                    # fallback
+                    if self.rule_use_case is not None:
+                        self._stats["fallbacks_to_rule"] += 1
+                        logger.info("🔄 Falling back to RuleEngine")
             
-            if len(coins) > 20:
-                self._stats["failed"] += 1
-                return PredictionDTO.from_error(
-                    "Too many coins (max: 20)"
+            if self.rule_use_case is not None:
+                logger.debug(f"🔄 auto → rule ({coin_id})")
+                return self.rule_use_case.execute(
+                    coin_id, period, save=save
                 )
             
-            # اجرا
-            predictions = self.predict_use_case.execute_multiple(
-                coins, period, save=save,
+            raise RuntimeError(
+                "هیچ موتوری در دسترس نیست (نه Gemini نه RuleEngine)"
             )
-            
-            self._stats["successful"] += 1
-            return PredictionDTO.from_predictions(predictions)
-            
-        except Exception as e:
-            logger.error(f"Multiple prediction error: {e}", exc_info=True)
-            self._stats["failed"] += 1
-            return PredictionDTO.from_error(str(e))
-    
-    # ============================================================
-    # From DTO
-    # ============================================================
-    
-    def predict_from_request(
-        self,
-        request: PredictionRequestDTO,
-    ) -> PredictionDTO:
-        """پیش‌بینی از روی DTO درخواست"""
-        if request.is_multiple():
-            return self.predict_multiple(request.coins, request.period)
-        else:
-            return self.predict_single(request.coin, request.period)
+        
+        # ============================================================
+        # Gemini
+        # ============================================================
+        
+        if engine == "gemini":
+            if self.gemini_use_case is None:
+                raise RuntimeError(
+                    "Gemini engine not available. "
+                    "Check GEMINI_API_KEY environment variable."
+                )
+            logger.debug(f"🔄 gemini ({coin_id})")
+            return self.gemini_use_case.execute(
+                coin_id=coin_id,
+                period=period,
+                save=save,
+                use_cache=use_cache,
+            )
+        
+        # ============================================================
+        # Rule
+        # ============================================================
+        
+        if engine == "rule":
+            if self.rule_use_case is None:
+                raise RuntimeError(
+                    "RuleEngine not available. "
+                    "It may have been removed in a recent update."
+                )
+            logger.debug(f"🔄 rule ({coin_id})")
+            return self.rule_use_case.execute(
+                coin_id, period, save=save
+            )
+        
+        # نباید به اینجا برسیم (بالاتر validate شد)
+        raise RuntimeError(f"Unhandled engine: {engine}")
     
     # ============================================================
     # Stats
     # ============================================================
     
     def get_stats(self) -> Dict[str, Any]:
-        """آمار سرویس"""
-        total = self._stats["total_requests"]
+        """آمار استفاده از router."""
+        total = self._stats["total_calls"]
         success_rate = (
-            self._stats["successful"] / total * 100
-            if total > 0 else 0
+            self._stats["successful"] / max(total, 1) * 100
         )
         
         return {
             **self._stats,
+            "gemini_available": self.gemini_use_case is not None,
+            "rule_available": self.rule_use_case is not None,
+            "valid_engines": VALID_ENGINES,
             "success_rate": round(success_rate, 2),
             "timestamp": datetime.now().isoformat(),
         }
+
+
+__all__ = ["PredictionRouter", "VALID_ENGINES"]
