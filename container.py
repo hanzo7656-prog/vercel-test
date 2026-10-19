@@ -1,7 +1,7 @@
 # container.py
 # ============================================================
 # Container - مدیریت وابستگی‌ها (Dependency Injection)
-# نسخه ۴.۰ - RuleEngine + ScanMarketUseCase
+# نسخه ۵.۰ - Gemini + PredictionRouter + RuleEngine (legacy)
 # ============================================================
 
 import os
@@ -44,7 +44,7 @@ class Container:
             return
         self._initialized = True
         self._init_time = datetime.now()
-        logger.info("Container v4.0 initialized")
+        logger.info("Container v5.0 initialized")
     
     # ============================================================
     # Register
@@ -124,129 +124,135 @@ class Container:
         }
     
     # ============================================================
-    # Convenience Methods
+    # Convenience Methods - Infrastructure
     # ============================================================
     
     def api_client(self) -> Any:
-        """دریافت API client"""
         return self.get('api_client')
     
     def cache_manager(self) -> Any:
-        """دریافت cache manager"""
         return self.get('cache_manager')
     
-    def model_manager(self) -> Any:
-        """دریافت ModelManager"""
-        return self.get('model_manager')
-    
-    def trainer(self) -> Any:
-        """دریافت AutoTrainer"""
-        return self.get('trainer')
-    
-    def prediction_service(self) -> Any:
-        """دریافت PredictionService"""
-        return self.get('prediction_service')
-    
-    def monitoring_service(self) -> Any:
-        """دریافت MonitoringService"""
-        return self.get('monitoring_service')
-    
-    def command_system(self) -> Any:
-        """دریافت CommandSystem"""
-        return self.get('command_system')
-    
-    def self_healer(self) -> Any:
-        """دریافت SelfHealer"""
-        return self.get('self_healer')
-    
-    def price_manager(self) -> Any:
-        """دریافت PriceManager"""
-        return self.get('price_manager')
-    
-    def user_tracker(self) -> Any:
-        """دریافت UserTracker"""
-        return self.get('user_tracker')
-    
-    def metrics_scheduler(self) -> Any:
-        """دریافت MetricsScheduler"""
-        return self.get('metrics_scheduler')
-    
-    def threading_manager(self) -> Any:
-        """دریافت ThreadingManager"""
-        return self.get('threading_manager')
-    
-    def feature_engineer(self) -> Any:
-        """دریافت FeatureEngineer"""
-        return self.get('feature_engineer')
-    
-    def indicators(self) -> Any:
-        """دریافت indicators"""
-        return self.get('indicators')
-    
     def free_crypto_client(self) -> Any:
-        """دریافت FreeCryptoClient"""
         return self.get('free_crypto_client')
     
+    def binance_ws_client(self) -> Any:
+        return self.get('binance_ws_client')
+    
+    # ============================================================
+    # Convenience Methods - Database
+    # ============================================================
+    
     def db_factory(self) -> Any:
-        """دریافت DatabaseFactory"""
         return self.get('db_factory')
     
     def quota_manager(self) -> Any:
-        """دریافت QuotaManager"""
         return self.get('quota_manager')
     
     def database_registry(self) -> Any:
-        """دریافت DatabaseRegistry"""
         return self.get('database_registry')
     
     def database_router(self) -> Any:
-        """دریافت DatabaseRouter"""
         return self.get('database_router')
     
+    # ============================================================
+    # Convenience Methods - Repositories
+    # ============================================================
+    
     def repo_container(self) -> Any:
-        """دریافت RepositoryContainer"""
         return self.get('repo_container')
     
     def model_repository(self) -> Any:
-        """دریافت ModelRepository"""
         return self.get('model_repository')
     
     def prediction_repository(self) -> Any:
-        """دریافت PredictionRepository"""
         return self.get('prediction_repository')
     
     def rule_config_repository(self) -> Any:
-        """دریافت RuleConfigRepository (🆕)"""
         return self.get('rule_config_repository')
     
+    # ============================================================
+    # Convenience Methods - Core
+    # ============================================================
+    
+    def feature_engineer(self) -> Any:
+        return self.get('feature_engineer')
+    
+    def indicators(self) -> Any:
+        return self.get('indicators')
+    
+    def user_tracker(self) -> Any:
+        return self.get('user_tracker')
+    
+    def price_manager(self) -> Any:
+        return self.get('price_manager')
+    
+    def metrics_scheduler(self) -> Any:
+        return self.get('metrics_scheduler')
+    
+    def threading_manager(self) -> Any:
+        return self.get('threading_manager')
+    
+    # ============================================================
+    # Convenience Methods - AI (Gemini) 🆕
+    # ============================================================
+    
+    def gemini_client(self) -> Any:
+        return self.get('gemini_client')
+    
+    def gemini_service(self) -> Any:
+        return self.get('gemini_service')
+    
+    def ai_chat_use_case(self) -> Any:
+        return self.get('ai_chat_use_case')
+    
+    def ai_analyze_image_use_case(self) -> Any:
+        return self.get('ai_analyze_image_use_case')
+    
+    def ai_explain_use_case(self) -> Any:
+        return self.get('ai_explain_use_case')
+    
+    def predict_coin_gemini_use_case(self) -> Any:
+        return self.get('predict_coin_gemini_use_case')
+    
+    def prediction_router(self) -> Any:
+        return self.get('prediction_router')
+    
+    # ============================================================
+    # Convenience Methods - Application (legacy)
+    # ============================================================
+    
+    def model_manager(self) -> Any:
+        return self.get('model_manager')
+    
+    def trainer(self) -> Any:
+        return self.get('trainer')
+    
     def predict_use_case(self) -> Any:
-        """دریافت PredictUseCase"""
         return self.get('predict_use_case')
     
     def scan_market_use_case(self) -> Any:
-        """دریافت ScanMarketUseCase (🆕)"""
         return self.get('scan_market_use_case')
     
+    def prediction_service(self) -> Any:
+        return self.get('prediction_service')
+    
+    def monitoring_service(self) -> Any:
+        return self.get('monitoring_service')
+    
+    def command_system(self) -> Any:
+        return self.get('command_system')
+    
+    def self_healer(self) -> Any:
+        return self.get('self_healer')
+    
     def health_use_case(self) -> Any:
-        """دریافت HealthUseCase"""
         return self.get('health_use_case')
     
     def __repr__(self) -> str:
         return f"<Container services={len(self.list_services())}>"
-    
-    def binance_ws_client(self) -> Any:
-        """دریافت Binance WS Client"""
-        return self.get('binance_ws_client')
 
 
-    def gemini_client(self) -> Any:
-        return self.get('gemini_client')
-
-    def gemini_service(self) -> Any:
-        return self.get('gemini_service')
-
-    def ai_chat_use_case(self) -> Any:
-        return self.get('ai_chat_use_case')
 # ============================================================
 # Singleton
 # ============================================================
@@ -333,7 +339,6 @@ def register_services() -> None:
         return repo_container.prediction
     
     def get_rule_config_repository():
-        """🆕 RuleConfigRepository"""
         from infrastructure.repositories.init_repository import repo_container
         return repo_container.rule_config
     
@@ -343,7 +348,57 @@ def register_services() -> None:
     container.register('rule_config_repository', get_rule_config_repository, singleton=True)
     
     # ============================================================
-    # ۴. Model
+    # ۴. AI (Gemini) 🆕
+    # ============================================================
+    
+    def get_gemini_client():
+        from infrastructure.ai.gemini_client import gemini_client
+        return gemini_client
+    
+    def get_gemini_service():
+        from infrastructure.ai.gemini_service import gemini_service
+        return gemini_service
+    
+    def get_ai_chat_use_case():
+        from application.use_cases.ai_chat import AIChatUseCase
+        return AIChatUseCase(
+            gemini_service=container.get('gemini_service'),
+            price_manager=container.get('price_manager'),
+            coinstats_client=container.get('api_client'),
+        )
+    
+    def get_ai_analyze_image_use_case():
+        from application.use_cases.ai_analyze_image import AIAnalyzeImageUseCase
+        return AIAnalyzeImageUseCase(
+            gemini_service=container.get('gemini_service'),
+            coinstats_client=container.get('api_client'),
+        )
+    
+    def get_ai_explain_use_case():
+        from application.use_cases.ai_explain import AIExplainUseCase
+        return AIExplainUseCase(
+            gemini_service=container.get('gemini_service'),
+            coinstats_client=container.get('api_client'),
+        )
+    
+    def get_predict_coin_gemini_use_case():
+        from application.use_cases.predict_coin_gemini import PredictCoinGeminiUseCase
+        from infrastructure.database import get_cache
+        return PredictCoinGeminiUseCase(
+            gemini_service=container.get('gemini_service'),
+            api_client=container.get('api_client'),
+            cache=get_cache(),
+        )
+    
+    container.register('gemini_client', get_gemini_client, singleton=True)
+    container.register('gemini_service', get_gemini_service, singleton=True)
+    container.register('ai_chat_use_case', get_ai_chat_use_case, singleton=True)
+    container.register('ai_analyze_image_use_case', get_ai_analyze_image_use_case, singleton=True)
+    container.register('ai_explain_use_case', get_ai_explain_use_case, singleton=True)
+    container.register('predict_coin_gemini_use_case', get_predict_coin_gemini_use_case, singleton=True)
+    
+    # ============================================================
+    # ۵. Model (RuleEngine legacy)
     # ============================================================
     
     def get_model_manager():
@@ -359,50 +414,9 @@ def register_services() -> None:
     
     container.register('model_manager', get_model_manager, singleton=True)
     container.register('trainer', get_trainer, singleton=True)
-
-
+    
     # ============================================================
-    # ۴.b AI (Gemini) — 🆕
-    # ============================================================
-
-    def get_gemini_client():
-        from infrastructure.ai.gemini_client import gemini_client
-        return gemini_client
-
-    def get_gemini_service():
-        from infrastructure.ai.gemini_service import gemini_service
-        return gemini_service
-
-    def get_ai_chat_use_case():
-        from application.use_cases.ai_chat import AIChatUseCase
-        return AIChatUseCase(
-            gemini_service=container.get('gemini_service'),
-            price_manager=container.get('price_manager'),
-            coinstats_client=container.get('api_client'),
-        )
-
-    def get_ai_analyze_image_use_case():
-        from application.use_cases.ai_analyze_image import AIAnalyzeImageUseCase
-        return AIAnalyzeImageUseCase(
-            gemini_service=container.get('gemini_service'),
-            coinstats_client=container.get('api_client'),
-        )
-
-    def get_ai_explain_use_case():
-        from application.use_cases.ai_explain import AIExplainUseCase
-        from application.use_cases.ai_explain import AIExplainUseCase as _AEUC
-        return _AEUC(
-            gemini_service=container.get('gemini_service'),
-            coinstats_client=container.get('api_client'),
-        )
-
-    container.register('gemini_client', get_gemini_client, singleton=True)
-    container.register('gemini_service', get_gemini_service, singleton=True)
-    container.register('ai_chat_use_case', get_ai_chat_use_case, singleton=True)
-    container.register('ai_analyze_image_use_case', get_ai_analyze_image_use_case, singleton=True)
-    container.register('ai_explain_use_case', get_ai_explain_use_case, singleton=True)
-    # ============================================================
-    # ۵. Core
+    # ۶. Core
     # ============================================================
     
     def get_feature_engineer():
@@ -445,7 +459,7 @@ def register_services() -> None:
     container.register('indicators', get_indicators, singleton=True)
     
     # ============================================================
-    # ۶. Application
+    # ۷. Application - Use Cases
     # ============================================================
     
     def get_predict_use_case():
@@ -456,9 +470,7 @@ def register_services() -> None:
             feature_engineer=container.get('feature_engineer'),
         )
     
-    
     def get_scan_market_use_case():
-        """🆕 ScanMarketUseCase"""
         from application.use_cases.scan_market import ScanMarketUseCase
         from infrastructure.database import get_cache, get_primary
         
@@ -478,9 +490,61 @@ def register_services() -> None:
         except ImportError:
             return None
     
+    container.register('predict_use_case', get_predict_use_case, singleton=True)
+    container.register('scan_market_use_case', get_scan_market_use_case, singleton=True)
+    container.register('health_use_case', get_health_use_case, singleton=True)
+    
+    # ============================================================
+    # ۸. Prediction Router 🆕
+    # ============================================================
+    
+    def get_prediction_router():
+        from application.services.prediction_router import PredictionRouter
+        
+        # Gemini همیشه هست
+        try:
+            gemini_uc = container.get('predict_coin_gemini_use_case')
+        except Exception as e:
+            logger.warning(f"⚠️ Gemini use case not available: {e}")
+            gemini_uc = None
+        
+        # RuleEngine - می‌تونه None باشه
+        try:
+            rule_uc = container.get('predict_use_case')
+        except Exception:
+            rule_uc = None
+        
+        return PredictionRouter(
+            gemini_use_case=gemini_uc,
+            rule_use_case=rule_uc,
+        )
+    
+    container.register('prediction_router', get_prediction_router, singleton=True)
+    
+    # ============================================================
+    # ۹. Application - Services
+    # ============================================================
+    
     def get_prediction_service():
         from application.services.prediction_service import PredictionService
-        return PredictionService(container.get('predict_use_case'))
+        
+        # predict_use_case می‌تونه None باشه اگه بعداً RuleEngine حذف بشه
+        rule_uc = None
+        try:
+            rule_uc = container.get('predict_use_case')
+        except Exception:
+            pass
+        
+        router = None
+        try:
+            router = container.get('prediction_router')
+        except Exception:
+            pass
+        
+        return PredictionService(
+            predict_use_case=rule_uc,
+            prediction_router=router,
+        )
     
     def get_monitoring_service():
         from application.services.monitoring_service import MonitoringService
@@ -503,16 +567,13 @@ def register_services() -> None:
             api_client=container.get('api_client'),
         )
     
-    container.register('predict_use_case', get_predict_use_case, singleton=True)
-    container.register('scan_market_use_case', get_scan_market_use_case, singleton=True)  # 🆕
-    container.register('health_use_case', get_health_use_case, singleton=True)
     container.register('prediction_service', get_prediction_service, singleton=True)
     container.register('monitoring_service', get_monitoring_service, singleton=True)
     container.register('command_system', get_command_system, singleton=True)
     container.register('self_healer', get_self_healer, singleton=True)
     
     # ============================================================
-    # ۷. System
+    # ۱۰. System
     # ============================================================
     
     def get_metrics_scheduler():
@@ -570,8 +631,18 @@ def start_services() -> None:
     except Exception as e:
         logger.error(f"❌ BinanceWSClient start failed: {e}")
     
-    logger.info("✅ Background services started")
+    # ۴. Gemini - warmup (اختیاری)
+    try:
+        gemini = container.get('gemini_client')
+        if gemini and gemini.is_available:
+            logger.info("✅ Gemini client ready")
+        else:
+            logger.warning("⚠️ Gemini client NOT available (check GEMINI_API_KEY)")
+    except Exception as e:
+        logger.warning(f"⚠️ Gemini warmup skipped: {e}")
     
+    logger.info("✅ Background services started")
+
 
 def stop_services() -> None:
     """توقف سرویس‌های پس‌زمینه"""
