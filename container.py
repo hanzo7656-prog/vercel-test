@@ -239,6 +239,14 @@ class Container:
         return self.get('binance_ws_client')
 
 
+    def gemini_client(self) -> Any:
+        return self.get('gemini_client')
+
+    def gemini_service(self) -> Any:
+        return self.get('gemini_service')
+
+    def ai_chat_use_case(self) -> Any:
+        return self.get('ai_chat_use_case')
 # ============================================================
 # Singleton
 # ============================================================
@@ -351,7 +359,48 @@ def register_services() -> None:
     
     container.register('model_manager', get_model_manager, singleton=True)
     container.register('trainer', get_trainer, singleton=True)
-    
+
+
+    # ============================================================
+    # ۴.b AI (Gemini) — 🆕
+    # ============================================================
+
+    def get_gemini_client():
+        from infrastructure.ai.gemini_client import gemini_client
+        return gemini_client
+
+    def get_gemini_service():
+        from infrastructure.ai.gemini_service import gemini_service
+        return gemini_service
+
+    def get_ai_chat_use_case():
+        from application.use_cases.ai_chat import AIChatUseCase
+        return AIChatUseCase(
+            gemini_service=container.get('gemini_service'),
+            price_manager=container.get('price_manager'),
+            coinstats_client=container.get('api_client'),
+        )
+
+    def get_ai_analyze_image_use_case():
+        from application.use_cases.ai_analyze_image import AIAnalyzeImageUseCase
+        return AIAnalyzeImageUseCase(
+            gemini_service=container.get('gemini_service'),
+            coinstats_client=container.get('api_client'),
+        )
+
+    def get_ai_explain_use_case():
+        from application.use_cases.ai_explain import AIExplainUseCase
+        from application.use_cases.ai_explain import AIExplainUseCase as _AEUC
+        return _AEUC(
+            gemini_service=container.get('gemini_service'),
+            coinstats_client=container.get('api_client'),
+        )
+
+    container.register('gemini_client', get_gemini_client, singleton=True)
+    container.register('gemini_service', get_gemini_service, singleton=True)
+    container.register('ai_chat_use_case', get_ai_chat_use_case, singleton=True)
+    container.register('ai_analyze_image_use_case', get_ai_analyze_image_use_case, singleton=True)
+    container.register('ai_explain_use_case', get_ai_explain_use_case, singleton=True)
     # ============================================================
     # ۵. Core
     # ============================================================
