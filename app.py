@@ -149,6 +149,23 @@ from presentation.routes.api_routes import api_bp
 from presentation.routes.metrics_routes import metrics_bp
 from presentation.routes.web_routes import web_bp
 from presentation.routes.model_routes import model_bp
+# ============================================================
+# Register Blueprints AI (new)
+# ============================================================
+
+from presentation.routes.api_routes import api_bp
+from presentation.routes.metrics_routes import metrics_bp
+from presentation.routes.web_routes import web_bp
+from presentation.routes.model_routes import model_bp
+from presentation.routes.ai_routes import ai_bp          # 🆕
+
+app.register_blueprint(model_bp)
+app.register_blueprint(web_bp)
+app.register_blueprint(api_bp)
+app.register_blueprint(metrics_bp)
+app.register_blueprint(ai_bp)                           
+
+
 
 app.register_blueprint(model_bp)
 app.register_blueprint(web_bp)
