@@ -1,7 +1,7 @@
 # providers.py
 # ============================================================
 # Providers - ارائه‌دهنده‌های سرویس
-# نسخه ۳.۰ - Repository + Database + Application
+# نسخه ۴.۰ - Gemini + PredictionRouter
 # ============================================================
 
 import logging
@@ -56,11 +56,13 @@ def get_free_crypto_client():
     return get_service('free_crypto_client')
 
 
-def get_binance_ws_client():        # 🆕
+def get_binance_ws_client():
     """Binance WS Client"""
     return get_service('binance_ws_client')
+
+
 # ============================================================
-# Database Providers 🆕
+# Database Providers
 # ============================================================
 
 def get_db_factory():
@@ -84,12 +86,6 @@ def get_database_router():
 
 
 # ============================================================
-# Repository Providers 🆕
-# ============================================================
-
-# providers.py — اضافه کن بعد از get_rule_config_repository
-
-# ============================================================
 # Repository Providers
 # ============================================================
 
@@ -109,24 +105,12 @@ def get_prediction_repository():
 
 
 def get_rule_config_repository():
-    """RuleConfig Repository (🆕)"""
+    """RuleConfig Repository"""
     return get_service('rule_config_repository')
 
-# ============================================================
-# Model Providers
-# ============================================================
-
-def get_model_manager():
-    """Model Manager"""
-    return get_service('model_manager')
-
-
-def get_trainer():
-    """Auto Trainer"""
-    return get_service('trainer')
 
 # ============================================================
-# AI Providers 🆕
+# AI (Gemini) Providers 🆕
 # ============================================================
 
 def get_gemini_client():
@@ -152,6 +136,27 @@ def get_ai_analyze_image_use_case():
 def get_ai_explain_use_case():
     """AI Explain Use Case"""
     return get_service('ai_explain_use_case')
+
+
+def get_predict_coin_gemini_use_case():
+    """Predict Coin Gemini Use Case"""
+    return get_service('predict_coin_gemini_use_case')
+
+
+# ============================================================
+# Model Providers (RuleEngine legacy)
+# ============================================================
+
+def get_model_manager():
+    """Model Manager"""
+    return get_service('model_manager')
+
+
+def get_trainer():
+    """Auto Trainer"""
+    return get_service('trainer')
+
+
 # ============================================================
 # Core Providers
 # ============================================================
@@ -177,20 +182,23 @@ def get_indicators():
 
 
 # ============================================================
-# Application Providers 🆕
+# Application Providers
 # ============================================================
 
 def get_predict_use_case():
-    """Predict Use Case"""
+    """Predict Use Case (RuleEngine legacy)"""
     return get_service('predict_use_case')
 
+
 def get_scan_market_use_case():
-    """ScanMarket Use Case"""
+    """ScanMarket Use Case (RuleEngine legacy)"""
     return get_service('scan_market_use_case')
-    
+
+
 def get_health_use_case():
     """Health Use Case"""
     return get_service('health_use_case')
+
 
 def get_prediction_service():
     """Prediction Service"""
@@ -210,6 +218,15 @@ def get_command_system():
 def get_self_healer():
     """Self Healer"""
     return get_service('self_healer')
+
+
+# ============================================================
+# Prediction Router Provider 🆕
+# ============================================================
+
+def get_prediction_router():
+    """Prediction Router (gemini | rule | auto)"""
+    return get_service('prediction_router')
 
 
 # ============================================================
@@ -253,7 +270,8 @@ def init_container(app) -> None:
         logger.warning(f"⚠️ Middlewares not available: {e}")
     except Exception as e:
         logger.warning(f"⚠️ Middlewares registration failed: {e}")
-    
+
+
 # ============================================================
 # Shutdown
 # ============================================================
