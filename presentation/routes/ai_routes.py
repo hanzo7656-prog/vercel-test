@@ -81,6 +81,20 @@ def _get_gemini_service():
 def _get_gemini_client():
     return current_app.container.get("gemini_client")
 
+# ============================================================
+# state
+# ============================================================
+
+
+@api_bp.route('/ai/stats', methods=['GET'])
+@require_auth('admin')
+def ai_stats_monitoring():
+    container = current_app.container
+    monitoring = container.monitoring_service()
+    result = monitoring.get_ai_stats()
+    return jsonify(result), 200 if result.get('success') else 500
+
+
 
 # ============================================================
 # Chat
