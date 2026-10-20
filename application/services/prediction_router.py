@@ -1,13 +1,13 @@
 # application/services/prediction_router.py
 # ============================================================
-# Prediction Router - انتخاب بین RuleEngine و Gemini
-# نسخه ۱.۰
+# Prediction Router - فقط Gemini
+# نسخه ۲.۰ - RuleEngine حذف شد
 # ============================================================
 # 
-# مسئولیت:
-#   - انتخاب موتور بر اساس پارامتر (gemini | rule | auto)
-#   - fallback به RuleEngine اگه Gemini شکست خورد
-#   - آمار استفاده از هر موتور
+# تغییرات نسخه ۲.۰:
+#   - فقط Gemini
+#   - rule_use_case حذف شد (فقط برای پیام خطا)
+#   - auto = gemini
 # ============================================================
 
 import logging
@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 # Constants
 # ============================================================
 
-VALID_ENGINES = ["gemini", "rule", "auto"]
+# ⚠️ "rule" هنوز توی لیست هست ولی کار نمی‌کنه (پیام واضح می‌ده)
+VALID_ENGINES = ["gemini", "auto"]
 
 
 # ============================================================
@@ -32,37 +33,31 @@ VALID_ENGINES = ["gemini", "rule", "auto"]
 
 class PredictionRouter:
     """
-    Router بین دو موتور: Gemini و RuleEngine.
+    Router - فقط Gemini.
     
     استفاده:
-        router = PredictionRouter(
-            gemini_use_case=...,
-            rule_use_case=...,  # می‌تونه None باشه (بعد از حذف RuleEngine)
-        )
+        router = PredictionRouter(gemini_use_case=...)
         entity = router.predict("bitcoin", "24h", engine="auto")
     """
     
     def __init__(
         self,
         gemini_use_case: Any,
-        rule_use_case: Optional[Any] = None,
     ) -> None:
         self.gemini_use_case = gemini_use_case
-        self.rule_use_case = rule_use_case
         
         # آمار
         self._stats: Dict[str, Any] = {
             "total_calls": 0,
-            "by_engine": {"gemini": 0, "rule": 0, "auto": 0},
-            "fallbacks_to_rule": 0,
+            "by_engine": {"gemini": 0, "auto": 0},
             "successful": 0,
             "failed": 0,
+            "rule_requests_rejected": 0,  # 🆕 درخواست‌های rule که رد شدن
         }
         
         logger.info(
-            f"✅ PredictionRouter initialized "
-            f"(gemini={'yes' if gemini_use_case else 'no'}, "
-            f"rule={'yes' if rule_use_case else 'no'})"
+            f"✅ PredictionRouter v2.0 initialized "
+            f"(gemini={'yes' if gemini_use_case else 'no'})"
         )
     
     # ============================================================
@@ -78,12 +73,12 @@ class PredictionRouter:
         use_cache: bool = True,
     ) -> PredictionEntity:
         """
-        اجرای پیش‌بینی با موتور انتخاب‌شده.
+        اجرای پیش‌بینی با Gemini.
         
         Args:
             coin_id: "bitcoin"
             period: "24h" | "1w" | "1m" | "3m" | "6m"
-            engine: "gemini" | "rule" | "auto"
+            engine: "gemini" | "auto" (هر دو به Gemini می‌رن)
             save: ذخیره در DB
             use_cache: استفاده از cache
         
@@ -92,115 +87,60 @@ class PredictionRouter:
         
         Raises:
             ValueError: پارامتر نامعتبر
-            RuntimeError: موتور در دسترس نیست یا خطا داد
+            RuntimeError: Gemini در دسترس نیست یا خطا داد
         """
         engine = (engine or "auto").lower().strip()
         
+        # ============================================================
+        # Validation
+        # ============================================================
+        
         if engine not in VALID_ENGINES:
+            # اگه engine=rule بود، پیام واضح
+            if engine == "rule":
+                self._stats["rule_requests_rejected"] += 1
+                raise RuntimeError(
+                    "RuleEngine حذف شده است. لطفاً از engine=gemini یا "
+                    "engine=auto استفاده کنید."
+                )
+            
             raise ValueError(
                 f"Invalid engine: {engine}. Must be one of {VALID_ENGINES}"
+            )
+        
+        # ============================================================
+        # Gemini availability
+        # ============================================================
+        
+        if self.gemini_use_case is None:
+            raise RuntimeError(
+                "Gemini engine not available. "
+                "Check GEMINI_API_KEY environment variable."
             )
         
         self._stats["total_calls"] += 1
         self._stats["by_engine"][engine] += 1
         
+        # ============================================================
+        # Execute
+        # ============================================================
+        
         try:
-            result = self._dispatch(
+            logger.debug(f"🔄 {engine} → gemini ({coin_id})")
+            
+            result = self.gemini_use_case.execute(
                 coin_id=coin_id,
                 period=period,
-                engine=engine,
                 save=save,
                 use_cache=use_cache,
             )
+            
             self._stats["successful"] += 1
             return result
         
         except Exception:
             self._stats["failed"] += 1
             raise
-    
-    # ============================================================
-    # Dispatch
-    # ============================================================
-    
-    def _dispatch(
-        self,
-        coin_id: str,
-        period: str,
-        engine: str,
-        save: bool,
-        use_cache: bool,
-    ) -> PredictionEntity:
-        """مسیریابی به موتور مناسب."""
-        
-        # ============================================================
-        # Auto: Gemini اول، بعد Rule (اگه Gemini خطا داد)
-        # ============================================================
-        
-        if engine == "auto":
-            if self.gemini_use_case is not None:
-                try:
-                    logger.debug(f"🔄 auto → gemini ({coin_id})")
-                    return self.gemini_use_case.execute(
-                        coin_id=coin_id,
-                        period=period,
-                        save=save,
-                        use_cache=use_cache,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"⚠️ Gemini failed in auto mode: {e}"
-                    )
-                    # fallback
-                    if self.rule_use_case is not None:
-                        self._stats["fallbacks_to_rule"] += 1
-                        logger.info("🔄 Falling back to RuleEngine")
-            
-            if self.rule_use_case is not None:
-                logger.debug(f"🔄 auto → rule ({coin_id})")
-                return self.rule_use_case.execute(
-                    coin_id, period, save=save
-                )
-            
-            raise RuntimeError(
-                "هیچ موتوری در دسترس نیست (نه Gemini نه RuleEngine)"
-            )
-        
-        # ============================================================
-        # Gemini
-        # ============================================================
-        
-        if engine == "gemini":
-            if self.gemini_use_case is None:
-                raise RuntimeError(
-                    "Gemini engine not available. "
-                    "Check GEMINI_API_KEY environment variable."
-                )
-            logger.debug(f"🔄 gemini ({coin_id})")
-            return self.gemini_use_case.execute(
-                coin_id=coin_id,
-                period=period,
-                save=save,
-                use_cache=use_cache,
-            )
-        
-        # ============================================================
-        # Rule
-        # ============================================================
-        
-        if engine == "rule":
-            if self.rule_use_case is None:
-                raise RuntimeError(
-                    "RuleEngine not available. "
-                    "It may have been removed in a recent update."
-                )
-            logger.debug(f"🔄 rule ({coin_id})")
-            return self.rule_use_case.execute(
-                coin_id, period, save=save
-            )
-        
-        # نباید به اینجا برسیم (بالاتر validate شد)
-        raise RuntimeError(f"Unhandled engine: {engine}")
     
     # ============================================================
     # Stats
@@ -216,7 +156,6 @@ class PredictionRouter:
         return {
             **self._stats,
             "gemini_available": self.gemini_use_case is not None,
-            "rule_available": self.rule_use_case is not None,
             "valid_engines": VALID_ENGINES,
             "success_rate": round(success_rate, 2),
             "timestamp": datetime.now().isoformat(),
