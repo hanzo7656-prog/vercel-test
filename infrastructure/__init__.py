@@ -1,12 +1,18 @@
 # infrastructure/__init__.py
 # ============================================================
 # لایه زیرساخت (Infrastructure Layer)
-# شامل API، Database، Repositories، Auth و External
+# نسخه ۲.۰ - Gemini-only (model_repository حذف شد)
+# ============================================================
+# 
+# شامل API، Database، Repositories، Auth، External و AI
 # ============================================================
 
 # ✅ استفاده از Lazy Import برای جلوگیری از Circular Import
-# توابع کمکی برای دریافت سرویس‌ها
 
+
+# ============================================================
+# API Clients
+# ============================================================
 
 def get_coinstats_client():
     """دریافت کلاینت CoinStats (Lazy Import)"""
@@ -21,7 +27,7 @@ def get_cache_manager():
 
 
 def get_free_crypto_client():
-    """دریافت کلاینت WebSocket (Lazy Import)"""
+    """دریافت کلاینت FreeCrypto (Lazy Import)"""
     from infrastructure.api.free_crypto_client import create_free_crypto_client
     import os
     api_key = os.getenv("FREE_CRYPTO_API_KEY", "569szrll2wmheybya6dx")
@@ -33,6 +39,10 @@ def get_binance_ws_client():
     from infrastructure.api.binance_ws_client import binance_ws_client
     return binance_ws_client
 
+
+# ============================================================
+# Database
+# ============================================================
 
 def get_database_primary():
     """دریافت دیتابیس اصلی (Lazy Import)"""
@@ -52,11 +62,9 @@ def get_database_backup():
     return get_backup()
 
 
-def get_model_repository():
-    """دریافت Repository مدل (Lazy Import)"""
-    from infrastructure.repositories.model_repository import ModelRepository
-    return ModelRepository()
-
+# ============================================================
+# Repositories
+# ============================================================
 
 def get_prediction_repository():
     """دریافت Repository پیش‌بینی (Lazy Import)"""
@@ -70,11 +78,38 @@ def get_settings_repository():
     return SettingsRepository()
 
 
+# ⚠️ get_model_repository حذف شد (RuleEngine legacy)
+
+
+# ============================================================
+# AI (Gemini) 🆕
+# ============================================================
+
+def get_gemini_client():
+    """دریافت Gemini Client (Lazy Import) 🆕"""
+    from infrastructure.ai.gemini_client import gemini_client
+    return gemini_client
+
+
+def get_gemini_service():
+    """دریافت Gemini Service (Lazy Import) 🆕"""
+    from infrastructure.ai.gemini_service import gemini_service
+    return gemini_service
+
+
+# ============================================================
+# Auth
+# ============================================================
+
 def get_auth_manager():
     """دریافت Auth Manager (Lazy Import)"""
     from infrastructure.auth.auth_manager import auth_manager
     return auth_manager
 
+
+# ============================================================
+# External
+# ============================================================
 
 def get_alerter():
     """دریافت Alerter (Lazy Import)"""
@@ -82,18 +117,33 @@ def get_alerter():
     return alerter
 
 
+# ============================================================
+# Export
+# ============================================================
+
 __all__ = [
-    # Lazy Loaders
+    # API Clients
     'get_coinstats_client',
     'get_cache_manager',
     'get_free_crypto_client',
-    'get_binance_ws_client',        # 🆕
+    'get_binance_ws_client',
+    
+    # Database
     'get_database_primary',
     'get_database_cache',
     'get_database_backup',
-    'get_model_repository',
+    
+    # Repositories
     'get_prediction_repository',
     'get_settings_repository',
+    
+    # AI (Gemini) 🆕
+    'get_gemini_client',
+    'get_gemini_service',
+    
+    # Auth
     'get_auth_manager',
+    
+    # External
     'get_alerter',
 ]
