@@ -1,7 +1,7 @@
 # core/__init__.py
 # ============================================================
 # پکیج Core - ماژول‌های اصلی سیستم
-# نسخه ۲.۰ - Lazy Import
+# نسخه ۳.۰ - Gemini-only (system, feature_engineering حذف شدند)
 # ============================================================
 
 from typing import TYPE_CHECKING
@@ -14,9 +14,6 @@ from typing import TYPE_CHECKING
 def __getattr__(name: str):
     """
     Lazy loading برای همه ماژول‌ها
-    
-    این تابع وقتی صدا زده می‌شه که یه attribute
-    از این ماژول درخواست بشه که در global namespace نیست.
     """
     
     # ===== Metrics =====
@@ -33,14 +30,7 @@ def __getattr__(name: str):
         from core.threading_manager import threading_manager
         return threading_manager
     
-    # ===== Feature Engineering =====
-    if name == "feature_engineer":
-        from core.feature_engineering import feature_engineer
-        return feature_engineer
-    
-    if name == "FeatureEngineer":
-        from core.feature_engineering import FeatureEngineer
-        return FeatureEngineer
+    # ⚠️ feature_engineer, FeatureEngineer حذف شدند (RuleEngine legacy)
     
     # ===== Parallel =====
     if name == "parallel_processor":
@@ -82,16 +72,8 @@ def __getattr__(name: str):
         from core.indicators import get_all_indicators
         return get_all_indicators
     
-    # ===== System =====
-    if name == "system":
-        from core.system import system
-        return system
+    # ⚠️ system, TradingSignalSystem حذف شدند (وابسته به RuleEngine/XGBoost)
     
-    if name == "TradingSignalSystem":
-        from core.system import TradingSignalSystem
-        return TradingSignalSystem
-    
-    # اگه پیدا نشد
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
     )
@@ -101,47 +83,22 @@ def __getattr__(name: str):
 # Helper Functions (Lazy)
 # ============================================================
 
-def get_system():
-    """
-    دریافت نمونه TradingSignalSystem (Lazy)
-    
-    خروجی:
-        TradingSignalSystem instance
-    """
-    from core.system import system
-    return system
-
-
 def get_metrics_scheduler():
-    """
-    دریافت MetricsScheduler (Lazy)
-    
-    خروجی:
-        MetricsScheduler instance
-    """
+    """دریافت MetricsScheduler (Lazy)"""
     from core.metrics import metrics_scheduler
     return metrics_scheduler
 
 
 def get_price_manager():
-    """
-    دریافت PriceManager از Container
-    
-    خروجی:
-        PriceManager instance
-    """
+    """دریافت PriceManager از Container"""
     try:
         from container import container
         return container.get('price_manager')
     except (ImportError, KeyError) as e:
-        # Fallback: ساخت مستقیم
         try:
             from core.price_manager import PriceManager
             from infrastructure.database import get_cache
-            
-            from infrastructure.api.free_crypto_client import (
-                create_free_crypto_client
-            )
+            from infrastructure.api.free_crypto_client import create_free_crypto_client
             from core.user_tracker import UserTracker
             
             free_client = create_free_crypto_client()
@@ -161,52 +118,28 @@ def get_price_manager():
 
 
 def get_user_tracker():
-    """
-    دریافت UserTracker از Container
-    
-    خروجی:
-        UserTracker instance
-    """
+    """دریافت UserTracker از Container"""
     try:
         from container import container
         return container.get('user_tracker')
     except (ImportError, KeyError):
-        # Fallback
         from core.user_tracker import UserTracker
         return UserTracker(timeout=30)
 
 
 def get_threading_manager():
-    """
-    دریافت ThreadingManager (Lazy)
-    
-    خروجی:
-        ThreadingManager instance
-    """
+    """دریافت ThreadingManager (Lazy)"""
     from core.threading_manager import threading_manager
     return threading_manager
 
 
-def get_feature_engineer():
-    """
-    دریافت FeatureEngineer (Lazy)
-    
-    خروجی:
-        FeatureEngineer instance
-    """
-    from core.feature_engineering import feature_engineer
-    return feature_engineer
-
-
 def get_parallel_processor():
-    """
-    دریافت ParallelProcessor (Lazy)
-    
-    خروجی:
-        ParallelProcessor instance
-    """
+    """دریافت ParallelProcessor (Lazy)"""
     from core.parallel_processor import parallel_processor
     return parallel_processor
+
+
+# ⚠️ get_system, get_feature_engineer حذف شدند
 
 
 # ============================================================
@@ -218,8 +151,6 @@ __all__ = [
     "metrics_scheduler",
     "MetricsScheduler",
     "threading_manager",
-    "feature_engineer",
-    "FeatureEngineer",
     "parallel_processor",
     "ParallelProcessor",
     "UserTracker",
@@ -232,16 +163,10 @@ __all__ = [
     "calculate_macd",
     "get_all_indicators",
     
-    # ===== System =====
-    "system",
-    "TradingSignalSystem",
-    
     # ===== Helper Functions =====
-    "get_system",
     "get_metrics_scheduler",
     "get_price_manager",
     "get_user_tracker",
     "get_threading_manager",
-    "get_feature_engineer",
     "get_parallel_processor",
 ]
