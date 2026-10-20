@@ -1,7 +1,7 @@
 # infrastructure/repositories/init_repository.py
 # ============================================================
-# RepositoryContainer - نسخه ۲.۲
-# + OHLCVRepository
+# RepositoryContainer - نسخه ۳.۰
+# Gemini-only (model, rule_config حذف شدند)
 # ============================================================
 
 import logging
@@ -25,23 +25,16 @@ class RepositoryContainer:
             return
         self._initialized = True
         
-        self._model_repository = None
         self._prediction_repository = None
         self._settings_repository = None
-        self._rule_config_repository = None
-        self._ohlcv_repository = None          # 🆕
+        self._ohlcv_repository = None
         self._init_count = 0
         
-        logger.info("✅ RepositoryContainer v2.2 initialized")
+        logger.info("✅ RepositoryContainer v3.0 initialized (Gemini-only)")
     
-    @property
-    def model(self):
-        if self._model_repository is None:
-            from infrastructure.repositories.model_repository import ModelRepository
-            self._model_repository = ModelRepository()
-            self._init_count += 1
-            logger.info("✅ ModelRepository initialized")
-        return self._model_repository
+    # ============================================================
+    # Properties
+    # ============================================================
     
     @property
     def prediction(self):
@@ -62,17 +55,7 @@ class RepositoryContainer:
         return self._settings_repository
     
     @property
-    def rule_config(self):
-        if self._rule_config_repository is None:
-            from infrastructure.repositories.rule_config_repository import RuleConfigRepository
-            self._rule_config_repository = RuleConfigRepository()
-            self._init_count += 1
-            logger.info("✅ RuleConfigRepository initialized")
-        return self._rule_config_repository
-    
-    @property
     def ohlcv(self):
-        """🆕 OHLCVRepository"""
         if self._ohlcv_repository is None:
             from infrastructure.repositories.ohlcv_repository import OHLCVRepository
             self._ohlcv_repository = OHLCVRepository()
@@ -80,40 +63,38 @@ class RepositoryContainer:
             logger.info("✅ OHLCVRepository initialized")
         return self._ohlcv_repository
     
+    # ⚠️ model, rule_config حذف شدند
+    
+    # ============================================================
+    # Generic accessors
+    # ============================================================
+    
     def get(self, name: str):
-        if name == "model":
-            return self.model
-        elif name == "prediction":
+        if name == "prediction":
             return self.prediction
         elif name == "settings":
             return self.settings
-        elif name == "rule_config":
-            return self.rule_config
         elif name == "ohlcv":
             return self.ohlcv
         else:
             raise ValueError(f"Unknown repository: {name}")
     
     def has(self, name: str) -> bool:
-        return name in ["model", "prediction", "settings", "rule_config", "ohlcv"]
+        return name in ["prediction", "settings", "ohlcv"]
     
     def list_available(self) -> list:
-        return ["model", "prediction", "settings", "rule_config", "ohlcv"]
+        return ["prediction", "settings", "ohlcv"]
     
     def reset(self) -> None:
-        self._model_repository = None
         self._prediction_repository = None
         self._settings_repository = None
-        self._rule_config_repository = None
         self._ohlcv_repository = None
         logger.info("🔄 RepositoryContainer reset")
     
     def get_stats(self) -> Dict[str, Any]:
         return {
-            "model_initialized": self._model_repository is not None,
             "prediction_initialized": self._prediction_repository is not None,
             "settings_initialized": self._settings_repository is not None,
-            "rule_config_initialized": self._rule_config_repository is not None,
             "ohlcv_initialized": self._ohlcv_repository is not None,
             "init_count": self._init_count,
             "available": self.list_available(),
@@ -122,10 +103,8 @@ class RepositoryContainer:
     def __repr__(self) -> str:
         return (
             f"<RepositoryContainer "
-            f"model={self._model_repository is not None} "
             f"prediction={self._prediction_repository is not None} "
             f"settings={self._settings_repository is not None} "
-            f"rule_config={self._rule_config_repository is not None} "
             f"ohlcv={self._ohlcv_repository is not None}>"
         )
 
@@ -133,9 +112,9 @@ class RepositoryContainer:
 repo_container: RepositoryContainer = RepositoryContainer()
 
 
-def get_model_repository():
-    return repo_container.model
-
+# ============================================================
+# Helper functions
+# ============================================================
 
 def get_prediction_repository():
     return repo_container.prediction
@@ -145,21 +124,17 @@ def get_settings_repository():
     return repo_container.settings
 
 
-def get_rule_config_repository():
-    return repo_container.rule_config
-
-
 def get_ohlcv_repository():
-    """🆕"""
     return repo_container.ohlcv
+
+
+# ⚠️ get_model_repository, get_rule_config_repository حذف شدند
 
 
 def init_all_repositories() -> Dict[str, Any]:
     result = {
-        "model": False,
         "prediction": False,
         "settings": False,
-        "rule_config": False,
         "ohlcv": False,
     }
     
@@ -181,14 +156,12 @@ def get_repository_stats() -> Dict[str, Any]:
 __all__ = [
     "RepositoryContainer",
     "repo_container",
-    "get_model_repository",
     "get_prediction_repository",
     "get_settings_repository",
-    "get_rule_config_repository",
     "get_ohlcv_repository",
     "init_all_repositories",
     "get_repository_stats",
 ]
 
 
-logger.info("✅ init_repository module loaded (v2.2 with OHLCV)")
+logger.info("✅ init_repository module loaded (v3.0 Gemini-only)")
