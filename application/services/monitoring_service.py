@@ -1,7 +1,14 @@
 # application/services/monitoring_service.py
 # ============================================================
-# Service: Monitoring Service - نسخه ۴.۰
-# OHLCV-aware + RuleEngine stats + لاگ کامل
+# Service: Monitoring Service - نسخه ۵.۰
+# Gemini-aware + بدون RuleEngine
+# ============================================================
+# 
+# تغییرات نسخه ۵.۰:
+#   - get_repository_stats: rule_config حذف شد، model stats هم حذف شد
+#   - only prediction stats
+#   - AI stats اضافه شد (Gemini)
+#   - check_ohlcv_health حفظ شد
 # ============================================================
 
 import logging
@@ -18,18 +25,18 @@ logger = logging.getLogger(__name__)
 
 class MonitoringService:
     """
-    سرویس مانیتورینگ - نسخه ۴.۰
+    سرویس مانیتورینگ - نسخه ۵.۰ (Gemini-aware)
     
     تغییرات:
-        - OHLCV stats از api_client
-        - RuleEngine-aware repository stats
-        - لاگ کامل
+        - RuleEngine stats حذف شد
+        - AI stats اضافه شد
+        - OHLCV health حفظ شد
     """
     
     def __init__(self, health_use_case: GetHealthUseCase):
         self.health_use_case = health_use_case
         
-        logger.info("✅ MonitoringService v4.0 initialized")
+        logger.info("✅ MonitoringService v5.0 initialized (Gemini-aware)")
     
     # ============================================================
     # Health
@@ -128,7 +135,7 @@ class MonitoringService:
     def get_quota_stats(self) -> Dict[str, Any]:
         """آمار Quota"""
         try:
-            from infrastructure.database import get_all_quotas, get_db
+            from infrastructure.database import get_all_quotas, get_db, get_quota_status
             
             quotas = get_all_quotas()
             result = {}
@@ -138,7 +145,6 @@ class MonitoringService:
                     db = get_db(db_name)
                     if db and db.is_connected() and hasattr(db, "_calculate_used_size"):
                         used_mb = db._calculate_used_size()
-                        from infrastructure.database import get_quota_status
                         status = get_quota_status(db_name, used_mb)
                         result[db_name] = {
                             "quota": quota,
@@ -164,25 +170,24 @@ class MonitoringService:
             }
     
     # ============================================================
-    # Repository Stats (RuleEngine-aware)
+    # Repository Stats (فقط Prediction)
     # ============================================================
     
     def get_repository_stats(self) -> Dict[str, Any]:
-        """آمار Repositoryها"""
+        """
+        آمار Repositoryها
+        
+        🆕 نسخه ۵.۰:
+            - model stats حذف شد (RuleEngine legacy)
+            - rule_config stats حذف شد
+            - فقط prediction stats
+        """
         try:
             from infrastructure.repositories import repos
             
             logger.debug("🔍 Monitoring: repository stats started")
             
-            model_stats: Dict[str, Any] = {}
             prediction_stats: Dict[str, Any] = {}
-            rule_config_stats: Dict[str, Any] = {}
-            
-            try:
-                model_stats = repos.model.get_stats()
-            except Exception as e:
-                logger.debug(f"Model stats error: {e}")
-                model_stats = {"error": str(e)}
             
             try:
                 prediction_stats = repos.prediction.get_stats()
@@ -190,20 +195,12 @@ class MonitoringService:
                 logger.debug(f"Prediction stats error: {e}")
                 prediction_stats = {"error": str(e)}
             
-            try:
-                rule_config_stats = repos.rule_config.get_stats()
-            except Exception as e:
-                logger.debug(f"RuleConfig stats error: {e}")
-                rule_config_stats = {"error": str(e)}
-            
             logger.debug("✅ Monitoring: repository stats done")
             
             return {
                 "success": True,
                 "data": {
-                    "models": model_stats,
                     "predictions": prediction_stats,
-                    "rule_config": rule_config_stats,
                 },
                 "timestamp": datetime.now().isoformat(),
             }
@@ -217,19 +214,14 @@ class MonitoringService:
             }
     
     # ============================================================
-    # API Stats (🆕 OHLCV-aware)
+    # API Stats (OHLCV-aware)
     # ============================================================
     
     def get_api_stats(self, api_client: APIClient) -> Dict[str, Any]:
-        """
-        آمار API client
-        
-        شامل OHLCV stats جدید
-        """
+        """آمار API client (CoinStats)"""
         try:
             stats = api_client.get_stats()
             
-            # اضافه کردن OHLCV به‌صورت جداگانه اگه هست
             ohlcv_stats = {}
             if "ohlcv_requests" in stats:
                 ohlcv_stats = {
@@ -249,6 +241,95 @@ class MonitoringService:
             }
         except Exception as e:
             logger.error(f"❌ Monitoring API stats error: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+    
+    # ============================================================
+    # AI Stats 🆕
+    # ============================================================
+    
+    def get_ai_stats(self) -> Dict[str, Any]:
+        """
+        آمار Gemini 🆕
+        
+        شامل:
+            - client stats
+            - chat stats
+            - image stats
+            - explain stats
+            - predict stats
+        """
+        try:
+            from container import container
+            
+            logger.debug("🔍 Monitoring: AI stats started")
+            
+            result: Dict[str, Any] = {}
+            
+            # Client stats
+            try:
+                gemini_client = container.get('gemini_client')
+                if gemini_client:
+                    result["client"] = gemini_client.get_stats()
+                else:
+                    result["client"] = {"available": False}
+            except Exception as e:
+                logger.debug(f"Gemini client stats error: {e}")
+                result["client"] = {"error": str(e)}
+            
+            # Chat stats
+            try:
+                chat_uc = container.get('ai_chat_use_case')
+                if chat_uc and hasattr(chat_uc, 'get_stats'):
+                    result["chat"] = chat_uc.get_stats()
+            except Exception as e:
+                logger.debug(f"Chat stats error: {e}")
+            
+            # Image stats
+            try:
+                image_uc = container.get('ai_analyze_image_use_case')
+                if image_uc and hasattr(image_uc, 'get_stats'):
+                    result["image"] = image_uc.get_stats()
+            except Exception as e:
+                logger.debug(f"Image stats error: {e}")
+            
+            # Explain stats
+            try:
+                explain_uc = container.get('ai_explain_use_case')
+                if explain_uc and hasattr(explain_uc, 'get_stats'):
+                    result["explain"] = explain_uc.get_stats()
+            except Exception as e:
+                logger.debug(f"Explain stats error: {e}")
+            
+            # Predict stats
+            try:
+                predict_uc = container.get('predict_coin_gemini_use_case')
+                if predict_uc and hasattr(predict_uc, 'get_stats'):
+                    result["predict"] = predict_uc.get_stats()
+            except Exception as e:
+                logger.debug(f"Predict stats error: {e}")
+            
+            # Router stats
+            try:
+                router = container.get('prediction_router')
+                if router and hasattr(router, 'get_stats'):
+                    result["router"] = router.get_stats()
+            except Exception as e:
+                logger.debug(f"Router stats error: {e}")
+            
+            logger.debug("✅ Monitoring: AI stats done")
+            
+            return {
+                "success": True,
+                "data": result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ Monitoring AI stats error: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
@@ -277,15 +358,11 @@ class MonitoringService:
             }
     
     # ============================================================
-    # OHLCV Health (🆕)
+    # OHLCV Health
     # ============================================================
     
     def check_ohlcv_health(self, api_client: APIClient) -> Dict[str, Any]:
-        """
-        بررسی سلامت endpoint OHLCV
-        
-        تست ساده: BTC/USDT 4h
-        """
+        """بررسی سلامت endpoint OHLCV"""
         try:
             logger.debug("🔍 Monitoring: OHLCV health check started")
             
