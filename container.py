@@ -1,7 +1,16 @@
 # container.py
 # ============================================================
 # Container - مدیریت وابستگی‌ها (Dependency Injection)
-# نسخه ۵.۰ - Gemini + PredictionRouter + RuleEngine (legacy)
+# نسخه ۶.۰ - فقط Gemini (RuleEngine legacy حذف شد)
+# ============================================================
+# 
+# تغییرات نسخه ۶.۰:
+#   - model_manager, trainer حذف شدند
+#   - predict_use_case, scan_market_use_case حذف شدند
+#   - rule_config_repository, model_repository حذف شدند
+#   - command_system, self_healer حذف شدند
+#   - feature_engineer حذف شد
+#   - فقط Gemini + PredictionRouter
 # ============================================================
 
 import os
@@ -44,7 +53,7 @@ class Container:
             return
         self._initialized = True
         self._init_time = datetime.now()
-        logger.info("Container v5.0 initialized")
+        logger.info("Container v6.0 initialized (Gemini-only)")
     
     # ============================================================
     # Register
@@ -162,21 +171,14 @@ class Container:
     def repo_container(self) -> Any:
         return self.get('repo_container')
     
-    def model_repository(self) -> Any:
-        return self.get('model_repository')
-    
     def prediction_repository(self) -> Any:
         return self.get('prediction_repository')
     
-    def rule_config_repository(self) -> Any:
-        return self.get('rule_config_repository')
+    # ⚠️ model_repository, rule_config_repository حذف شدند
     
     # ============================================================
     # Convenience Methods - Core
     # ============================================================
-    
-    def feature_engineer(self) -> Any:
-        return self.get('feature_engineer')
     
     def indicators(self) -> Any:
         return self.get('indicators')
@@ -193,8 +195,10 @@ class Container:
     def threading_manager(self) -> Any:
         return self.get('threading_manager')
     
+    # ⚠️ feature_engineer حذف شد
+    
     # ============================================================
-    # Convenience Methods - AI (Gemini) 🆕
+    # Convenience Methods - AI (Gemini)
     # ============================================================
     
     def gemini_client(self) -> Any:
@@ -219,20 +223,8 @@ class Container:
         return self.get('prediction_router')
     
     # ============================================================
-    # Convenience Methods - Application (legacy)
+    # Convenience Methods - Application
     # ============================================================
-    
-    def model_manager(self) -> Any:
-        return self.get('model_manager')
-    
-    def trainer(self) -> Any:
-        return self.get('trainer')
-    
-    def predict_use_case(self) -> Any:
-        return self.get('predict_use_case')
-    
-    def scan_market_use_case(self) -> Any:
-        return self.get('scan_market_use_case')
     
     def prediction_service(self) -> Any:
         return self.get('prediction_service')
@@ -240,14 +232,11 @@ class Container:
     def monitoring_service(self) -> Any:
         return self.get('monitoring_service')
     
-    def command_system(self) -> Any:
-        return self.get('command_system')
-    
-    def self_healer(self) -> Any:
-        return self.get('self_healer')
-    
     def health_use_case(self) -> Any:
         return self.get('health_use_case')
+    
+    # ⚠️ model_manager, trainer, predict_use_case, scan_market_use_case,
+    #    command_system, self_healer حذف شدند
     
     def __repr__(self) -> str:
         return f"<Container services={len(self.list_services())}>"
@@ -266,7 +255,7 @@ container: Container = Container()
 
 def register_services() -> None:
     """ثبت همه سرویس‌ها در Container"""
-    logger.info("Registering services...")
+    logger.info("Registering services (Gemini-only)...")
     
     # ============================================================
     # ۱. Infrastructure
@@ -330,25 +319,17 @@ def register_services() -> None:
         from infrastructure.repositories.init_repository import repo_container
         return repo_container
     
-    def get_model_repository():
-        from infrastructure.repositories.init_repository import repo_container
-        return repo_container.model
-    
     def get_prediction_repository():
         from infrastructure.repositories.init_repository import repo_container
         return repo_container.prediction
     
-    def get_rule_config_repository():
-        from infrastructure.repositories.init_repository import repo_container
-        return repo_container.rule_config
-    
     container.register('repo_container', get_repo_container, singleton=True)
-    container.register('model_repository', get_model_repository, singleton=True)
     container.register('prediction_repository', get_prediction_repository, singleton=True)
-    container.register('rule_config_repository', get_rule_config_repository, singleton=True)
+    
+    # ⚠️ model_repository, rule_config_repository حذف شدند
     
     # ============================================================
-    # ۴. AI (Gemini) 🆕
+    # ۴. AI (Gemini)
     # ============================================================
     
     def get_gemini_client():
@@ -398,30 +379,8 @@ def register_services() -> None:
     container.register('predict_coin_gemini_use_case', get_predict_coin_gemini_use_case, singleton=True)
     
     # ============================================================
-    # ۵. Model (RuleEngine legacy)
+    # ۵. Core
     # ============================================================
-    
-    def get_model_manager():
-        from models.manager.model_manager import ModelManager
-        return ModelManager(container.get('api_client'))
-    
-    def get_trainer():
-        from models.trainer.auto_trainer import AutoTrainer
-        return AutoTrainer(
-            api=container.get('api_client'),
-            model_manager=container.get('model_manager'),
-        )
-    
-    container.register('model_manager', get_model_manager, singleton=True)
-    container.register('trainer', get_trainer, singleton=True)
-    
-    # ============================================================
-    # ۶. Core
-    # ============================================================
-    
-    def get_feature_engineer():
-        from core.feature_engineering import FeatureEngineer
-        return FeatureEngineer(container.get('api_client'))
     
     def get_user_tracker():
         from core.user_tracker import UserTracker
@@ -453,127 +412,72 @@ def register_services() -> None:
             'calculate_macd': calculate_macd,
         }
     
-    container.register('feature_engineer', get_feature_engineer, singleton=True)
     container.register('user_tracker', get_user_tracker, singleton=True)
     container.register('price_manager', get_price_manager, singleton=True)
     container.register('indicators', get_indicators, singleton=True)
     
-    # ============================================================
-    # ۷. Application - Use Cases
-    # ============================================================
+    # ⚠️ feature_engineer حذف شد
     
-    def get_predict_use_case():
-        from application.use_cases.predict_coin import PredictCoinUseCase
-        return PredictCoinUseCase(
-            api_client=container.get('api_client'),
-            model_manager=container.get('model_manager'),
-            feature_engineer=container.get('feature_engineer'),
-        )
-    
-    def get_scan_market_use_case():
-        from application.use_cases.scan_market import ScanMarketUseCase
-        from infrastructure.database import get_cache, get_primary
-        
-        return ScanMarketUseCase(
-            api_client=container.get('api_client'),
-            cache=get_cache(),
-            db=get_primary(),
-        )
+    # ============================================================
+    # ۶. Application - Use Cases
+    # ============================================================
     
     def get_health_use_case():
         try:
             from application.use_cases.get_health import GetHealthUseCase
             return GetHealthUseCase(
                 api_client=container.get('api_client'),
-                model_manager=container.get('model_manager'),
             )
         except ImportError:
             return None
     
-    container.register('predict_use_case', get_predict_use_case, singleton=True)
-    container.register('scan_market_use_case', get_scan_market_use_case, singleton=True)
     container.register('health_use_case', get_health_use_case, singleton=True)
     
+    # ⚠️ predict_use_case, scan_market_use_case حذف شدند
+    
     # ============================================================
-    # ۸. Prediction Router 🆕
+    # ۷. Prediction Router (فقط Gemini)
     # ============================================================
     
     def get_prediction_router():
         from application.services.prediction_router import PredictionRouter
         
-        # Gemini همیشه هست
         try:
             gemini_uc = container.get('predict_coin_gemini_use_case')
         except Exception as e:
             logger.warning(f"⚠️ Gemini use case not available: {e}")
             gemini_uc = None
         
-        # RuleEngine - می‌تونه None باشه
-        try:
-            rule_uc = container.get('predict_use_case')
-        except Exception:
-            rule_uc = None
-        
-        return PredictionRouter(
-            gemini_use_case=gemini_uc,
-            rule_use_case=rule_uc,
-        )
+        return PredictionRouter(gemini_use_case=gemini_uc)
     
     container.register('prediction_router', get_prediction_router, singleton=True)
     
     # ============================================================
-    # ۹. Application - Services
+    # ۸. Application - Services
     # ============================================================
     
     def get_prediction_service():
         from application.services.prediction_service import PredictionService
         
-        # predict_use_case می‌تونه None باشه اگه بعداً RuleEngine حذف بشه
-        rule_uc = None
-        try:
-            rule_uc = container.get('predict_use_case')
-        except Exception:
-            pass
-        
         router = None
         try:
             router = container.get('prediction_router')
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"⚠️ Prediction router not available: {e}")
         
-        return PredictionService(
-            predict_use_case=rule_uc,
-            prediction_router=router,
-        )
+        return PredictionService(prediction_router=router)
     
     def get_monitoring_service():
         from application.services.monitoring_service import MonitoringService
         return MonitoringService(container.get('health_use_case'))
     
-    def get_command_system():
-        try:
-            from application.services.command_system import CommandSystem
-            from domain.services.numeric_analyzer import NumericAnalyzer
-            analyzer = NumericAnalyzer(container.get('api_client'))
-            return CommandSystem(analyzer)
-        except ImportError:
-            return None
-    
-    def get_self_healer():
-        from application.services.self_healer import SelfHealer
-        return SelfHealer(
-            model_manager=container.get('model_manager'),
-            trainer=container.get('trainer'),
-            api_client=container.get('api_client'),
-        )
-    
     container.register('prediction_service', get_prediction_service, singleton=True)
     container.register('monitoring_service', get_monitoring_service, singleton=True)
-    container.register('command_system', get_command_system, singleton=True)
-    container.register('self_healer', get_self_healer, singleton=True)
+    
+    # ⚠️ command_system, self_healer حذف شدند
     
     # ============================================================
-    # ۱۰. System
+    # ۹. System
     # ============================================================
     
     def get_metrics_scheduler():
@@ -591,7 +495,7 @@ def register_services() -> None:
     # Summary
     # ============================================================
     
-    logger.info(f"{len(container.list_services())} services registered")
+    logger.info(f"{len(container.list_services())} services registered (Gemini-only)")
 
 
 # ============================================================
@@ -631,7 +535,7 @@ def start_services() -> None:
     except Exception as e:
         logger.error(f"❌ BinanceWSClient start failed: {e}")
     
-    # ۴. Gemini - warmup (اختیاری)
+    # ۴. Gemini warmup
     try:
         gemini = container.get('gemini_client')
         if gemini and gemini.is_available:
