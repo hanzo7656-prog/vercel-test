@@ -1,7 +1,7 @@
 # application/services/__init__.py
 # ============================================================
 # Services - سرویس‌های لایه کاربرد
-# نسخه ۲.۰ - Lazy Import
+# نسخه ۳.۰ - Gemini-only (SelfHealer, CommandSystem حذف شدند)
 # ============================================================
 
 from typing import TYPE_CHECKING
@@ -14,9 +14,6 @@ from typing import TYPE_CHECKING
 def __getattr__(name: str):
     """
     Lazy loading برای سرویس‌ها
-    
-    این تابع وقتی صدا زده می‌شه که یه attribute
-    از این ماژول درخواست بشه که در global namespace نیست.
     """
     
     # ===== Prediction Service =====
@@ -29,15 +26,13 @@ def __getattr__(name: str):
         from application.services.monitoring_service import MonitoringService
         return MonitoringService
     
-    # ===== Command System =====
-    if name == "CommandSystem":
-        from application.services.command_system import CommandSystem
-        return CommandSystem
+    # ===== Prediction Router 🆕 =====
+    if name == "PredictionRouter":
+        from application.services.prediction_router import PredictionRouter
+        return PredictionRouter
     
-    # ===== Self Healer =====
-    if name == "SelfHealer":
-        from application.services.self_healer import SelfHealer
-        return SelfHealer
+    # ⚠️ CommandSystem حذف شد (RuleEngine legacy)
+    # ⚠️ SelfHealer حذف شد (RuleEngine legacy)
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
@@ -51,6 +46,5 @@ def __getattr__(name: str):
 __all__ = [
     "PredictionService",
     "MonitoringService",
-    "CommandSystem",
-    "SelfHealer",
+    "PredictionRouter",
 ]
