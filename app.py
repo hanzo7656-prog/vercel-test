@@ -1,7 +1,10 @@
 # app.py
 # ============================================================
-# ورودی اصلی سیستم - نسخه ۱۰.۰
+# ورودی اصلی سیستم - نسخه ۱۱.۰
 # Bootstrap + Graceful Shutdown + Error Handling
+# نسخه ۱۱.۰:
+#   - حذف model_bp (RuleEngine legacy)
+#   - حفظ ai_bp (Gemini)
 # ============================================================
 
 import os
@@ -84,10 +87,6 @@ app.config['JSON_AS_ASCII'] = False
 # Container Init
 # ============================================================
 
-# ✅ Force init database_factory FIRST — با thread جدا و timeout
-#    دلیل: db_factory.__init__ به ۶ دیتابیس وصل می‌شود و ممکن است
-#    در import time دقیقه‌ها طول بکشد → gunicorn port timeout می‌دهد.
-
 def _init_db_factory() -> None:
     """Init db_factory در thread جدا"""
     import time as _time
@@ -98,7 +97,6 @@ def _init_db_factory() -> None:
         elapsed = _time.time() - started
         logger.info(f"✅ database_factory initialized in {elapsed:.2f}s")
 
-        # چک سلامت همه دیتابیس‌ها
         try:
             from infrastructure.database import health_check
             health = health_check()
@@ -144,35 +142,26 @@ logger.info("✅ Container initialized")
 # ============================================================
 # Register Blueprints
 # ============================================================
-
-from presentation.routes.api_routes import api_bp
-from presentation.routes.metrics_routes import metrics_bp
-from presentation.routes.web_routes import web_bp
-from presentation.routes.model_routes import model_bp
-# ============================================================
-# Register Blueprints AI (new)
+# 
+# 🆕 نسخه ۱۱.۰:
+#   - model_bp حذف شد (RuleEngine legacy)
+#   - ai_bp حفظ شد (Gemini)
 # ============================================================
 
 from presentation.routes.api_routes import api_bp
 from presentation.routes.metrics_routes import metrics_bp
 from presentation.routes.web_routes import web_bp
-from presentation.routes.model_routes import model_bp
 from presentation.routes.ai_routes import ai_bp          # 🆕
 
-app.register_blueprint(model_bp)
+# ✅ model_bp حذف شد
+# from presentation.routes.model_routes import model_bp
+
 app.register_blueprint(web_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(metrics_bp)
-app.register_blueprint(ai_bp)                           
+app.register_blueprint(ai_bp)                             # 🆕
 
-
-
-app.register_blueprint(model_bp)
-app.register_blueprint(web_bp)
-app.register_blueprint(api_bp)
-app.register_blueprint(metrics_bp)
-
-logger.info("✅ Blueprints registered")
+logger.info("✅ Blueprints registered (web, api, metrics, ai)")
 
 
 # ============================================================
@@ -211,7 +200,7 @@ def start_metrics_scheduler() -> None:
 # ============================================================
 
 def start_alert_system() -> None:
-    """شروع سیستم Alert + Self-Healing"""
+    """شروع سیستم Alert (بدون Self-Healing - RuleEngine حذف شد)"""
     try:
         from infrastructure.external.alerter import alerter
 
@@ -220,13 +209,8 @@ def start_alert_system() -> None:
             logger.warning("⚠️ Alert system disabled (no metrics)")
             return
 
-        if getattr(metrics, 'healer', None) is None:
-            try:
-                healer = container.get('self_healer')
-                metrics.healer = healer
-                logger.info("✅ SelfHealer attached to metrics")
-            except Exception as e:
-                logger.warning(f"⚠️ SelfHealer not available: {e}")
+        # ✅ SelfHealer حذف شد (وابسته به RuleEngine)
+        # دیگه heal نمی‌کنیم، فقط alert
 
         def alert_loop() -> None:
             import time
@@ -236,10 +220,6 @@ def start_alert_system() -> None:
                     if metrics_s:
                         alert_metrics = metrics_s.get_alert_metrics()
                         alerter.check_and_alert(alert_metrics)
-
-                        if metrics_s.healer:
-                            metrics_s.healer.check_and_heal(alert_metrics)
-
                     time.sleep(30)
                 except Exception as e:
                     logger.error(f"❌ Alert loop error: {e}")
@@ -255,11 +235,11 @@ def start_alert_system() -> None:
                 max_restarts=5,
                 restart_delay=15,
             )
-            logger.info("✅ Alert system via ThreadingManager")
+            logger.info("✅ Alert system via ThreadingManager (no self-healing)")
         else:
             alert_thread = threading.Thread(target=alert_loop, daemon=False)
             alert_thread.start()
-            logger.info("✅ Alert system started")
+            logger.info("✅ Alert system started (no self-healing)")
 
     except Exception as e:
         logger.error(f"❌ Alert system failed: {e}")
@@ -272,7 +252,7 @@ def start_alert_system() -> None:
 # ============================================================
 
 def start_db_health_check() -> None:
-    """شروع DB Health Check با Self-Healing"""
+    """شروع DB Health Check"""
     try:
         if not container.has('db_factory'):
             logger.warning("⚠️ DB factory not available")
@@ -314,20 +294,13 @@ def start_db_health_check() -> None:
 
 
 # ============================================================
-# Start All
-# ============================================================
-
-# ============================================================
-# Start All — فقط در Worker (اولین request)
+# Lazy Start Services (فقط در Worker)
 # ============================================================
 
 @app.before_request
 def _lazy_start_services():
     """
-    🆕 سرویس‌های پس‌زمینه را فقط در Worker شروع کن
-
-    چرا: اگر در import time صدا زده شوند، در Master ساخته می‌شوند
-    و بعد از fork، threadها در Worker نیستند.
+    سرویس‌های پس‌زمینه را فقط در Worker شروع کن
     """
     if getattr(app, '_services_started', False):
         return
@@ -357,7 +330,7 @@ def _lazy_start_services():
     except Exception as e:
         logger.error(f"❌ [Worker] metrics_scheduler failed: {e}")
 
-    # ۳. Alert System
+    # ۳. Alert System (بدون Self-Healing)
     try:
         start_alert_system()
     except Exception as e:
@@ -370,6 +343,8 @@ def _lazy_start_services():
         logger.error(f"❌ [Worker] db_health_check failed: {e}")
 
     logger.info("✅ [Worker] All background services started")
+
+
 # ============================================================
 # Error Handlers
 # ============================================================
@@ -422,6 +397,15 @@ def home():
         except Exception:
             pass
 
+        # 🆕 چک Gemini
+        gemini_available = False
+        try:
+            if container.has('gemini_client'):
+                gc = container.get('gemini_client')
+                gemini_available = gc.is_available if gc else False
+        except Exception:
+            pass
+
         return jsonify({
             'name': APP_NAME,
             'version': VERSION,
@@ -430,14 +414,16 @@ def home():
                 'services_count': container_status.get('total', 0),
             },
             'websocket': {'connected': ws_connected},
+            'ai': {'gemini_available': gemini_available},  # 🆕
             'timestamp': datetime.now().isoformat(),
             'endpoints': [
                 '/api/health',
                 '/api/metrics',
-                '/api/model/status',
-                '/api/model/profiles/presets',
-                '/api/predict/single',
+                '/api/predict/single?engine=gemini',
                 '/api/crypto/prices',
+                '/api/ai/chat',
+                '/api/ai/analyze-image',
+                '/api/ai/status',
             ],
         })
     except Exception as e:
@@ -447,7 +433,6 @@ def home():
             'version': VERSION,
             'status': 'running',
         })
-
 
 
 # ============================================================
