@@ -1,28 +1,20 @@
 # application/use_cases/__init__.py
 # ============================================================
-# Use Cases - نسخه ۴.۰
-# + AI (Gemini) Use Cases
+# Use Cases - نسخه ۵.۰
+# Gemini-only (PredictCoinUseCase, ScanMarketUseCase حذف شدند)
 # ============================================================
 
 def __getattr__(name: str):
     # ============================================================
-    # Existing (RuleEngine)
+    # Health (مشترک)
     # ============================================================
-    
-    if name == "PredictCoinUseCase":
-        from application.use_cases.predict_coin import PredictCoinUseCase
-        return PredictCoinUseCase
     
     if name == "GetHealthUseCase":
         from application.use_cases.get_health import GetHealthUseCase
         return GetHealthUseCase
     
-    if name == "ScanMarketUseCase":
-        from application.use_cases.scan_market import ScanMarketUseCase
-        return ScanMarketUseCase
-    
     # ============================================================
-    # AI (Gemini) — 🆕
+    # AI (Gemini)
     # ============================================================
     
     if name == "AIChatUseCase":
@@ -37,18 +29,24 @@ def __getattr__(name: str):
         from application.use_cases.ai_explain import AIExplainUseCase
         return AIExplainUseCase
     
+    if name == "PredictCoinGeminiUseCase":
+        from application.use_cases.predict_coin_gemini import PredictCoinGeminiUseCase
+        return PredictCoinGeminiUseCase
+    
+    # ⚠️ PredictCoinUseCase حذف شد (RuleEngine legacy)
+    # ⚠️ ScanMarketUseCase حذف شد (RuleEngine legacy)
+    
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
     )
 
 
 __all__ = [
-    # Existing
-    "PredictCoinUseCase",
+    # Health
     "GetHealthUseCase",
-    "ScanMarketUseCase",
     # AI (Gemini)
     "AIChatUseCase",
     "AIAnalyzeImageUseCase",
     "AIExplainUseCase",
+    "PredictCoinGeminiUseCase",
 ]
