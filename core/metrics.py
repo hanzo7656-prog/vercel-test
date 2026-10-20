@@ -1,7 +1,15 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۱۱.۰
-# رفع باگ‌ها + Quota + Repository + Lock
+# سیستم جمع‌آوری متریک - نسخه ۱۲.۰
+# Gemini-only (RuleEngine + SelfHealer حذف شد)
+# ============================================================
+# 
+# تغییرات نسخه ۱۲.۰:
+#   - _run_self_healing حذف شد
+#   - _collect_model_status حذف شد
+#   - _collect_repository_stats حذف شد
+#   - _collect_quota_status حذف شد (چون RuleConfig رفت)
+#   - _collect_ai_status اضافه شد (Gemini)
 # ============================================================
 
 import time
@@ -21,22 +29,12 @@ logger = logging.getLogger(__name__)
 
 class MetricsScheduler:
     """
-    سیستم جمع‌آوری متریک با Self-Healer یکپارچه
+    سیستم جمع‌آوری متریک - Gemini-only
     
-    رفع باگ‌ها:
-        - ModelManager جدید → از container
-        - Circular import → Lazy
-        - بدون lock → Lock
-        - بدون jitter → jitter
-        - بدون Quota → اضافه شد
-        - بدون Repository stats → اضافه شد
-    
-    ارتقاها:
-        - Quota metrics
-        - Repository stats
-        - Model active info
-        - Sync stats
-        - Thread-safe cache
+    ارتقاها (v12.0):
+        - SelfHealer حذف شد
+        - RuleEngine/Repository stats حذف شد
+        - Gemini stats اضافه شد
     """
     
     _instance: Optional['MetricsScheduler'] = None
@@ -65,8 +63,6 @@ class MetricsScheduler:
             "collections": 0,
             "errors": 0,
             "last_collection": None,
-            "healing_actions": 0,
-            "last_healing": None,
         }
         
         self.start_time = time.time()
@@ -75,83 +71,11 @@ class MetricsScheduler:
         self.light_interval = 3
         self.medium_interval = 60
         self.heavy_interval = 300
-        self.healing_interval = 30
         
         # Jitter range
-        self.jitter_range = 2  # ثانیه
+        self.jitter_range = 2
         
-        # Healer (Lazy)
-        self.healer = None
-        
-        logger.info("✅ MetricsScheduler v11.0 initialized")
-    
-    # ============================================================
-    # Healer (Lazy)
-    # ============================================================
-    
-    def _get_healer(self):
-        """دریافت healer (Lazy)"""
-        if self.healer is not None:
-            return self.healer
-        
-        try:
-            from application.services.self_healer import SelfHealer
-            
-            # استفاده از container
-            try:
-                from container import container
-                model_manager = container.get('model_manager')
-                trainer = container.get('trainer')
-                api_client = container.get('api_client')
-            except (ImportError, KeyError):
-                # Fallback
-                from infrastructure.api.coinstats_client import coinstats_client
-                from models.manager.model_manager import ModelManager
-                from models.trainer.auto_trainer import AutoTrainer
-                
-                model_manager = ModelManager(api=coinstats_client)
-                trainer = AutoTrainer(api=coinstats_client, model_manager=model_manager)
-                api_client = coinstats_client
-            
-            self.healer = SelfHealer(
-                model_manager=model_manager,
-                trainer=trainer,
-                api_client=api_client,
-            )
-            
-            logger.info("✅ SelfHealer initialized (lazy)")
-            return self.healer
-            
-        except ImportError as e:
-            logger.debug(f"⚠️ SelfHealer not available: {e}")
-            return None
-        except Exception as e:
-            logger.warning(f"⚠️ SelfHealer creation error: {e}")
-            return None
-    
-    # ============================================================
-    # Self-Healing
-    # ============================================================
-    
-    def _run_self_healing(self) -> None:
-        """اجرای self-healing"""
-        healer = self._get_healer()
-        
-        if healer is None:
-            return
-        
-        try:
-            metrics = self.get_alert_metrics()
-            actions = healer.check_and_heal(metrics)
-            
-            if any(actions.values()):
-                self.stats["healing_actions"] += 1
-                self.stats["last_healing"] = datetime.now().isoformat()
-                logger.info(f"🔄 Self-healing actions: {actions}")
-                
-        except Exception as e:
-            logger.error(f"❌ Self-healing error: {e}")
-            self.stats["errors"] += 1
+        logger.info("✅ MetricsScheduler v12.0 initialized (Gemini-only)")
     
     # ============================================================
     # Light Metrics (۳ ثانیه)
@@ -163,7 +87,6 @@ class MetricsScheduler:
             cpu = psutil.cpu_percent(interval=0.2)
             ram = psutil.virtual_memory().percent
             
-            # Uptime
             elapsed = int(time.time() - self.start_time)
             if elapsed < 60:
                 uptime = f"{elapsed}s"
@@ -191,29 +114,15 @@ class MetricsScheduler:
     # ============================================================
     
     def _collect_medium_metrics(self) -> None:
-        """متریک‌های متوسط: قیمت‌ها، API، مدل، دیتابیس"""
+        """متریک‌های متوسط: قیمت‌ها، API، AI، دیتابیس"""
         try:
-            # ===== Lazy imports =====
             from infrastructure.api.coinstats_client import coinstats_client
             from infrastructure.database import health_check as db_health
             
-            # ===== قیمت‌ها =====
             self._collect_prices(coinstats_client)
-            
-            # ===== API =====
             self._collect_api_status(coinstats_client)
-            
-            # ===== مدل (از container) =====
-            self._collect_model_status()
-            
-            # ===== دیتابیس =====
+            self._collect_ai_status()  # 🆕
             self._collect_db_status(db_health)
-            
-            # ===== Quota (🆕) =====
-            self._collect_quota_status()
-            
-            # ===== Repository Stats (🆕) =====
-            self._collect_repository_stats()
             
         except Exception as e:
             logger.error(f"❌ Medium metrics error: {e}")
@@ -271,40 +180,28 @@ class MetricsScheduler:
         except Exception as e:
             logger.debug(f"⚠️ Credits error: {e}")
     
-    def _collect_model_status(self) -> None:
-        """
-        وضعیت مدل (با استفاده از container - بدون ModelManager جدید)
-        """
+    def _collect_ai_status(self) -> None:
+        """وضعیت Gemini 🆕"""
         try:
-            # ===== از container =====
-            try:
-                from container import container
-                model_manager = container.get('model_manager')
-            except (ImportError, KeyError):
-                return  # اگه container نیست، skip کن
-            
-            if model_manager is None:
+            from container import container
+            gemini = container.get('gemini_client')
+            if gemini is None:
                 return
             
-            loaded = model_manager.current_model is not None
-            version = model_manager.current_version or "N/A"
-            
-            # آمار
-            stats = model_manager.get_stats() if hasattr(model_manager, "get_stats") else {}
-            accuracy = stats.get("max_accuracy", None)
+            stats = gemini.get_stats()
             
             with self._cache_lock:
-                self.metrics_cache["model_status"] = {
-                    "value": {"loaded": loaded, "version": version},
+                self.metrics_cache["ai_status"] = {
+                    "value": {
+                        "available": gemini.is_available,
+                        "total_requests": stats.get("total_requests", 0),
+                        "success_rate": stats.get("success_rate", 0),
+                        "last_error": stats.get("last_error"),
+                    },
                     "timestamp": datetime.now().isoformat(),
                 }
-                self.metrics_cache["model_accuracy"] = {
-                    "value": accuracy,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                
         except Exception as e:
-            logger.debug(f"⚠️ Model status error: {e}")
+            logger.debug(f"⚠️ AI status error: {e}")
     
     def _collect_db_status(self, db_health) -> None:
         """وضعیت دیتابیس‌ها"""
@@ -326,80 +223,6 @@ class MetricsScheduler:
         except Exception as e:
             logger.debug(f"⚠️ Databases error: {e}")
     
-    def _collect_quota_status(self) -> None:
-        """وضعیت Quota (🆕)"""
-        try:
-            from infrastructure.database import get_all_quotas, get_quota_status, get_primary
-            
-            quotas = get_all_quotas()
-            quota_status = {}
-            
-            for db_name, quota in quotas.items():
-                try:
-                    from infrastructure.database import get_db
-                    db = get_db(db_name)
-                    
-                    if db and db.is_connected() and hasattr(db, "_calculate_used_size"):
-                        used_mb = db._calculate_used_size()
-                        status = get_quota_status(db_name, used_mb)
-                        quota_status[db_name] = status
-                    else:
-                        quota_status[db_name] = {"connected": False}
-                except Exception:
-                    quota_status[db_name] = {"error": "unknown"}
-            
-            with self._cache_lock:
-                self.metrics_cache["quota"] = {
-                    "value": quota_status,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                
-        except Exception as e:
-            logger.debug(f"⚠️ Quota error: {e}")
-    
-    def _collect_repository_stats(self) -> None:
-        """آمار Repositoryها (🆕)"""
-        try:
-            from infrastructure.repositories import repos
-            
-            # Model Repository stats
-            try:
-                model_stats = repos.model.get_stats()
-                
-                with self._cache_lock:
-                    self.metrics_cache["repository"] = {
-                        "value": {
-                            "total_models": model_stats.get("total_models", 0),
-                            "avg_accuracy": model_stats.get("avg_accuracy", 0),
-                            "max_accuracy": model_stats.get("max_accuracy", 0),
-                            "active_model": model_stats.get("active_model"),
-                        },
-                        "timestamp": datetime.now().isoformat(),
-                    }
-            except Exception as e:
-                logger.debug(f"⚠️ Model repo stats error: {e}")
-            
-            # Prediction Repository stats
-            try:
-                pred_stats = repos.prediction.get_stats()
-                
-                with self._cache_lock:
-                    self.metrics_cache["predictions_stats"] = {
-                        "value": {
-                            "total": pred_stats.get("total", 0),
-                            "by_signal": pred_stats.get("by_signal", {}),
-                            "recent_24h": pred_stats.get("recent_24h", 0),
-                        },
-                        "timestamp": datetime.now().isoformat(),
-                    }
-            except Exception as e:
-                logger.debug(f"⚠️ Prediction repo stats error: {e}")
-                
-        except ImportError:
-            pass
-        except Exception as e:
-            logger.debug(f"⚠️ Repository stats error: {e}")
-    
     # ============================================================
     # Heavy Metrics (۳۰۰ ثانیه)
     # ============================================================
@@ -409,7 +232,7 @@ class MetricsScheduler:
         try:
             from infrastructure.api.coinstats_client import coinstats_client
             
-            # ===== ترس و طمع =====
+            # ترس و طمع
             try:
                 fg = coinstats_client.get_fear_greed(use_cache=True)
                 if fg and "now" in fg:
@@ -422,7 +245,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.debug(f"⚠️ Fear & Greed error: {e}")
             
-            # ===== سلطه BTC =====
+            # سلطه BTC
             try:
                 dominance = coinstats_client.get_btc_dominance(use_cache=True)
                 if dominance:
@@ -434,7 +257,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.debug(f"⚠️ BTC Dominance error: {e}")
             
-            # ===== اخبار =====
+            # اخبار
             try:
                 news = coinstats_client.get_news(limit=5)
                 if news and "error" not in news:
@@ -446,7 +269,7 @@ class MetricsScheduler:
             except Exception as e:
                 logger.debug(f"⚠️ News error: {e}")
             
-            # ===== دیسک =====
+            # دیسک
             try:
                 usage = psutil.disk_usage("/")
                 disk = {
@@ -491,8 +314,6 @@ class MetricsScheduler:
             "status": "running" if self._running else "stopped",
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
-            "healing_actions": self.stats["healing_actions"],
-            "last_healing": self.stats["last_healing"],
             "metrics_count": cache_len,
             "last_collection": self.stats["last_collection"],
         }
@@ -507,11 +328,9 @@ class MetricsScheduler:
             "ram": cache.get("ram", {}).get("value", 0),
             "api_status": cache.get("api_status", {}).get("value", "unknown"),
             "api_credits": cache.get("api_credits", {}).get("value", 0),
-            "model_loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-            "model_accuracy": cache.get("model_accuracy", {}).get("value", None),
+            "ai_status": cache.get("ai_status", {}).get("value", {}),
             "databases": cache.get("databases", {}).get("value", {}),
             "uptime": cache.get("uptime", {}).get("value", "0s"),
-            "quota": cache.get("quota", {}).get("value", {}),
         }
     
     def get_dashboard_metrics(self) -> Dict[str, Any]:
@@ -535,20 +354,13 @@ class MetricsScheduler:
                 "status": cache.get("api_status", {}).get("value", "unknown"),
                 "credits": cache.get("api_credits", {}).get("value", 0),
             },
+            "ai": cache.get("ai_status", {}).get("value", {}),  # 🆕
             "market": {
                 "fear_greed": cache.get("fear_greed", {}).get("value", 50),
                 "fear_greed_label": cache.get("fear_greed", {}).get("classification", "Neutral"),
                 "btc_dominance": cache.get("btc_dominance", {}).get("value", 50),
             },
-            "model": {
-                "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-                "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
-                "accuracy": cache.get("model_accuracy", {}).get("value", None),
-            },
             "databases": cache.get("databases", {}).get("value", {}),
-            "quota": cache.get("quota", {}).get("value", {}),
-            "repository": cache.get("repository", {}).get("value", {}),
-            "predictions": cache.get("predictions_stats", {}).get("value", {}),
             "disk": cache.get("disk_space", {}).get("value", {}),
             "timestamp": datetime.now().isoformat(),
         }
@@ -561,7 +373,7 @@ class MetricsScheduler:
         cpu = cache.get("cpu", {}).get("value", 0)
         ram = cache.get("ram", {}).get("value", 0)
         databases = cache.get("databases", {}).get("value", {})
-        quota = cache.get("quota", {}).get("value", {})
+        ai_status = cache.get("ai_status", {}).get("value", {})
         
         # CPU/RAM status
         cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
@@ -578,21 +390,11 @@ class MetricsScheduler:
             if not connected:
                 all_connected = False
         
-        # Quota warnings
-        quota_warnings = []
-        for db_name, q in quota.items():
-            if isinstance(q, dict) and q.get("status") in ["warning", "critical", "exceeded"]:
-                quota_warnings.append({
-                    "db": db_name,
-                    "status": q.get("status"),
-                    "used_percent": q.get("used_percent", 0),
-                })
-        
         # Overall
         overall = "ok"
         if cpu_status != "healthy" or ram_status != "healthy" or not all_connected:
             overall = "degraded"
-        if quota_warnings:
+        if ai_status and not ai_status.get("available", True):
             overall = "degraded"
         
         return {
@@ -602,13 +404,9 @@ class MetricsScheduler:
                 "cpu": {"status": cpu_status, "value": round(cpu, 1)},
                 "ram": {"status": ram_status, "value": round(ram, 1)},
                 "databases": db_status,
-                "model": {
-                    "loaded": cache.get("model_status", {}).get("value", {}).get("loaded", False),
-                    "version": cache.get("model_status", {}).get("value", {}).get("version", "N/A"),
-                },
-                "quota": {
-                    "warnings": quota_warnings,
-                    "details": quota,
+                "ai": {
+                    "available": ai_status.get("available", False),
+                    "success_rate": ai_status.get("success_rate", 0),
                 },
             },
         }
@@ -627,14 +425,13 @@ class MetricsScheduler:
             return
         
         self._running = True
-        logger.info("🔄 Metrics Scheduler started")
+        logger.info("🔄 Metrics Scheduler v12.0 started (Gemini-only)")
         
         # Collection اولیه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
-            self._run_self_healing()
             logger.info("✅ Initial collection complete")
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
@@ -642,7 +439,6 @@ class MetricsScheduler:
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
-        last_healing = time.time()
         cycle_count = 0
         
         while self._running and not (
@@ -652,7 +448,6 @@ class MetricsScheduler:
                 now = time.time()
                 cycle_count += 1
                 
-                # Jitter برای پخش بار
                 jitter = random.uniform(-self.jitter_range, self.jitter_range)
                 
                 # Light
@@ -671,11 +466,6 @@ class MetricsScheduler:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     logger.debug(f"📊 Heavy collected (cycle {cycle_count})")
-                
-                # Healing
-                if now - last_healing >= self.healing_interval + jitter:
-                    self._run_self_healing()
-                    last_healing = now
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
