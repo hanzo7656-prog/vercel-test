@@ -1,6 +1,7 @@
 // ============================================================
-// api.js - Unified API Client v12.0
-// هماهنگ با api_routes.py + model_routes.py
+// api.js - Unified API Client v13.0
+// Gemini-only (RuleEngine legacy حذف شد)
+// هماهنگ با api_routes.py + ai_routes.py
 // ============================================================
 
 class ApiClient {
@@ -71,6 +72,7 @@ class ApiClient {
     getHealthApis() {
         return this.request('/api/health/apis');
     }
+
     // ============================================================
     // ۲. آمار اپلیکیشن (APP STATS)
     // ============================================================
@@ -385,7 +387,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۱. دیتابیس - Schema & Migration (🆕 v12.0)
+    // ۱۱. دیتابیس - Schema & Migration
     // ============================================================
 
     getSchemaStatus() {
@@ -411,7 +413,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۲. OHLCV Repository (🆕 v12.0)
+    // ۱۲. OHLCV Repository
     // ============================================================
 
     getOHLCVStats() {
@@ -426,285 +428,108 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۳. مدل - Status & Info (MODEL)
+    // ۱۳. AI (Gemini) 🆕
     // ============================================================
 
-    getModelHome() {
-        return this.request('/api/model/');
+    // ===== AI Home =====
+    getAIHome() {
+        return this.request('/api/ai');
     }
 
-    getModelStatus() {
-        return this.request('/api/model/status');
+    getAIStatus() {
+        return this.request('/api/ai/status');
     }
 
-    getModelStats() {
-        return this.request('/api/model/stats');
+    getAIStats() {
+        return this.request('/api/ai/stats');
     }
 
-    getTrainerStats() {
-        return this.request('/api/model/trainer-stats');
-    }
-
-    // ============================================================
-    // ۱۴. مدل - Rules (🆕 v12.0)
-    // ============================================================
-
-    getModelRules() {
-        return this.request('/api/model/rules');
-    }
-
-    getModelRule(name) {
-        return this.request(`/api/model/rules/${encodeURIComponent(name)}`);
-    }
-
-    // ============================================================
-    // ۱۵. مدل - Config (🆕 v12.0)
-    // ============================================================
-
-    getModelConfig() {
-        return this.request('/api/model/config');
-    }
-
-    updateModelConfig(data) {
-        return this.request('/api/model/config', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    updateRuntimeConfig(data) {
-        return this.request('/api/model/config/runtime', {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    resetRuntimeConfig() {
-        return this.request('/api/model/config/runtime', {
-            method: 'DELETE'
-        });
-    }
-
-    validateConfig(data) {
-        return this.request('/api/model/config/validate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // ============================================================
-    // ۱۶. مدل - Calibration (🆕 v12.0)
-    // ============================================================
-
-    getCalibrationProfiles() {
-        return this.request('/api/model/calibrate/profiles');
-    }
-
-    calibrateModel(data = {}) {
-        return this.request('/api/model/calibrate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    forceCalibrate(data = {}) {
-        return this.request('/api/model/calibrate/force', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    getCalibrationHistory(options = {}) {
-        const { limit = 20, period = '' } = options;
-        const params = new URLSearchParams({ limit });
-        if (period) params.append('period', period);
-        return this.request(`/api/model/calibrate/history?${params}`);
-    }
-
-    // ============================================================
-    // ۱۷. مدل - Versions (🆕 v12.0)
-    // ============================================================
-
-    getVersions(options = {}) {
-        const { limit = 50, model_type = 'rule_config' } = options;
-        const params = new URLSearchParams({ limit, model_type });
-        return this.request(`/api/model/versions?${params}`);
-    }
-
-    getVersionDetail(version) {
-        return this.request(`/api/model/versions/${encodeURIComponent(version)}`);
-    }
-
-    activateVersion(version) {
-        return this.request(`/api/model/versions/${encodeURIComponent(version)}/activate`, {
-            method: 'POST'
-        });
-    }
-
-    deleteVersion(version) {
-        return this.request(`/api/model/versions/${encodeURIComponent(version)}`, {
-            method: 'DELETE'
-        });
-    }
-
-    exportVersion(version, download = false) {
-        const params = download ? '?download=true' : '';
-        if (download) {
-            window.open(`/api/model/export/${encodeURIComponent(version)}${params}`, '_blank');
-            return Promise.resolve({ success: true, message: 'Download started' });
-        }
-        return this.request(`/api/model/export/${encodeURIComponent(version)}${params}`);
-    }
-
-    // ============================================================
-    // ۱۸. مدل - Schedule (🆕 v12.0)
-    // ============================================================
-
-    getScheduleStatus() {
-        return this.request('/api/model/schedule/status');
-    }
-
-    startSchedule(options = {}) {
+    // ===== Chat =====
+    aiChat(message, options = {}) {
         const {
-            interval_hours = 6,
-            period = '1m',
-            profile_name = 'balanced',
-            coins = null
+            history = [],
+            include_context = true,
+            temperature = 0.7
         } = options;
-        return this.request('/api/model/schedule/start', {
+        return this.request('/api/ai/chat', {
             method: 'POST',
-            body: JSON.stringify({ interval_hours, period, profile_name, coins })
+            body: JSON.stringify({ message, history, include_context, temperature })
         });
     }
 
-    stopSchedule() {
-        return this.request('/api/model/schedule/stop', {
-            method: 'POST'
+    aiChatStream(message, options = {}) {
+        // برای SSE stream، باید از EventSource یا fetch stream استفاده کنی
+        // این متد فقط URL رو برمی‌گردونه
+        return '/api/ai/chat/stream';
+    }
+
+    // ===== Analyze Image =====
+    aiAnalyzeImage(imageBase64, options = {}) {
+        const {
+            mimeType = 'image/jpeg',
+            prompt = null,
+            includeContext = true
+        } = options;
+        return this.request('/api/ai/analyze-image', {
+            method: 'POST',
+            body: JSON.stringify({
+                image_base64: imageBase64,
+                mime_type: mimeType,
+                prompt,
+                include_context: includeContext
+            })
+        });
+    }
+
+    aiAnalyzeImageFile(file, options = {}) {
+        // برای multipart/form-data
+        const formData = new FormData();
+        formData.append('image', file);
+        if (options.prompt) formData.append('prompt', options.prompt);
+        formData.append('include_context', options.includeContext !== false);
+
+        const url = `${this.baseURL}/api/ai/analyze-image`;
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        }).then(r => r.json());
+    }
+
+    // ===== Explain Signal =====
+    aiExplain(coin, signalData, includeMarketContext = true) {
+        return this.request('/api/ai/explain', {
+            method: 'POST',
+            body: JSON.stringify({
+                coin,
+                signal_data: signalData,
+                include_market_context: includeMarketContext
+            })
         });
     }
 
     // ============================================================
-    // ۱۹. مدل - Screener (🆕 v12.0)
+    // ۱۴. Prediction (با engine انتخاب)
     // ============================================================
 
-    screenerScan(data = {}) {
-        return this.request('/api/model/screener/scan', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+    predictSingle(coin = 'bitcoin', period = '24h', engine = 'auto') {
+        const params = new URLSearchParams({ coin, period, engine });
+        return this.request(`/api/predict/single?${params}`);
     }
 
-    screenerLatest() {
-        return this.request('/api/model/screener/scan/latest');
-    }
-
-    screenerResult(scanId) {
-        return this.request(`/api/model/screener/scan/${encodeURIComponent(scanId)}`);
-    }
-
-    screenerSingle(data) {
-        return this.request('/api/model/screener/scan/single', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    screenerHistory(options = {}) {
-        const { limit = 20 } = options;
-        return this.request(`/api/model/screener/history?limit=${limit}`);
-    }
-
-    screenerHistoryStats() {
-        return this.request('/api/model/screener/history/stats');
-    }
-
-    screenerConfig() {
-        return this.request('/api/model/screener/config');
-    }
-
-    updateScreenerConfig(data) {
-        return this.request('/api/model/screener/config', {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    validateScreenerConfig(data) {
-        return this.request('/api/model/screener/config/validate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // ============================================================
-    // ۲۰. مدل - State Machine (🆕 v12.0)
-    // ============================================================
-
-    stateHome() {
-        return this.request('/api/model/state/');
-    }
-
-    stateSummary(symbols = null) {
-        const params = symbols ? `?symbols=${symbols.join(',')}` : '';
-        return this.request(`/api/model/state/summary${params}`);
-    }
-
-    stateTransitions(options = {}) {
-        const { limit = 50, from_state = '', to_state = '' } = options;
-        const params = new URLSearchParams({ limit });
-        if (from_state) params.append('from_state', from_state);
-        if (to_state) params.append('to_state', to_state);
-        return this.request(`/api/model/state/transitions?${params}`);
-    }
-
-    stateSnapshots(limit = 100) {
-        return this.request(`/api/model/state/snapshots?limit=${limit}`);
-    }
-
-    stateSymbol(symbol) {
-        return this.request(`/api/model/state/${encodeURIComponent(symbol)}`);
-    }
-
-    stateSymbolTransitions(symbol, limit = 50) {
-        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/transitions?limit=${limit}`);
-    }
-
-    stateSymbolReset(symbol) {
-        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/reset`, {
-            method: 'POST'
-        });
-    }
-
-    stateSymbolActivate(symbol, data = {}) {
-        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/activate`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    stateSymbolCooling(symbol, data = {}) {
-        return this.request(`/api/model/state/${encodeURIComponent(symbol)}/cooling`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // ============================================================
-    // ۲۱. پیش‌بینی (PREDICTIONS)
-    // ============================================================
-
-    predictSingle(coin, period = '24h') {
-        return this.request(`/api/predict/single?coin=${encodeURIComponent(coin)}&period=${period}`);
-    }
-
-    predictMultiple(coins, period = '24h') {
+    predictMultiple(coins, period = '24h', engine = 'auto') {
         return this.request('/api/predict/multiple', {
             method: 'POST',
-            body: JSON.stringify({ coins, period })
+            body: JSON.stringify({ coins, period, engine })
         });
     }
 
-    getPredictionHistory(limit = 50, coin = null) {
+    predictEngines() {
+        return this.request('/api/predict/engines');
+    }
+
+    getPredictionHistory(options = {}) {
+        const { limit = 50, coin = '' } = options;
         const params = new URLSearchParams({ limit });
         if (coin) params.append('coin', coin);
         return this.request(`/api/predict/history?${params}`);
@@ -715,7 +540,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲۲. کوین‌استتس (COINSTATS)
+    // ۱۵. CoinStats
     // ============================================================
 
     getCoinsList(options = {}) {
@@ -726,10 +551,10 @@ class ApiClient {
     }
 
     getCoinPrice(coin) {
-        return this.request(`/api/coinstats/price/${coin}`);
+        return this.request(`/api/coinstats/price/${encodeURIComponent(coin)}`);
     }
 
-    getPrices() {
+    getCoinsPrices() {
         return this.request('/api/coinstats/prices');
     }
 
@@ -744,113 +569,90 @@ class ApiClient {
     getGlobalMarket() {
         return this.request('/api/coinstats/global-market');
     }
-    
+
     getAllCoinStats() {
         return this.request('/api/coinstats/all');
     }
 
     getChartData(coin, period = '1m') {
-        return this.request(`/api/coinstats/chart/${coin}?period=${period}`);
+        return this.request(`/api/coinstats/chart/${encodeURIComponent(coin)}?period=${period}`);
     }
 
-    // ============================================================
-    // OHLCV — داده کندل واقعی (از DB یا CoinStats)
-    // ============================================================
-
-    /**
-     * دریافت OHLCV کندل‌ها
-     * @param {string} coin - 'bitcoin' یا 'BTC' یا 'BTC/USDT'
-     * @param {string} interval - '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'
-     * @param {string} range - '1h' | '6h' | '24h' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | 'all'
-     * @param {number} limit - حداکثر تعداد (پیش‌فرض: 1000)
-     */
-    async getOHLCV(coin, interval = '1h', range = '1mo', limit = 1000, minCandles = 50) {
-        const params = new URLSearchParams({
-            coin,
-            interval,
-            range,
-            limit,
-            min_candles: minCandles,
-        });
+    getOHLCV(options = {}) {
+        const {
+            coin = '',
+            pair = '',
+            interval = '1h',
+            range = '1mo',
+            limit = 1000,
+            min_candles = 50
+        } = options;
+        const params = new URLSearchParams({ interval, range, limit, min_candles });
+        if (coin) params.append('coin', coin);
+        if (pair) params.append('pair', pair);
         return this.request(`/api/coinstats/ohlcv?${params}`);
-    },
+    }
 
-    /**
-     * آمار OHLCV (برای دیباگ)
-     */
-    async getOHLCVStats() {
+    getOHLCVStatsOld() {
         return this.request('/api/coinstats/ohlcv-stats');
-    },
+    }
 
-    /**
-     * پاکسازی رکوردهای قدیمی OHLCV
-     * @param {number} retentionDays - مدت نگهداری (پیش‌فرض: 90)
-     * @param {string} interval - فقط یک interval خاص (اختیاری)
-     */
-    async cleanupOHLCV(retentionDays = 90, interval = null) {
-        const body = { retention_days: retentionDays };
-        if (interval) body.interval = interval;
-    
+    cleanupOHLCVOld(data) {
         return this.request('/api/coinstats/ohlcv-cleanup', {
             method: 'POST',
-            body: JSON.stringify(body),
+            body: JSON.stringify(data)
         });
     }
+
     // ============================================================
-    // ۲۳. قیمت‌های لحظه‌ای (CRYPTO)
+    // ۱۶. Crypto (Realtime)
     // ============================================================
 
     getRealtimePrices(symbols = null) {
-        const params = new URLSearchParams();
-        if (symbols && symbols.length > 0) {
-            params.append('symbols', symbols.join(','));
-        }
-        return this.request(`/api/crypto/prices?${params}`);
+        const params = symbols ? `?symbols=${symbols.join(',')}` : '';
+        return this.request(`/api/crypto/prices${params}`);
     }
 
     getRealtimePrice(symbol) {
-        return this.request(`/api/crypto/price/${symbol}`);
+        return this.request(`/api/crypto/price/${encodeURIComponent(symbol)}`);
     }
 
     getCryptoStats() {
         return this.request('/api/crypto/stats');
     }
 
-    sendHeartbeat() {
+    heartbeat() {
         return this.request('/api/crypto/heartbeat', {
             method: 'POST'
         });
     }
 
-    // ============================================================
-    // ۲۴. Binance WebSocket Real-time
-    // ============================================================
-
-    getWSStats() {
+    // ===== Binance WS =====
+    getBinanceWSStats() {
         return this.request('/api/crypto/ws-stats');
     }
 
-    getWSPrices() {
+    getBinanceWSPrices() {
         return this.request('/api/crypto/ws-prices');
     }
 
-    getWSPrice(symbol) {
+    getBinanceWSPrice(symbol) {
         return this.request(`/api/crypto/ws-price/${encodeURIComponent(symbol)}`);
     }
 
-    getWSOrderbook(symbol, levels = null) {
+    getBinanceWSOrderbook(symbol, levels = null) {
         const params = levels ? `?levels=${levels}` : '';
         return this.request(`/api/crypto/ws-orderbook/${encodeURIComponent(symbol)}${params}`);
     }
 
-    subscribeWS(symbol) {
+    binanceWSSubscribe(symbol) {
         return this.request('/api/crypto/ws-subscribe', {
             method: 'POST',
             body: JSON.stringify({ symbol })
         });
     }
 
-    unsubscribeWS(symbol) {
+    binanceWSUnsubscribe(symbol) {
         return this.request('/api/crypto/ws-unsubscribe', {
             method: 'POST',
             body: JSON.stringify({ symbol })
@@ -858,7 +660,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲۵. هشدارها (ALERTS)
+    // ۱۷. هشدارها (ALERTS)
     // ============================================================
 
     getAlerts(options = {}) {
@@ -870,8 +672,8 @@ class ApiClient {
         return this.request(`/api/alerts?${params}`);
     }
 
-    resolveAlert(id) {
-        return this.request(`/api/alerts/${id}/resolve`, {
+    resolveAlert(alertId) {
+        return this.request(`/api/alerts/${alertId}/resolve`, {
             method: 'POST'
         });
     }
@@ -884,7 +686,7 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲۶. کاربر (USER)
+    // ۱۸. کاربر (USER)
     // ============================================================
 
     getUserInfo() {
@@ -893,56 +695,6 @@ class ApiClient {
 
     getCredits() {
         return this.request('/api/credits');
-    }
-
-    // ============================================================
-    // ۲۷. احراز هویت (AUTH)
-    // ============================================================
-
-    login(username, password) {
-        return this.request('/api/login', {
-            method: 'POST',
-            body: JSON.stringify({ username, password })
-        });
-    }
-
-    logout() {
-        return this.request('/logout', { method: 'POST' });
-    }
-
-    // ============================================================
-    // ۲۸. تنظیمات (SETTINGS)
-    // ============================================================
-
-    getSettings() {
-        return this.request('/api/settings');
-    }
-
-    getSettingsCategories() {
-        return this.request('/api/settings/categories');
-    }
-
-    getSettingsCategory(category) {
-        return this.request(`/api/settings/${category}`);
-    }
-
-    saveSettingsCategory(category, data) {
-        return this.request(`/api/settings/${category}`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    resetSettingsCategory(category) {
-        return this.request(`/api/settings/${category}`, {
-            method: 'DELETE'
-        });
-    }
-
-    resetAllSettings() {
-        return this.request('/api/settings/reset', {
-            method: 'POST'
-        });
     }
 
     changePassword(currentPassword, newPassword) {
@@ -956,133 +708,45 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۲۹. Self-Healing
+    // ۱۹. ورود (LOGIN)
     // ============================================================
 
-    getHealingStatus() {
-        return this.request('/api/healing/status');
-    }
-
-    triggerHealing() {
-        return this.request('/api/healing/trigger', {
-            method: 'POST'
-        });
-    }
-
-    resetHealing() {
-        return this.request('/api/healing/reset', {
-            method: 'POST'
-        });
-    }
-
-
-    // ============================================================
-    // 🆕 Cache Monitoring & Control (Dual Redis)
-    // ============================================================
-
-    /**
-     * آمار کلی cache (Dual Redis)
-     * @returns {Promise<Object>} stats
-     */
-    getCacheStats() {
-        return this.request('/api/debug/cache/stats');
-    }
-
-    /**
-     * آمار دقیق از هر دو Redis (primary + backup)
-     * @returns {Promise<Object>} detailed stats
-     */
-    getCacheDetailed() {
-        return this.request('/api/debug/cache/detailed');
-    }
-
-    /**
-     * Redis فعلی (خلاصه)
-     * @returns {Promise<Object>} active info
-     */
-    getCacheActive() {
-        return this.request('/api/debug/cache/active');
-    }
-
-    /**
-     * سوئیچ دستی بین Redis ها
-     * @param {string} target - 'cache' | 'cache_backup' | 'auto'
-     * @returns {Promise<Object>} switch result
-     */
-    switchCache(target = 'auto') {
-        return this.request('/api/debug/cache/switch', {
+    login(username, password) {
+        return this.request('/api/login', {
             method: 'POST',
-            body: JSON.stringify({ target })
+            body: JSON.stringify({ username, password })
         });
     }
 
-    /**
-     * Health check cache (بدون auth)
-     * @returns {Promise<Object>} health status
-     */
-    getCacheHealth() {
-        return this.request('/api/debug/cache/health');
-    }
-    
     // ============================================================
-    // ۳۰. دیباگ (DEBUG)
+    // ۲۰. دیباگ (DEBUG)
     // ============================================================
 
-    getDebugStatus() {
+    debugStatus() {
         return this.request('/api/debug/status');
     }
 
-    getDebugLogs(options = {}) {
+    debugLogs(options = {}) {
         const { limit = 50, level = 'ALL', since = '' } = options;
         const params = new URLSearchParams({ limit, level });
         if (since) params.append('since', since);
         return this.request(`/api/debug/logs?${params}`);
     }
 
-    clearDebugLogs(confirm = true) {
-        return this.request(`/api/debug/logs/clear?confirm=${confirm}`, {
+    debugLogsClear() {
+        return this.request('/api/debug/logs/clear?confirm=true', {
             method: 'DELETE'
         });
     }
 
-    getDebugSystem() {
+    debugSystem() {
         return this.request('/api/debug/system');
     }
 
-    getDebugProcesses(options = {}) {
+    debugProcesses(options = {}) {
         const { search = '', sort_by = 'cpu_percent', sort_order = 'desc', limit = 50 } = options;
         const params = new URLSearchParams({ search, sort_by, sort_order, limit });
         return this.request(`/api/debug/processes?${params}`);
-    }
-
-    executeDebugCommand(command, type = 'python', timeout = 15) {
-        return this.request('/api/debug/exec', {
-            method: 'POST',
-            body: JSON.stringify({ command, type, timeout })
-        });
-    }
-
-    getDebugCache(options = {}) {
-        const { pattern = '*', limit = 20 } = options;
-        const params = new URLSearchParams({ pattern, limit });
-        return this.request(`/api/debug/cache?${params}`);
-    }
-
-    clearDebugCache(confirm = true) {
-        return this.request(`/api/debug/cache/clear?confirm=${confirm}`, {
-            method: 'DELETE'
-        });
-    }
-
-    setDebugLogLevel(level) {
-        return this.request('/api/debug/loglevel', {
-            method: 'POST',
-            body: JSON.stringify({ level })
-        });
-    }
-
-    getProcessDetails(pid) {
-        return this.request(`/api/debug/processes/${pid}/details`);
     }
 
     killProcess(pid) {
@@ -1091,21 +755,136 @@ class ApiClient {
         });
     }
 
-    getDebugEnv() {
+    processDetails(pid) {
+        return this.request(`/api/debug/processes/${pid}/details`);
+    }
+
+    debugExec(command, type = 'python', timeout = 15) {
+        return this.request('/api/debug/exec', {
+            method: 'POST',
+            body: JSON.stringify({ command, type, timeout })
+        });
+    }
+
+    debugCache(options = {}) {
+        const { pattern = '*', limit = 20 } = options;
+        const params = new URLSearchParams({ pattern, limit });
+        return this.request(`/api/debug/cache?${params}`);
+    }
+
+    debugCacheClear() {
+        return this.request('/api/debug/cache/clear?confirm=true', {
+            method: 'DELETE'
+        });
+    }
+
+    debugLoglevel(level) {
+        return this.request('/api/debug/loglevel', {
+            method: 'POST',
+            body: JSON.stringify({ level })
+        });
+    }
+
+    cacheSearch(pattern = '*', limit = 50) {
+        const params = new URLSearchParams({ pattern, limit });
+        return this.request(`/api/debug/cache/search?${params}`);
+    }
+
+    cacheDeleteKey(key) {
+        return this.request(`/api/debug/cache/key?key=${encodeURIComponent(key)}`, {
+            method: 'DELETE'
+        });
+    }
+
+    cachePurge() {
+        return this.request('/api/debug/cache/purge', {
+            method: 'POST'
+        });
+    }
+
+    debugEnv() {
         return this.request('/api/debug/env');
     }
 
-    getDebugDbDetail() {
+    debugDBDetail() {
         return this.request('/api/debug/db-detail');
     }
 
-    getDebugFullStatus() {
+    debugFullStatus() {
         return this.request('/api/debug/full-status');
+    }
+
+    // ============================================================
+    // ۲۱. Cache Monitoring (Dual Redis)
+    // ============================================================
+
+    cacheStats() {
+        return this.request('/api/debug/cache/stats');
+    }
+
+    cacheDetailed() {
+        return this.request('/api/debug/cache/detailed');
+    }
+
+    cacheSwitch(target = 'auto') {
+        return this.request('/api/debug/cache/switch', {
+            method: 'POST',
+            body: JSON.stringify({ target })
+        });
+    }
+
+    cacheActive() {
+        return this.request('/api/debug/cache/active');
+    }
+
+    cacheHealth() {
+        return this.request('/api/debug/cache/health');
+    }
+
+    // ============================================================
+    // ۲۲. Settings
+    // ============================================================
+
+    getAllSettings() {
+        return this.request('/api/settings');
+    }
+
+    getSettingsCategories() {
+        return this.request('/api/settings/categories');
+    }
+
+    getSettingsCategory(category) {
+        return this.request(`/api/settings/${encodeURIComponent(category)}`);
+    }
+
+    saveSettingsCategory(category, data) {
+        return this.request(`/api/settings/${encodeURIComponent(category)}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    resetSettingsCategory(category) {
+        return this.request(`/api/settings/${encodeURIComponent(category)}`, {
+            method: 'DELETE'
+        });
+    }
+
+    resetAllSettings() {
+        return this.request('/api/settings/reset', {
+            method: 'POST'
+        });
     }
 }
 
-// ===== SINGLETON =====
-const api = new ApiClient();
-window.api = api;
 
-console.log('✅ API Client v12.0 loaded');
+// ============================================================
+// Singleton Export
+// ============================================================
+
+const api = new ApiClient();
+
+// برای استفاده در ماژول‌ها (اگه ES modules داری)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { ApiClient, api };
+}
