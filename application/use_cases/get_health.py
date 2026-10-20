@@ -1,13 +1,14 @@
 # application/use_cases/get_health.py
 # ============================================================
-# Use Case: Get Health - نسخه ۲.۰
-# RuleEngine-aware + Full component check
+# Use Case: Get Health - نسخه ۳.۰
+# Gemini-aware + بدون RuleEngine
 # ============================================================
 # 
-# تغییرات نسخه ۲.۰:
-#   - _check_model: چک RuleEngine (نه XGBoost)
-#   - اضافه کردن وضعیت RuleConfig
-#   - حفظ بقیه ساختار
+# تغییرات نسخه ۳.۰:
+#   - _check_model حذف شد (RuleEngine legacy)
+#   - _check_rule_config حذف شد
+#   - _check_ai اضافه شد (Gemini health)
+#   - فقط اجزای واقعی: api, gemini, databases, metrics, credits, threads
 # ============================================================
 
 import logging
@@ -15,7 +16,6 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from domain.interfaces.api_client import APIClient
-from models.manager.model_manager import ModelManager
 from core.metrics import metrics_scheduler
 from infrastructure.database import health_check as db_health_check
 
@@ -27,51 +27,43 @@ class GetHealthUseCase:
     Use Case دریافت سلامت سیستم
     
     مسئولیت:
-        - بررسی وضعیت API
-        - بررسی وضعیت مدل (RuleEngine)
+        - بررسی وضعیت API (CoinStats)
+        - بررسی وضعیت Gemini
         - بررسی وضعیت دیتابیس‌ها
         - بررسی وضعیت متریک‌ها
         - بررسی Threadها
+        - بررسی اعتبار API
     """
     
     def __init__(
         self,
         api_client: APIClient,
-        model_manager: ModelManager,
     ) -> None:
         self.api_client = api_client
-        self.model_manager = model_manager
         
-        logger.info("✅ GetHealthUseCase v2.0 initialized")
+        logger.info("✅ GetHealthUseCase v3.0 initialized (Gemini-aware)")
     
     # ============================================================
     # Main Execute
     # ============================================================
     
     def execute(self) -> Dict[str, Any]:
-        """
-        اجرای Use Case دریافت سلامت
-        
-        Returns:
-            دیکشنری وضعیت سلامت
-        """
+        """اجرای Use Case دریافت سلامت"""
         status: Dict[str, Any] = {
             "status": "ok",
             "timestamp": datetime.now().isoformat(),
             "components": {},
         }
         
-        # ۱. API
+        # ۱. API (CoinStats)
         status["components"]["api"] = self._check_api()
         if status["components"]["api"]["status"] == "unhealthy":
             status["status"] = "degraded"
         
-        # ۲. Model (RuleEngine)
-        status["components"]["model"] = self._check_model()
-        if (
-            status["components"]["model"]["status"] == "degraded"
-            and status["status"] == "ok"
-        ):
+        # ۲. AI (Gemini) 🆕
+        status["components"]["ai"] = self._check_ai()
+        ai_status = status["components"]["ai"].get("status")
+        if ai_status == "unhealthy" and status["status"] == "ok":
             status["status"] = "degraded"
         
         # ۳. Databases
@@ -88,13 +80,10 @@ class GetHealthUseCase:
         # ۶. Threads
         status["components"]["threads"] = self._check_threads()
         
-        # ۷. 🆕 Rule Config
-        status["components"]["rule_config"] = self._check_rule_config()
-        
         return status
     
     # ============================================================
-    # API
+    # API (CoinStats)
     # ============================================================
     
     def _check_api(self) -> Dict[str, Any]:
@@ -119,41 +108,40 @@ class GetHealthUseCase:
             }
     
     # ============================================================
-    # Model (RuleEngine-aware)
+    # AI (Gemini) 🆕
     # ============================================================
     
-    def _check_model(self) -> Dict[str, Any]:
-        """
-        بررسی سلامت مدل (RuleEngine)
-        
-        تغییرات v2.0:
-            - چک RuleEngine (نه XGBoost)
-            - اضافه کردن rule_count
-            - اضافه کردن state
-        """
+    def _check_ai(self) -> Dict[str, Any]:
+        """بررسی سلامت Gemini"""
         try:
-            stats = self.model_manager.get_stats() if self.model_manager else {}
+            from container import container
             
-            engine_loaded = stats.get("loaded", False)
-            engine_stats = stats.get("engine", {})
-            rule_count = stats.get("rule_count", 0)
+            gemini_client = container.get('gemini_client')
+            if gemini_client is None:
+                return {
+                    "status": "unhealthy",
+                    "message": "Gemini client not initialized",
+                }
+            
+            if not gemini_client.is_available:
+                return {
+                    "status": "unhealthy",
+                    "message": "GEMINI_API_KEY missing or invalid",
+                }
+            
+            stats = gemini_client.get_stats()
             
             return {
-                "status": "healthy" if engine_loaded else "degraded",
-                "message": (
-                    f"RuleEngine بارگذاری شده ({rule_count} rule)"
-                    if engine_loaded
-                    else "RuleEngine بارگذاری نشده"
-                ),
-                "mode": "RULE_ENGINE",
-                "version": stats.get("version", "default"),
-                "rule_count": rule_count,
-                "aggregation": engine_stats.get("aggregation", "weighted_sum"),
-                "min_pass_score": engine_stats.get("min_pass_score", 0.55),
-                "runtime_config_active": stats.get("runtime_config_active", False),
+                "status": "healthy",
+                "message": "Gemini client ready",
+                "model_default": stats.get("model_default", "gemini-3.8-flash"),
+                "total_requests": stats.get("total_requests", 0),
+                "success_rate": stats.get("success_rate", 0),
+                "last_request_at": stats.get("last_request_at"),
             }
+        
         except Exception as e:
-            logger.error(f"Model health check error: {e}")
+            logger.error(f"AI health check error: {e}")
             return {
                 "status": "unknown",
                 "message": f"خطا: {str(e)[:100]}",
@@ -269,37 +257,6 @@ class GetHealthUseCase:
             }
         except Exception as e:
             logger.error(f"Threads check error: {e}")
-            return {
-                "status": "unknown",
-                "message": str(e)[:100],
-            }
-    
-    # ============================================================
-    # Rule Config (🆕)
-    # ============================================================
-    
-    def _check_rule_config(self) -> Dict[str, Any]:
-        """
-        بررسی سلامت RuleConfig Repository
-        
-        جدید در v2.0
-        """
-        try:
-            from infrastructure.repositories import repos
-            
-            stats = repos.rule_config.get_stats()
-            
-            connected = stats.get("connected", False)
-            override_count = stats.get("override_count", 0)
-            
-            return {
-                "status": "healthy" if connected else "degraded",
-                "connected": connected,
-                "override_count": override_count,
-                "table": stats.get("table", "rule_config_overrides"),
-            }
-        except Exception as e:
-            logger.debug(f"RuleConfig check error: {e}")
             return {
                 "status": "unknown",
                 "message": str(e)[:100],
