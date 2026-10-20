@@ -1,14 +1,13 @@
 # application/services/prediction_service.py
 # ============================================================
-# Service: Prediction Service - نسخه ۳.۰
-# Cache + Validation + Error Handling + Engine Selection
+# Service: Prediction Service - نسخه ۴.۰
+# فقط Gemini - RuleEngine حذف شد
 # ============================================================
 # 
-# تغییرات نسخه ۳.۰:
-#   - پارامتر engine (gemini | rule | auto)
-#   - پشتیبانی از PredictionRouter
-#   - fallback به rule استفاده قدیمی اگه router نبود
-#   - آمار per-engine
+# تغییرات نسخه ۴.۰:
+#   - predict_use_case حذف شد (RuleEngine legacy)
+#   - فقط prediction_router
+#   - پیام‌های خطای واضح
 # ============================================================
 
 import logging
@@ -16,7 +15,6 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from domain.entities.prediction import Prediction
-from application.use_cases.predict_coin import PredictCoinUseCase
 from application.dto.prediction_dto import (
     PredictionDTO,
     PredictionRequestDTO,
@@ -32,27 +30,21 @@ logger = logging.getLogger(__name__)
 
 class PredictionService:
     """
-    سرویس پیش‌بینی - Orchestrator
+    سرویس پیش‌بینی - فقط Gemini
     
-    ارتقاها (v3.0):
-        - DTO validation
-        - Engine selection (gemini | rule | auto)
-        - PredictionRouter support
-        - آمار per-engine
+    ارتقاها (v4.0):
+        - RuleEngine حذف شد
+        - فقط PredictionRouter با Gemini
     """
     
     def __init__(
         self,
-        predict_use_case: Optional[PredictCoinUseCase] = None,
-        prediction_router: Optional[Any] = None,
+        prediction_router: Any,
     ):
         """
         Args:
-            predict_use_case: PredictCoinUseCase قدیمی (RuleEngine)
-                             می‌تونه None باشه اگه RuleEngine حذف شده
-            prediction_router: PredictionRouter (gemini + rule)
+            prediction_router: PredictionRouter (فقط Gemini)
         """
-        self.predict_use_case = predict_use_case
         self.prediction_router = prediction_router
         
         # آمار
@@ -62,15 +54,13 @@ class PredictionService:
             "failed": 0,
             "by_engine": {
                 "gemini": 0,
-                "rule": 0,
                 "auto": 0,
             },
         }
         
         logger.info(
-            f"✅ PredictionService v3.0 initialized "
-            f"(rule={'yes' if predict_use_case else 'no'}, "
-            f"router={'yes' if prediction_router else 'no'})"
+            f"✅ PredictionService v4.0 initialized "
+            f"(router={'yes' if prediction_router else 'no'})"
         )
     
     # ============================================================
@@ -91,7 +81,7 @@ class PredictionService:
             coin: شناسه ارز
             period: بازه
             save: ذخیره بشه؟
-            engine: موتور (gemini | rule | auto)
+            engine: "gemini" | "auto"
         
         خروجی:
             PredictionDTO
@@ -103,7 +93,7 @@ class PredictionService:
         
         try:
             # ============================================================
-            # اعتبارسنجی با DTO
+            # اعتبارسنجی
             # ============================================================
             
             request_dto = PredictionRequestDTO(
@@ -123,50 +113,25 @@ class PredictionService:
             request_dto = request_dto.normalized()
             
             # ============================================================
-            # مسیر ۱: PredictionRouter (جدید)
+            # Router
             # ============================================================
             
-            if self.prediction_router is not None:
-                prediction = self.prediction_router.predict(
-                    coin_id=request_dto.coin,
-                    period=request_dto.period,
-                    engine=request_dto.engine,
-                    save=save,
-                    use_cache=True,
+            if self.prediction_router is None:
+                self._stats["failed"] += 1
+                return PredictionDTO.from_error(
+                    "PredictionRouter در دسترس نیست"
                 )
-                
-                self._stats["successful"] += 1
-                return PredictionDTO.from_prediction(prediction)
             
-            # ============================================================
-            # مسیر ۲: fallback به RuleEngine قدیمی
-            # ============================================================
-            
-            if self.predict_use_case is not None:
-                # اگه کاربر engine=gemini خواسته ولی router نیست، خطا
-                if request_dto.engine == "gemini":
-                    self._stats["failed"] += 1
-                    return PredictionDTO.from_error(
-                        "Gemini engine not available (prediction_router missing)"
-                    )
-                
-                prediction = self.predict_use_case.execute(
-                    request_dto.coin,
-                    request_dto.period,
-                    save=save,
-                )
-                
-                self._stats["successful"] += 1
-                return PredictionDTO.from_prediction(prediction)
-            
-            # ============================================================
-            # هیچ موتوری نیست
-            # ============================================================
-            
-            self._stats["failed"] += 1
-            return PredictionDTO.from_error(
-                "هیچ موتوری در دسترس نیست"
+            prediction = self.prediction_router.predict(
+                coin_id=request_dto.coin,
+                period=request_dto.period,
+                engine=request_dto.engine,
+                save=save,
+                use_cache=True,
             )
+            
+            self._stats["successful"] += 1
+            return PredictionDTO.from_prediction(prediction)
         
         # ============================================================
         # Error handling
@@ -207,7 +172,7 @@ class PredictionService:
             coins: لیست ارزها
             period: بازه
             save: ذخیره بشه؟
-            engine: موتور (gemini | rule | auto)
+            engine: "gemini" | "auto"
         
         خروجی:
             PredictionDTO
@@ -233,13 +198,19 @@ class PredictionService:
                 )
             
             if engine not in VALID_ENGINES:
+                if engine == "rule":
+                    self._stats["failed"] += 1
+                    return PredictionDTO.from_error(
+                        "RuleEngine حذف شده است. از engine=gemini یا "
+                        "engine=auto استفاده کنید."
+                    )
                 self._stats["failed"] += 1
                 return PredictionDTO.from_error(
                     f"Invalid engine: {engine}"
                 )
             
             # ============================================================
-            # اجرا (تک‌تک، چون router predict_multiple نداره)
+            # اجرا (تک‌تک)
             # ============================================================
             
             results: List[Prediction] = []
@@ -254,7 +225,6 @@ class PredictionService:
                     )
                     
                     if dto.success and dto.data:
-                        # ساخت Prediction از dict
                         try:
                             pred = Prediction.from_dict(dto.data)
                             results.append(pred)
@@ -325,7 +295,6 @@ class PredictionService:
             **self._stats,
             "success_rate": round(success_rate, 2),
             "router_available": self.prediction_router is not None,
-            "rule_available": self.predict_use_case is not None,
             "timestamp": datetime.now().isoformat(),
         }
         
