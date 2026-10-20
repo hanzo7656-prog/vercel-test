@@ -1,7 +1,7 @@
 # application/__init__.py
 # ============================================================
-# لایه کاربرد (Application Layer) - نسخه ۲.۰
-# Lazy Import
+# لایه کاربرد (Application Layer) - نسخه ۳.۰
+# Lazy Import - Gemini-only (RuleEngine legacy حذف شد)
 # ============================================================
 
 from typing import TYPE_CHECKING
@@ -28,33 +28,39 @@ def __getattr__(name: str):
         from application.dto import PredictionRequestDTO
         return PredictionRequestDTO
     
-    if name == "TrainRequestDTO":
-        from application.dto import TrainRequestDTO
-        return TrainRequestDTO
-    
-    if name == "BatchTrainRequestDTO":
-        from application.dto import BatchTrainRequestDTO
-        return BatchTrainRequestDTO
+    # ⚠️ TrainRequestDTO حذف شد (RuleEngine legacy)
+    # ⚠️ BatchTrainRequestDTO حذف شد (RuleEngine legacy)
+    # ⚠️ CalibrateRequestDTO حذف شد (RuleEngine legacy)
+    # ⚠️ ScanRequestDTO حذف شد (RuleEngine legacy)
     
     # ============================================================
     # Use Cases
     # ============================================================
     
-    if name == "PredictCoinUseCase":
-        from application.use_cases import PredictCoinUseCase
-        return PredictCoinUseCase
-    
-    if name == "TrainModelUseCase":
-        from application.use_cases import TrainModelUseCase
-        return TrainModelUseCase
-    
     if name == "GetHealthUseCase":
         from application.use_cases import GetHealthUseCase
         return GetHealthUseCase
-
-    if name == "ScanMarketUseCase":     # 🆕 اضافه کن
-        from application.use_cases import ScanMarketUseCase
-        return ScanMarketUseCase
+    
+    if name == "AIChatUseCase":
+        from application.use_cases import AIChatUseCase
+        return AIChatUseCase
+    
+    if name == "AIAnalyzeImageUseCase":
+        from application.use_cases import AIAnalyzeImageUseCase
+        return AIAnalyzeImageUseCase
+    
+    if name == "AIExplainUseCase":
+        from application.use_cases import AIExplainUseCase
+        return AIExplainUseCase
+    
+    if name == "PredictCoinGeminiUseCase":
+        from application.use_cases import PredictCoinGeminiUseCase
+        return PredictCoinGeminiUseCase
+    
+    # ⚠️ PredictCoinUseCase حذف شد (RuleEngine legacy)
+    # ⚠️ TrainModelUseCase حذف شد (RuleEngine legacy)
+    # ⚠️ ScanMarketUseCase حذف شد (RuleEngine legacy)
+    
     # ============================================================
     # Services
     # ============================================================
@@ -67,13 +73,12 @@ def __getattr__(name: str):
         from application.services import MonitoringService
         return MonitoringService
     
-    if name == "CommandSystem":
-        from application.services import CommandSystem
-        return CommandSystem
+    if name == "PredictionRouter":
+        from application.services import PredictionRouter
+        return PredictionRouter
     
-    if name == "SelfHealer":
-        from application.services import SelfHealer
-        return SelfHealer
+    # ⚠️ CommandSystem حذف شد (RuleEngine legacy)
+    # ⚠️ SelfHealer حذف شد (RuleEngine legacy)
     
     # ============================================================
     # Not found
@@ -92,17 +97,16 @@ __all__ = [
     # ===== DTOs =====
     "PredictionDTO",
     "PredictionRequestDTO",
-    "TrainRequestDTO",
-    "BatchTrainRequestDTO",
     
     # ===== Use Cases =====
-    "PredictCoinUseCase",
-    "TrainModelUseCase",
     "GetHealthUseCase",
-    "ScanMarketUseCase",
+    "AIChatUseCase",
+    "AIAnalyzeImageUseCase",
+    "AIExplainUseCase",
+    "PredictCoinGeminiUseCase",
+    
     # ===== Services =====
     "PredictionService",
     "MonitoringService",
-    "CommandSystem",
-    "SelfHealer",
+    "PredictionRouter",
 ]
