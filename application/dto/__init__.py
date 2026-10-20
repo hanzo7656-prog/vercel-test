@@ -1,12 +1,17 @@
 # application/dto/__init__.py
 # ============================================================
-# DTOs - نسخه ۲.۰
+# DTOs - نسخه ۳.۰
+# Gemini-only (RuleEngine DTOs حذف شدند)
 # ============================================================
 
 from typing import TYPE_CHECKING
 
 
 def __getattr__(name: str):
+    # ============================================================
+    # Prediction DTOs
+    # ============================================================
+    
     if name == "PredictionDTO":
         from application.dto.prediction_dto import PredictionDTO
         return PredictionDTO
@@ -15,13 +20,8 @@ def __getattr__(name: str):
         from application.dto.prediction_dto import PredictionRequestDTO
         return PredictionRequestDTO
     
-    if name == "CalibrateRequestDTO":
-        from application.dto.prediction_dto import CalibrateRequestDTO
-        return CalibrateRequestDTO
-    
-    if name == "ScanRequestDTO":
-        from application.dto.prediction_dto import ScanRequestDTO
-        return ScanRequestDTO
+    # ⚠️ CalibrateRequestDTO حذف شد (RuleEngine legacy)
+    # ⚠️ ScanRequestDTO حذف شد (RuleEngine legacy)
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
@@ -31,6 +31,4 @@ def __getattr__(name: str):
 __all__ = [
     "PredictionDTO",
     "PredictionRequestDTO",
-    "CalibrateRequestDTO",
-    "ScanRequestDTO",
 ]
