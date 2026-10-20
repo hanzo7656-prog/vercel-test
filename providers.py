@@ -1,7 +1,7 @@
 # providers.py
 # ============================================================
 # Providers - ارائه‌دهنده‌های سرویس
-# نسخه ۴.۰ - Gemini + PredictionRouter
+# نسخه ۵.۰ - فقط Gemini (RuleEngine legacy حذف شد)
 # ============================================================
 
 import logging
@@ -27,13 +27,11 @@ def get_service(name: str) -> Any:
     خروجی:
         نمونه سرویس
     """
-    # اگه در Flask context هستیم
     if has_app_context():
         app_container = getattr(current_app, 'container', None)
         if app_container:
             return app_container.get(name)
     
-    # Global container
     return container.get(name)
 
 
@@ -94,23 +92,16 @@ def get_repo_container():
     return get_service('repo_container')
 
 
-def get_model_repository():
-    """Model Repository"""
-    return get_service('model_repository')
-
-
 def get_prediction_repository():
     """Prediction Repository"""
     return get_service('prediction_repository')
 
 
-def get_rule_config_repository():
-    """RuleConfig Repository"""
-    return get_service('rule_config_repository')
+# ⚠️ get_model_repository, get_rule_config_repository حذف شدند
 
 
 # ============================================================
-# AI (Gemini) Providers 🆕
+# AI (Gemini) Providers
 # ============================================================
 
 def get_gemini_client():
@@ -144,27 +135,8 @@ def get_predict_coin_gemini_use_case():
 
 
 # ============================================================
-# Model Providers (RuleEngine legacy)
-# ============================================================
-
-def get_model_manager():
-    """Model Manager"""
-    return get_service('model_manager')
-
-
-def get_trainer():
-    """Auto Trainer"""
-    return get_service('trainer')
-
-
-# ============================================================
 # Core Providers
 # ============================================================
-
-def get_feature_engineer():
-    """Feature Engineer"""
-    return get_service('feature_engineer')
-
 
 def get_user_tracker():
     """User Tracker"""
@@ -181,19 +153,12 @@ def get_indicators():
     return get_service('indicators')
 
 
+# ⚠️ get_feature_engineer حذف شد
+
+
 # ============================================================
 # Application Providers
 # ============================================================
-
-def get_predict_use_case():
-    """Predict Use Case (RuleEngine legacy)"""
-    return get_service('predict_use_case')
-
-
-def get_scan_market_use_case():
-    """ScanMarket Use Case (RuleEngine legacy)"""
-    return get_service('scan_market_use_case')
-
 
 def get_health_use_case():
     """Health Use Case"""
@@ -210,22 +175,16 @@ def get_monitoring_service():
     return get_service('monitoring_service')
 
 
-def get_command_system():
-    """Command System"""
-    return get_service('command_system')
-
-
-def get_self_healer():
-    """Self Healer"""
-    return get_service('self_healer')
+# ⚠️ get_predict_use_case, get_scan_market_use_case, get_command_system,
+#    get_self_healer, get_model_manager, get_trainer حذف شدند
 
 
 # ============================================================
-# Prediction Router Provider 🆕
+# Prediction Router Provider
 # ============================================================
 
 def get_prediction_router():
-    """Prediction Router (gemini | rule | auto)"""
+    """Prediction Router (Gemini-only)"""
     return get_service('prediction_router')
 
 
@@ -254,10 +213,8 @@ def init_container(app) -> None:
     پارامترها:
         app: نمونه Flask
     """
-    # اتصال Container به app
     app.container = container
     
-    # ثبت Middlewares
     try:
         from presentation.middlewares.error_handler import ErrorHandler
         from presentation.middlewares.logging import LoggingMiddleware
