@@ -842,6 +842,44 @@ class ApiClient {
     }
 
     // ============================================================
+    // ۲۲. Self-Healing 🆕
+    // ============================================================
+
+    getHealingStatus() {
+        return this.request('/api/healing/status');
+    }
+
+    triggerHealing(force = null) {
+        const body = force ? { force } : {};
+        return this.request('/api/healing/trigger', {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+    }
+
+    // متدهای convenience برای force actions
+    forceHealingClearCache() {
+        return this.triggerHealing('cache');
+    }
+
+    forceHealingCleanPredictions() {
+        return this.triggerHealing('predictions');
+    }
+
+    forceHealingCleanOHLCV() {
+        return this.triggerHealing('ohlcv');
+    }
+
+    forceHealingReconnect() {
+        return this.triggerHealing('reconnect');
+    }
+
+    resetHealing() {
+        return this.request('/api/healing/reset', {
+            method: 'POST'
+        });
+    }
+    // ============================================================
     // ۲۲. Settings
     // ============================================================
 
