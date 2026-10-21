@@ -1,21 +1,13 @@
 # application/services/__init__.py
 # ============================================================
-# Services - سرویس‌های لایه کاربرد
-# نسخه ۳.۰ - Gemini-only (SelfHealer, CommandSystem حذف شدند)
+# Services - نسخه ۳.۱
+# + SelfHealer (Gemini-aware)
 # ============================================================
 
 from typing import TYPE_CHECKING
 
 
-# ============================================================
-# Lazy Import (جلوگیری از Circular)
-# ============================================================
-
 def __getattr__(name: str):
-    """
-    Lazy loading برای سرویس‌ها
-    """
-    
     # ===== Prediction Service =====
     if name == "PredictionService":
         from application.services.prediction_service import PredictionService
@@ -26,25 +18,26 @@ def __getattr__(name: str):
         from application.services.monitoring_service import MonitoringService
         return MonitoringService
     
-    # ===== Prediction Router 🆕 =====
+    # ===== Prediction Router =====
     if name == "PredictionRouter":
         from application.services.prediction_router import PredictionRouter
         return PredictionRouter
     
+    # ===== Self Healer (Gemini-aware) 🆕 =====
+    if name == "SelfHealer":
+        from application.services.self_healer import SelfHealer
+        return SelfHealer
+    
     # ⚠️ CommandSystem حذف شد (RuleEngine legacy)
-    # ⚠️ SelfHealer حذف شد (RuleEngine legacy)
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
     )
 
 
-# ============================================================
-# Export
-# ============================================================
-
 __all__ = [
     "PredictionService",
     "MonitoringService",
     "PredictionRouter",
+    "SelfHealer",       # 🆕
 ]
