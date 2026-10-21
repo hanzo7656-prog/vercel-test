@@ -5550,6 +5550,169 @@ def debug_full_status():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
+
+# ============================================================
+# Self-Healing Endpoints 
+# ============================================================
+
+@api_bp.route('/healing/status', methods=['GET'])
+@require_auth('admin')
+def healing_status():
+    """
+    وضعیت Self-Healer
+    
+    خروجی:
+        {
+            "success": true,
+            "data": {
+                "status": "running" | "stopped",
+                "healing_actions": N,
+                "last_healing": "...",
+                "attempts": {...},
+                "gemini": {...},
+                "thresholds": {...},
+                "timestamp": "..."
+            }
+        }
+    """
+    try:
+        from core.metrics import metrics_scheduler
+        from container import container
+        
+        # آمار از scheduler
+        summary = metrics_scheduler.get_summary()
+        alert_metrics = metrics_scheduler.get_alert_metrics()
+        
+        # آمار از healer
+        healer = None
+        try:
+            healer = container.get('self_healer')
+        except Exception:
+            pass
+        
+        healer_status = healer.get_healing_status() if healer else {}
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'status': summary.get('status', 'unknown'),
+                'healing_actions': summary.get('healing_actions', 0),
+                'last_healing': summary.get('last_healing'),
+                'total_collections': summary.get('total_collections', 0),
+                'errors': summary.get('errors', 0),
+                'databases': alert_metrics.get('databases', {}),
+                'ai_status': alert_metrics.get('ai_status', {}),
+                'uptime': alert_metrics.get('uptime', '0s'),
+                'attempts': healer_status.get('attempts', {}),
+                'gemini': healer_status.get('gemini', {}),
+                'thresholds': healer_status.get('thresholds', {}),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Healing status error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/healing/trigger', methods=['POST'])
+@require_auth('admin')
+def healing_trigger():
+    """
+    اجرای دستی Self-Healing
+    
+    Body (اختیاری):
+        {
+            "force": "cache" | "predictions" | "ohlcv" | "reconnect" | null
+        }
+    
+    - force=cache → پاک کردن cache
+    - force=predictions → پاک کردن prediction‌های قدیمی
+    - force=ohlcv → پاک کردن OHLCV قدیمی
+    - force=reconnect → reconnect DBها
+    - null → check_and_heal معمولی
+    """
+    try:
+        from container import container
+        
+        healer = None
+        try:
+            healer = container.get('self_healer')
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'SelfHealer not available: {e}'
+            }), 503
+        
+        data = request.json or {}
+        force = data.get('force')
+        
+        # ============================================================
+        # Force actions
+        # ============================================================
+        
+        if force == 'cache':
+            result = healer.force_clear_cache()
+            return jsonify({'success': True, 'data': result})
+        
+        if force == 'predictions':
+            result = healer.force_clean_predictions()
+            return jsonify({'success': True, 'data': result})
+        
+        if force == 'ohlcv':
+            result = healer.force_clean_ohlcv()
+            return jsonify({'success': True, 'data': result})
+        
+        if force == 'reconnect':
+            result = healer.force_reconnect_databases()
+            return jsonify({'success': True, 'data': result})
+        
+        # ============================================================
+        # Normal check_and_heal
+        # ============================================================
+        
+        from core.metrics import metrics_scheduler
+        metrics = metrics_scheduler.get_alert_metrics()
+        actions = healer.check_and_heal(metrics)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'actions': actions,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Healing trigger error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/healing/reset', methods=['POST'])
+@require_auth('admin')
+def healing_reset():
+    """بازنشانی تلاش‌های Self-Healing"""
+    try:
+        from container import container
+        
+        healer = None
+        try:
+            healer = container.get('self_healer')
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'SelfHealer not available: {e}'
+            }), 503
+        
+        healer.reset_attempts()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Healing attempts reset successfully',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Healing reset error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 # ============================================================
 # SETTINGS
 # ============================================================
