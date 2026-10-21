@@ -4166,33 +4166,6 @@ body.tech-fullscreen .tech-sub-chart {
                 </div>
             </div>
 
-            <!-- ===== STATE MACHINE ===== -->
-            <div class="side-card">
-                <div class="side-card-header">
-                    <div class="side-card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
-                        </svg>
-                        وضعیت State
-                    </div>
-                </div>
-                <div class="side-card-body">
-                    <div class="state-badge-row">
-                        <span class="state-badge-label">وضعیت</span>
-                        <span class="state-badge-value idle" id="stateCurrent">—</span>
-                    </div>
-                    <div class="state-badge-row">
-                        <span class="state-badge-label">از تاریخ</span>
-                        <span class="state-badge-value" id="stateSince" style="font-size:11px;">—</span>
-                    </div>
-                    <div class="state-badge-row">
-                        <span class="state-badge-label">تغییرات</span>
-                        <span class="state-badge-value" id="stateTransitionsCount">—</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- ===== MARKET STATS ===== -->
             <div class="side-card">
                 <div class="side-card-header">
@@ -4814,7 +4787,6 @@ const state = {
 
     // AI / State
     aiPrediction: null,
-    stateMachine: null,
 
     // Watchlist
     watchlist: new Set(),
@@ -5462,57 +5434,6 @@ function renderSignalCard() {
     }
 }
 
-
-// ============================================================
-// STATE MACHINE UI
-// ============================================================
-async function fetchStateMachine() {
-    const coin = getCurrentCoin();
-    if (!coin) return;
-
-    const symbol = coin.symbol.toUpperCase() + 'USDT';
-    const res = await API.request(`/api/state/${symbol}`);
-
-    if (res.success && res.data) {
-        state.stateMachine = res.data;
-        renderStateMachine();
-    } else {
-        // IDLE پیش‌فرض
-        state.stateMachine = {
-            symbol,
-            current_state: 'IDLE',
-            since: null,
-            transitions_count: 0,
-            last_score: null,
-        };
-        renderStateMachine();
-    }
-}
-
-function renderStateMachine() {
-    const s = state.stateMachine;
-    if (!s) return;
-
-    const stateEl = $('#stateCurrent');
-    const sinceEl = $('#stateSince');
-    const countEl = $('#stateTransitionsCount');
-
-    if (stateEl) {
-        const stateName = (s.current_state || 'IDLE').toUpperCase();
-        stateEl.textContent = stateName;
-        stateEl.className = 'state-badge-value ' + stateName.toLowerCase().replace('_', '-');
-    }
-
-    if (sinceEl) {
-        sinceEl.textContent = s.since ? formatTimeAgo(s.since) : '—';
-    }
-
-    if (countEl) {
-        countEl.textContent = s.transitions_count ? formatNumber(s.transitions_count) : '۰';
-    }
-}
-
-
 // ============================================================
 // MATH HELPERS (used by levels, signal, indicators)
 // ============================================================
@@ -5660,7 +5581,6 @@ window.__analyze = {
     toggleWatchlist, updateWatchBtn,
     computeLevels, renderLevels,
     computeSignalFromIndicators, renderSignalCard,
-    fetchStateMachine, renderStateMachine,
     computeSMA, computeEMA, computeBollinger, computeVWAP,
     computeRSI, computeMACD, computeStochastic, computeATR,
     loadPersistedState, persistActiveIndicators,
@@ -7605,8 +7525,6 @@ async function reloadAll() {
     // Analysis
     await refreshAnalysis();
 
-    // State Machine
-    await fetchStateMachine();
 }
 
 
@@ -8810,9 +8728,6 @@ async function init() {
 
     // Analysis
     await refreshAnalysis();
-
-    // State machine
-    await fetchStateMachine();
 
     // Start price updater
     startPriceUpdater();
