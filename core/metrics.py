@@ -1,15 +1,14 @@
 # core/metrics.py
 # ============================================================
-# سیستم جمع‌آوری متریک - نسخه ۱۲.۰
-# Gemini-only (RuleEngine + SelfHealer حذف شد)
+# سیستم جمع‌آوری متریک - نسخه ۱۲.۱
+# Gemini-aware + Self-Healing
 # ============================================================
 # 
-# تغییرات نسخه ۱۲.۰:
-#   - _run_self_healing حذف شد
-#   - _collect_model_status حذف شد
-#   - _collect_repository_stats حذف شد
-#   - _collect_quota_status حذف شد (چون RuleConfig رفت)
-#   - _collect_ai_status اضافه شد (Gemini)
+# تغییرات نسخه ۱۲.۱:
+#   - _get_healer اضافه شد (Lazy)
+#   - _run_self_healing اضافه شد
+#   - healing_interval اضافه شد
+#   - stats.healing_actions, last_healing اضافه شد
 # ============================================================
 
 import time
@@ -29,12 +28,7 @@ logger = logging.getLogger(__name__)
 
 class MetricsScheduler:
     """
-    سیستم جمع‌آوری متریک - Gemini-only
-    
-    ارتقاها (v12.0):
-        - SelfHealer حذف شد
-        - RuleEngine/Repository stats حذف شد
-        - Gemini stats اضافه شد
+    سیستم جمع‌آوری متریک - Gemini-aware + Self-Healing
     """
     
     _instance: Optional['MetricsScheduler'] = None
@@ -63,6 +57,8 @@ class MetricsScheduler:
             "collections": 0,
             "errors": 0,
             "last_collection": None,
+            "healing_actions": 0,      # 🆕
+            "last_healing": None,       # 🆕
         }
         
         self.start_time = time.time()
@@ -71,11 +67,53 @@ class MetricsScheduler:
         self.light_interval = 3
         self.medium_interval = 60
         self.heavy_interval = 300
+        self.healing_interval = 30      # 🆕
         
         # Jitter range
         self.jitter_range = 2
         
-        logger.info("✅ MetricsScheduler v12.0 initialized (Gemini-only)")
+        # Healer (Lazy) 🆕
+        self.healer = None
+        
+        logger.info("✅ MetricsScheduler v12.1 initialized (Gemini + Self-Healing)")
+    
+    # ============================================================
+    # Self-Healing 🆕
+    # ============================================================
+    
+    def _get_healer(self):
+        """دریافت healer (Lazy)"""
+        if self.healer is not None:
+            return self.healer
+        
+        try:
+            from container import container
+            self.healer = container.get('self_healer')
+            logger.info("✅ SelfHealer initialized (lazy)")
+            return self.healer
+        except Exception as e:
+            logger.debug(f"⚠️ SelfHealer not available: {e}")
+            return None
+    
+    def _run_self_healing(self) -> None:
+        """اجرای self-healing"""
+        healer = self._get_healer()
+        
+        if healer is None:
+            return
+        
+        try:
+            metrics = self.get_alert_metrics()
+            actions = healer.check_and_heal(metrics)
+            
+            if any(actions.values()):
+                self.stats["healing_actions"] += 1
+                self.stats["last_healing"] = datetime.now().isoformat()
+                logger.info(f"🔄 Self-healing actions: {actions}")
+                
+        except Exception as e:
+            logger.error(f"❌ Self-healing error: {e}")
+            self.stats["errors"] += 1
     
     # ============================================================
     # Light Metrics (۳ ثانیه)
@@ -121,7 +159,7 @@ class MetricsScheduler:
             
             self._collect_prices(coinstats_client)
             self._collect_api_status(coinstats_client)
-            self._collect_ai_status()  # 🆕
+            self._collect_ai_status()
             self._collect_db_status(db_health)
             
         except Exception as e:
@@ -181,7 +219,7 @@ class MetricsScheduler:
             logger.debug(f"⚠️ Credits error: {e}")
     
     def _collect_ai_status(self) -> None:
-        """وضعیت Gemini 🆕"""
+        """وضعیت Gemini"""
         try:
             from container import container
             gemini = container.get('gemini_client')
@@ -314,6 +352,8 @@ class MetricsScheduler:
             "status": "running" if self._running else "stopped",
             "total_collections": self.stats["collections"],
             "errors": self.stats["errors"],
+            "healing_actions": self.stats.get("healing_actions", 0),   # 🆕
+            "last_healing": self.stats.get("last_healing"),             # 🆕
             "metrics_count": cache_len,
             "last_collection": self.stats["last_collection"],
         }
@@ -354,7 +394,7 @@ class MetricsScheduler:
                 "status": cache.get("api_status", {}).get("value", "unknown"),
                 "credits": cache.get("api_credits", {}).get("value", 0),
             },
-            "ai": cache.get("ai_status", {}).get("value", {}),  # 🆕
+            "ai": cache.get("ai_status", {}).get("value", {}),
             "market": {
                 "fear_greed": cache.get("fear_greed", {}).get("value", 50),
                 "fear_greed_label": cache.get("fear_greed", {}).get("classification", "Neutral"),
@@ -362,6 +402,10 @@ class MetricsScheduler:
             },
             "databases": cache.get("databases", {}).get("value", {}),
             "disk": cache.get("disk_space", {}).get("value", {}),
+            "healing": {
+                "actions": self.stats.get("healing_actions", 0),
+                "last": self.stats.get("last_healing"),
+            },
             "timestamp": datetime.now().isoformat(),
         }
     
@@ -375,11 +419,9 @@ class MetricsScheduler:
         databases = cache.get("databases", {}).get("value", {})
         ai_status = cache.get("ai_status", {}).get("value", {})
         
-        # CPU/RAM status
         cpu_status = "healthy" if cpu < 70 else "warning" if cpu < 90 else "critical"
         ram_status = "healthy" if ram < 70 else "warning" if ram < 90 else "critical"
         
-        # DB status
         db_status = {}
         all_connected = True
         for name, connected in databases.items():
@@ -390,7 +432,6 @@ class MetricsScheduler:
             if not connected:
                 all_connected = False
         
-        # Overall
         overall = "ok"
         if cpu_status != "healthy" or ram_status != "healthy" or not all_connected:
             overall = "degraded"
@@ -425,13 +466,14 @@ class MetricsScheduler:
             return
         
         self._running = True
-        logger.info("🔄 Metrics Scheduler v12.0 started (Gemini-only)")
+        logger.info("🔄 Metrics Scheduler v12.1 started (Gemini + Self-Healing)")
         
         # Collection اولیه
         try:
             self._collect_light_metrics()
             self._collect_medium_metrics()
             self._collect_heavy_metrics()
+            self._run_self_healing()
             logger.info("✅ Initial collection complete")
         except Exception as e:
             logger.error(f"❌ Initial collection error: {e}")
@@ -439,6 +481,7 @@ class MetricsScheduler:
         last_light = time.time()
         last_medium = time.time()
         last_heavy = time.time()
+        last_healing = time.time()      # 🆕
         cycle_count = 0
         
         while self._running and not (
@@ -466,6 +509,11 @@ class MetricsScheduler:
                     self._collect_heavy_metrics()
                     last_heavy = now
                     logger.debug(f"📊 Heavy collected (cycle {cycle_count})")
+                
+                # Self-Healing 🆕
+                if now - last_healing >= self.healing_interval + jitter:
+                    self._run_self_healing()
+                    last_healing = now
                 
                 self.stats["last_collection"] = datetime.now().isoformat()
                 time.sleep(1)
