@@ -200,7 +200,7 @@ def start_metrics_scheduler() -> None:
 # ============================================================
 
 def start_alert_system() -> None:
-    """شروع سیستم Alert (بدون Self-Healing - RuleEngine حذف شد)"""
+    """شروع سیستم Alert + Self-Healing"""
     try:
         from infrastructure.external.alerter import alerter
 
@@ -209,8 +209,13 @@ def start_alert_system() -> None:
             logger.warning("⚠️ Alert system disabled (no metrics)")
             return
 
-        # ✅ SelfHealer حذف شد (وابسته به RuleEngine)
-        # دیگه heal نمی‌کنیم، فقط alert
+        # ✅ SelfHealer از container
+        try:
+            healer = container.get('self_healer')
+            logger.info("✅ SelfHealer attached to alert system")
+        except Exception as e:
+            logger.warning(f"⚠️ SelfHealer not available: {e}")
+            healer = None
 
         def alert_loop() -> None:
             import time
@@ -220,6 +225,16 @@ def start_alert_system() -> None:
                     if metrics_s:
                         alert_metrics = metrics_s.get_alert_metrics()
                         alerter.check_and_alert(alert_metrics)
+                        
+                        # Self-Healing (اگه هست)
+                        if healer:
+                            try:
+                                actions = healer.check_and_heal(alert_metrics)
+                                if any(actions.values()):
+                                    logger.info(f"🔄 Self-healing: {actions}")
+                            except Exception as e:
+                                logger.error(f"❌ Self-healing error: {e}")
+                    
                     time.sleep(30)
                 except Exception as e:
                     logger.error(f"❌ Alert loop error: {e}")
@@ -235,17 +250,16 @@ def start_alert_system() -> None:
                 max_restarts=5,
                 restart_delay=15,
             )
-            logger.info("✅ Alert system via ThreadingManager (no self-healing)")
+            logger.info("✅ Alert system via ThreadingManager (with self-healing)")
         else:
             alert_thread = threading.Thread(target=alert_loop, daemon=False)
             alert_thread.start()
-            logger.info("✅ Alert system started (no self-healing)")
+            logger.info("✅ Alert system started (with self-healing)")
 
     except Exception as e:
         logger.error(f"❌ Alert system failed: {e}")
         import traceback
         logger.error(traceback.format_exc())
-
 
 # ============================================================
 # Start DB Health Check
