@@ -1,21 +1,13 @@
 # application/__init__.py
 # ============================================================
-# لایه کاربرد (Application Layer) - نسخه ۳.۰
-# Lazy Import - Gemini-only (RuleEngine legacy حذف شد)
+# لایه کاربرد - نسخه ۳.۱
+# + SelfHealer (Gemini-aware)
 # ============================================================
 
 from typing import TYPE_CHECKING
 
 
-# ============================================================
-# Lazy Import
-# ============================================================
-
 def __getattr__(name: str):
-    """
-    Lazy loading برای همه اجزای Application Layer
-    """
-    
     # ============================================================
     # DTOs
     # ============================================================
@@ -27,11 +19,6 @@ def __getattr__(name: str):
     if name == "PredictionRequestDTO":
         from application.dto import PredictionRequestDTO
         return PredictionRequestDTO
-    
-    # ⚠️ TrainRequestDTO حذف شد (RuleEngine legacy)
-    # ⚠️ BatchTrainRequestDTO حذف شد (RuleEngine legacy)
-    # ⚠️ CalibrateRequestDTO حذف شد (RuleEngine legacy)
-    # ⚠️ ScanRequestDTO حذف شد (RuleEngine legacy)
     
     # ============================================================
     # Use Cases
@@ -57,10 +44,6 @@ def __getattr__(name: str):
         from application.use_cases import PredictCoinGeminiUseCase
         return PredictCoinGeminiUseCase
     
-    # ⚠️ PredictCoinUseCase حذف شد (RuleEngine legacy)
-    # ⚠️ TrainModelUseCase حذف شد (RuleEngine legacy)
-    # ⚠️ ScanMarketUseCase حذف شد (RuleEngine legacy)
-    
     # ============================================================
     # Services
     # ============================================================
@@ -77,36 +60,30 @@ def __getattr__(name: str):
         from application.services import PredictionRouter
         return PredictionRouter
     
-    # ⚠️ CommandSystem حذف شد (RuleEngine legacy)
-    # ⚠️ SelfHealer حذف شد (RuleEngine legacy)
-    
-    # ============================================================
-    # Not found
-    # ============================================================
+    if name == "SelfHealer":
+        from application.services import SelfHealer
+        return SelfHealer
     
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}"
     )
 
 
-# ============================================================
-# Export
-# ============================================================
-
 __all__ = [
-    # ===== DTOs =====
+    # DTOs
     "PredictionDTO",
     "PredictionRequestDTO",
     
-    # ===== Use Cases =====
+    # Use Cases
     "GetHealthUseCase",
     "AIChatUseCase",
     "AIAnalyzeImageUseCase",
     "AIExplainUseCase",
     "PredictCoinGeminiUseCase",
     
-    # ===== Services =====
+    # Services
     "PredictionService",
     "MonitoringService",
     "PredictionRouter",
+    "SelfHealer",       # 🆕
 ]
