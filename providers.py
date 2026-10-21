@@ -201,7 +201,14 @@ def get_threading_manager():
     """Threading Manager"""
     return get_service('threading_manager')
 
+# ============================================================
+# Self-Healer Provider 🆕
+# ============================================================
 
+def get_self_healer():
+    """Self Healer (Gemini-aware)"""
+    return get_service('self_healer')
+    
 # ============================================================
 # Flask Extension
 # ============================================================
