@@ -3793,6 +3793,137 @@ body {
     animation: spin 0.8s linear infinite;
     margin-bottom: 8px;
 }
+
+/* ============================================================
+   HEALING FORCE DROPDOWN
+   ============================================================ */
+.healing-actions {
+    display: flex;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    position: relative;
+}
+
+.healing-force-dropdown {
+    position: relative;
+    flex: 1;
+    display: flex;
+}
+
+.healing-force-dropdown > .mini-btn {
+    flex: 1;
+    position: relative;
+}
+
+.healing-force-dropdown > .mini-btn .chevron {
+    width: 11px;
+    height: 11px;
+    margin-right: 4px;
+    transition: transform 0.25s var(--transition);
+    opacity: 0.8;
+}
+
+.healing-force-dropdown.open > .mini-btn .chevron {
+    transform: rotate(180deg);
+}
+
+.healing-force-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    min-width: 240px;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 11px;
+    box-shadow: var(--shadow-lg);
+    padding: 5px;
+    z-index: 200;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px) scale(0.96);
+    transform-origin: bottom right;
+    transition: all 0.2s var(--ease-spring);
+}
+
+.healing-force-dropdown.open .healing-force-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.healing-force-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: right;
+}
+
+.healing-force-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-light);
+}
+
+.hfi-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.healing-force-item:hover .hfi-icon {
+    transform: scale(1.1);
+}
+
+.hfi-icon.cache       { background: var(--primary-bg); }
+.hfi-icon.predictions { background: var(--danger-bg); }
+.hfi-icon.ohlcv       { background: var(--info-bg); }
+.hfi-icon.reconnect   { background: var(--success-bg); }
+
+.hfi-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+
+.hfi-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.hfi-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono-font);
+}
+
+@media (max-width: 640px) {
+    .healing-force-menu {
+        right: auto;
+        left: 0;
+        transform-origin: bottom left;
+    }
+}
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -4286,17 +4417,45 @@ body {
                     <div class="healing-stats" id="healingStats"></div>
                     <div class="healing-timeline" id="healingTimeline"></div>
                     <div class="healing-actions">
-                        <button class="mini-btn success" id="healingTriggerBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
-                            <span>اجرای دستی</span>
-                        </button>
+                        <div class="healing-force-dropdown" id="healingForceDropdown">
+                            <button class="mini-btn success" id="healingTriggerBtn">
+                                <svg>...</svg>
+                                <span>اجرای کامل</span>
+                                <svg class="chevron">...</svg>
+                            </button>
+                            <div class="healing-force-menu" id="healingForceMenu">
+                                <button class="healing-force-item" data-force="cache">
+                                    <span class="hfi-icon cache">🧹</span>
+                                    <span class="hfi-content">
+                                        <span class="hfi-title">پاکسازی Cache</span>
+                                        <span class="hfi-desc">clear cache</span>
+                                    </span>
+                                </button>
+                                <button class="healing-force-item" data-force="predictions">
+                                    <span class="hfi-icon predictions">🗑️</span>
+                                    <span class="hfi-content">
+                                        <span class="hfi-title">پاکسازی Predictions</span>
+                                        <span class="hfi-desc">clean old predictions</span>
+                                    </span>
+                                </button>
+                                <button class="healing-force-item" data-force="ohlcv">
+                                    <span class="hfi-icon ohlcv">📊</span>
+                                    <span class="hfi-content">
+                                        <span class="hfi-title">پاکسازی OHLCV</span>
+                                        <span class="hfi-desc">clean old ohlcv</span>
+                                    </span>
+                                </button>
+                                <button class="healing-force-item" data-force="reconnect">
+                                    <span class="hfi-icon reconnect">🔌</span>
+                                    <span class="hfi-content">
+                                        <span class="hfi-title">Reconnect</span>
+                                        <span class="hfi-desc">reconnect databases</span>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
                         <button class="mini-btn" id="healingResetBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                <path d="M3 3v5h5"/>
-                            </svg>
+                            <svg>...</svg>
                             <span>ریست</span>
                         </button>
                     </div>
@@ -4880,11 +5039,32 @@ const API = {
     getRouterRules() { return this.request('/api/db/router/rules'); },
     getRegistrySummary() { return this.request('/api/db/registry/summary'); },
 
-    // ===== Self-Healing =====
-    getHealingStatus() { return this.request('/api/healing/status'); },
-    triggerHealing() { return this.request('/api/healing/trigger', { method: 'POST' }); },
-    resetHealing() { return this.request('/api/healing/reset', { method: 'POST' }); },
 
+    //======== self healing ===========
+    forceHealingClearCache() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST',
+            body: JSON.stringify({ force: 'cache' })
+        });
+    },
+    forceHealingCleanPredictions() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST',
+            body: JSON.stringify({ force: 'predictions' })
+        });
+    },
+    forceHealingCleanOHLCV() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST',
+            body: JSON.stringify({ force: 'ohlcv' })
+        });
+    },
+    forceHealingReconnect() {
+        return this.request('/api/healing/trigger', {
+            method: 'POST',
+            body: JSON.stringify({ force: 'reconnect' })
+        });
+    },
     // ===== Alerts =====
     getAlerts(params = {}) {
         const qs = new URLSearchParams({ limit: 20, resolved: false, ...params });
@@ -7254,6 +7434,100 @@ waitForShared(function(shared) {
         }
     }
 
+    // ═══════════════════════════════════════════════════
+    // FORCE HEALING RUNNER
+    // ═══════════════════════════════════════════════════
+    async function runForceHealing(force) {
+        const configs = {
+            cache: {
+                title: 'پاکسازی Cache',
+                subMessage: 'همه‌ی کلیدهای cache پاک می‌شوند',
+                confirm: true,
+                api: () => API.forceHealingClearCache(),
+                successMsg: 'Cache با موفقیت پاک شد',
+            },
+            predictions: {
+                title: 'پاکسازی Predictions',
+                subMessage: 'پیش‌بینی‌های قدیمی حذف می‌شوند',
+                confirm: true,
+                api: () => API.forceHealingCleanPredictions(),
+                successMsg: 'Predictions قدیمی پاک شد',
+            },
+            ohlcv: {
+                title: 'پاکسازی OHLCV',
+                subMessage: 'داده‌های OHLCV قدیمی حذف می‌شوند',
+                confirm: true,
+                api: () => API.forceHealingCleanOHLCV(),
+                successMsg: 'OHLCV قدیمی پاک شد',
+            },
+            reconnect: {
+                title: 'Reconnect دیتابیس‌ها',
+                subMessage: 'اتصال مجدد به همه دیتابیس‌ها',
+                confirm: false,
+                api: () => API.forceHealingReconnect(),
+                successMsg: 'اتصال مجدد انجام شد',
+            },
+        };
+    
+        const config = configs[force];
+        if (!config) {
+            showToast(`نوع force نامعتبر: ${force}`, 'error', 2000);
+            return;
+        }
+    
+        // ═══ تایید (برای پاکسازی‌ها) ═══
+        if (config.confirm) {
+            const ok = await showConfirm(
+                config.title,
+                config.subMessage
+            );
+            if (!ok) return;
+        }
+    
+        // ═══ نمایش Loading Modal ═══
+        const modal = $('#globalModalLoader');
+        if (modal) {
+            modal.style.display = 'flex';
+            $('#modalLoaderMessage').textContent = config.title + '...';
+            $('#modalLoaderSubMessage').textContent = 'لطفاً صبر کنید';
+            $('#modalLoaderProgress').style.display = 'block';
+            $('#modalLoaderProgressFill').style.width = '0%';
+        }
+    
+        // ═══ انیمیشن Progress ═══
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress = Math.min(progress + Math.random() * 12, 90);
+            const fill = $('#modalLoaderProgressFill');
+            if (fill) fill.style.width = progress + '%';
+        }, 300);
+    
+        // ═══ اجرای API ═══
+        let res;
+        try {
+            res = await config.api();
+        } catch (err) {
+            res = { success: false, error: err.message };
+        }
+    
+        // ═══ پایان Progress ═══
+        clearInterval(interval);
+        const fill = $('#modalLoaderProgressFill');
+        if (fill) fill.style.width = '100%';
+    
+        // ═══ نتیجه ═══
+        setTimeout(async () => {
+            if (modal) modal.style.display = 'none';
+        
+            if (res.success) {
+                showToast(config.successMsg, 'success', 2500);
+                // رفرش وضعیت Self-Healing
+                await loadHealingStatus();
+            } else {
+                showToast(res.error || `خطا در ${config.title}`, 'error', 2500);
+            }
+        }, 600);
+    }
     async function loadHealingStatus() {
         const res = await API.getHealingStatus();
         if (res.success) {
@@ -7790,9 +8064,49 @@ waitForShared(function(shared) {
         });
 
         // Healing Actions
-        $('#healingTriggerBtn')?.addEventListener('click', triggerHealing);
-        $('#healingResetBtn')?.addEventListener('click', resetHealing);
+        // ═══════════════════════════════════════════════════
+        // HEALING ACTIONS + FORCE DROPDOWN
+        // ═══════════════════════════════════════════════════
 
+        const healingDropdown = $('#healingForceDropdown');
+        const healingTriggerBtn = $('#healingTriggerBtn');
+        const healingResetBtn = $('#healingResetBtn');
+
+        // ═══ دکمه اصلی → باز/بسته کردن Dropdown ═══
+        healingTriggerBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            healingDropdown?.classList.toggle('open');
+        });
+
+        // ═══ بستن Dropdown با کلیک بیرون ═══
+        document.addEventListener('click', (e) => {
+            if (!healingDropdown?.contains(e.target)) {
+                healingDropdown?.classList.remove('open');
+            }
+        });
+
+        // ═══ بستن Dropdown با Escape ═══
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && healingDropdown?.classList.contains('open')) {
+                healingDropdown.classList.remove('open');
+            }
+        });
+
+        // ═══ آیتم‌های Force ═══
+        $$('.healing-force-item').forEach(item => {
+            item.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const force = item.dataset.force;
+                healingDropdown?.classList.remove('open');
+        
+                if (!force) return;
+        
+                await runForceHealing(force);
+            });
+        });
+
+        // ═══ دکمه ریست ═══
+        healingResetBtn?.addEventListener('click', resetHealing);
         // Alert Filters
         $$('.alert-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
