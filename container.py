@@ -72,7 +72,7 @@ class Container:
             self._services[name] = service
         
         logger.debug(f"Service registered: {name}")
-    
+
     # ============================================================
     # Get
     # ============================================================
@@ -235,9 +235,9 @@ class Container:
     def health_use_case(self) -> Any:
         return self.get('health_use_case')
     
-    # ⚠️ model_manager, trainer, predict_use_case, scan_market_use_case,
-    #    command_system, self_healer حذف شدند
-    
+    def self_healer(self) -> Any:
+        return self.get('self_healer')
+        
     def __repr__(self) -> str:
         return f"<Container services={len(self.list_services())}>"
 
@@ -472,10 +472,20 @@ def register_services() -> None:
         return MonitoringService(container.get('health_use_case'))
     
     container.register('prediction_service', get_prediction_service, singleton=True)
-    container.register('monitoring_service', get_monitoring_service, singleton=True)
-    
-    # ⚠️ command_system, self_healer حذف شدند
-    
+    container.register('monitoring_service', get_monitoring_service, singleton=True)s
+
+
+    # ============================================================
+    # ۸.b SelfHealer (Gemini-aware) 🆕
+    # ============================================================
+
+    def get_self_healer():
+        from application.services.self_healer import SelfHealer
+        return SelfHealer(
+            api_client=container.get('api_client'),
+        )
+
+    container.register('self_healer', get_self_healer, singleton=True)
     # ============================================================
     # ۹. System
     # ============================================================
