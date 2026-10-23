@@ -1,28 +1,18 @@
 #!/usr/bin/env python3
 # scripts/manage_databases.py
 # ============================================================
-# مدیریت دیتابیس‌ها - نسخه ۵.۱
-# RuleEngine + OHLCV + UTC-safe DEFAULT
+# مدیریت دیتابیس‌ها - نسخه ۵.۳
 # ============================================================
-
-"""
-مدیریت کامل دیتابیس‌های سیستم (۵ دیتابیس)
-
-نسخه ۵.۱:
-    - DEFAULT CURRENT_TIMESTAMP → DEFAULT (NOW() AT TIME ZONE 'UTC')
-    - timeout در execute_schema
-    - حذف SQL_ASCII non-safe
-    - سازگار با session timezone = UTC
-
-استفاده:
-    python scripts/manage_databases.py --action=all
-    python scripts/manage_databases.py --action=migrate
-    python scripts/manage_databases.py --action=seed
-    python scripts/manage_databases.py --action=status
-    python scripts/manage_databases.py --action=verify
-    python scripts/manage_databases.py --action=tables
-    python scripts/manage_databases.py --action=reset --confirm
-"""
+# تغییرات نسخه ۵.۳:
+#   - اضافه شدن جدول‌های Agent:
+#       * agent_actions_log (primary)
+#       * agent_conversations (primary)
+#       * agent_settings (primary)
+#       * agent_sessions_backup (backup)
+#   - seed_agent_user() برای agent_debugger
+#   - seed_default_users() با رمز از environment
+#   - گزینه --action=seed-agent
+# ============================================================
 
 import os
 import sys
@@ -302,6 +292,73 @@ SCHEMA_PRIMARY = {
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
     """,
+
+    # ============================================================
+    # 🆕 AGENT TABLES
+    # ============================================================
+
+    "agent_actions_log": f"""
+        CREATE TABLE IF NOT EXISTS agent_actions_log (
+            id BIGSERIAL PRIMARY KEY,
+            session_id VARCHAR(100),
+            user_id VARCHAR(100),
+            action_type VARCHAR(50) NOT NULL,
+            tool_name VARCHAR(100),
+            tool_params JSONB,
+            result JSONB,
+            status VARCHAR(20) DEFAULT 'success',
+            error_message TEXT,
+            confirmation_required BOOLEAN DEFAULT FALSE,
+            confirmed_by VARCHAR(100),
+            confirmed_at TIMESTAMP,
+            duration_ms FLOAT,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
+        );
+        CREATE INDEX IF NOT EXISTS idx_aal_session ON agent_actions_log(session_id);
+        CREATE INDEX IF NOT EXISTS idx_aal_user ON agent_actions_log(user_id);
+        CREATE INDEX IF NOT EXISTS idx_aal_action ON agent_actions_log(action_type);
+        CREATE INDEX IF NOT EXISTS idx_aal_tool ON agent_actions_log(tool_name);
+        CREATE INDEX IF NOT EXISTS idx_aal_status ON agent_actions_log(status);
+        CREATE INDEX IF NOT EXISTS idx_aal_created ON agent_actions_log(created_at DESC);
+    """,
+
+    "agent_conversations": f"""
+        CREATE TABLE IF NOT EXISTS agent_conversations (
+            id BIGSERIAL PRIMARY KEY,
+            session_id VARCHAR(100) NOT NULL,
+            user_id VARCHAR(100),
+            role VARCHAR(20) NOT NULL,
+            content TEXT,
+            content_type VARCHAR(20) DEFAULT 'text',
+            audio_duration_ms FLOAT,
+            transcription TEXT,
+            tokens_input INTEGER DEFAULT 0,
+            tokens_output INTEGER DEFAULT 0,
+            model VARCHAR(50),
+            latency_ms FLOAT,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
+        );
+        CREATE INDEX IF NOT EXISTS idx_ac_session ON agent_conversations(session_id);
+        CREATE INDEX IF NOT EXISTS idx_ac_user ON agent_conversations(user_id);
+        CREATE INDEX IF NOT EXISTS idx_ac_role ON agent_conversations(role);
+        CREATE INDEX IF NOT EXISTS idx_ac_created ON agent_conversations(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_ac_session_created
+            ON agent_conversations(session_id, created_at ASC);
+    """,
+
+    "agent_settings": f"""
+        CREATE TABLE IF NOT EXISTS agent_settings (
+            id SERIAL PRIMARY KEY,
+            key VARCHAR(100) UNIQUE NOT NULL,
+            value JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+            description TEXT,
+            updated_by VARCHAR(100),
+            updated_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
+        );
+        CREATE INDEX IF NOT EXISTS idx_as_key ON agent_settings(key);
+        CREATE INDEX IF NOT EXISTS idx_as_updated ON agent_settings(updated_at DESC);
+    """,
 }
 
 
@@ -379,6 +436,27 @@ SCHEMA_BACKUP = {
             created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
+    """,
+
+    # ============================================================
+    # 🆕 AGENT BACKUP
+    # ============================================================
+
+    "agent_sessions_backup": f"""
+        CREATE TABLE IF NOT EXISTS agent_sessions_backup (
+            id SERIAL PRIMARY KEY,
+            session_id VARCHAR(100) NOT NULL,
+            user_id VARCHAR(100),
+            session_data JSONB NOT NULL,
+            conversation_count INTEGER DEFAULT 0,
+            started_at TIMESTAMP,
+            last_activity_at TIMESTAMP,
+            backup_reason VARCHAR(50) DEFAULT 'periodic',
+            backup_at TIMESTAMP DEFAULT {DEFAULT_NOW}
+        );
+        CREATE INDEX IF NOT EXISTS idx_asb_session ON agent_sessions_backup(session_id);
+        CREATE INDEX IF NOT EXISTS idx_asb_user ON agent_sessions_backup(user_id);
+        CREATE INDEX IF NOT EXISTS idx_asb_backup_at ON agent_sessions_backup(backup_at DESC);
     """,
 }
 
@@ -486,6 +564,30 @@ SCHEMA_ANALYTICS = {
             created_at TIMESTAMP DEFAULT {DEFAULT_NOW}
         );
         CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache(expires_at);
+    """,
+
+    # ============================================================
+    # 🆕 AGENT ANALYTICS
+    # ============================================================
+
+    "agent_usage_analytics": f"""
+        CREATE TABLE IF NOT EXISTS agent_usage_analytics (
+            id SERIAL PRIMARY KEY,
+            date DATE NOT NULL,
+            user_id VARCHAR(100),
+            total_sessions INTEGER DEFAULT 0,
+            total_messages INTEGER DEFAULT 0,
+            total_actions INTEGER DEFAULT 0,
+            confirmed_actions INTEGER DEFAULT 0,
+            rejected_actions INTEGER DEFAULT 0,
+            avg_latency_ms FLOAT DEFAULT 0,
+            tokens_input_total INTEGER DEFAULT 0,
+            tokens_output_total INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT {DEFAULT_NOW},
+            UNIQUE(date, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_aua_date ON agent_usage_analytics(date DESC);
+        CREATE INDEX IF NOT EXISTS idx_aua_user ON agent_usage_analytics(user_id);
     """,
 }
 
@@ -630,6 +732,31 @@ SCHEMA_ARCHIVE = {
         CREATE INDEX IF NOT EXISTS idx_bs_type ON backup_snapshots(snapshot_type);
         CREATE INDEX IF NOT EXISTS idx_bs_created_at ON backup_snapshots(created_at DESC);
     """,
+
+    # ============================================================
+    # 🆕 AGENT ARCHIVE
+    # ============================================================
+
+    "agent_conversations_archive": """
+        CREATE TABLE IF NOT EXISTS agent_conversations_archive (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_id INTEGER,
+            session_id VARCHAR(100),
+            user_id VARCHAR(100),
+            role VARCHAR(20),
+            content TEXT,
+            transcription TEXT,
+            tokens_input INTEGER,
+            tokens_output INTEGER,
+            model VARCHAR(50),
+            latency_ms REAL,
+            created_at TEXT,
+            archived_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_aca_session ON agent_conversations_archive(session_id);
+        CREATE INDEX IF NOT EXISTS idx_aca_user ON agent_conversations_archive(user_id);
+        CREATE INDEX IF NOT EXISTS idx_aca_original_id ON agent_conversations_archive(original_id);
+    """,
 }
 
 
@@ -702,7 +829,7 @@ def execute_schema(
 def run_migrations() -> Dict[str, Any]:
     """اجرای همه migrations"""
     logger.info("=" * 70)
-    logger.info("🚀 Starting Database Migration (v5.1 - UTC-safe)")
+    logger.info("🚀 Starting Database Migration (v5.3 - with Agent tables)")
     logger.info(f"📅 {_utc_now_iso()}")
     logger.info("=" * 70)
 
@@ -745,15 +872,204 @@ def run_migrations() -> Dict[str, Any]:
 
 
 # ============================================================
-# Seed
+# Seed Helpers
+# ============================================================
+
+def _user_exists(db, username: str) -> bool:
+    """بررسی وجود یک کاربر در جدول users."""
+    try:
+        rows = db.execute(
+            "SELECT COUNT(*) as count FROM users WHERE username = %s",
+            (username,),
+        )
+        return bool(rows and rows[0].get("count", 0) > 0)
+    except Exception as e:
+        logger.warning(f"⚠️ user_exists check failed: {e}")
+        return False
+
+
+def seed_default_users() -> int:
+    """
+    درج کاربران پیش‌فرض (admin, user) اگر وجود ندارند.
+    
+    رمزها از environment خوانده می‌شوند (با fallback).
+    
+    Returns:
+        تعداد کاربران درج‌شده
+    """
+    db = get_primary()
+    if db is None or not db.is_connected():
+        return 0
+
+    created = 0
+
+    admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123")
+    user_password = os.getenv("USER_PASSWORD", "User@123")
+
+    defaults = [
+        ("admin", admin_password, "admin", "admin@example.com"),
+        ("user", user_password, "user", "user@example.com"),
+    ]
+
+    for username, password, role, email in defaults:
+        if _user_exists(db, username):
+            logger.info(f"  ⏭️  User '{username}' already exists")
+            continue
+
+        try:
+            db.execute(
+                """
+                INSERT INTO users (username, password_hash, role, email)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (username, password, role, email),
+            )
+            created += 1
+            logger.info(f"  ✅ User '{username}' created (role={role})")
+        except Exception as e:
+            logger.error(f"  ❌ User '{username}' failed: {e}")
+
+    return created
+
+
+def seed_agent_user() -> bool:
+    """
+    درج/آپدیت کاربر agent_debugger.
+    
+    رمز از AGENT_PASSWORD در environment خوانده می‌شود.
+    
+    - اگر رمز تنظیم نشده باشد → skip
+    - اگر کاربر وجود داشته باشد → آپدیت رمز و نقش
+    - اگر وجود نداشته باشد → ایجاد
+    
+    Returns:
+        True اگر موفق (یا نیاز نبود)
+    """
+    agent_password = os.getenv("AGENT_PASSWORD", "").strip()
+
+    if not agent_password:
+        logger.warning(
+            "  ⚠️  AGENT_PASSWORD not set in environment → "
+            "skipping agent_debugger"
+        )
+        return False
+
+    db = get_primary()
+    if db is None or not db.is_connected():
+        logger.error("  ❌ Primary DB not connected")
+        return False
+
+    try:
+        db.execute(
+            """
+            INSERT INTO users (username, password_hash, role, email, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+            ON CONFLICT (username) DO UPDATE
+            SET password_hash = EXCLUDED.password_hash,
+                role = EXCLUDED.role,
+                email = EXCLUDED.email,
+                is_active = TRUE,
+                updated_at = NOW()
+            """,
+            (
+                "agent_debugger",
+                agent_password,
+                "admin",
+                "agent@internal.local",
+            ),
+        )
+        logger.info(
+            "  ✅ agent_debugger created/updated "
+            "(role=admin, source=AGENT_PASSWORD)"
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"  ❌ agent_debugger failed: {e}")
+        return False
+
+
+def seed_agent_settings() -> int:
+    """
+    درج تنظیمات پیش‌فرض Agent در جدول agent_settings.
+    
+    Returns:
+        تعداد تنظیمات درج‌شده
+    """
+    db = get_primary()
+    if db is None or not db.is_connected():
+        return 0
+
+    defaults = [
+        (
+            "model",
+            '{"name": "gemini-3.8-live", "thinking_level": null}',
+            "مدل پیش‌فرض Agent",
+        ),
+        (
+            "voice",
+            '{"name": "Aoede", "language": "fa-IR"}',
+            "صدای پیش‌فرض",
+        ),
+        (
+            "response_modality",
+            '{"modalities": ["AUDIO", "TEXT"]}',
+            "حالت پاسخ (صدا + متن)",
+        ),
+        (
+            "confirmation_required",
+            '{"enabled": true, "sensitive_tools": ["clear_cache", "delete_old", "restart_service"]}',
+            "ابزارهای نیازمند تأیید",
+        ),
+        (
+            "context_window",
+            '{"compression_enabled": true, "trigger_tokens": 100000, "target_tokens": 80000}',
+            "تنظیمات فشرده‌سازی context",
+        ),
+    ]
+
+    created = 0
+    for key, value, description in defaults:
+        try:
+            db.execute(
+                """
+                INSERT INTO agent_settings (key, value, description)
+                VALUES (%s, %s::jsonb, %s)
+                ON CONFLICT (key) DO NOTHING
+                """,
+                (key, value, description),
+            )
+            created += 1
+            logger.debug(f"  ✅ agent_settings: {key}")
+        except Exception as e:
+            logger.warning(f"  ⚠️ agent_settings '{key}': {e}")
+
+    if created > 0:
+        logger.info(f"  ✅ {created} agent settings initialized")
+
+    return created
+
+
+# ============================================================
+# Seed (Main)
 # ============================================================
 
 def seed_data() -> Dict[str, Any]:
-    """داده اولیه"""
+    """
+    داده اولیه.
+    
+    نسخه ۵.۳:
+        - seed_default_users()
+        - seed_agent_user()
+        - seed_agent_settings()
+        - cache و system_state
+    """
     logger.info("\n🌱 Seeding initial data...")
 
-    results = {
-        "users": 0,
+    results: Dict[str, Any] = {
+        "users_created": 0,
+        "agent_user": False,
+        "agent_settings": 0,
         "cache": 0,
         "system_state": 0,
         "errors": [],
@@ -765,30 +1081,28 @@ def seed_data() -> Dict[str, Any]:
         results["errors"].append("primary: not connected")
         return results
 
+    # ۱. کاربران پیش‌فرض
     try:
-        existing = db.execute("SELECT COUNT(*) as count FROM users")
-
-        if existing and existing[0]["count"] == 0:
-            db.execute(
-                """
-                INSERT INTO users (username, password_hash, role, email)
-                VALUES
-                    (%s, %s, %s, %s),
-                    (%s, %s, %s, %s)
-                """,
-                (
-                    "admin", "Admin@123", "admin", "admin@example.com",
-                    "user", "User@123", "user", "user@example.com",
-                ),
-            )
-            results["users"] = 2
-            logger.info("  ✅ Created 2 default users (admin, user)")
-        else:
-            logger.info(f"  ⏭️  Users already exist ({existing[0]['count']})")
+        results["users_created"] = seed_default_users()
     except Exception as e:
-        results["errors"].append(f"users: {e}")
-        logger.error(f"  ❌ users: {e}")
+        results["errors"].append(f"default_users: {e}")
+        logger.error(f"❌ default_users: {e}")
 
+    # ۲. کاربر ایجنت
+    try:
+        results["agent_user"] = seed_agent_user()
+    except Exception as e:
+        results["errors"].append(f"agent_user: {e}")
+        logger.error(f"❌ agent_user: {e}")
+
+    # ۳. تنظیمات Agent
+    try:
+        results["agent_settings"] = seed_agent_settings()
+    except Exception as e:
+        results["errors"].append(f"agent_settings: {e}")
+        logger.error(f"❌ agent_settings: {e}")
+
+    # ۴. cache
     try:
         db.execute(
             """
@@ -799,11 +1113,12 @@ def seed_data() -> Dict[str, Any]:
             ("system_initialized", _utc_now_iso()),
         )
         results["cache"] = 1
-        logger.info("  ✅ Initialized system cache")
+        logger.info("  ✅ cache initialized")
     except Exception as e:
         results["errors"].append(f"cache: {e}")
         logger.error(f"  ❌ cache: {e}")
 
+    # ۵. system_state (backup)
     try:
         backup_db = get_backup()
         if backup_db and backup_db.is_connected():
@@ -816,14 +1131,17 @@ def seed_data() -> Dict[str, Any]:
                 ("initialized_at", _utc_now_iso()),
             )
             results["system_state"] = 1
-            logger.info("  ✅ Initialized system_state (backup)")
+            logger.info("  ✅ system_state initialized (backup)")
     except Exception as e:
         results["errors"].append(f"system_state: {e}")
         logger.error(f"  ❌ system_state: {e}")
 
+    # Summary
     logger.info(
         f"✅ Seeding complete: "
-        f"{results['users']} users, "
+        f"{results['users_created']} users, "
+        f"agent_user={'yes' if results['agent_user'] else 'no'}, "
+        f"agent_settings={results['agent_settings']}, "
         f"{results['cache']} cache, "
         f"{results['system_state']} state"
     )
@@ -963,9 +1281,9 @@ def show_tables_info() -> None:
                     f"SELECT COUNT(*) as count FROM {table_name}"
                 )
                 count = count_result[0]["count"] if count_result else 0
-                logger.info(f"  • {table_name:30s} | {count:>10,} rows")
+                logger.info(f"  • {table_name:35s} | {count:>10,} rows")
             except Exception as e:
-                logger.info(f"  • {table_name:30s} | ❌ {str(e)[:30]}")
+                logger.info(f"  • {table_name:35s} | ❌ {str(e)[:30]}")
 
     logger.info("\n" + "=" * 70)
 
@@ -1087,8 +1405,6 @@ def migrate_existing_tables() -> Dict[str, Any]:
         results["errors"].append(f"models.model_type: {e}")
         logger.warning(f"  ⚠️  models.model_type: {e}")
 
-    # --------- تبدیل DEFAULT CURRENT_TIMESTAMP به UTC ---------
-    # برای جداولی که از قبل ساخته شده‌اند و DEFAULT قدیمی دارند
     logger.info("  ℹ️  Existing DEFAULTs will remain (data is already UTC)")
     logger.info("  ℹ️  New tables will use DEFAULT (NOW() AT TIME ZONE 'UTC')")
 
@@ -1107,6 +1423,7 @@ def main():
 Examples:
   python manage_databases.py --action=migrate
   python manage_databases.py --action=seed
+  python manage_databases.py --action=seed-agent
   python manage_databases.py --action=status
   python manage_databases.py --action=tables
   python manage_databases.py --action=verify
@@ -1122,6 +1439,7 @@ Examples:
             "migrate",
             "migrate-existing",
             "seed",
+            "seed-agent",      # 🆕 فقط کاربر ایجنت
             "reset",
             "status",
             "tables",
@@ -1157,6 +1475,14 @@ Examples:
 
     elif args.action == "seed":
         seed_data()
+
+    elif args.action == "seed-agent":
+        logger.info("🤖 Seeding agent user only...")
+        success = seed_agent_user()
+        if success:
+            logger.info("✅ Agent user ready")
+        else:
+            logger.warning("⚠️ Agent user not created (check AGENT_PASSWORD)")
 
     elif args.action == "reset":
         reset_databases(confirm=args.confirm)
