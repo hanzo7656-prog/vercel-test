@@ -221,7 +221,9 @@ class Container:
     
     def prediction_router(self) -> Any:
         return self.get('prediction_router')
-    
+        
+    def live_agent_use_case(self) -> Any:
+        return self.get('live_agent_use_case')
     # ============================================================
     # Convenience Methods - Application
     # ============================================================
