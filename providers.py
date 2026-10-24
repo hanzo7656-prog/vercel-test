@@ -133,7 +133,9 @@ def get_predict_coin_gemini_use_case():
     """Predict Coin Gemini Use Case"""
     return get_service('predict_coin_gemini_use_case')
 
-
+def get_live_agent_use_case():
+    """Live Agent Use Case (برای ایجنت صوتی/متنی)"""
+    return get_service('live_agent_use_case')
 # ============================================================
 # Core Providers
 # ============================================================
@@ -202,7 +204,7 @@ def get_threading_manager():
     return get_service('threading_manager')
 
 # ============================================================
-# Self-Healer Provider 🆕
+# Self-Healer Provider 
 # ============================================================
 
 def get_self_healer():
