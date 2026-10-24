@@ -24,3 +24,21 @@ def get_apis_health() -> dict:
 def get_cache_stats() -> dict:
     """دریافت آمار کش Redis (hits, misses, active_redis)."""
     return call_flask("GET", "/api/debug/cache/stats")
+
+def get_ai_status() -> dict:
+    """بررسی وضعیت کلی سرویس‌های هوش مصنوعی (مدل متنی و ایجنت Live)."""
+    return call_flask("GET", "/api/ai/status")
+
+def get_agent_tools_list() -> dict:
+    """دریافت لیست تمام ابزارهای موجود برای ایجنت."""
+    return call_flask("GET", "/api/ai/debug/tools")
+
+def test_agent_tool(tool_name: str, kwargs: dict = None) -> dict:
+    """
+    تست یک ابزار خاص به صورت مستقیم (بدون دخالت مدل).
+    استفاده: tool_name="get_price", kwargs={"coin": "bitcoin"}
+    """
+    return call_flask("POST", "/api/ai/debug/test-tool", json_body={
+        "tool_name": tool_name,
+        "kwargs": kwargs or {}
+    })
