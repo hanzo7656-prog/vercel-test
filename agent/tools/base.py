@@ -4,11 +4,10 @@ import requests
 from typing import Optional, Dict, Any
 
 BASE_URL = os.getenv("BASE_URL", "https://vercel-test-f4bv.onrender.com")
-AGENT_USERNAME = "agent_debugger"  # hardcode
+AGENT_USERNAME = "agent_debugger"
 AGENT_PASSWORD = os.getenv("AGENT_PASSWORD", "")
 
 _session: Optional[requests.Session] = None
-
 
 def _get_session() -> requests.Session:
     """لاگین با حساب agent_debugger و برگرداندن session."""
@@ -28,7 +27,6 @@ def _get_session() -> requests.Session:
         raise RuntimeError(f"Agent login failed: {data}")
     _session = sess
     return sess
-
 
 def call_flask(
     method: str,
