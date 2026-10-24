@@ -10,6 +10,9 @@ from .prediction import (predict_single, predict_multiple,
 from .crypto import (get_ws_prices, get_ws_price, get_ws_orderbook, get_crypto_stats)
 from .system import (get_app_stats, get_metrics, get_metrics_dashboard, get_thread_status)
 
+# 🆕 ابزارهای دیباگ هوش مصنوعی
+from .ai_debug import (get_ai_status, get_agent_tools_list, test_agent_tool)
+
 ALL_TOOLS = [
     # Debug (6)
     check_health, get_debug_status, get_recent_logs,
@@ -27,4 +30,6 @@ ALL_TOOLS = [
     get_ws_prices, get_ws_price, get_ws_orderbook, get_crypto_stats,
     # System (4)
     get_app_stats, get_metrics, get_metrics_dashboard, get_thread_status,
+    # AI Debug (3) 🆕
+    get_ai_status, get_agent_tools_list, test_agent_tool,
 ]
