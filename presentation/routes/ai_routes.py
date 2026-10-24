@@ -26,6 +26,10 @@ from flask import (
     Response,
     stream_with_context,
 )
+import asyncio
+import os
+from flask import request, jsonify
+from application.use_cases.live_agent_use_case import LiveAgentUseCase
 
 from infrastructure.auth.auth_manager import require_auth
 
@@ -441,7 +445,57 @@ def ai_explain():
         logger.error(f"❌ /api/ai/explain error: {e}", exc_info=True)
         return _error(str(e), 500)
 
+# ============================================================
+# 🆕 Agent Live Endpoints
+# ============================================================
 
+@ai_bp.route("/agent/chat", methods=["POST"])
+@require_auth()
+def agent_chat():
+    """
+    چت با ایجنت Live.
+    Body: {"message": "وضعیت سیستم چطوره؟"}
+    """
+    try:
+        data = request.json or {}
+        message = data.get("message", "").strip()
+        if not message:
+            return _error("message الزامی است", 400)
+
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
+            return _error("GEMINI_API_KEY در environment تنظیم نشده است", 500)
+
+        use_case = LiveAgentUseCase(api_key=api_key)
+        
+        # اجرای async در محیط sync Flask
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            reply = loop.run_until_complete(use_case.process_text_message(message))
+        finally:
+            loop.close()
+
+        return _success({"reply": reply, "agent": "live"})
+
+    except Exception as e:
+        logger.error(f"❌ Agent chat error: {e}", exc_info=True)
+        return _error(str(e), 500)
+
+
+@ai_bp.route("/agent/status", methods=["GET"])
+def agent_status():
+    """بررسی وضعیت ایجنت و ابزارهایش."""
+    try:
+        from agent.tools import ALL_TOOLS
+        return _success({
+            "available": bool(os.getenv("GEMINI_API_KEY")),
+            "model": "gemini-3.8-live",
+            "tools_count": len(ALL_TOOLS),
+            "tools": [t.__name__ for t in ALL_TOOLS],
+        })
+    except Exception as e:
+        return _error(str(e), 500)
 # ============================================================
 # Status & Stats
 # ============================================================
