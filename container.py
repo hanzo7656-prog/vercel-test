@@ -370,7 +370,14 @@ def register_services() -> None:
             api_client=container.get('api_client'),
             cache=get_cache(),
         )
-    
+        
+    def get_live_agent_use_case():
+        from application.use_cases.live_agent_use_case import LiveAgentUseCase
+        import os
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        return LiveAgentUseCase(api_key=api_key)
+
+    container.register('live_agent_use_case', get_live_agent_use_case, singleton=True)
     container.register('gemini_client', get_gemini_client, singleton=True)
     container.register('gemini_service', get_gemini_service, singleton=True)
     container.register('ai_chat_use_case', get_ai_chat_use_case, singleton=True)
