@@ -428,10 +428,10 @@ class ApiClient {
     }
 
     // ============================================================
-    // ۱۳. AI (Gemini) 🆕
+    // ۱۳. AI (Gemini) - v3.0
     // ============================================================
 
-    // ===== AI Home =====
+    // ===== AI Home & Status =====
     getAIHome() {
         return this.request('/api/ai');
     }
@@ -444,7 +444,7 @@ class ApiClient {
         return this.request('/api/ai/stats');
     }
 
-    // ===== Chat =====
+    // ===== Text Chat (Gemini Flash) =====
     aiChat(message, options = {}) {
         const {
             history = [],
@@ -463,7 +463,7 @@ class ApiClient {
         return '/api/ai/chat/stream';
     }
 
-    // ===== Analyze Image =====
+    // ===== Vision (Analyze Image) =====
     aiAnalyzeImage(imageBase64, options = {}) {
         const {
             mimeType = 'image/jpeg',
@@ -482,7 +482,6 @@ class ApiClient {
     }
 
     aiAnalyzeImageFile(file, options = {}) {
-        // برای multipart/form-data
         const formData = new FormData();
         formData.append('image', file);
         if (options.prompt) formData.append('prompt', options.prompt);
@@ -508,6 +507,32 @@ class ApiClient {
         });
     }
 
+    // ===== Live Agent 🆕 =====
+    agentChat(message) {
+        return this.request('/api/ai/agent/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message })
+        });
+    }
+
+    getAgentStatus() {
+        return this.request('/api/ai/agent/status');
+    }
+
+    // ===== AI Debug 🆕 =====
+    getAIDebugTools() {
+        return this.request('/api/ai/debug/tools');
+    }
+
+    testAITool(toolName, kwargs = {}) {
+        return this.request('/api/ai/debug/test-tool', {
+            method: 'POST',
+            body: JSON.stringify({
+                tool_name: toolName,
+                kwargs: kwargs
+            })
+        });
+    }
     // ============================================================
     // ۱۴. Prediction (با engine انتخاب)
     // ============================================================
