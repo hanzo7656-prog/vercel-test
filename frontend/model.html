@@ -1,1941 +1,918 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl" data-theme="dark" data-color="violet">
+<html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-<meta name="theme-color" content="#070c16">
-<title>مدل | سیستم تحلیلگر</title>
-
-<!-- ⚡ FOUC Prevention -->
-<script>
-(function() {
-    try {
-        var html = document.documentElement;
-        var theme = localStorage.getItem('app_theme') || 'dark';
-        html.setAttribute('data-theme', theme);
-        var color = localStorage.getItem('app_color') || 'violet';
-        html.setAttribute('data-color', color);
-        var preset = localStorage.getItem('app_preset');
-        if (preset && preset !== 'default') {
-            html.setAttribute('data-preset', preset);
-        }
-        if (color === 'custom') {
-            var customHex = localStorage.getItem('app_customColor') || '#a855f7';
-            html.style.setProperty('--primary', customHex);
-        }
-        var lang = localStorage.getItem('app_lang') || 'fa';
-        html.setAttribute('lang', lang);
-        html.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
-    } catch (e) {}
-})();
-</script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Crypto AI - دستیار هوشمند</title>
 <style>
-/* ============================================================
-   MODEL SHELL v1.0
-   Violet theme · 4 tabs · iframe lazy load
-   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap');
 
-/* ---------- Base Variables ---------- */
 :root {
-    --sidebar-width: 280px;
-    --sidebar-collapsed: 76px;
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.9);
+    --glass-shadow: 0 10px 40px rgba(30, 41, 59, 0.08);
+    --soft-shadow: 0 2px 8px rgba(30, 41, 59, 0.04), 0 8px 24px rgba(30, 41, 59, 0.05);
 
-    --primary: #a855f7;
-    --primary-dark: #9333ea;
-    --primary-light: #c084fc;
-    --primary-rgb: 168, 85, 247;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-soft: rgba(99, 102, 241, 0.12);
+    --primary-glow: rgba(99, 102, 241, 0.25);
 
-    --bg-page: #070c16;
-    --bg-card: rgba(20, 28, 45, 0.6);
-    --bg-card-solid: #131c2d;
-    --bg-glass: rgba(19, 28, 45, 0.85);
-    --bg-input: rgba(10, 16, 28, 0.8);
-    --bg-hover: rgba(148, 163, 184, 0.06);
-    --bg-hover-strong: rgba(148, 163, 184, 0.1);
+    --ai-bubble: rgba(255, 255, 255, 0.92);
+    --user-bubble: linear-gradient(135deg, #6366f1, #8b5cf6);
 
-    --text-light: #e6edf7;
-    --text-muted: #8b9bb4;
-    --text-dim: #5c6b82;
-    --text-faint: #3d4959;
-
-    --border: rgba(148, 163, 184, 0.07);
-    --border-strong: rgba(148, 163, 184, 0.15);
-
-    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
-    --shadow-focus: 0 0 0 3px rgba(168, 85, 247, 0.15);
-
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --info: #06b6d4;
-
-    --success-bg: rgba(34, 197, 94, 0.1);
-    --warning-bg: rgba(245, 158, 11, 0.1);
-    --danger-bg: rgba(239, 68, 68, 0.1);
-    --info-bg: rgba(6, 182, 212, 0.1);
-    --primary-bg: rgba(168, 85, 247, 0.1);
-
-    --mono-font: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
-    --ui-font: 'Vazirmatn', system-ui, sans-serif;
-    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --voice-bg: #0b1120;
+    --voice-text: #f8fafc;
 }
 
-/* ---------- Color Themes ---------- */
-html[data-color="indigo"]  { --primary: #6366f1; --primary-dark: #4f46e5; --primary-light: #818cf8; --primary-rgb: 99, 102, 241; --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.15); --primary-bg: rgba(99, 102, 241, 0.1); }
-html[data-color="emerald"] { --primary: #10b981; --primary-dark: #059669; --primary-light: #34d399; --primary-rgb: 16, 185, 129; --shadow-focus: 0 0 0 3px rgba(16, 185, 129, 0.15); --primary-bg: rgba(16, 185, 129, 0.1); }
-html[data-color="rose"]    { --primary: #f43f5e; --primary-dark: #e11d48; --primary-light: #fb7185; --primary-rgb: 244, 63, 94; --shadow-focus: 0 0 0 3px rgba(244, 63, 94, 0.15); --primary-bg: rgba(244, 63, 94, 0.1); }
-html[data-color="amber"]   { --primary: #f59e0b; --primary-dark: #d97706; --primary-light: #fbbf24; --primary-rgb: 245, 158, 11; --shadow-focus: 0 0 0 3px rgba(245, 158, 11, 0.15); --primary-bg: rgba(245, 158, 11, 0.1); }
-html[data-color="cyan"]    { --primary: #06b6d4; --primary-dark: #0891b2; --primary-light: #22d3ee; --primary-rgb: 6, 182, 212; --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.15); --primary-bg: rgba(6, 182, 212, 0.1); }
-
-/* ---------- Light Theme ---------- */
-html[data-theme="light"] {
-    --bg-page: #f6f8fc;
-    --bg-card: rgba(255, 255, 255, 0.9);
-    --bg-card-solid: #ffffff;
-    --bg-glass: rgba(255, 255, 255, 0.9);
-    --bg-input: rgba(248, 250, 252, 0.95);
-    --bg-hover: rgba(15, 23, 42, 0.04);
-    --bg-hover-strong: rgba(15, 23, 42, 0.07);
-    --text-light: #0d1421;
-    --text-muted: #5c6b82;
-    --text-dim: #8b9bb4;
-    --text-faint: #a8b4c4;
-    --border: rgba(15, 23, 42, 0.06);
-    --border-strong: rgba(15, 23, 42, 0.12);
-    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-    --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
-}
-
-/* ---------- Reset ---------- */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { overflow: hidden; height: 100vh; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; -webkit-tap-highlight-color: transparent; }
 
 body {
-    font-family: var(--ui-font);
-    background: var(--bg-page);
-    color: var(--text-light);
-    font-size: 13px;
-    line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--primary); }
-
-/* ============================================================
-   NEON LOADER (فقط رفرش صفحه)
-   ============================================================ */
-.neon-loader-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(7, 12, 22, 0.97);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    z-index: 999999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 28px;
-    padding: 24px;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
-}
-
-.neon-loader-overlay.active {
-    display: flex;
-    opacity: 1;
-    visibility: visible;
-}
-
-.neon-loader-icon {
-    width: 68px; height: 68px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5);
-    animation: loaderPulse 1.8s ease-in-out infinite;
-}
-
-.neon-loader-icon svg { width: 34px; height: 34px; }
-
-@keyframes loaderPulse {
-    0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
-    50% { transform: scale(1.08) rotate(-3deg); box-shadow: 0 12px 48px rgba(var(--primary-rgb), 0.8); }
-}
-
-.neon-loader-text {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-light);
-    min-height: 22px;
-    text-align: center;
-}
-
-.neon-loader-sub {
-    font-size: 11.5px;
-    color: var(--text-dim);
-    font-family: var(--mono-font);
-    margin-top: -18px;
-    text-align: center;
-}
-
-/* ============================================================
-   SHELL LAYOUT
-   ============================================================ */
-.model-shell {
-    display: flex;
-    flex-direction: column;
+    background:
+        radial-gradient(1200px 600px at 10% -10%, #e0e7ff 0%, transparent 60%),
+        radial-gradient(1000px 600px at 100% 100%, #ddd6fe 0%, transparent 60%),
+        linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
+    background-size: 100% 100%;
+    color: var(--text-main);
     height: 100vh;
-    margin-right: var(--sidebar-width);
-    transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    opacity: 0;
-}
-
-.model-shell.ready {
-    opacity: 1;
-    transition: opacity 0.3s ease, margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.model-shell.expanded { margin-right: var(--sidebar-collapsed); }
-
-@media (max-width: 768px) {
-    .model-shell { margin-right: 0; padding-top: 60px; opacity: 1; }
-}
-
-/* ============================================================
-   TOP BAR
-   ============================================================ */
-.top-bar {
+    height: 100dvh;
     display: flex;
+    justify-content: center;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 20px;
-    background: var(--bg-glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* ============ کانتینر ============ */
+.app-container {
+    width: 100%;
+    max-width: 1100px;
+    height: 92vh;
+    height: 92dvh;
+    background: var(--glass-bg);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(255,255,255,0.35);
+    display: flex;
+    overflow: hidden;
+    margin: 16px;
+    position: relative;
+    animation: containerPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes containerPop { from { opacity: 0; transform: scale(0.97) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* ============ سایدبار ============ */
+.sidebar {
+    width: 256px;
+    background: rgba(255, 255, 255, 0.28);
+    border-left: 1px solid rgba(255,255,255,0.7);
+    display: flex;
+    flex-direction: column;
+    padding: 22px 14px;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 100;
-    min-height: 52px;
 }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 1.05rem; font-weight: 700; margin-bottom: 20px; padding: 0 6px; }
+.brand-icon { width: 30px; height: 30px; background: var(--primary); color: white; border-radius: 9px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px var(--primary-glow); flex-shrink: 0; }
+.btn-new { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255,255,255,0.9); padding: 10px; border-radius: 11px; font-size: 0.85rem; font-weight: 600; font-family: inherit; color: var(--text-main); cursor: pointer; box-shadow: var(--soft-shadow); transition: all 0.25s; margin-bottom: 20px; }
+.btn-new:hover { background: white; transform: translateY(-1px); color: var(--primary); }
+.sidebar-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-left: 2px; }
+.sidebar-item { padding: 10px 12px; border-radius: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-item svg { flex-shrink: 0; opacity: 0.55; }
+.sidebar-item:hover, .sidebar-item.active { background: rgba(255, 255, 255, 0.85); opacity: 1; }
+.sidebar-item.active { color: var(--primary); font-weight: 600; background: white; box-shadow: var(--soft-shadow); }
+.sidebar-item.active svg { opacity: 1; }
 
-.top-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-}
+/* ============ ناحیه چت ============ */
+.chat-area { flex: 1; display: flex; flex-direction: column; position: relative; background: rgba(255, 255, 255, 0.06); min-width: 0; }
+.chat-header { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.7); background: rgba(255, 255, 255, 0.28); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); gap: 12px; }
+.header-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mobile-menu-btn { display: none; background: transparent; border: none; color: var(--text-main); cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.2s; }
+.mobile-menu-btn:hover { background: rgba(255,255,255,0.6); }
+.chat-title { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-badge { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; background: rgba(255, 255, 255, 0.7); padding: 5px 11px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.9); color: var(--text-main); white-space: nowrap; flex-shrink: 0; }
+.status-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; animation: pulseDot 2s infinite; }
+@keyframes pulseDot { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } 100% { transform: scale(1); opacity: 1; } }
 
-.live-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    background: var(--primary-bg);
-    border: 1px solid rgba(var(--primary-rgb), 0.3);
-    border-radius: 7px;
-    font-size: 10.5px;
-    font-weight: 700;
-    color: var(--primary-light);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-family: var(--mono-font);
-    flex-shrink: 0;
-}
+/* ============ خوش‌آمد ============ */
+.welcome-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
+.welcome-logo { width: 68px; height: 68px; background: white; border: 1px solid rgba(255,255,255,0.9); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: var(--primary); margin-bottom: 22px; box-shadow: 0 12px 28px var(--primary-glow), inset 0 1px 0 white; animation: float 4s ease-in-out infinite; flex-shrink: 0; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.welcome-title { font-size: 1.7rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; }
+.welcome-subtitle { font-size: 0.92rem; color: var(--text-muted); margin-bottom: 30px; }
 
-.live-dot {
-    width: 6px; height: 6px;
-    background: var(--primary-light);
-    border-radius: 50%;
-    position: relative;
-    box-shadow: 0 0 8px var(--primary-light);
-}
+/* ============ ورودی اصلی ============ */
+.hero-input-container { width: 100%; max-width: 640px; background: white; border: 1px solid rgba(255,255,255,0.9); border-radius: 22px; padding: 10px 12px; box-shadow: 0 8px 32px rgba(30, 41, 59, 0.06), 0 2px 6px rgba(30, 41, 59, 0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+.hero-input-container:focus-within { border-color: var(--primary); box-shadow: 0 10px 32px var(--primary-glow), 0 0 0 4px var(--primary-soft); transform: translateY(-2px); }
+.hero-textarea { width: 100%; border: none; outline: none; resize: none; font-size: 0.95rem; background: transparent; color: var(--text-main); font-family: inherit; min-height: 44px; max-height: 200px; padding: 8px 6px; line-height: 1.6; }
+.hero-textarea::placeholder { color: var(--text-muted); }
+.hero-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.05); gap: 6px; }
+.actions-right { display: flex; align-items: center; gap: 6px; }
 
-.live-dot::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    border: 1.5px solid var(--primary-light);
-    opacity: 0;
-    animation: livePulse 1.8s ease-out infinite;
-}
+/* دکمه‌های آیکونی */
+.icon-btn { background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(0,0,0,0.06); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+.icon-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-soft); }
+.icon-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
 
-@keyframes livePulse {
-    0% { transform: scale(0.8); opacity: 0.8; }
-    100% { transform: scale(1.8); opacity: 0; }
-}
+/* دکمه ارسال */
+.btn-send { background: var(--primary); color: white; width: 34px; height: 34px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px var(--primary-glow); flex-shrink: 0; position: relative; }
+.btn-send:hover:not(:disabled):not(.loading) { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 16px var(--primary-glow); }
+.btn-send:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.btn-send.loading { pointer-events: none; }
+.btn-send.loading svg { display: none; }
+.btn-send.loading::after { content: ''; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.page-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-light);
-    letter-spacing: -0.3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+/* chip فایل پیوست */
+.file-chips { display: none; flex-wrap: wrap; gap: 6px; padding: 6px 4px 4px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; }
+.file-chips.has-files { display: flex; }
+.file-chip { display: flex; align-items: center; gap: 6px; background: var(--primary-soft); color: var(--primary); padding: 4px 8px 4px 10px; border-radius: 8px; font-size: 0.75rem; max-width: 200px; }
+.file-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip button { background: transparent; border: none; color: var(--primary); cursor: pointer; display: flex; align-items: center; padding: 0; opacity: 0.6; }
+.file-chip button:hover { opacity: 1; }
 
-.top-bar-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
+/* ============ Quick Prompts ============ */
+.quick-prompts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 22px; max-width: 640px; width: 100%; }
+.quick-chip { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.9); padding: 8px 14px; border-radius: 18px; font-size: 0.78rem; font-family: inherit; color: var(--text-main); cursor: pointer; transition: all 0.25s; box-shadow: 0 2px 6px rgba(30, 41, 59, 0.03); }
+.quick-chip svg { color: var(--primary); flex-shrink: 0; }
+.quick-chip:hover { background: white; color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 16px var(--primary-glow); border-color: var(--primary-soft); }
 
-.icon-btn {
-    width: 32px; height: 32px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-    padding: 0;
-}
+/* ============ پیام‌ها ============ */
+.chat-messages { flex: 1; overflow-y: auto; padding: 22px; display: none; flex-direction: column; gap: 18px; scroll-behavior: smooth; min-height: 0; }
+.chat-messages::-webkit-scrollbar, .sidebar-list::-webkit-scrollbar, .welcome-screen::-webkit-scrollbar { width: 6px; }
+.chat-messages::-webkit-scrollbar-track, .sidebar-list::-webkit-scrollbar-track, .welcome-screen::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb, .sidebar-list::-webkit-scrollbar-thumb, .welcome-screen::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 3px; }
+.chat-messages::-webkit-scrollbar-thumb:hover, .sidebar-list::-webkit-scrollbar-thumb:hover, .welcome-screen::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.4); }
 
-.icon-btn:hover {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
-}
+.msg-row { display: flex; gap: 10px; width: 100%; animation: msgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(12px); align-items: flex-start; }
+.msg-row.user { flex-direction: row-reverse; }
+@keyframes msgIn { to { opacity: 1; transform: translateY(0); } }
 
-.icon-btn svg { width: 14px; height: 14px; }
+.msg-avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.msg-avatar.ai { background: white; color: var(--primary); border: 1px solid rgba(0,0,0,0.04); box-shadow: var(--soft-shadow); }
+.msg-avatar.user { background: var(--primary); color: white; box-shadow: 0 4px 12px var(--primary-glow); }
 
-.cmd-hint {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--mono-font);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    user-select: none;
-}
+.msg-content { display: flex; flex-direction: column; gap: 6px; max-width: 82%; min-width: 0; }
+.msg-row.user .msg-content { align-items: flex-end; }
 
-.cmd-hint:hover {
-    border-color: var(--primary);
-    color: var(--primary-light);
-    transform: translateY(-1px);
-}
+.msg-bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.92rem; line-height: 1.8; word-wrap: break-word; overflow-wrap: anywhere; }
+.msg-row.ai .msg-bubble { background: var(--ai-bubble); border: 1px solid rgba(0,0,0,0.04); border-top-right-radius: 5px; box-shadow: 0 2px 8px rgba(30, 41, 59, 0.04); }
+.msg-row.user .msg-bubble { background: var(--user-bubble); color: white; border-top-left-radius: 5px; box-shadow: 0 6px 18px var(--primary-glow); }
+.msg-bubble p { margin: 0 0 0.6em; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.msg-bubble pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 10px; overflow-x: auto; direction: ltr; text-align: left; font-size: 0.8rem; margin: 8px 0; font-family: ui-monospace, 'Courier New', monospace; }
+.msg-bubble code { background: rgba(99,102,241,0.12); color: var(--primary); padding: 2px 6px; border-radius: 4px; direction: ltr; display: inline-block; font-size: 0.85em; font-family: ui-monospace, 'Courier New', monospace; }
+.msg-bubble pre code { background: transparent; color: inherit; padding: 0; }
 
-.cmd-hint kbd {
-    background: var(--bg-hover);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 10px;
-    color: var(--text-muted);
-}
+.msg-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; padding: 0 2px; }
+.msg-row:hover .msg-actions { opacity: 1; }
+.msg-action-btn { background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.06); width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+.msg-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-soft); }
+.msg-action-btn.copied { color: #10b981; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.08); }
+
+/* typing */
+.typing-indicator { display: flex; gap: 4px; align-items: center; padding: 14px 18px; }
+.typing-indicator span { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+/* ============ ورودی پایین ============ */
+.chat-input-area { padding: 14px 22px; border-top: 1px solid rgba(255,255,255,0.7); display: none; background: rgba(255, 255, 255, 0.28); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.chat-input-wrapper { display: flex; align-items: flex-end; background: white; border: 1px solid rgba(0,0,0,0.06); border-radius: 18px; padding: 5px; box-shadow: 0 2px 8px rgba(30, 41, 59, 0.04); transition: all 0.25s; gap: 4px; }
+.chat-input-wrapper:focus-within { border-color: var(--primary); box-shadow: 0 4px 16px var(--primary-glow), 0 0 0 4px var(--primary-soft); }
+.chat-textarea { flex: 1; border: none; outline: none; resize: none; padding: 8px 6px; font-size: 0.92rem; max-height: 120px; min-height: 20px; background: transparent; font-family: inherit; line-height: 1.6; color: var(--text-main); }
+
+/* ============ بک‌دراپ ============ */
+.sidebar-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 99; border-radius: 28px; }
+.sidebar-backdrop.active { opacity: 1; pointer-events: auto; }
 
 /* ============================================================
-   NAV TABS
+   گوی صوتی مایع (Liquid Orb)
    ============================================================ */
-.nav-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 5px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    min-height: 52px;
-}
+.voice-overlay { position: fixed; inset: 0; background: radial-gradient(circle at 50% 40%, #1e1b4b 0%, #0b1120 60%); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+.voice-overlay.active { opacity: 1; pointer-events: auto; }
+.close-voice-btn { position: absolute; top: 28px; right: 28px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); width: 44px; height: 44px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s; z-index: 10; }
+.close-voice-btn:hover { background: rgba(255,255,255,0.16); transform: rotate(90deg); }
 
-.nav-tabs::-webkit-scrollbar { display: none; }
+.liquid-orb-wrap { position: relative; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; margin-bottom: 30px; filter: drop-shadow(0 20px 60px rgba(99, 102, 241, 0.45)); }
+.pulse-ring { position: absolute; width: 180px; height: 180px; border-radius: 50%; border: 1.5px solid rgba(139, 92, 246, 0.4); top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; }
+.voice-overlay.listening .pulse-ring:nth-child(1) { animation: pulseRing 2.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1); }
+.voice-overlay.listening .pulse-ring:nth-child(2) { animation: pulseRing 2.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1) 0.9s; }
+.voice-overlay.listening .pulse-ring:nth-child(3) { animation: pulseRing 2.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1) 1.8s; }
+@keyframes pulseRing { 0% { width: 180px; height: 180px; opacity: 0.7; } 100% { width: 320px; height: 320px; opacity: 0; } }
 
-.nav-tab {
-    flex: 1;
-    min-width: 140px;
-    max-width: 280px;
-    padding: 11px 18px;
-    background: transparent;
-    border: none;
-    border-radius: 9px;
-    color: var(--text-muted);
-    font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    white-space: nowrap;
-    position: relative;
-}
+.liquid-orb-svg { width: 100%; height: 100%; overflow: visible; }
+.liquid-orb-svg .blob { transform-origin: 50% 50%; animation: blobSpin 18s linear infinite; }
+.liquid-orb-svg .blob:nth-child(2) { animation: blobSpin 14s linear infinite reverse; }
+.liquid-orb-svg .blob:nth-child(3) { animation: blobSpin 22s linear infinite; }
+@keyframes blobSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.nav-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+.orb-particle { position: absolute; width: 4px; height: 4px; background: rgba(167, 139, 250, 0.8); border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px rgba(167, 139, 250, 0.9); }
+.voice-overlay.listening .orb-particle { animation: particleFloat 4s ease-in-out infinite; }
+.orb-particle:nth-child(5) { animation-delay: 0s; top: 20%; left: 15%; }
+.orb-particle:nth-child(6) { animation-delay: 0.8s; top: 70%; left: 80%; width: 3px; height: 3px; }
+.orb-particle:nth-child(7) { animation-delay: 1.6s; top: 85%; left: 25%; }
+.orb-particle:nth-child(8) { animation-delay: 2.4s; top: 15%; left: 75%; width: 5px; height: 5px; }
+.orb-particle:nth-child(9) { animation-delay: 3.2s; top: 50%; left: 5%; width: 3px; height: 3px; }
+@keyframes particleFloat { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; } 50% { transform: translate(0, -20px) scale(1.4); opacity: 1; } }
 
-.nav-tab:hover { background: var(--bg-hover); color: var(--text-light); }
+.voice-status-text { color: var(--voice-text); font-size: 1.05rem; font-weight: 500; margin-bottom: 6px; letter-spacing: -0.01em; }
+.voice-timer { color: rgba(255,255,255,0.45); font-size: 0.8rem; font-family: ui-monospace, monospace; margin-bottom: 30px; }
+.live-words { position: absolute; bottom: 110px; width: 80%; max-width: 560px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; pointer-events: none; }
+.live-word { color: rgba(255,255,255,0.75); font-size: 0.85rem; opacity: 0; animation: wordFade 3s forwards; background: rgba(255,255,255,0.06); padding: 3px 10px; border-radius: 12px; }
+@keyframes wordFade { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-5px); } }
 
-.nav-tab.active {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
-}
+.test-panel { position: absolute; bottom: 24px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 8px 14px; border-radius: 10px; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.55); font-size: 0.7rem; }
+.test-panel input[type="range"] { -webkit-appearance: none; width: 90px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; outline: none; }
+.test-panel input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #a78bfa; border-radius: 50%; cursor: pointer; box-shadow: 0 0 8px rgba(167,139,250,0.7); }
 
-/* ============================================================
-   CONTENT AREA
-   ============================================================ */
-.content-area {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    background: var(--bg-page);
-}
-
-.tab-panel {
-    position: absolute;
-    inset: 0;
-    display: none;
-    overflow: hidden;
-}
-
-.tab-panel.active { display: block; }
-
-.tab-panel iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: block;
-    background: var(--bg-page);
-}
-
-/* ============================================================
-   IFRAME LOADER — اسپینر نئونی
-   ============================================================ */
-.iframe-loader {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 18px;
-    background: var(--bg-page);
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
-}
-
-.iframe-loader.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
-.iframe-loader-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-}
-
-.neon-spinner {
-    --size: 1px;
-    --speed: 1.3s;
-    position: relative;
-    width: 1em;
-    height: 1em;
-    border-radius: 50%;
-    font-size: calc(10 * var(--size));
-    color: var(--primary-light);
-    text-indent: -9999em;
-    transform: translateZ(0);
-    animation: neonMulShdSpin var(--speed) infinite linear;
-    will-change: box-shadow;
-}
-
-@keyframes neonMulShdSpin {
-    0%, 100% {
-        box-shadow:
-            0 -3em 0 0.2em, 2em -2em 0 0em, 3em 0 0 -1em,
-            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
-            -3em 0 0 -1em, -2em -2em 0 0;
-    }
-    12.5% {
-        box-shadow:
-            0 -3em 0 0, 2em -2em 0 0.2em, 3em 0 0 0,
-            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 -1em,
-            -3em 0 0 -1em, -2em -2em 0 -1em;
-    }
-    25% {
-        box-shadow:
-            0 -3em 0 -0.5em, 2em -2em 0 0, 3em 0 0 0.2em,
-            2em 2em 0 0, 0 3em 0 -1em, -2em 2em 0 -1em,
-            -3em 0 0 -1em, -2em -2em 0 -1em;
-    }
-    37.5% {
-        box-shadow:
-            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 0,
-            2em 2em 0 0.2em, 0 3em 0 0em, -2em 2em 0 -1em,
-            -3em 0em 0 -1em, -2em -2em 0 -1em;
-    }
-    50% {
-        box-shadow:
-            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
-            2em 2em 0 0em, 0 3em 0 0.2em, -2em 2em 0 0,
-            -3em 0em 0 -1em, -2em -2em 0 -1em;
-    }
-    62.5% {
-        box-shadow:
-            0 -3em 0 -1em, 2em -2em 0 -1em, 3em 0 0 -1em,
-            2em 2em 0 -1em, 0 3em 0 0, -2em 2em 0 0.2em,
-            -3em 0 0 0, -2em -2em 0 -1em;
-    }
-    75% {
-        box-shadow:
-            0em -3em 0 -1em, 2em -2em 0 -1em, 3em 0em 0 -1em,
-            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
-            -3em 0em 0 0.2em, -2em -2em 0 0;
-    }
-    87.5% {
-        box-shadow:
-            0em -3em 0 0, 2em -2em 0 -1em, 3em 0 0 -1em,
-            2em 2em 0 -1em, 0 3em 0 -1em, -2em 2em 0 0,
-            -3em 0em 0 0, -2em -2em 0 0.2em;
-    }
-}
-
-.iframe-loader-text {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--text-light);
-    letter-spacing: -0.2px;
-    text-align: center;
-}
-
-.iframe-loader-sub {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--mono-font);
-    text-align: center;
-    margin-top: -10px;
-}
-
-/* ============================================================
-   FLOATING QUICK ACCESS (FAB)
-   ============================================================ */
-.fab-container {
-    position: fixed;
-    bottom: 24px;
-    left: 24px;
-    z-index: 90;
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: center;
-    gap: 10px;
-    pointer-events: none;
-}
-
-.fab {
-    pointer-events: auto;
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    color: white;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow:
-        0 8px 24px rgba(var(--primary-rgb), 0.5),
-        0 0 0 0 rgba(var(--primary-rgb), 0.5);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-}
-
-.fab svg { width: 20px; height: 20px; transition: transform 0.3s; }
-
-.fab:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow:
-        0 12px 32px rgba(var(--primary-rgb), 0.6),
-        0 0 0 8px rgba(var(--primary-rgb), 0.08);
-}
-
-.fab.open svg { transform: rotate(45deg); }
-
-.fab-menu {
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(8px) scale(0.92);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    pointer-events: none;
-}
-
-.fab-menu.open {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
-    pointer-events: auto;
-}
-
-.fab-item {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: var(--bg-card-solid);
-    border: 1px solid var(--border-strong);
-    color: var(--text-light);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--shadow);
-    transition: all 0.2s;
-    position: relative;
-    padding: 0;
-}
-
-.fab-item:hover {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    transform: translateX(4px);
-    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
-}
-
-.fab-item svg { width: 17px; height: 17px; }
-
-.fab-item .fab-tooltip {
-    position: absolute;
-    right: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%) translateX(-4px);
-    background: var(--bg-card-solid);
-    color: var(--text-light);
-    padding: 5px 10px;
-    border-radius: 7px;
-    font-size: 11.5px;
-    font-weight: 700;
-    white-space: nowrap;
-    border: 1px solid var(--border-strong);
-    box-shadow: var(--shadow);
-    pointer-events: none;
-    opacity: 0;
-    transition: all 0.2s ease;
-    font-family: var(--ui-font);
-}
-
-.fab-item:hover .fab-tooltip {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-}
-
+/* ============ ریسپانسیو ============ */
+@media (max-width: 900px) { .msg-content { max-width: 86%; } .welcome-title { font-size: 1.5rem; } }
 @media (max-width: 768px) {
-    .fab-container { bottom: 16px; left: 16px; }
-    .fab { width: 44px; height: 44px; border-radius: 12px; }
-    .fab svg { width: 18px; height: 18px; }
-    .fab-item { width: 38px; height: 38px; }
-    .fab-item svg { width: 15px; height: 15px; }
-    .fab-item .fab-tooltip { display: none; }
+    .app-container { height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; border: none; }
+    .sidebar-backdrop { border-radius: 0; }
+    .sidebar { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; max-width: 85vw; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(30px); transform: translateX(100%); box-shadow: -8px 0 32px rgba(0,0,0,0.15); }
+    .sidebar.open { transform: translateX(0); }
+    .mobile-menu-btn { display: flex; }
+    .chat-header { padding: 14px 16px; }
+    .chat-messages { padding: 16px; gap: 14px; }
+    .msg-content { max-width: 88%; }
+    .msg-bubble { font-size: 0.88rem; padding: 11px 14px; }
+    .chat-input-area { padding: 10px 12px; }
+    .welcome-screen { padding: 16px; }
+    .welcome-title { font-size: 1.3rem; }
+    .welcome-subtitle { font-size: 0.85rem; margin-bottom: 22px; }
+    .welcome-logo { width: 60px; height: 60px; margin-bottom: 18px; }
+    .model-badge { display: none; }
+    .quick-chip { font-size: 0.72rem; padding: 7px 11px; }
+    .msg-actions { opacity: 1; }
+    .liquid-orb-wrap { width: 260px; height: 260px; }
+    .voice-status-text { font-size: 0.95rem; }
 }
-
-/* ============================================================
-   COMMAND PALETTE
-   ============================================================ */
-.cmd-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 99999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 12vh 16px 16px;
-}
-
-.cmd-overlay.open { opacity: 1; visibility: visible; }
-
-.cmd-panel {
-    background: var(--bg-card-solid);
-    border: 1px solid var(--border-strong);
-    border-radius: 14px;
-    width: 100%;
-    max-width: 600px;
-    box-shadow: var(--shadow-lg);
-    transform: scale(0.96) translateY(-10px);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: 70vh;
-}
-
-.cmd-overlay.open .cmd-panel { transform: scale(1) translateY(0); }
-
-.cmd-search {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.cmd-search svg {
-    width: 18px;
-    height: 18px;
-    color: var(--text-dim);
-    flex-shrink: 0;
-}
-
-.cmd-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-light);
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.cmd-input::placeholder { color: var(--text-faint); }
-
-.cmd-kbd {
-    padding: 3px 7px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    font-family: var(--mono-font);
-    font-size: 10.5px;
-    color: var(--text-dim);
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.cmd-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-}
-
-.cmd-list::-webkit-scrollbar { width: 4px; }
-.cmd-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-
-.cmd-group-title {
-    padding: 10px 12px 6px;
-    font-size: 10.5px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 700;
-    font-family: var(--mono-font);
-}
-
-.cmd-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 9px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.cmd-item:hover,
-.cmd-item.selected {
-    background: var(--primary-bg);
-    transform: translateX(-2px);
-}
-
-.cmd-item-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: var(--bg-hover);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--primary-light);
-}
-
-.cmd-item-icon svg { width: 15px; height: 15px; }
-
-.cmd-item-main { flex: 1; min-width: 0; }
-
-.cmd-item-title {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-light);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.cmd-item-desc {
-    font-size: 10.5px;
-    color: var(--text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-top: 1px;
-}
-
-.cmd-item-shortcut {
-    padding: 3px 7px;
-    background: var(--bg-hover);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    font-family: var(--mono-font);
-    font-size: 10.5px;
-    color: var(--text-dim);
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.cmd-empty {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 12.5px;
-}
-
-/* ============================================================
-   TOAST
-   ============================================================ */
-.toast-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 999998;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: none;
-    font-family: var(--ui-font);
-    max-width: 400px;
-}
-
-@media (max-width: 768px) {
-    .toast-container {
-        bottom: auto;
-        top: 80px;
-        left: 12px;
-        right: 12px;
-        max-width: none;
-    }
-}
-
-@keyframes toastIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes toastOut {
-    to { opacity: 0; transform: translateY(20px); }
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 640px) {
-    .page-title { font-size: 14px; }
-    .cmd-hint { display: none; }
-    .nav-tab { padding: 9px 12px; font-size: 11.5px; min-width: 100px; gap: 6px; }
-    .nav-tab svg { width: 13px; height: 13px; }
-    .top-bar { padding: 8px 12px; }
-    .cmd-overlay { padding-top: 6vh; }
-    .cmd-panel { max-height: 80vh; }
-}
-
-/* ============================================================
-   REDUCED MOTION
-   ============================================================ */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
+@media (max-width: 380px) {
+    .chat-title { font-size: 0.85rem; }
+    .welcome-title { font-size: 1.15rem; }
+    .liquid-orb-wrap { width: 220px; height: 220px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-     NEON LOADER (فقط رفرش صفحه)
-     ============================================================ -->
-<div class="neon-loader-overlay" id="neonLoader" role="dialog" aria-modal="true">
-    <div class="neon-loader-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a10 10 0 0 0-10 10c0 5 4 8 10 10 6-2 10-5 10-10A10 10 0 0 0 12 2z"/>
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 5v2M12 17v2M5 12h2M17 12h2"/>
-        </svg>
-    </div>
-    <div class="neon-loader-text">در حال بارگذاری مدل...</div>
-    <div class="neon-loader-sub">لطفاً کمی صبر کنید</div>
-</div>
+<div class="app-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-<!-- ============================================================
-     NAV CONTAINER (sidebar)
-     ============================================================ -->
-<div id="navContainer"></div>
-
-<!-- ============================================================
-     MODEL SHELL
-     ============================================================ -->
-<div class="model-shell" id="modelShell">
-
-    <!-- TOP BAR -->
-    <div class="top-bar">
-        <div class="top-bar-left">
-            <span class="live-badge">
-                <span class="live-dot"></span>
-                <span>MODEL</span>
-            </span>
-            <span class="page-title" id="pageTitle">وضعیت کلی</span>
-        </div>
-        <div class="top-bar-right">
-            <button class="cmd-hint" id="cmdBtn" type="button" title="پالت فرمان (Ctrl+K)">
-                <kbd>Ctrl</kbd>+<kbd>K</kbd>
-            </button>
-            <button class="icon-btn" id="refreshBtn" type="button" title="بروزرسانی">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M23 4v6h-6"/>
-                    <path d="M1 20v-6h6"/>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
-                    <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
+    <!-- سایدبار -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                 </svg>
-            </button>
+            </div>
+            <span>Crypto AI</span>
         </div>
-    </div>
-
-    <!-- NAV TABS -->
-    <nav class="nav-tabs" id="navTabs">
-        <button class="nav-tab active" data-tab="overview" data-url="/model/overview" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="9"/>
-                <rect x="14" y="3" width="7" height="5"/>
-                <rect x="14" y="12" width="7" height="9"/>
-                <rect x="3" y="16" width="7" height="5"/>
+        <button class="btn-new" id="btnNew">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
             </svg>
-            <span>وضعیت کلی</span>
+            گفتگوی جدید
         </button>
+        <div class="sidebar-list" id="sidebarList">
+            <div class="sidebar-item active">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>تحلیل بیت‌کوین</span>
+            </div>
+            <div class="sidebar-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>استراتژی سرمایه‌گذاری</span>
+            </div>
+            <div class="sidebar-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>تحلیل تکنیکال ETH</span>
+            </div>
+        </div>
+    </aside>
 
-        <button class="nav-tab" data-tab="screener" data-url="/model/screener" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <span>اسکنر</span>
-        </button>
+    <!-- ناحیه چت -->
+    <main class="chat-area">
+        <header class="chat-header">
+            <div class="header-right">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="منو">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18M3 12h18M3 18h18"/>
+                    </svg>
+                </button>
+                <div class="chat-title" id="chatTitle">دستیار هوشمند کریپتو</div>
+            </div>
+            <div class="model-badge">
+                <span class="status-dot"></span>
+                <span>CryptoGPT v2</span>
+            </div>
+        </header>
 
-        <button class="nav-tab" data-tab="state" data-url="/model/state" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
-            </svg>
-            <span>State Machine</span>
-        </button>
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </div>
+            <h1 class="welcome-title">امروز چه چیزی یاد بگیریم؟</h1>
+            <p class="welcome-subtitle">دستیار هوشمند شما برای تحلیل و درک بازار کریپتو</p>
 
-        <button class="nav-tab" data-tab="schedule" data-url="/model/schedule" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span>زمان‌بندی</span>
-        </button>
-    </nav>
-
-    <!-- CONTENT AREA -->
-    <div class="content-area" id="contentArea">
-
-        <!-- TAB 1: OVERVIEW -->
-        <div class="tab-panel active" id="panel-overview" data-src="/model_tabs/overview.html">
-            <iframe id="iframe-overview" src="about:blank" title="وضعیت کلی مدل" frameborder="0"></iframe>
-            <div class="iframe-loader" id="loader-overview">
-                <div class="iframe-loader-content">
-                    <span class="neon-spinner"></span>
-                    <div class="iframe-loader-text">در حال بارگذاری وضعیت مدل...</div>
-                    <div class="iframe-loader-sub">Loading model overview</div>
+            <div class="hero-input-container">
+                <div class="file-chips" id="heroFileChips"></div>
+                <textarea class="hero-textarea" id="heroTextarea" placeholder="سوال خود را بنویسید..." rows="1"></textarea>
+                <div class="hero-actions">
+                    <div class="actions-right">
+                        <input type="file" id="heroFileInput" multiple hidden>
+                        <button class="icon-btn" id="heroAttachBtn" title="پیوست فایل">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                        </button>
+                        <button class="icon-btn" id="heroVoiceBtn" title="ورودی صوتی">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="btn-send" id="heroSendBtn" disabled title="ارسال">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
                 </div>
+            </div>
+
+            <div class="quick-prompts">
+                <button class="quick-chip" data-prompt="تحلیل بازار بیت‌کوین">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>
+                    </svg>
+                    تحلیل بازار بیت‌کوین
+                </button>
+                <button class="quick-chip" data-prompt="استراتژی سرمایه‌گذاری">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/>
+                    </svg>
+                    استراتژی سرمایه‌گذاری
+                </button>
+                <button class="quick-chip" data-prompt="تحلیل تکنیکال ETH">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    تحلیل تکنیکال ETH
+                </button>
             </div>
         </div>
 
-        <!-- TAB 2: SCREENER -->
-        <div class="tab-panel" id="panel-screener" data-src="/model_tabs/screener.html">
-            <iframe id="iframe-screener" src="about:blank" title="اسکنر و کالیبراسیون" frameborder="0"></iframe>
-            <div class="iframe-loader" id="loader-screener">
-                <div class="iframe-loader-content">
-                    <span class="neon-spinner"></span>
-                    <div class="iframe-loader-text">در حال بارگذاری اسکنر...</div>
-                    <div class="iframe-loader-sub">Loading screener</div>
-                </div>
+        <div class="chat-messages" id="chatMessages"></div>
+
+        <div class="chat-input-area" id="chatInputArea">
+            <div class="chat-input-wrapper">
+                <input type="file" id="chatFileInput" multiple hidden>
+                <button class="icon-btn" id="chatAttachBtn" title="پیوست فایل">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="chatVoiceBtn" title="ورودی صوتی">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/>
+                    </svg>
+                </button>
+                <textarea class="chat-textarea" id="chatTextarea" placeholder="پیام خود را بنویسید..." rows="1"></textarea>
+                <button class="btn-send" id="chatSendBtn" disabled title="ارسال">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </button>
             </div>
         </div>
-
-        <!-- TAB 3: STATE -->
-        <div class="tab-panel" id="panel-state" data-src="/model_tabs/state.html">
-            <iframe id="iframe-state" src="about:blank" title="State Machine" frameborder="0"></iframe>
-            <div class="iframe-loader" id="loader-state">
-                <div class="iframe-loader-content">
-                    <span class="neon-spinner"></span>
-                    <div class="iframe-loader-text">در حال بارگذاری State Machine...</div>
-                    <div class="iframe-loader-sub">Loading state machine</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 4: SCHEDULE -->
-        <div class="tab-panel" id="panel-schedule" data-src="/model_tabs/schedule.html">
-            <iframe id="iframe-schedule" src="about:blank" title="زمان‌بندی" frameborder="0"></iframe>
-            <div class="iframe-loader" id="loader-schedule">
-                <div class="iframe-loader-content">
-                    <span class="neon-spinner"></span>
-                    <div class="iframe-loader-text">در حال بارگذاری زمان‌بندی...</div>
-                    <div class="iframe-loader-sub">Loading schedule</div>
-                </div>
-            </div>
-        </div>
-
-    </div>
+    </main>
 </div>
 
 <!-- ============================================================
-     FLOATING QUICK ACCESS (FAB)
+     حالت صوتی با گوی مایع
      ============================================================ -->
-<div class="fab-container" id="fabContainer">
-    <button class="fab" id="fabMain" type="button" aria-label="دسترسی سریع">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
+<div class="voice-overlay" id="voiceOverlay">
+    <button class="close-voice-btn" id="closeVoiceBtn" aria-label="بستن">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
     </button>
 
-    <div class="fab-menu" id="fabMenu">
-        <button class="fab-item" data-action="cmd" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-            </svg>
-            <span class="fab-tooltip">پالت فرمان</span>
-        </button>
+    <div class="liquid-orb-wrap">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="orb-particle"></div>
+        <div class="orb-particle"></div>
+        <div class="orb-particle"></div>
+        <div class="orb-particle"></div>
+        <div class="orb-particle"></div>
 
-        <button class="fab-item" data-action="refresh" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 4v6h-6"/>
-                <path d="M1 20v-6h6"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
-                <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>
-            </svg>
-            <span class="fab-tooltip">بروزرسانی</span>
-        </button>
+        <svg class="liquid-orb-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="liquidFilter" x="-50%" y="-50%" width="200%" height="200%">
+                    <feTurbulence id="liquidTurb" type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="5" result="noise">
+                        <animate attributeName="baseFrequency" dur="12s" values="0.012;0.018;0.012" repeatCount="indefinite"/>
+                    </feTurbulence>
+                    <feDisplacementMap id="liquidDisp" in="SourceGraphic" in2="noise" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+                </filter>
 
-        <button class="fab-item" data-action="top" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5"/>
-                <polyline points="5 12 12 5 19 12"/>
-            </svg>
-            <span class="fab-tooltip">بالا</span>
-        </button>
+                <radialGradient id="grad1" cx="35%" cy="30%" r="70%">
+                    <stop offset="0%" stop-color="#a78bfa"/>
+                    <stop offset="50%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#4338ca"/>
+                </radialGradient>
+                <radialGradient id="grad2" cx="65%" cy="70%" r="70%">
+                    <stop offset="0%" stop-color="#818cf8"/>
+                    <stop offset="100%" stop-color="#312e81"/>
+                </radialGradient>
+                <radialGradient id="grad3" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stop-color="#c4b5fd" stop-opacity="0.9"/>
+                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0.2"/>
+                </radialGradient>
 
-        <button class="fab-item" data-action="help" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span class="fab-tooltip">راهنما</span>
-        </button>
+                <radialGradient id="glossGrad" cx="35%" cy="28%" r="50%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0.85)"/>
+                    <stop offset="60%" stop-color="rgba(255,255,255,0)"/>
+                </radialGradient>
+            </defs>
+
+            <g filter="url(#liquidFilter)">
+                <circle class="blob" cx="150" cy="150" r="90" fill="url(#grad1)"/>
+            </g>
+            <g filter="url(#liquidFilter)" opacity="0.85">
+                <circle class="blob" cx="150" cy="150" r="72" fill="url(#grad2)"/>
+            </g>
+            <g filter="url(#liquidFilter)" opacity="0.7">
+                <circle class="blob" cx="150" cy="150" r="55" fill="url(#grad3)"/>
+            </g>
+            <ellipse cx="120" cy="115" rx="40" ry="28" fill="url(#glossGrad)" opacity="0.7" transform="rotate(-20 120 115)"/>
+        </svg>
+    </div>
+
+    <div class="voice-status-text" id="voiceStatus">در حال گوش دادن...</div>
+    <div class="voice-timer" id="voiceTimer">00:00</div>
+    <div class="live-words" id="liveWords"></div>
+
+    <div class="test-panel">
+        <span>شدت صدا</span>
+        <input type="range" id="ampSlider" min="0" max="100" value="35">
     </div>
 </div>
 
-<!-- ============================================================
-     COMMAND PALETTE
-     ============================================================ -->
-<div class="cmd-overlay" id="cmdOverlay">
-    <div class="cmd-panel">
-        <div class="cmd-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="text" class="cmd-input" id="cmdInput" placeholder="جستجو..." autocomplete="off" spellcheck="false">
-            <span class="cmd-kbd">ESC</span>
-        </div>
-        <div class="cmd-list" id="cmdList"></div>
-    </div>
-</div>
-
-<!-- ============================================================
-     TOAST CONTAINER
-     ============================================================ -->
-<div class="toast-container" id="toastContainer"></div>
-
-<!-- ============================================================
-     SCRIPT
-     ============================================================ -->
 <script>
-(function() {
-'use strict';
+/* ============ تنظیمات ============ */
+// برای سوئیچ بین مدل متنی و ایجنت Live:
+// false = مدل متنی (سریع، ارزان)
+// true  = ایجنت Live (با دسترسی به ابزارهای دیباگ، بازار و ...)
+const USE_AGENT = false;
 
-if (window.__modelShellLoaded) return;
-window.__modelShellLoaded = true;
-
-const $  = (sel, ctx = document) => ctx.querySelector(sel);
-const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-
-// ============================================================
-// CONFIG
-// ============================================================
-const CONFIG = {
-    TABS: {
-        overview: {
-            url: '/model/overview',
-            src: '/model_tabs/overview.html',
-            title: 'وضعیت کلی',
-            loader: 'loader-overview',
-            iframe: 'iframe-overview',
-            panel: 'panel-overview'
-        },
-        screener: {
-            url: '/model/screener',
-            src: '/model_tabs/screener.html',
-            title: 'اسکنر و کالیبراسیون',
-            loader: 'loader-screener',
-            iframe: 'iframe-screener',
-            panel: 'panel-screener'
-        },
-        state: {
-            url: '/model/state',
-            src: '/model_tabs/state.html',
-            title: 'State Machine',
-            loader: 'loader-state',
-            iframe: 'iframe-state',
-            panel: 'panel-state'
-        },
-        schedule: {
-            url: '/model/schedule',
-            src: '/model_tabs/schedule.html',
-            title: 'زمان‌بندی',
-            loader: 'loader-schedule',
-            iframe: 'iframe-schedule',
-            panel: 'panel-schedule'
-        }
-    },
-    LOADER_TIMEOUT: 10000,
-    STORAGE_KEY: 'model_last_tab'
+/* ============ آیکون‌ها ============ */
+const ICONS = {
+    copy: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+    regen: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+    ai: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>',
+    user: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    file: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>',
+    x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
 };
 
-// ============================================================
-// STATE
-// ============================================================
-const state = {
-    currentTab: 'overview',
-    loadedTabs: new Set(),
-    isRefresh: false,
-    fabOpen: false,
-    cmdOpen: false,
-    cmdSelectedIdx: 0,
-    cmdFiltered: []
-};
+/* ============ المان‌ها ============ */
+const welcomeScreen = document.getElementById('welcomeScreen');
+const chatMessages = document.getElementById('chatMessages');
+const chatInputArea = document.getElementById('chatInputArea');
+const heroTextarea = document.getElementById('heroTextarea');
+const heroSendBtn = document.getElementById('heroSendBtn');
+const chatTextarea = document.getElementById('chatTextarea');
+const chatSendBtn = document.getElementById('chatSendBtn');
+const chatTitle = document.getElementById('chatTitle');
+const sidebar = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const btnNew = document.getElementById('btnNew');
+const voiceOverlay = document.getElementById('voiceOverlay');
+const closeVoiceBtn = document.getElementById('closeVoiceBtn');
+const voiceStatus = document.getElementById('voiceStatus');
+const voiceTimer = document.getElementById('voiceTimer');
+const liveWords = document.getElementById('liveWords');
+const ampSlider = document.getElementById('ampSlider');
+const liquidDisp = document.getElementById('liquidDisp');
 
-// ============================================================
-// TOAST
-// ============================================================
-function showToast(message, type = 'info', duration = 2500) {
-    const container = $('#toastContainer');
+/* ============ state ============ */
+let isSending = false;
+let heroFiles = [];
+let chatFiles = [];
+let chatHistory = []; // تاریخچه مکالمه برای مدل متنی
+
+/* ============ فایل‌ها ============ */
+function renderFileChips(container, files, onRemove) {
     if (!container) return;
-
-    const icons = {
-        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
-        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
-    };
-
-    const colors = {
-        success: '#22c55e',
-        error: '#ef4444',
-        warning: '#f59e0b',
-        info: '#a855f7'
-    };
-
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        background: var(--bg-card-solid);
-        border: 1px solid var(--border-strong);
-        border-inline-start: 3px solid ${colors[type]};
-        border-radius: 12px;
-        padding: 12px 16px;
-        color: var(--text-light);
-        font-size: 12.5px;
-        font-weight: 600;
-        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 220px;
-        max-width: 380px;
-        pointer-events: auto;
-        direction: rtl;
-        animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    `;
-    toast.innerHTML = `
-        <span style="
-            display:inline-flex;align-items:center;justify-content:center;
-            width:22px;height:22px;min-width:22px;
-            border-radius:7px;
-            background:${colors[type]}20;
-            color:${colors[type]};
-            flex-shrink:0;
-        ">${icons[type]}</span>
-        <span style="flex:1;">${message}</span>
-    `;
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'toastOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
-}
-
-// ============================================================
-// NEON LOADER (فقط رفرش)
-// ============================================================
-function isReload() {
-    try {
-        const navEntries = performance.getEntriesByType('navigation');
-        if (navEntries.length > 0) {
-            return navEntries[0].type === 'reload';
-        }
-        if (performance.navigation) {
-            return performance.navigation.type === 1;
-        }
-    } catch (e) {}
-    return false;
-}
-
-function showNeonLoader() {
-    const el = $('#neonLoader');
-    if (el) el.classList.add('active');
-}
-
-function hideNeonLoader() {
-    const el = $('#neonLoader');
-    if (el) el.classList.remove('active');
-}
-
-// ============================================================
-// IFRAME LOADER
-// ============================================================
-function showIframeLoader(tabKey) {
-    const cfg = CONFIG.TABS[tabKey];
-    if (!cfg) return;
-    const loader = document.getElementById(cfg.loader);
-    if (loader) loader.classList.remove('hidden');
-}
-
-function hideIframeLoader(tabKey) {
-    const cfg = CONFIG.TABS[tabKey];
-    if (!cfg) return;
-    const loader = document.getElementById(cfg.loader);
-    if (loader) loader.classList.add('hidden');
-}
-
-// ============================================================
-// LOAD TAB IFRAME
-// ============================================================
-function loadTabIframe(tabKey, force = false) {
-    const cfg = CONFIG.TABS[tabKey];
-    if (!cfg) return;
-
-    const iframe = document.getElementById(cfg.iframe);
-    if (!iframe) return;
-
-    if (force) {
-        state.loadedTabs.delete(tabKey);
-    }
-
-    if (state.loadedTabs.has(tabKey) && iframe.src !== 'about:blank') {
-        hideIframeLoader(tabKey);
-        return;
-    }
-
-    if (iframe.src !== 'about:blank' && !force) {
-        return;
-    }
-
-    showIframeLoader(tabKey);
-
-    iframe.onload = () => {
-        setTimeout(() => {
-            hideIframeLoader(tabKey);
-            state.loadedTabs.add(tabKey);
-        }, 250);
-    };
-
-    iframe.src = cfg.src;
-
-    setTimeout(() => {
-        if (!state.loadedTabs.has(tabKey)) {
-            hideIframeLoader(tabKey);
-            state.loadedTabs.add(tabKey);
-            console.warn(`[Model Shell] Loader timeout for ${tabKey}`);
-        }
-    }, CONFIG.LOADER_TIMEOUT);
-}
-
-// ============================================================
-// SWITCH TAB
-// ============================================================
-function switchTab(tabKey, options = {}) {
-    const { updateUrl = true, force = false } = options;
-    const cfg = CONFIG.TABS[tabKey];
-    if (!cfg) return;
-
-    if (state.currentTab === tabKey && state.loadedTabs.has(tabKey) && !force) {
-        return;
-    }
-
-    state.currentTab = tabKey;
-
-    $$('.nav-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabKey);
+    container.innerHTML = '';
+    if (files.length === 0) { container.classList.remove('has-files'); return; }
+    container.classList.add('has-files');
+    files.forEach((file, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = ICONS.file + '<span>' + file.name + '</span>';
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.innerHTML = ICONS.x;
+        rm.onclick = () => onRemove(idx);
+        chip.appendChild(rm);
+        container.appendChild(chip);
     });
+}
 
-    $$('.tab-panel').forEach(panel => {
-        panel.classList.remove('active');
+function setupAttach(inputEl, btnEl, chipsEl, getFiles, setFiles, onUpdate) {
+    if (!btnEl || !inputEl) return;
+    btnEl.addEventListener('click', () => inputEl.click());
+    inputEl.addEventListener('change', (e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles([...getFiles(), ...newFiles]);
+        onUpdate();
+        inputEl.value = '';
     });
-    const activePanel = document.getElementById(cfg.panel);
-    if (activePanel) activePanel.classList.add('active');
+    onUpdate();
+}
 
-    const titleEl = $('#pageTitle');
-    if (titleEl) titleEl.textContent = cfg.title;
+function updateHeroFiles() {
+    renderFileChips(document.getElementById('heroFileChips'), heroFiles, (idx) => { heroFiles.splice(idx, 1); updateHeroFiles(); });
+    updateSendState(heroTextarea, heroSendBtn);
+}
 
-    if (updateUrl) {
-        try {
-            history.pushState({ tab: tabKey }, '', cfg.url);
-        } catch (e) {}
+function updateChatFiles() {
+    updateSendState(chatTextarea, chatSendBtn);
+}
+
+setupAttach(document.getElementById('heroFileInput'), document.getElementById('heroAttachBtn'), document.getElementById('heroFileChips'), () => heroFiles, (f) => { heroFiles = f; }, updateHeroFiles);
+setupAttach(document.getElementById('chatFileInput'), document.getElementById('chatAttachBtn'), null, () => chatFiles, (f) => { chatFiles = f; }, updateChatFiles);
+
+/* ============ auto-resize ============ */
+function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+/* ============ state ============ */
+function updateSendState(textarea, btn) {
+    const hasText = textarea.value.trim().length > 0;
+    const files = (textarea === heroTextarea ? heroFiles : chatFiles);
+    btn.disabled = (!hasText && files.length === 0) || isSending;
+}
+
+/* ============ scroll ============ */
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+/* ============ پیام‌ها ============ */
+function createMessageRow(role, content, options = {}) {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar ' + role;
+    avatar.innerHTML = role === 'ai' ? ICONS.ai : ICONS.user;
+
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'msg-content';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+
+    if (options.typing) {
+        bubble.classList.add('typing-indicator');
+        bubble.innerHTML = '<span></span><span></span><span></span>';
+    } else {
+        bubble.innerHTML = formatContent(content);
     }
 
-    loadTabIframe(tabKey, force);
+    contentWrapper.appendChild(bubble);
 
-    try {
-        localStorage.setItem(CONFIG.STORAGE_KEY, tabKey);
-    } catch (e) {}
-}
+    if (role === 'ai' && !options.typing && !options.noActions) {
+        const actions = document.createElement('div');
+        actions.className = 'msg-actions';
 
-// ============================================================
-// HANDLE POPSTATE
-// ============================================================
-function handlePopState() {
-    const path = window.location.pathname;
-    let tabKey = 'overview';
-
-    if (path === '/model/screener') tabKey = 'screener';
-    else if (path === '/model/state') tabKey = 'state';
-    else if (path === '/model/schedule') tabKey = 'schedule';
-
-    switchTab(tabKey, { updateUrl: false });
-}
-
-// ============================================================
-// NAV LOADER (sidebar)
-// ============================================================
-async function loadNav() {
-    const container = $('#navContainer');
-    if (!container) return;
-
-    try {
-        const response = await fetch('/components/nav.html');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const html = await response.text();
-        container.innerHTML = html;
-
-        container.querySelectorAll('script').forEach(oldScript => {
-            const newScript = document.createElement('script');
-            Array.from(oldScript.attributes).forEach(attr => {
-                newScript.setAttribute(attr.name, attr.value);
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'msg-action-btn';
+        copyBtn.title = 'کپی';
+        copyBtn.innerHTML = ICONS.copy;
+        copyBtn.onclick = () => {
+            navigator.clipboard?.writeText(bubble.innerText).then(() => {
+                copyBtn.classList.add('copied');
+                copyBtn.innerHTML = ICONS.check;
+                setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.innerHTML = ICONS.copy; }, 1500);
             });
-            newScript.textContent = oldScript.textContent;
-            oldScript.parentNode.replaceChild(newScript, oldScript);
-        });
+        };
 
-        console.log('[Model Shell] Nav loaded');
-    } catch (err) {
-        console.error('[Model Shell] Failed to load nav:', err);
-    }
-}
-
-// ============================================================
-// NAV LISTENERS
-// ============================================================
-function setupNavListeners() {
-    window.addEventListener('nav:toggle-sidebar', (e) => {
-        const collapsed = e.detail?.collapsed;
-        const shell = $('#modelShell');
-        if (shell) shell.classList.toggle('expanded', !!collapsed);
-    });
-
-    window.addEventListener('nav:theme-changed', () => {
-        broadcastToIframes('theme-changed', {
-            theme: document.documentElement.getAttribute('data-theme'),
-            color: document.documentElement.getAttribute('data-color')
-        });
-    });
-
-    window.addEventListener('nav:lang-changed', (e) => {
-        broadcastToIframes('lang-changed', { lang: e.detail?.lang });
-    });
-}
-
-// ============================================================
-// BROADCAST TO IFRAMES
-// ============================================================
-function broadcastToIframes(type, detail = {}) {
-    $$('.tab-panel iframe').forEach(iframe => {
-        try {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.postMessage({ type, ...detail }, '*');
+        const regenBtn = document.createElement('button');
+        regenBtn.className = 'msg-action-btn';
+        regenBtn.title = 'تولید دوباره';
+        regenBtn.innerHTML = ICONS.regen;
+        regenBtn.onclick = () => {
+            const prevUser = row.previousElementSibling;
+            if (prevUser && prevUser.classList.contains('user')) {
+                const prevText = prevUser.querySelector('.msg-bubble').innerText;
+                row.remove();
+                sendMessage(prevText, true);
             }
-        } catch (e) {}
-    });
-}
+        };
 
-// ============================================================
-// REFRESH
-// ============================================================
-function refreshCurrentTab() {
-    const btn = $('#refreshBtn');
-    if (btn) {
-        btn.style.transform = 'rotate(360deg)';
-        btn.style.transition = 'transform 0.6s';
+        actions.appendChild(copyBtn);
+        actions.appendChild(regenBtn);
+        contentWrapper.appendChild(actions);
     }
 
-    const tabKey = state.currentTab;
-    const cfg = CONFIG.TABS[tabKey];
+    row.appendChild(avatar);
+    row.appendChild(contentWrapper);
+    return row;
+}
 
-    state.loadedTabs.delete(tabKey);
+function formatContent(text) {
+    if (!text) return '';
+    let safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    safe = safe.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code.trim() + '</code></pre>');
+    safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return safe.split(/\n\n+/).map(p => '<p>' + p.replace(/\n/g, '<br>') + '</p>').join('');
+}
 
-    const iframe = document.getElementById(cfg.iframe);
-    if (iframe) {
-        showIframeLoader(tabKey);
-        iframe.src = 'about:blank';
-        setTimeout(() => {
-            iframe.src = cfg.src;
-        }, 100);
+/* ============ چت ============ */
+function enterChatMode() {
+    welcomeScreen.style.display = 'none';
+    chatInputArea.style.display = 'block';
+    chatMessages.style.display = 'flex';
+}
+
+async function sendMessage(text, isRegen = false) {
+    const files = (chatInputArea.style.display === 'block') ? chatFiles : heroFiles;
+    if ((!text.trim() && files.length === 0) || isSending) return;
+
+    enterChatMode();
+
+    let displayText = text;
+    if (files.length > 0 && !isRegen) {
+        const fileList = files.map(f => '`' + f.name + '`').join('، ');
+        displayText = text.trim() ? text + '\n\nپیوست: ' + fileList : 'پیوست: ' + fileList;
     }
 
-    setTimeout(() => {
-        if (btn) {
-            btn.style.transform = '';
-            btn.style.transition = '';
-        }
-    }, 600);
+    if (!isRegen) {
+        const userRow = createMessageRow('user', displayText);
+        chatMessages.appendChild(userRow);
+        scrollToBottom();
+    }
 
-    showToast('در حال بروزرسانی...', 'info', 1500);
-}
+    // ذخیره تاریخچه
+    if (text.trim()) {
+        chatHistory.push({ role: 'user', text: text.trim() });
+    }
 
-// ============================================================
-// FAB (Floating Quick Access)
-// ============================================================
-function toggleFab() {
-    state.fabOpen = !state.fabOpen;
-    const fab = $('#fabMain');
-    const menu = $('#fabMenu');
-    if (fab) fab.classList.toggle('open', state.fabOpen);
-    if (menu) menu.classList.toggle('open', state.fabOpen);
-}
+    // پاک‌سازی
+    heroTextarea.value = '';
+    chatTextarea.value = '';
+    heroFiles = [];
+    chatFiles = [];
+    autoResize(heroTextarea);
+    autoResize(chatTextarea);
+    updateHeroFiles();
+    updateSendState(heroTextarea, heroSendBtn);
+    updateSendState(chatTextarea, chatSendBtn);
 
-function closeFab() {
-    if (!state.fabOpen) return;
-    state.fabOpen = false;
-    const fab = $('#fabMain');
-    const menu = $('#fabMenu');
-    if (fab) fab.classList.remove('open');
-    if (menu) menu.classList.remove('open');
-}
+    // typing
+    isSending = true;
+    updateSendState(chatTextarea, chatSendBtn);
+    chatSendBtn.classList.add('loading');
 
-function setupFab() {
-    const fab = $('#fabMain');
-    const menu = $('#fabMenu');
-    if (!fab || !menu) return;
+    const typingRow = createMessageRow('ai', '', { typing: true });
+    chatMessages.appendChild(typingRow);
+    scrollToBottom();
 
-    fab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleFab();
-    });
-
-    menu.querySelectorAll('[data-action]').forEach(item => {
-        item.addEventListener('click', () => {
-            const action = item.dataset.action;
-            closeFab();
-
-            switch (action) {
-                case 'cmd':
-                    openCmdPalette();
-                    break;
-                case 'refresh':
-                    refreshCurrentTab();
-                    break;
-                case 'top':
-                    scrollCurrentTabTop();
-                    break;
-                case 'help':
-                    showHelp();
-                    break;
-            }
-        });
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#fabContainer')) {
-            closeFab();
-        }
-    });
-}
-
-function scrollCurrentTabTop() {
-    const cfg = CONFIG.TABS[state.currentTab];
-    if (!cfg) return;
-    const iframe = document.getElementById(cfg.iframe);
     try {
-        if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } catch (e) {}
-}
+        let reply = '';
 
-function showHelp() {
-    showToast('کلیدهای میانبر: Ctrl+1..4 (تب‌ها) · Ctrl+R (بروزرسانی) · Ctrl+K (پالت)', 'info', 5000);
-}
-
-// ============================================================
-// COMMAND PALETTE
-// ============================================================
-const COMMANDS = [
-    {
-        id: 'tab-overview',
-        group: 'ناوبری',
-        title: 'وضعیت کلی',
-        desc: 'تب Overview — Status + Rules + Config + Versions',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
-        shortcut: 'Ctrl+1',
-        action: () => switchTab('overview')
-    },
-    {
-        id: 'tab-screener',
-        group: 'ناوبری',
-        title: 'اسکنر',
-        desc: 'تب Screener — Scan + Calibration',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
-        shortcut: 'Ctrl+2',
-        action: () => switchTab('screener')
-    },
-    {
-        id: 'tab-state',
-        group: 'ناوبری',
-        title: 'State Machine',
-        desc: 'تب State — پایش حالت‌ها',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>',
-        shortcut: 'Ctrl+3',
-        action: () => switchTab('state')
-    },
-    {
-        id: 'tab-schedule',
-        group: 'ناوبری',
-        title: 'زمان‌بندی',
-        desc: 'تب Schedule — Auto-calibration',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-        shortcut: 'Ctrl+4',
-        action: () => switchTab('schedule')
-    },
-    {
-        id: 'refresh',
-        group: 'عملیات',
-        title: 'بروزرسانی تب فعلی',
-        desc: 'رفرش کامل تب',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>',
-        shortcut: 'Ctrl+R',
-        action: () => refreshCurrentTab()
-    },
-    {
-        id: 'reload-all',
-        group: 'عملیات',
-        title: 'بروزرسانی همه',
-        desc: 'پاک کردن کش همه تب‌ها',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
-        action: () => {
-            state.loadedTabs.clear();
-            $$('.tab-panel iframe').forEach(iframe => {
-                iframe.src = 'about:blank';
+        // ۱. اگر فایل تصویری پیوست شده → تحلیل تصویر
+        const imageFile = files.find(f => f.type.startsWith('image/'));
+        if (imageFile) {
+            const base64 = await fileToBase64(imageFile);
+            const response = await fetch('/api/ai/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    image_base64: base64,
+                    mime_type: imageFile.type,
+                    prompt: text.trim() || null,
+                    include_context: true
+                })
             });
-            refreshCurrentTab();
-            showToast('همه تب‌ها پاک شد', 'success', 1800);
-        }
-    },
-    {
-        id: 'theme-toggle',
-        group: 'نمایش',
-        title: 'تغییر تم',
-        desc: 'روشن / تیره',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
-        action: () => {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            try { localStorage.setItem('app_theme', next); } catch (e) {}
-            broadcastToIframes('theme-changed', { theme: next });
-            showToast(`تم ${next === 'dark' ? 'تیره' : 'روشن'}`, 'success', 1500);
-        }
-    },
-    {
-        id: 'help',
-        group: 'کمک',
-        title: 'راهنما',
-        desc: 'کلیدهای میانبر',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-        shortcut: '?',
-        action: () => showHelp()
-    }
-];
-
-function openCmdPalette() {
-    const overlay = $('#cmdOverlay');
-    const input = $('#cmdInput');
-    if (!overlay) return;
-
-    state.cmdOpen = true;
-    state.cmdSelectedIdx = 0;
-    state.cmdFiltered = COMMANDS.slice();
-
-    overlay.classList.add('open');
-
-    if (input) {
-        input.value = '';
-        setTimeout(() => input.focus(), 50);
-    }
-
-    renderCmdList();
-}
-
-function closeCmdPalette() {
-    const overlay = $('#cmdOverlay');
-    if (overlay) overlay.classList.remove('open');
-    state.cmdOpen = false;
-    const input = $('#cmdInput');
-    if (input) input.blur();
-}
-
-function renderCmdList() {
-    const list = $('#cmdList');
-    if (!list) return;
-
-    if (!state.cmdFiltered || state.cmdFiltered.length === 0) {
-        list.innerHTML = '<div class="cmd-empty">نتیجه‌ای یافت نشد</div>';
-        return;
-    }
-
-    const groups = {};
-    state.cmdFiltered.forEach(c => {
-        if (!groups[c.group]) groups[c.group] = [];
-        groups[c.group].push(c);
-    });
-
-    let html = '';
-    let idx = 0;
-
-    Object.entries(groups).forEach(([group, items]) => {
-        html += `<div class="cmd-group-title">${group}</div>`;
-        items.forEach(cmd => {
-            const sel = idx === state.cmdSelectedIdx ? 'selected' : '';
-            html += `
-                <div class="cmd-item ${sel}" data-cmd-idx="${idx}">
-                    <div class="cmd-item-icon">${cmd.icon}</div>
-                    <div class="cmd-item-main">
-                        <div class="cmd-item-title">${cmd.title}</div>
-                        <div class="cmd-item-desc">${cmd.desc}</div>
-                    </div>
-                    ${cmd.shortcut ? `<span class="cmd-item-shortcut">${cmd.shortcut}</span>` : ''}
-                </div>
-            `;
-            idx++;
-        });
-    });
-
-    list.innerHTML = html;
-
-    list.querySelectorAll('.cmd-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const i = parseInt(item.dataset.cmdIdx, 10);
-            executeCommand(i);
-        });
-        item.addEventListener('mouseenter', () => {
-            state.cmdSelectedIdx = parseInt(item.dataset.cmdIdx, 10);
-            updateCmdSelection();
-        });
-    });
-}
-
-function updateCmdSelection() {
-    const list = $('#cmdList');
-    if (!list) return;
-    list.querySelectorAll('.cmd-item').forEach(item => {
-        const idx = parseInt(item.dataset.cmdIdx, 10);
-        item.classList.toggle('selected', idx === state.cmdSelectedIdx);
-    });
-    const selected = list.querySelector('.cmd-item.selected');
-    selected?.scrollIntoView({ block: 'nearest' });
-}
-
-function filterCmd(query) {
-    const q = query.toLowerCase().trim();
-    state.cmdFiltered = q
-        ? COMMANDS.filter(c =>
-            c.title.toLowerCase().includes(q) ||
-            c.desc.toLowerCase().includes(q))
-        : COMMANDS.slice();
-    state.cmdSelectedIdx = 0;
-    renderCmdList();
-}
-
-function executeCommand(index) {
-    const cmd = state.cmdFiltered[index];
-    if (!cmd) return;
-    closeCmdPalette();
-    setTimeout(() => cmd.action(), 100);
-}
-
-function setupCmdPalette() {
-    const overlay = $('#cmdOverlay');
-    const input = $('#cmdInput');
-
-    if (overlay) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeCmdPalette();
-        });
-    }
-
-    if (input) {
-        input.addEventListener('input', (e) => filterCmd(e.target.value));
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                state.cmdSelectedIdx = Math.min(state.cmdSelectedIdx + 1, state.cmdFiltered.length - 1);
-                updateCmdSelection();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                state.cmdSelectedIdx = Math.max(state.cmdSelectedIdx - 1, 0);
-                updateCmdSelection();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                executeCommand(state.cmdSelectedIdx);
-            } else if (e.key === 'Escape') {
-                closeCmdPalette();
-            }
-        });
-    }
-}
-
-// ============================================================
-// MESSAGES FROM IFRAMES
-// ============================================================
-function setupMessages() {
-    window.addEventListener('message', (e) => {
-        if (!e.data || typeof e.data !== 'object') return;
-
-        const { type } = e.data;
-
-        if (type === 'switch-tab' && e.data.tab) {
-            switchTab(e.data.tab);
-        }
-
-        if (type === 'toast') {
-            showToast(e.data.message || '', e.data.level || 'info', e.data.duration || 2500);
-        }
-
-        if (type === 'refresh-current') {
-            refreshCurrentTab();
-        }
-    });
-}
-
-// ============================================================
-// KEYBOARD SHORTCUTS
-// ============================================================
-function setupKeyboard() {
-    document.addEventListener('keydown', (e) => {
-        const isInput = e.target.matches('input, textarea, select');
-        const mod = e.ctrlKey || e.metaKey;
-
-        // Ctrl+K → Command Palette
-        if (mod && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            if (state.cmdOpen) closeCmdPalette();
-            else openCmdPalette();
+            const data = await response.json();
+            typingRow.remove();
+            if (!data.success) throw new Error(data.error || 'خطا در تحلیل تصویر');
+            reply = data.data.analysis;
+            const aiRow = createMessageRow('ai', reply);
+            chatMessages.appendChild(aiRow);
+            scrollToBottom();
+            chatHistory.push({ role: 'model', text: reply });
             return;
         }
 
-        // Ctrl+1..4 → Tabs
-        if (mod && !e.shiftKey && !e.altKey) {
-            const key = e.key;
-            if (key === '1') { e.preventDefault(); switchTab('overview'); return; }
-            if (key === '2') { e.preventDefault(); switchTab('screener'); return; }
-            if (key === '3') { e.preventDefault(); switchTab('state'); return; }
-            if (key === '4') { e.preventDefault(); switchTab('schedule'); return; }
+        // ۲. ایجنت Live یا مدل متنی
+        if (USE_AGENT) {
+            const response = await fetch('/api/ai/agent/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ message: text.trim() })
+            });
+            const data = await response.json();
+            typingRow.remove();
+            if (!data.success) throw new Error(data.error || 'خطا در ارتباط با ایجنت');
+            reply = data.data.reply;
+            const aiRow = createMessageRow('ai', reply || 'ایجنت پاسخی نداد.');
+            chatMessages.appendChild(aiRow);
+            chatHistory.push({ role: 'model', text: reply });
+        } else {
+            const response = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    message: text.trim(),
+                    history: chatHistory.slice(-20),
+                    include_context: true,
+                    temperature: 0.7
+                })
+            });
+            const data = await response.json();
+            typingRow.remove();
+            if (!data.success) throw new Error(data.error || 'خطا در ارتباط با AI');
+            reply = data.data.reply;
+            const aiRow = createMessageRow('ai', reply);
+            chatMessages.appendChild(aiRow);
+            chatHistory.push({ role: 'model', text: reply });
         }
 
-        // Ctrl+R → Refresh
-        if (mod && e.key.toLowerCase() === 'r' && !isInput) {
-            e.preventDefault();
-            refreshCurrentTab();
-            return;
-        }
+        scrollToBottom();
 
-        // Escape
-        if (e.key === 'Escape') {
-            closeCmdPalette();
-            closeFab();
-        }
+    } catch (error) {
+        typingRow.remove();
+        const errRow = createMessageRow('ai', '❌ خطا: ' + error.message);
+        chatMessages.appendChild(errRow);
+        scrollToBottom();
+    } finally {
+        isSending = false;
+        chatSendBtn.classList.remove('loading');
+        updateSendState(chatTextarea, chatSendBtn);
+        chatTextarea.focus();
+    }
+}
+
+// تابع کمکی برای تبدیل فایل به base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result;
+            // حذف پیشوند data:image/...;base64,
+            const base64 = result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
     });
 }
 
-// ============================================================
-// INIT
-// ============================================================
-async function init() {
-    console.log(
-        '%c 🧠 Model Shell v1.0 ',
-        'background: linear-gradient(135deg, #a855f7, #c084fc); color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 13px;'
-    );
-    console.log(
-        '%c Keys: Ctrl+1..4 (tabs) · Ctrl+R (refresh) · Ctrl+K (command) · Esc (close) ',
-        'color:#94a3b8;font-size:11px;'
-    );
+/* ============ رویدادها ============ */
+heroTextarea.addEventListener('input', e => { autoResize(e.target); updateSendState(heroTextarea, heroSendBtn); });
+heroTextarea.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!heroSendBtn.disabled) sendMessage(heroTextarea.value); }
+});
+heroSendBtn.addEventListener('click', () => sendMessage(heroTextarea.value));
 
-    const isRefresh = isReload();
-    state.isRefresh = isRefresh;
+chatTextarea.addEventListener('input', e => { autoResize(e.target); updateSendState(chatTextarea, chatSendBtn); });
+chatTextarea.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!chatSendBtn.disabled) sendMessage(chatTextarea.value); }
+});
+chatSendBtn.addEventListener('click', () => sendMessage(chatTextarea.value));
 
-    if (isRefresh) {
-        showNeonLoader();
-    }
-
-    // Setup nav
-    setupNavListeners();
-    await loadNav();
-
-    // Nav tabs
-    $$('.nav-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-            switchTab(btn.dataset.tab);
-        });
+/* ============ Quick Prompts ============ */
+document.querySelectorAll('.quick-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const prompt = chip.getAttribute('data-prompt');
+        heroTextarea.value = prompt;
+        autoResize(heroTextarea);
+        updateSendState(heroTextarea, heroSendBtn);
+        sendMessage(prompt);
     });
+});
 
-    // Top bar actions
-    $('#refreshBtn')?.addEventListener('click', refreshCurrentTab);
-    $('#cmdBtn')?.addEventListener('click', openCmdPalette);
+/* ============ سایدبار ============ */
+document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        chatTitle.innerText = item.querySelector('span').innerText;
+        chatMessages.innerHTML = '';
+        chatMessages.style.display = 'none';
+        chatInputArea.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+        chatHistory = [];
+        closeSidebar();
+    });
+});
 
-    // FAB
-    setupFab();
+btnNew.addEventListener('click', () => {
+    chatMessages.innerHTML = '';
+    chatMessages.style.display = 'none';
+    chatInputArea.style.display = 'none';
+    welcomeScreen.style.display = 'flex';
+    heroTextarea.value = '';
+    heroFiles = [];
+    chatFiles = [];
+    chatHistory = [];
+    updateHeroFiles();
+    autoResize(heroTextarea);
+    updateSendState(heroTextarea, heroSendBtn);
+    updateSendState(chatTextarea, chatSendBtn);
+    chatTitle.innerText = 'دستیار هوشمند کریپتو';
+    closeSidebar();
+    heroTextarea.focus();
+});
 
-    // Command Palette
-    setupCmdPalette();
+function openSidebar() { sidebar.classList.add('open'); sidebarBackdrop.classList.add('active'); }
+function closeSidebar() { sidebar.classList.remove('open'); sidebarBackdrop.classList.remove('active'); }
+mobileMenuBtn.addEventListener('click', openSidebar);
+sidebarBackdrop.addEventListener('click', closeSidebar);
 
-    // Messages from iframes
-    setupMessages();
+/* ============ حالت صوتی (نمایشی) ============ */
+let voiceInterval = null;
+let liveWordsInterval = null;
+let voiceSeconds = 0;
 
-    // Popstate
-    window.addEventListener('popstate', handlePopState);
+function openVoice() {
+    voiceOverlay.classList.add('active');
+    voiceOverlay.classList.add('listening');
+    voiceStatus.innerText = 'در حال گوش دادن...';
+    voiceSeconds = 0;
+    voiceTimer.innerText = '00:00';
 
-    // Keyboard
-    setupKeyboard();
+    voiceInterval = setInterval(() => {
+        voiceSeconds++;
+        const m = String(Math.floor(voiceSeconds / 60)).padStart(2, '0');
+        const s = String(voiceSeconds % 60).padStart(2, '0');
+        voiceTimer.innerText = m + ':' + s;
+    }, 1000);
 
-    // Determine initial tab
-    let initialTab = 'overview';
-
-    const path = window.location.pathname;
-    if (path === '/model/screener') initialTab = 'screener';
-    else if (path === '/model/state') initialTab = 'state';
-    else if (path === '/model/schedule') initialTab = 'schedule';
-
-    if (path === '/model' || path === '/model/' || path === '/model/overview') {
-        try {
-            const savedTab = localStorage.getItem(CONFIG.STORAGE_KEY);
-            if (savedTab && CONFIG.TABS[savedTab]) {
-                initialTab = savedTab;
-            }
-        } catch (e) {}
-    }
-
-    switchTab(initialTab, { updateUrl: false });
-
-    // Show shell
-    const shell = $('#modelShell');
-    if (shell) {
-        shell.style.opacity = '';
-        shell.classList.add('ready');
-    }
-
-    if (isRefresh) {
-        setTimeout(() => {
-            hideNeonLoader();
-        }, 800);
-    }
-
-    console.log('[Model Shell] Ready · tab:', initialTab, '· refresh:', isRefresh);
+    startLiveWords();
+}
+function closeVoice() {
+    voiceOverlay.classList.remove('active');
+    voiceOverlay.classList.remove('listening');
+    clearInterval(voiceInterval);
+    clearInterval(liveWordsInterval);
+    liveWords.innerHTML = '';
+}
+function startLiveWords() {
+    const words = ['سلام', 'تحلیل', 'بیت‌کوین', 'امروز', 'بازار', 'ETH', 'روند', 'صعودی', 'حمایت', 'مقاومت'];
+    liveWords.innerHTML = '';
+    liveWordsInterval = setInterval(() => {
+        const span = document.createElement('span');
+        span.className = 'live-word';
+        span.innerText = words[Math.floor(Math.random() * words.length)];
+        liveWords.appendChild(span);
+        setTimeout(() => span.remove(), 3000);
+    }, 400);
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
+document.getElementById('heroVoiceBtn').addEventListener('click', openVoice);
+document.getElementById('chatVoiceBtn').addEventListener('click', openVoice);
+closeVoiceBtn.addEventListener('click', closeVoice);
 
-window.__modelShellCleanup = function() {
-    window.__modelShellLoaded = false;
-};
+ampSlider.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    const scale = 8 + (val / 100) * 32;
+    if (liquidDisp) liquidDisp.setAttribute('scale', scale);
+});
 
-})();
+updateSendState(heroTextarea, heroSendBtn);
+updateSendState(chatTextarea, chatSendBtn);
 </script>
-
 </body>
 </html>
